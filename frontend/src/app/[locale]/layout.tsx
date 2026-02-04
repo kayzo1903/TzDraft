@@ -16,6 +16,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const metadata = {
+  title: "TzDraft - Tanzania Drafti",
+  description: "Play the classic Tanzania Drafti game online.",
+  icons: {
+    icon: "/icon.png",
+  },
+};
+
 export default async function LocaleLayout({
   children,
   params
