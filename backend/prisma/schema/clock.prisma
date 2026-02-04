@@ -1,0 +1,14 @@
+// ============================================
+// CLOCK DOMAIN (Time Control)
+// ============================================
+
+model Clock {
+    gameId String @id @map("game_id")
+    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+    whiteTimeMs BigInt   @map("white_time_ms")
+    blackTimeMs BigInt   @map("black_time_ms")
+    lastMoveAt  DateTime @map("last_move_at")
+
+    @@map("clocks")
+}

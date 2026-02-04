@@ -1,0 +1,62 @@
+// ============================================
+// GAME DOMAIN (Aggregate Root)
+// ============================================
+
+model Game {
+    id          String     @id @default(uuid())
+    status      GameStatus @default(WAITING)
+    gameType    GameType   @map("game_type")
+    ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
+
+    whitePlayerId String  @map("white_player_id")
+    blackPlayerId String? @map("black_player_id")
+    whitePlayer   User    @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
+    blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
+
+    whiteElo Int? @map("white_elo")
+    blackElo Int? @map("black_elo")
+    aiLevel  Int? @map("ai_level")
+
+    winner    Winner?    @map("winner")
+    endReason EndReason? @map("end_reason")
+
+    createdAt DateTime  @default(now()) @map("created_at")
+    startedAt DateTime? @map("started_at")
+    endedAt   DateTime? @map("ended_at")
+
+    moves Move[]
+    clock Clock?
+
+    @@map("games")
+}
+
+// ============================================
+// GAME ENUMS
+// ============================================
+
+enum GameStatus {
+    WAITING
+    ACTIVE
+    FINISHED
+    ABORTED
+}
+
+enum GameType {
+    RANKED
+    CASUAL
+    AI
+}
+
+enum Winner {
+    WHITE
+    BLACK
+    DRAW
+}
+
+enum EndReason {
+    CHECKMATE
+    RESIGN
+    TIME
+    DISCONNECT
+    DRAW
+}

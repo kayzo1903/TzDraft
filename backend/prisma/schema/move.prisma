@@ -1,0 +1,32 @@
+// ============================================
+// MOVES DOMAIN (Immutable, Append-Only)
+// ============================================
+
+model Move {
+    id     String @id @default(uuid())
+    gameId String @map("game_id")
+    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+    moveNumber Int    @map("move_number")
+    player     Player
+
+    fromSquare      Int   @map("from_square") // 1-32 (dark squares only)
+    toSquare        Int   @map("to_square")
+    capturedSquares Int[] @map("captured_squares") // Ordered list for multi-capture
+
+    isPromotion    Boolean @default(false) @map("is_promotion")
+    isMultiCapture Boolean @default(false) @map("is_multi_capture")
+
+    notation   String @map("notation") // e.g., "22x17x10"
+    engineEval Int?   @map("engine_eval") // Centipawn equivalent
+
+    createdAt DateTime @default(now()) @map("created_at")
+
+    @@unique([gameId, moveNumber])
+    @@map("moves")
+}
+
+enum Player {
+    WHITE
+    BLACK
+}
