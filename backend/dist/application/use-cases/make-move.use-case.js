@@ -35,6 +35,8 @@ let MakeMoveUseCase = class MakeMoveUseCase {
             throw new common_1.BadRequestException('Game not found');
         }
         const playerColor = this.getPlayerColor(game, playerId);
+        const existingMoves = await this.moveRepository.findByGameId(gameId);
+        const moveNumber = existingMoves.length + 1;
         const fromPos = new position_vo_1.Position(from);
         const toPos = new position_vo_1.Position(to);
         const pathPos = path?.map((p) => new position_vo_1.Position(p));
@@ -42,12 +44,13 @@ let MakeMoveUseCase = class MakeMoveUseCase {
         if (!moveResult.isValid || !moveResult.move || !moveResult.newBoardState) {
             throw new common_1.BadRequestException(moveResult.error?.message || 'Invalid move');
         }
-        game.applyMove(moveResult.move);
+        const correctedMove = new moveResult.move.constructor(moveResult.move.id, moveResult.move.gameId, moveNumber, moveResult.move.player, moveResult.move.from, moveResult.move.to, moveResult.move.capturedSquares, moveResult.move.isPromotion, moveResult.move.notation, moveResult.move.createdAt);
+        game.applyMove(correctedMove);
         await this.gameRepository.update(game);
-        await this.moveRepository.create(moveResult.move);
+        await this.moveRepository.create(correctedMove);
         return {
             game,
-            move: moveResult.move,
+            move: correctedMove,
         };
     }
     getPlayerColor(game, playerId) {

@@ -4,6 +4,7 @@ import type { IMoveRepository } from '../../domain/game/repositories/move.reposi
 import { MoveValidationService } from '../../domain/game/services/move-validation.service';
 import { GameRulesService } from '../../domain/game/services/game-rules.service';
 import { Position } from '../../domain/game/value-objects/position.vo';
+import { Move } from '../../domain/game/entities/move.entity';
 import { PlayerColor, EndReason } from '../../shared/constants/game.constants';
 import { ValidationError } from '../../domain/game/types/validation-error.type';
 
@@ -48,7 +49,11 @@ export class MakeMoveUseCase {
     // 2. Determine player color
     const playerColor = this.getPlayerColor(game, playerId);
 
-    // 3. Validate and execute move
+    // 3. Get actual move count from database
+    const existingMoves = await this.moveRepository.findByGameId(gameId);
+    const moveNumber = existingMoves.length + 1;
+
+    // 4. Validate and execute move
     const fromPos = new Position(from);
     const toPos = new Position(to);
     const pathPos = path?.map((p) => new Position(p));
@@ -67,8 +72,22 @@ export class MakeMoveUseCase {
       );
     }
 
-    // 4. Apply move to game
-    game.applyMove(moveResult.move);
+    // Override move number with correct value from database
+    const correctedMove = new (moveResult.move.constructor as any)(
+      moveResult.move.id,
+      moveResult.move.gameId,
+      moveNumber, // Use correct move number
+      moveResult.move.player,
+      moveResult.move.from,
+      moveResult.move.to,
+      moveResult.move.capturedSquares,
+      moveResult.move.isPromotion,
+      moveResult.move.notation,
+      moveResult.move.createdAt,
+    );
+
+    // 5. Apply move to game
+    game.applyMove(correctedMove);
 
     // 5. Check for game end
     // TODO: Re-enable after implementing board state persistence
@@ -85,11 +104,11 @@ export class MakeMoveUseCase {
 
     // 6. Save game and move
     await this.gameRepository.update(game);
-    await this.moveRepository.create(moveResult.move);
+    await this.moveRepository.create(correctedMove);
 
     return {
       game,
-      move: moveResult.move,
+      move: correctedMove,
     };
   }
 

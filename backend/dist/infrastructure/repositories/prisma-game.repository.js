@@ -53,9 +53,20 @@ let PrismaGameRepository = class PrismaGameRepository {
         if (!game) {
             return null;
         }
+        console.log('📖 Loaded game from DB:', {
+            id: game.id,
+            currentTurn: game.currentTurn,
+            status: game.status,
+            moveCount: game.moves?.length || 0,
+        });
         return this.toDomain(game);
     }
     async update(game) {
+        console.log('🔍 Updating game:', {
+            id: game.id,
+            status: game.status,
+            currentTurn: game.currentTurn,
+        });
         const updated = await this.prisma.game.update({
             where: { id: game.id },
             data: {
@@ -66,6 +77,10 @@ let PrismaGameRepository = class PrismaGameRepository {
                 startedAt: game.startedAt,
                 endedAt: game.endedAt,
             },
+        });
+        console.log('✅ Game updated in DB:', {
+            id: updated.id,
+            currentTurn: updated.currentTurn,
         });
         return this.toDomain(updated);
     }
