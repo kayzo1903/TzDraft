@@ -8,13 +8,13 @@ import { Piece } from './Piece';
 export type PieceState = { color: 'WHITE' | 'BLACK', isKing?: boolean };
 export type BoardState = Record<number, PieceState>;
 
-interface BoardProps {
+interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     pieces?: BoardState;
     onMove?: (from: number, to: number) => void;
     readOnly?: boolean;
 }
 
-export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, readOnly = false }) => {
+export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, readOnly = false, className, ...props }) => {
     // Temporary state for demonstration/MVP
     const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
 
@@ -100,7 +100,13 @@ export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, re
     };
 
     return (
-        <div className="w-full max-w-[600px] mx-auto aspect-square bg-[#2B2B2B] p-2 rounded-lg shadow-xl ring-1 ring-white/10">
+        <div
+            className={clsx(
+                "w-full max-w-[600px] mx-auto aspect-square bg-[#2B2B2B] p-2 rounded-lg shadow-xl ring-1 ring-white/10",
+                className
+            )}
+            {...props}
+        >
             <div className="w-full h-full grid grid-cols-8 grid-rows-8 border-2 border-[#B58863]">
                 {Array.from({ length: 64 }).map((_, i) => renderSquare(i))}
             </div>

@@ -1,9 +1,14 @@
+"use client";
+
 import React from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { HeroBoard } from '@/components/hero/HeroBoard';
 import { Button } from '@/components/ui/Button';
+import { useTranslations } from 'next-intl';
 
 export default function Home() {
+  const t = useTranslations('hero');
+
   return (
     <main className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-6">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -24,14 +29,10 @@ export default function Home() {
 
           <div className="space-y-4">
             <h1 className="text-5xl lg:text-7xl font-black text-[#EDEDED] leading-tight">
-              Play <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-200">
-                TzDraft
-              </span>
+              {t('title')}
             </h1>
             <p className="text-xl text-neutral-400 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-              The #1 platform for competitive Tanzania Drafti.
-              Real-time multiplayer, analysis, and tournaments.
+              {t('subtitle')}
             </p>
           </div>
 
@@ -40,8 +41,8 @@ export default function Home() {
               <Button size="lg" className="w-full gap-3">
                 <span className="text-2xl">♟️</span>
                 <div className="flex flex-col items-start leading-none">
-                  <span className="font-bold">Play Online</span>
-                  <span className="text-xs font-normal opacity-80">Play with friends or randoms</span>
+                  <span className="font-bold">{t('playOnline')}</span>
+                  <span className="text-xs font-normal opacity-80">{t('features.online')}</span>
                 </div>
               </Button>
             </Link>
@@ -50,8 +51,8 @@ export default function Home() {
               <Button variant="secondary" size="lg" className="w-full gap-3">
                 <span className="text-2xl">🤖</span>
                 <div className="flex flex-col items-start leading-none">
-                  <span className="font-bold">Play Computer</span>
-                  <span className="text-xs font-normal opacity-80">Challenge Stockfish (Cake)</span>
+                  <span className="font-bold">{t('playComputer')}</span>
+                  <span className="text-xs font-normal opacity-80">Stockfish (Cake)</span>
                 </div>
               </Button>
             </Link>

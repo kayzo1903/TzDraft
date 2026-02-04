@@ -1,0 +1,73 @@
+{
+  "nav": {
+    "home": "Nyumbani",
+    "play": "Cheza",
+    "support": "Msaada",
+    "login": "Ingia",
+    "signup": "Jisajili",
+    "language": "Lugha"
+  },
+  "hero": {
+    "title": "Cheza TzDraft",
+    "subtitle": "Cheza mchezo unaopendwa wa TzDraft mtandaoni na marafiki au dhidi ya kompyuta. Uzoefu halisi, popote ulipo.",
+    "playOnline": "Cheza Mtandaoni",
+    "playComputer": "Cheza na Kompyuta",
+    "features": {
+      "online": "Wachezaji Wengi",
+      "blitz": "Michezo ya Haraka",
+      "tournaments": "Mashindano"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Karibu Tena",
+      "subtitle": "Ingia ili uendelee kucheza.",
+      "button": "Ingia",
+      "forgotPassword": "Umesahau Nenosiri?",
+      "rememberMe": "Nikumbuke",
+      "noAccount": "Mpya kwa TzDraft?",
+      "signupLink": "Jisajili"
+    },
+    "signup": {
+      "title": "Fungua Akaunti",
+      "subtitle": "Jiunge na jumuiya ya TzDraft leo.",
+      "button": "Jisajili",
+      "haveAccount": "Tayari una akaunti?",
+      "loginLink": "Ingia"
+    },
+    "google": "Endelea na Google",
+    "or": "AU",
+    "placeholders": {
+      "username": "Jina la Utumiaji",
+      "email": "Barua Pepe",
+      "password": "Nenosiri"
+    }
+  },
+  "support": {
+    "title": "Kituo cha Msaada",
+    "subtitle": "Una swali au umepata tatizo? Tuko hapa kukusaidia uendelee na mchezo.",
+    "faq": "Maswali Yanayoulizwa Mara kwa Mara",
+    "contact": "Wasiliana Nasi",
+    "form": {
+      "name": "Jina",
+      "email": "Barua Pepe",
+      "subject": "Mada",
+      "message": "Ujumbe",
+      "submit": "Tuma Ujumbe",
+      "subjects": {
+        "bug": "Ripoti Tatizo",
+        "account": "Shida ya Akaunti",
+        "general": "Maulizo ya Jumla",
+        "feedback": "Maoni"
+      }
+    },
+    "faqs": {
+      "q1": "Ninawezaje kucheza TzDraft?",
+      "a1": "TzDraft inafuata sheria za kawaida za 8x8. Kete zinasonga mbele kwa ulalo. Kete zilizotekwa zinatolewa. Lazima ule kete (Capture is mandatory).",
+      "q2": "Je, ninaweza kucheza na rafiki zangu?",
+      "a2": "Ndio! Bonyeza 'Cheza Mtandaoni' ili kuanzisha chumba, kisha shiriki Kitambulisho cha Mchezo (Game ID) na rafiki yako.",
+      "q3": "Nimepata tatizo, ninaliripoti vipi?",
+      "a3": "Tafadhali tumia fomu iliyo hapa chini kuelezea tatizo. Jumuisha Kitambulisho cha Mchezo ikiwa kinafaa."
+    }
+  }
+}

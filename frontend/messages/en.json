@@ -1,0 +1,73 @@
+{
+  "nav": {
+    "home": "Home",
+    "play": "Play",
+    "support": "Support",
+    "login": "Log In",
+    "signup": "Sign Up",
+    "language": "Language"
+  },
+  "hero": {
+    "title": "Play TzDraft",
+    "subtitle": "Experience the beloved game of TzDraft online with friends or against the computer. Authentic gameplay, anywhere.",
+    "playOnline": "Play Online",
+    "playComputer": "Play Computer",
+    "features": {
+      "online": "Multiplayer",
+      "blitz": "Blitz Games",
+      "tournaments": "Tournaments"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Log in to continue playing.",
+      "button": "Log In",
+      "forgotPassword": "Forgot Password?",
+      "rememberMe": "Remember me",
+      "noAccount": "New to TzDraft?",
+      "signupLink": "Sign Up"
+    },
+    "signup": {
+      "title": "Create Account",
+      "subtitle": "Join the TzDraft community today.",
+      "button": "Sign Up",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log In"
+    },
+    "google": "Continue with Google",
+    "or": "OR",
+    "placeholders": {
+      "username": "Username",
+      "email": "Email Address",
+      "password": "Password"
+    }
+  },
+  "support": {
+    "title": "Support Center",
+    "subtitle": "Have a question or run into a bug? We're here to help you get back to the game.",
+    "faq": "Frequently Asked Questions",
+    "contact": "Contact Us",
+    "form": {
+      "name": "Name",
+      "email": "Email",
+      "subject": "Subject",
+      "message": "Message",
+      "submit": "Send Message",
+      "subjects": {
+        "bug": "Report a Bug",
+        "account": "Account Issue",
+        "general": "General Inquiry",
+        "feedback": "Feedback"
+      }
+    },
+    "faqs": {
+      "q1": "How do I play TzDraft?",
+      "a1": "TzDraft follows standard 8x8 Draughts rules. Pieces move forward diagonally. Pieces are removed when captured. Capture is mandatory.",
+      "q2": "Can I play against my friends?",
+      "a2": "Yes! Click 'Play Online' to create a game room, then share the Game ID with your friend.",
+      "q3": "I found a bug, how do I report it?",
+      "a3": "Please use the form below to describe the issue. Include the Game ID if applicable."
+    }
+  }
+}

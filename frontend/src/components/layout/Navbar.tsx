@@ -1,24 +1,33 @@
 "use client";
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Link, usePathname, useRouter } from '@/i18n/routing';
 import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
+import { useLocale } from 'next-intl';
 
 export const Navbar: React.FC = () => {
+    const t = useTranslations('nav');
     const pathname = usePathname();
+    const router = useRouter();
+    const locale = useLocale();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const navLinks = [
-        { name: 'Home', href: '/' },
-        { name: 'Play', href: '/game/new' },
-        { name: 'Support', href: '/support' },
+        { name: t('home'), href: '/' },
+        { name: t('play'), href: '/game/new' },
+        { name: t('support'), href: '/support' },
     ];
 
     const isActive = (href: string) => {
         if (href === '/' && pathname !== '/') return false;
         return pathname.startsWith(href);
+    };
+
+    const toggleLanguage = () => {
+        const nextLocale = locale === 'sw' ? 'en' : 'sw';
+        router.replace(pathname, { locale: nextLocale });
     };
 
     return (
@@ -47,9 +56,12 @@ export const Navbar: React.FC = () => {
                                 </Link>
                             ))}
 
-                            {/* Language Dropdown Placeholder */}
-                            <button className="flex items-center gap-1 px-3 py-2 text-[#999999] hover:text-white transition-colors text-sm font-medium">
-                                <span>🌐 EN</span>
+                            {/* Language Toggler */}
+                            <button
+                                onClick={toggleLanguage}
+                                className="flex items-center gap-1 px-3 py-2 text-[#999999] hover:text-white transition-colors text-sm font-medium"
+                            >
+                                <span>{locale === 'sw' ? '🇹🇿 SW' : '🇺🇸 EN'}</span>
                             </button>
                         </div>
                     </div>
@@ -57,10 +69,10 @@ export const Navbar: React.FC = () => {
                     {/* Right: Auth Buttons */}
                     <div className="hidden md:flex items-center gap-3">
                         <Link href="/auth/login">
-                            <Button variant="ghost" size="sm" className="text-[#bababa] hover:text-white font-semibold">Log In</Button>
+                            <Button variant="ghost" size="sm" className="text-[#bababa] hover:text-white font-semibold">{t('login')}</Button>
                         </Link>
                         <Link href="/auth/signup">
-                            <Button size="sm" className="font-bold shadow-none hover:shadow-lg transition-shadow">Sign Up</Button>
+                            <Button size="sm" className="font-bold shadow-none hover:shadow-lg transition-shadow">{t('signup')}</Button>
                         </Link>
                     </div>
 
@@ -91,11 +103,18 @@ export const Navbar: React.FC = () => {
                             </Link>
                         ))}
                         <div className="pt-4 flex flex-col gap-2 p-2">
+                            <button
+                                onClick={toggleLanguage}
+                                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-[var(--secondary)] mb-2"
+                            >
+                                {locale === 'sw' ? 'Badili Lugha (EN)' : 'Change Language (SW)'}
+                            </button>
+
                             <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
-                                <Button variant="secondary" className="w-full justify-center">Log In</Button>
+                                <Button variant="secondary" className="w-full justify-center">{t('login')}</Button>
                             </Link>
                             <Link href="/auth/signup" onClick={() => setIsMenuOpen(false)}>
-                                <Button className="w-full justify-center">Sign Up</Button>
+                                <Button className="w-full justify-center">{t('signup')}</Button>
                             </Link>
                         </div>
                     </div>
