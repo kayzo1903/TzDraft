@@ -2,11 +2,20 @@
 
 :root {
   /* Drafti Design System Colors */
-  --background: #2b2b2b;
-  --foreground: #ededed;
+  --background: #1c1917; /* Stone 900 - Deep Warm Dark */
+  --foreground: #fafaf9; /* Stone 50 */
 
-  --board-light: #f0d9b5;
-  --board-dark: #b58863;
+  /* Savanna Orange Theme */
+  --primary: #f97316; /* Orange 500 */
+  --primary-hover: #ea580c; /* Orange 600 */
+  --primary-border: #c2410c; /* Orange 700 */
+
+  --secondary: #292524; /* Stone 800 */
+  --secondary-hover: #44403c; /* Stone 700 */
+  --secondary-border: #1c1917; /* Stone 900 */
+
+  --board-light: #fdba74; /* Orange 300 */
+  --board-dark: #9a3412; /* Orange 800 */
 
   /* Alert/State Colors */
   --timer-normal: #ededed;
@@ -19,6 +28,12 @@
   --color-foreground: var(--foreground);
   --color-board-light: var(--board-light);
   --color-board-dark: var(--board-dark);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-border: var(--primary-border);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-border: var(--secondary-border);
   --color-timer-normal: var(--timer-normal);
   --color-timer-warning: var(--timer-warning);
   --color-timer-critical: var(--timer-critical);

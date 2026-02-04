@@ -4,16 +4,17 @@ import React, { useState } from 'react';
 import clsx from 'clsx';
 import { Piece } from './Piece';
 
-// Types for local state (will be replaced by shared types later)
-type PlayerColor = 'WHITE' | 'BLACK';
+// Types for board state
+export type PieceState = { color: 'WHITE' | 'BLACK', isKing?: boolean };
+export type BoardState = Record<number, PieceState>;
 
 interface BoardProps {
-    // We'll accept the board state as a prop eventually
-    // boardState: BoardState; 
+    pieces?: BoardState;
     onMove?: (from: number, to: number) => void;
+    readOnly?: boolean;
 }
 
-export const Board: React.FC<BoardProps> = ({ onMove }) => {
+export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, readOnly = false }) => {
     // Temporary state for demonstration/MVP
     const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
 
@@ -21,17 +22,17 @@ export const Board: React.FC<BoardProps> = ({ onMove }) => {
     const isDarkSquare = (index: number) => {
         const row = Math.floor(index / 8);
         const col = index % 8;
-        // In standard check/draughts, dark squares are where (row + col) is odd 
-        // BUT typically A1 (bottom-left) is dark. 
-        // Let's stick to standard integer 0-63 layout where 0 is top-left usually.
         return (row + col) % 2 !== 0;
     };
 
-    // Mock initial pieces (standard 8x8 setup)
-    // 0-63 indices. Dark squares only.
-    // Rows 0-2: Black
-    // Rows 5-7: White
-    const getInitialPiece = (index: number): { color: PlayerColor } | null => {
+    // Internal initial setup (fallback if no pieces prop provided)
+    const getPiece = (index: number): PieceState | null => {
+        // If external pieces are provided, use them
+        if (externalPieces) {
+            return externalPieces[index] || null;
+        }
+
+        // Fallback to initial setup
         if (!isDarkSquare(index)) return null;
         const row = Math.floor(index / 8);
         if (row < 3) return { color: 'BLACK' };
@@ -40,7 +41,7 @@ export const Board: React.FC<BoardProps> = ({ onMove }) => {
     };
 
     const handleSquareClick = (index: number) => {
-        if (!isDarkSquare(index)) return;
+        if (readOnly || !isDarkSquare(index)) return;
 
         if (selectedSquare === index) {
             setSelectedSquare(null);
@@ -60,7 +61,7 @@ export const Board: React.FC<BoardProps> = ({ onMove }) => {
 
     const renderSquare = (i: number) => {
         const isDark = isDarkSquare(i);
-        const piece = getInitialPiece(i); // This will come from props later
+        const piece = getPiece(i);
         const isSelected = selectedSquare === i;
 
         // Tailwind custom colors from globals.css

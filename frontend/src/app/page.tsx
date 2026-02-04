@@ -1,11 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
-import { Board } from '@/components/game/Board';
+import { HeroBoard } from '@/components/hero/HeroBoard';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#2B2B2B] flex flex-col items-center justify-center p-6">
+    <main className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-6">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
         {/* Left Column: Visual Board */}
@@ -15,7 +15,7 @@ export default function Home() {
 
           <div className="relative w-full max-w-[500px] transform lg:rotate-[-2deg] transition-transform hover:scale-[1.02] duration-500">
             <div className="absolute inset-0 bg-black/40 blur-xl rounded-2xl transform translate-y-8" />
-            <Board />
+            <HeroBoard />
           </div>
         </div>
 
