@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
+import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
 import { CreateGameUseCase } from './create-game.use-case';
 import { MakeMoveUseCase } from './make-move.use-case';
 import { GetGameStateUseCase } from './get-game-state.use-case';
@@ -11,7 +12,7 @@ import { EndGameUseCase } from './end-game.use-case';
  * Provides all application use cases
  */
 @Module({
-  imports: [RepositoryModule],
+  imports: [RepositoryModule, MessagingModule],
   providers: [
     CreateGameUseCase,
     MakeMoveUseCase,

@@ -1,4 +1,6 @@
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import { Game } from '../../domain/game/entities/game.entity';
+import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
 import { MoveValidationService } from '../../domain/game/services/move-validation.service';
@@ -22,6 +24,7 @@ export class MakeMoveUseCase {
     private readonly gameRepository: IGameRepository,
     @Inject('IMoveRepository')
     private readonly moveRepository: IMoveRepository,
+    private readonly gamesGateway: GamesGateway,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -37,8 +40,8 @@ export class MakeMoveUseCase {
     to: number,
     path?: number[],
   ): Promise<{
-    game: any;
-    move: any;
+    game: Game;
+    move: Move;
   }> {
     // 1. Load game
     const game = await this.gameRepository.findById(gameId);
@@ -106,6 +109,12 @@ export class MakeMoveUseCase {
     await this.gameRepository.update(game);
     await this.moveRepository.create(correctedMove);
 
+    // 7. Emit game state update
+    this.gamesGateway.emitGameStateUpdate(gameId, {
+      ...game,
+      lastMove: correctedMove,
+    });
+
     return {
       game,
       move: correctedMove,
@@ -115,7 +124,7 @@ export class MakeMoveUseCase {
   /**
    * Get player color from game
    */
-  private getPlayerColor(game: any, playerId: string): PlayerColor {
+  private getPlayerColor(game: Game, playerId: string): PlayerColor {
     if (game.whitePlayerId === playerId) {
       return PlayerColor.WHITE;
     }
