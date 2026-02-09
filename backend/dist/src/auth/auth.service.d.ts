@@ -28,5 +28,16 @@ export declare class AuthService {
     resetPasswordPhone(phoneNumber: string, code: string, newPassword: string): Promise<{
         message: string;
     }>;
-    private generateTokens;
+    validateOAuthUser(profile: {
+        googleId: string;
+        email: string;
+        name: string;
+        oauthProvider: string;
+    }): Promise<any>;
+    private generateUniqueUsername;
+    private generateUniqueDisplayName;
+    generateTokens(userId: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
+    }>;
 }

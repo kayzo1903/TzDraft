@@ -100,7 +100,7 @@ export const Navbar: React.FC = () => {
                                         <div className="px-4 py-3 border-b border-gray-700">
                                             <p className="text-sm text-gray-400">Signed in as</p>
                                             <p className="text-sm font-medium text-white truncate">{user.username}</p>
-                                            <p className="text-xs text-gray-500 mt-1">Rating: {user.rating}</p>
+                                            <p className="text-xs text-gray-500 mt-1">Rating: {typeof user.rating === 'object' ? user.rating.rating : user.rating}</p>
                                         </div>
                                         <div className="py-1">
                                             <Link
@@ -183,7 +183,7 @@ export const Navbar: React.FC = () => {
                                     <div className="px-3 py-2 border-b border-gray-700 mb-2">
                                         <p className="text-sm text-gray-400">Signed in as</p>
                                         <p className="text-sm font-medium text-white">{user.username}</p>
-                                        <p className="text-xs text-gray-500 mt-1">Rating: {user.rating}</p>
+                                        <p className="text-xs text-gray-500 mt-1">Rating: {typeof user.rating === 'object' ? user.rating.rating : user.rating}</p>
                                     </div>
                                     <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
                                         <Button variant="secondary" className="w-full justify-start gap-2">

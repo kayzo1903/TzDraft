@@ -1,3 +1,13 @@
+export interface Rating {
+  id: string;
+  userId: string;
+  rating: number;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
 export interface User {
   id: string;
   phoneNumber: string;
@@ -5,7 +15,7 @@ export interface User {
   username: string;
   displayName: string;
   isVerified: boolean;
-  rating: number;
+  rating: number | Rating;
 }
 
 export interface AuthState {

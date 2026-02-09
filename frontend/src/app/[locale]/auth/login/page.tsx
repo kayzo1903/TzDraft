@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
 import { PasswordInput } from '@/components/auth/password-input';
 import { Loader2, LogIn, Smartphone } from 'lucide-react';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 
 export default function LoginPage() {
     const t = useTranslations('auth');
@@ -124,6 +125,21 @@ export default function LoginPage() {
                             )}
                         </Button>
                     </form>
+
+                    {/* Divider */}
+                    <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-gray-700" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-[#2a2a2a] px-2 text-gray-500">
+                                Or continue with
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Google Sign-In Button */}
+                    <GoogleSignInButton />
                 </div>
             </div>
 

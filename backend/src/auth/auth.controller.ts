@@ -6,7 +6,10 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import {
@@ -107,5 +110,28 @@ export class AuthController {
       dto.code,
       dto.newPassword,
     );
+  }
+
+  @Public()
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+    // Initiates Google OAuth flow
+  }
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@CurrentUser() user: any, @Res() res: Response) {
+    // Generate JWT tokens for the OAuth user
+    const { accessToken, refreshToken } = await this.authService.generateTokens(
+      user.id,
+    );
+
+    // Redirect to frontend with tokens
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const redirectUrl = `${frontendUrl}/auth/oauth-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`;
+
+    return res.redirect(redirectUrl);
   }
 }

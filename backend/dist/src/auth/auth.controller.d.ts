@@ -1,3 +1,4 @@
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { RegisterDto, LoginDto, SendOtpDto, VerifyOtpDto, ResetPasswordPhoneDto } from './dto';
@@ -33,4 +34,6 @@ export declare class AuthController {
     resetPasswordPhone(dto: ResetPasswordPhoneDto): Promise<{
         message: string;
     }>;
+    googleAuth(): Promise<void>;
+    googleAuthCallback(user: any, res: Response): Promise<void>;
 }

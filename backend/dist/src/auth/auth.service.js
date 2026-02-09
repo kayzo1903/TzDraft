@@ -129,6 +129,9 @@ let AuthService = class AuthService {
         if (!user) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        if (!user.passwordHash) {
+            throw new common_1.UnauthorizedException('This account uses Google Sign-In. Please sign in with Google.');
+        }
         const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -262,6 +265,85 @@ let AuthService = class AuthService {
             where: { id: otpRecord.id },
         });
         return { message: 'Password reset successfully' };
+    }
+    async validateOAuthUser(profile) {
+        let user = await this.prisma.user.findUnique({
+            where: { email: profile.email },
+            include: { rating: true },
+        });
+        if (user) {
+            if (!user.googleId) {
+                user = await this.prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        googleId: profile.googleId,
+                        oauthProvider: profile.oauthProvider,
+                    },
+                    include: { rating: true },
+                });
+            }
+            return user;
+        }
+        const username = await this.generateUniqueUsername(profile.email);
+        const displayName = await this.generateUniqueDisplayName(profile.name);
+        user = await this.prisma.user.create({
+            data: {
+                email: profile.email,
+                username,
+                name: profile.name,
+                displayName,
+                googleId: profile.googleId,
+                oauthProvider: profile.oauthProvider,
+                phoneNumber: `oauth_${profile.googleId}`,
+                isVerified: true,
+                passwordHash: null,
+                rating: {
+                    create: {
+                        rating: 500,
+                    },
+                },
+            },
+            include: { rating: true },
+        });
+        return user;
+    }
+    async generateUniqueUsername(email) {
+        const baseUsername = email
+            .split('@')[0]
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '_');
+        let username = baseUsername;
+        let attempts = 0;
+        const maxAttempts = 10;
+        while (attempts < maxAttempts) {
+            const exists = await this.prisma.user.findUnique({
+                where: { username },
+            });
+            if (!exists) {
+                return username;
+            }
+            const suffix = crypto.randomBytes(2).toString('hex');
+            username = `${baseUsername}_${suffix}`;
+            attempts++;
+        }
+        throw new Error('Could not generate unique username');
+    }
+    async generateUniqueDisplayName(name) {
+        const baseName = name.replace(/\s+/g, '');
+        let displayName = baseName;
+        let attempts = 0;
+        const maxAttempts = 10;
+        while (attempts < maxAttempts) {
+            const exists = await this.prisma.user.findUnique({
+                where: { displayName },
+            });
+            if (!exists) {
+                return displayName;
+            }
+            attempts++;
+            displayName = `${baseName}${attempts + 1}`;
+        }
+        throw new Error('Could not generate unique display name');
     }
     async generateTokens(userId) {
         const accessToken = this.jwtService.sign({ sub: userId }, {

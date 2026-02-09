@@ -17,13 +17,16 @@ export declare class UserService {
         phoneNumber: string;
         email: string | null;
         username: string;
+        name: string | null;
         displayName: string;
-        passwordHash: string;
+        passwordHash: string | null;
         isVerified: boolean;
         country: string | null;
         region: string | null;
         createdAt: Date;
         lastLoginAt: Date | null;
+        googleId: string | null;
+        oauthProvider: string | null;
     }) | null>;
     create(data: {
         phoneNumber: string;

@@ -7,13 +7,18 @@ model User {
     phoneNumber  String    @unique @map("phone_number")
     email        String?   @unique
     username     String    @unique
-    displayName  String    @map("display_name")
-    passwordHash String    @map("password_hash")
+    name         String? // Real name from OAuth provider (can be duplicate)
+    displayName  String    @unique @map("display_name") // Unique identifier shown in games
+    passwordHash String?   @map("password_hash") // Optional for OAuth users
     isVerified   Boolean   @default(false) @map("is_verified")
     country      String?   @default("TZ")
     region       String?
     createdAt    DateTime  @default(now()) @map("created_at")
     lastLoginAt  DateTime? @map("last_login_at")
+
+    // OAuth fields
+    googleId      String? @unique @map("google_id")
+    oauthProvider String? @map("oauth_provider") // 'google', 'facebook', etc.
 
     gamesAsWhite        Game[]               @relation("WhitePlayer")
     gamesAsBlack        Game[]               @relation("BlackPlayer")

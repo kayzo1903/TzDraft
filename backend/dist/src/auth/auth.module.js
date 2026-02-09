@@ -15,6 +15,7 @@ const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const otp_service_1 = require("./otp.service");
 const jwt_strategy_1 = require("./strategies/jwt.strategy");
+const google_strategy_1 = require("./strategies/google.strategy");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const ws_jwt_guard_1 = require("./guards/ws-jwt.guard");
 const user_module_1 = require("../domain/user/user.module");
@@ -46,6 +47,7 @@ exports.AuthModule = AuthModule = __decorate([
             otp_service_1.OtpService,
             beam_africa_service_1.BeamAfricaService,
             jwt_strategy_1.JwtStrategy,
+            google_strategy_1.GoogleStrategy,
             jwt_auth_guard_1.JwtAuthGuard,
             ws_jwt_guard_1.WsJwtGuard,
         ],

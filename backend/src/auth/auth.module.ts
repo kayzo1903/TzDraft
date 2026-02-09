@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
 import { UserModule } from '../domain/user/user.module';
@@ -34,6 +35,7 @@ import { BeamAfricaService } from '../infrastructure/sms/beam-africa.service';
     OtpService,
     BeamAfricaService,
     JwtStrategy,
+    GoogleStrategy,
     JwtAuthGuard,
     WsJwtGuard,
   ],

@@ -112,6 +112,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check if user is OAuth-only (no password)
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        'This account uses Google Sign-In. Please sign in with Google.',
+      );
+    }
+
     // Verify password
     const isPasswordValid = await bcrypt.compare(
       dto.password,
@@ -310,7 +317,115 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  private async generateTokens(
+  async validateOAuthUser(profile: {
+    googleId: string;
+    email: string;
+    name: string;
+    oauthProvider: string;
+  }): Promise<any> {
+    // Check if user exists by email
+    let user = await this.prisma.user.findUnique({
+      where: { email: profile.email },
+      include: { rating: true },
+    });
+
+    if (user) {
+      // User exists, update googleId if not already set
+      if (!user.googleId) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: profile.googleId,
+            oauthProvider: profile.oauthProvider,
+          },
+          include: { rating: true },
+        });
+      }
+      return user;
+    }
+
+    // User doesn't exist, create new user
+    const username = await this.generateUniqueUsername(profile.email);
+    const displayName = await this.generateUniqueDisplayName(profile.name);
+
+    user = await this.prisma.user.create({
+      data: {
+        email: profile.email,
+        username,
+        name: profile.name,
+        displayName,
+        googleId: profile.googleId,
+        oauthProvider: profile.oauthProvider,
+        phoneNumber: `oauth_${profile.googleId}`, // Placeholder since phoneNumber is required
+        isVerified: true,
+        passwordHash: null,
+        rating: {
+          create: {
+            rating: 500,
+          },
+        },
+      },
+      include: { rating: true },
+    });
+
+    return user;
+  }
+
+  private async generateUniqueUsername(email: string): Promise<string> {
+    // Extract base from email and sanitize
+    const baseUsername = email
+      .split('@')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_');
+
+    let username = baseUsername;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const exists = await this.prisma.user.findUnique({
+        where: { username },
+      });
+
+      if (!exists) {
+        return username;
+      }
+
+      // Add random suffix
+      const suffix = crypto.randomBytes(2).toString('hex');
+      username = `${baseUsername}_${suffix}`;
+      attempts++;
+    }
+
+    throw new Error('Could not generate unique username');
+  }
+
+  private async generateUniqueDisplayName(name: string): Promise<string> {
+    // Sanitize name to create base (e.g., "John Smith" → "JohnSmith")
+    const baseName = name.replace(/\s+/g, '');
+
+    let displayName = baseName;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const exists = await this.prisma.user.findUnique({
+        where: { displayName },
+      });
+
+      if (!exists) {
+        return displayName;
+      }
+
+      // Add numeric suffix
+      attempts++;
+      displayName = `${baseName}${attempts + 1}`;
+    }
+
+    throw new Error('Could not generate unique display name');
+  }
+
+  async generateTokens(
     userId: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     // Generate access token (short-lived)
