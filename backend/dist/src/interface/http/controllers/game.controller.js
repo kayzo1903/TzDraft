@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
+const current_user_decorator_1 = require("../../../auth/decorators/current-user.decorator");
 const create_game_use_case_1 = require("../../../application/use-cases/create-game.use-case");
 const get_game_state_use_case_1 = require("../../../application/use-cases/get-game-state.use-case");
 const create_game_dto_1 = require("../dtos/create-game.dto");
@@ -25,15 +27,15 @@ let GameController = class GameController {
         this.createGameUseCase = createGameUseCase;
         this.getGameStateUseCase = getGameStateUseCase;
     }
-    async createPvPGame(dto) {
-        const game = await this.createGameUseCase.createPvPGame(dto.whitePlayerId, dto.blackPlayerId, dto.whiteElo || 1200, dto.blackElo || 1200);
+    async createPvPGame(user, dto) {
+        const game = await this.createGameUseCase.createPvPGame(user.id, dto.blackPlayerId, user.rating?.rating || 1200, dto.blackElo || 1200);
         return {
             success: true,
             data: game,
         };
     }
-    async createPvEGame(dto) {
-        const game = await this.createGameUseCase.createPvEGame(dto.playerId, dto.playerColor, dto.playerElo || 1200, dto.aiLevel);
+    async createPvEGame(user, dto) {
+        const game = await this.createGameUseCase.createPvEGame(user.id, dto.playerColor, user.rating?.rating || 1200, dto.aiLevel);
         return {
             success: true,
             data: game,
@@ -63,9 +65,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new Player vs Player game' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Game created successfully' }),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_game_dto_1.CreatePvPGameDto]),
+    __metadata("design:paramtypes", [Object, create_game_dto_1.CreatePvPGameDto]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "createPvPGame", null);
 __decorate([
@@ -73,9 +76,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new Player vs AI game' }),
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Game created successfully' }),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_game_dto_1.CreatePvEGameDto]),
+    __metadata("design:paramtypes", [Object, create_game_dto_1.CreatePvEGameDto]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "createPvEGame", null);
 __decorate([
@@ -101,7 +105,9 @@ __decorate([
 ], GameController.prototype, "getGameState", null);
 exports.GameController = GameController = __decorate([
     (0, swagger_1.ApiTags)('games'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('games'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [create_game_use_case_1.CreateGameUseCase,
         get_game_state_use_case_1.GetGameStateUseCase])
 ], GameController);

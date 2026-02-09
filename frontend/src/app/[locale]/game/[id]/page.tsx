@@ -6,9 +6,26 @@ import { useSocket } from '@/hooks/useSocket';
 import { Board } from '@/components/game/Board';
 
 export default function GamePage() {
-    const params = useParams();
-    const gameId = params.id as string;
-    const { socket, isConnected } = useSocket(gameId);
+    const { id: gameId } = useParams();
+    const socket = useSocket();
+    const [isConnected, setIsConnected] = useState(false);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        setIsConnected(socket.connected);
+
+        const onConnect = () => setIsConnected(true);
+        const onDisconnect = () => setIsConnected(false);
+
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+
+        return () => {
+            socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
+        };
+    }, [socket]);
 
     const status = isConnected ? 'Connected' : 'Connecting...';
 

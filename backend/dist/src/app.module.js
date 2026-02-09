@@ -11,6 +11,8 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const prisma_module_1 = require("./infrastructure/database/prisma/prisma.module");
 const http_module_1 = require("./interface/http/http.module");
+const auth_module_1 = require("./auth/auth.module");
+const user_module_1 = require("./domain/user/user.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -22,6 +24,8 @@ exports.AppModule = AppModule = __decorate([
                 envFilePath: '.env',
             }),
             prisma_module_1.PrismaModule,
+            auth_module_1.AuthModule,
+            user_module_1.UserModule,
             http_module_1.HttpModule,
         ],
         controllers: [],

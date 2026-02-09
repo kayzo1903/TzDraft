@@ -2,30 +2,41 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
+
 
 // ============================================
 // USER & IDENTITY DOMAIN
 // ============================================
 
 model User {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  displayName  String   @map("display_name")
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
+    id           String    @id @default(uuid())
+    phoneNumber  String    @unique @map("phone_number")
+    email        String?   @unique
+    username     String    @unique
+    displayName  String    @map("display_name")
+    passwordHash String    @map("password_hash")
+    isVerified   Boolean   @default(false) @map("is_verified")
+    country      String?   @default("TZ")
+    region       String?
+    createdAt    DateTime  @default(now()) @map("created_at")
+    lastLoginAt  DateTime? @map("last_login_at")
 
-  gamesAsWhite Game[]  @relation("WhitePlayer")
-  gamesAsBlack Game[]  @relation("BlackPlayer")
-  rating       Rating?
+    gamesAsWhite        Game[]               @relation("WhitePlayer")
+    gamesAsBlack        Game[]               @relation("BlackPlayer")
+    rating              Rating?
+    refreshTokens       RefreshToken[]
+    verificationTokens  VerificationToken[]
+    passwordResetTokens PasswordResetToken[]
+    otpCodes            OtpCode[]
 
-  @@map("users")
+    @@map("users")
 }
 
 // ============================================
@@ -33,14 +44,76 @@ model User {
 // ============================================
 
 model Rating {
-  userId String @id @map("user_id")
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String @id @map("user_id")
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  rating      Int      @default(1200)
-  gamesPlayed Int      @default(0) @map("games_played")
-  lastUpdated DateTime @updatedAt @map("last_updated")
+    rating      Int      @default(1200)
+    gamesPlayed Int      @default(0) @map("games_played")
+    lastUpdated DateTime @updatedAt @map("last_updated")
 
-  @@map("ratings")
+    @@map("ratings")
+}
+
+// ============================================
+// AUTHENTICATION TOKENS
+// ============================================
+
+model RefreshToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("refresh_tokens")
+}
+
+model VerificationToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("password_reset_tokens")
+}
+
+model OtpCode {
+    id          String   @id @default(uuid())
+    phoneNumber String   @map("phone_number")
+    userId      String?  @map("user_id")
+    code        String
+    expiresAt   DateTime @map("expires_at")
+    verified    Boolean  @default(false)
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([phoneNumber])
+    @@index([userId])
+    @@map("otp_codes")
 }
 
 // ============================================
@@ -48,33 +121,31 @@ model Rating {
 // ============================================
 
 model Game {
-  id          String     @id @default(uuid())
-  status      GameStatus @default(WAITING)
-  gameType    GameType   @map("game_type")
-  ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
+    id          String     @id @default(uuid())
+    status      GameStatus @default(WAITING)
+    gameType    GameType   @map("game_type")
+    ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
 
-  whitePlayerId String  @map("white_player_id")
-  blackPlayerId String? @map("black_player_id")
-  whitePlayer   User    @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
-  blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
+    whitePlayerId String  @map("white_player_id")
+    blackPlayerId String? @map("black_player_id")
+    whitePlayer   User    @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
+    blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
 
-  whiteElo Int? @map("white_elo")
-  blackElo Int? @map("black_elo")
-  aiLevel  Int? @map("ai_level")
+    whiteElo Int? @map("white_elo")
+    blackElo Int? @map("black_elo")
+    aiLevel  Int? @map("ai_level")
 
-  currentTurn PlayerColor @default(WHITE) @map("current_turn")
+    winner    Winner?    @map("winner")
+    endReason EndReason? @map("end_reason")
 
-  winner    Winner?    @map("winner")
-  endReason EndReason? @map("end_reason")
+    createdAt DateTime  @default(now()) @map("created_at")
+    startedAt DateTime? @map("started_at")
+    endedAt   DateTime? @map("ended_at")
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  startedAt DateTime? @map("started_at")
-  endedAt   DateTime? @map("ended_at")
+    moves Move[]
+    clock Clock?
 
-  moves Move[]
-  clock Clock?
-
-  @@map("games")
+    @@map("games")
 }
 
 // ============================================
@@ -82,35 +153,30 @@ model Game {
 // ============================================
 
 enum GameStatus {
-  WAITING
-  ACTIVE
-  FINISHED
-  ABORTED
+    WAITING
+    ACTIVE
+    FINISHED
+    ABORTED
 }
 
 enum GameType {
-  RANKED
-  CASUAL
-  AI
-}
-
-enum PlayerColor {
-  WHITE
-  BLACK
+    RANKED
+    CASUAL
+    AI
 }
 
 enum Winner {
-  WHITE
-  BLACK
-  DRAW
+    WHITE
+    BLACK
+    DRAW
 }
 
 enum EndReason {
-  CHECKMATE
-  RESIGN
-  TIME
-  DISCONNECT
-  DRAW
+    CHECKMATE
+    RESIGN
+    TIME
+    DISCONNECT
+    DRAW
 }
 
 // ============================================
@@ -118,32 +184,32 @@ enum EndReason {
 // ============================================
 
 model Move {
-  id     String @id @default(uuid())
-  gameId String @map("game_id")
-  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+    id     String @id @default(uuid())
+    gameId String @map("game_id")
+    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
-  moveNumber Int    @map("move_number")
-  player     Player
+    moveNumber Int    @map("move_number")
+    player     Player
 
-  fromSquare      Int   @map("from_square") // 1-32 (dark squares only)
-  toSquare        Int   @map("to_square")
-  capturedSquares Int[] @map("captured_squares") // Ordered list for multi-capture
+    fromSquare      Int   @map("from_square") // 1-32 (dark squares only)
+    toSquare        Int   @map("to_square")
+    capturedSquares Int[] @map("captured_squares") // Ordered list for multi-capture
 
-  isPromotion    Boolean @default(false) @map("is_promotion")
-  isMultiCapture Boolean @default(false) @map("is_multi_capture")
+    isPromotion    Boolean @default(false) @map("is_promotion")
+    isMultiCapture Boolean @default(false) @map("is_multi_capture")
 
-  notation   String @map("notation") // e.g., "22x17x10"
-  engineEval Int?   @map("engine_eval") // Centipawn equivalent
+    notation   String @map("notation") // e.g., "22x17x10"
+    engineEval Int?   @map("engine_eval") // Centipawn equivalent
 
-  createdAt DateTime @default(now()) @map("created_at")
+    createdAt DateTime @default(now()) @map("created_at")
 
-  @@unique([gameId, moveNumber])
-  @@map("moves")
+    @@unique([gameId, moveNumber])
+    @@map("moves")
 }
 
 enum Player {
-  WHITE
-  BLACK
+    WHITE
+    BLACK
 }
 
 // ============================================
@@ -151,12 +217,12 @@ enum Player {
 // ============================================
 
 model Clock {
-  gameId String @id @map("game_id")
-  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+    gameId String @id @map("game_id")
+    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
-  whiteTimeMs BigInt   @map("white_time_ms")
-  blackTimeMs BigInt   @map("black_time_ms")
-  lastMoveAt  DateTime @map("last_move_at")
+    whiteTimeMs BigInt   @map("white_time_ms")
+    blackTimeMs BigInt   @map("black_time_ms")
+    lastMoveAt  DateTime @map("last_move_at")
 
-  @@map("clocks")
+    @@map("clocks")
 }

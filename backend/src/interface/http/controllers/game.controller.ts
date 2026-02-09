@@ -6,8 +6,16 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
 import { CreatePvPGameDto, CreatePvEGameDto } from '../dtos/create-game.dto';
@@ -17,7 +25,9 @@ import { CreatePvPGameDto, CreatePvEGameDto } from '../dtos/create-game.dto';
  * Handles game-related HTTP endpoints
  */
 @ApiTags('games')
+@ApiBearerAuth()
 @Controller('games')
+@UseGuards(JwtAuthGuard)
 export class GameController {
   constructor(
     private readonly createGameUseCase: CreateGameUseCase,
@@ -31,11 +41,11 @@ export class GameController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new Player vs Player game' })
   @ApiResponse({ status: 201, description: 'Game created successfully' })
-  async createPvPGame(@Body() dto: CreatePvPGameDto) {
+  async createPvPGame(@CurrentUser() user: any, @Body() dto: CreatePvPGameDto) {
     const game = await this.createGameUseCase.createPvPGame(
-      dto.whitePlayerId,
+      user.id,
       dto.blackPlayerId,
-      dto.whiteElo || 1200,
+      user.rating?.rating || 1200,
       dto.blackElo || 1200,
     );
 
@@ -52,11 +62,11 @@ export class GameController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new Player vs AI game' })
   @ApiResponse({ status: 201, description: 'Game created successfully' })
-  async createPvEGame(@Body() dto: CreatePvEGameDto) {
+  async createPvEGame(@CurrentUser() user: any, @Body() dto: CreatePvEGameDto) {
     const game = await this.createGameUseCase.createPvEGame(
-      dto.playerId,
+      user.id,
       dto.playerColor,
-      dto.playerElo || 1200,
+      user.rating?.rating || 1200,
       dto.aiLevel,
     );
 

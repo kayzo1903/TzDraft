@@ -31,7 +31,6 @@ let PrismaGameRepository = class PrismaGameRepository {
                 whiteElo: game.whiteElo,
                 blackElo: game.blackElo,
                 aiLevel: game.aiLevel,
-                currentTurn: game.currentTurn,
                 winner: game.winner,
                 endReason: game.endReason,
                 createdAt: game.createdAt,
@@ -55,7 +54,6 @@ let PrismaGameRepository = class PrismaGameRepository {
         }
         console.log('📖 Loaded game from DB:', {
             id: game.id,
-            currentTurn: game.currentTurn,
             status: game.status,
             moveCount: game.moves?.length || 0,
         });
@@ -65,13 +63,11 @@ let PrismaGameRepository = class PrismaGameRepository {
         console.log('🔍 Updating game:', {
             id: game.id,
             status: game.status,
-            currentTurn: game.currentTurn,
         });
         const updated = await this.prisma.game.update({
             where: { id: game.id },
             data: {
                 status: game.status,
-                currentTurn: game.currentTurn,
                 winner: game.winner,
                 endReason: game.endReason,
                 startedAt: game.startedAt,
@@ -80,7 +76,6 @@ let PrismaGameRepository = class PrismaGameRepository {
         });
         console.log('✅ Game updated in DB:', {
             id: updated.id,
-            currentTurn: updated.currentTurn,
         });
         return this.toDomain(updated);
     }
@@ -153,7 +148,7 @@ let PrismaGameRepository = class PrismaGameRepository {
         });
     }
     toDomain(prismaGame) {
-        const game = new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner, prismaGame.endReason, prismaGame.currentTurn);
+        const game = new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner, prismaGame.endReason);
         return game;
     }
 };

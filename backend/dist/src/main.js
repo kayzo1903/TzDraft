@@ -12,7 +12,7 @@ async function bootstrap() {
         transform: true,
     }));
     app.enableCors({
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
         credentials: true,
     });
     const configService = app.get(config_1.ConfigService);

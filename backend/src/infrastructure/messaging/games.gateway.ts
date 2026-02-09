@@ -8,14 +8,17 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
+import { WsJwtGuard } from '../../auth/guards/ws-jwt.guard';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // Allow all origins for now, can restrict later
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
   },
   namespace: 'games',
 })
+@UseGuards(WsJwtGuard)
 export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -23,11 +26,17 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger = new Logger('GamesGateway');
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+    const userId = client.data.user?.id;
+    this.logger.log(
+      `Client connected: ${client.id} (User: ${userId || 'unknown'})`,
+    );
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
+    const userId = client.data.user?.id;
+    this.logger.log(
+      `Client disconnected: ${client.id} (User: ${userId || 'unknown'})`,
+    );
   }
 
   @SubscribeMessage('joinGame')
@@ -38,8 +47,12 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!gameId) {
       return { status: 'error', message: 'Game ID required' };
     }
+
+    const userId = client.data.user?.id;
     client.join(gameId);
-    this.logger.log(`Client ${client.id} joined game room: ${gameId}`);
+    this.logger.log(
+      `Client ${client.id} (User: ${userId}) joined game room: ${gameId}`,
+    );
     return { status: 'success', message: `Joined game ${gameId}` };
   }
 

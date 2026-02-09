@@ -5,11 +5,11 @@ export declare class GameController {
     private readonly createGameUseCase;
     private readonly getGameStateUseCase;
     constructor(createGameUseCase: CreateGameUseCase, getGameStateUseCase: GetGameStateUseCase);
-    createPvPGame(dto: CreatePvPGameDto): Promise<{
+    createPvPGame(user: any, dto: CreatePvPGameDto): Promise<{
         success: boolean;
         data: import("../../../domain/game/entities/game.entity").Game;
     }>;
-    createPvEGame(dto: CreatePvEGameDto): Promise<{
+    createPvEGame(user: any, dto: CreatePvEGameDto): Promise<{
         success: boolean;
         data: import("../../../domain/game/entities/game.entity").Game;
     }>;

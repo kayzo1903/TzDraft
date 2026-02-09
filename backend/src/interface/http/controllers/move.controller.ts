@@ -7,8 +7,16 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { MakeMoveUseCase } from '../../../application/use-cases/make-move.use-case';
 import { GetLegalMovesUseCase } from '../../../application/use-cases/get-legal-moves.use-case';
 import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
@@ -19,7 +27,9 @@ import { MakeMoveDto } from '../dtos/make-move.dto';
  * Handles move-related HTTP endpoints
  */
 @ApiTags('moves')
+@ApiBearerAuth()
 @Controller('games/:gameId/moves')
+@UseGuards(JwtAuthGuard)
 export class MoveController {
   constructor(
     private readonly makeMoveUseCase: MakeMoveUseCase,
@@ -36,13 +46,13 @@ export class MoveController {
   @ApiResponse({ status: 200, description: 'Move executed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid move' })
   async makeMove(
+    @CurrentUser() user: any,
     @Param('gameId') gameId: string,
-    @Query('playerId') playerId: string,
     @Body() dto: MakeMoveDto,
   ) {
     const result = await this.makeMoveUseCase.execute(
       gameId,
-      playerId,
+      user.id,
       dto.from,
       dto.to,
       dto.path,
@@ -97,11 +107,8 @@ export class MoveController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resign from the game' })
   @ApiResponse({ status: 200, description: 'Game resigned' })
-  async resign(
-    @Param('gameId') gameId: string,
-    @Query('playerId') playerId: string,
-  ) {
-    await this.endGameUseCase.resign(gameId, playerId);
+  async resign(@CurrentUser() user: any, @Param('gameId') gameId: string) {
+    await this.endGameUseCase.resign(gameId, user.id);
 
     return {
       success: true,

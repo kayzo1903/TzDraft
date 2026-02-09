@@ -1,35 +1,51 @@
 import { useEffect, useState } from "react";
-import { socketService } from "@/services/socket.service";
-import { Socket } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
+import { useAuthStore } from "@/lib/auth/auth-store";
 
-export const useSocket = (gameId?: string) => {
-  // Initialize socket once
-  const [socket] = useState<Socket>(() => socketService.connect());
-  const [isConnected, setIsConnected] = useState(socket.connected);
+export function useSocket() {
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const { accessToken, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    const onConnect = () => setIsConnected(true);
-    const onDisconnect = () => setIsConnected(false);
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-
-    // If we have a gameId, join the game room
-    if (gameId) {
-      if (socket.connected) {
-        socketService.joinGame(gameId);
-      } else {
-        socket.once("connect", () => {
-          socketService.joinGame(gameId);
-        });
+    if (!isAuthenticated || !accessToken) {
+      // Close existing socket if user is not authenticated
+      if (socket) {
+        socket.close();
+        setSocket(null);
       }
+      return;
     }
 
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-    };
-  }, [gameId, socket]);
+    const newSocket = io(
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002",
+      {
+        auth: {
+          token: accessToken,
+        },
+        extraHeaders: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
 
-  return { socket, isConnected };
-};
+    newSocket.on("connect", () => {
+      console.log("Connected to WebSocket");
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("Disconnected from WebSocket");
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("WebSocket connection error:", error);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.close();
+    };
+  }, [accessToken, isAuthenticated]);
+
+  return socket;
+}

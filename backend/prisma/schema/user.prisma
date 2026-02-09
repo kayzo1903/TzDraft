@@ -3,15 +3,25 @@
 // ============================================
 
 model User {
-    id           String   @id @default(uuid())
-    username     String   @unique
-    displayName  String   @map("display_name")
-    passwordHash String   @map("password_hash")
-    createdAt    DateTime @default(now()) @map("created_at")
+    id           String    @id @default(uuid())
+    phoneNumber  String    @unique @map("phone_number")
+    email        String?   @unique
+    username     String    @unique
+    displayName  String    @map("display_name")
+    passwordHash String    @map("password_hash")
+    isVerified   Boolean   @default(false) @map("is_verified")
+    country      String?   @default("TZ")
+    region       String?
+    createdAt    DateTime  @default(now()) @map("created_at")
+    lastLoginAt  DateTime? @map("last_login_at")
 
-    gamesAsWhite Game[]  @relation("WhitePlayer")
-    gamesAsBlack Game[]  @relation("BlackPlayer")
-    rating       Rating?
+    gamesAsWhite        Game[]               @relation("WhitePlayer")
+    gamesAsBlack        Game[]               @relation("BlackPlayer")
+    rating              Rating?
+    refreshTokens       RefreshToken[]
+    verificationTokens  VerificationToken[]
+    passwordResetTokens PasswordResetToken[]
+    otpCodes            OtpCode[]
 
     @@map("users")
 }
@@ -29,4 +39,66 @@ model Rating {
     lastUpdated DateTime @updatedAt @map("last_updated")
 
     @@map("ratings")
+}
+
+// ============================================
+// AUTHENTICATION TOKENS
+// ============================================
+
+model RefreshToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("refresh_tokens")
+}
+
+model VerificationToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("password_reset_tokens")
+}
+
+model OtpCode {
+    id          String   @id @default(uuid())
+    phoneNumber String   @map("phone_number")
+    userId      String?  @map("user_id")
+    code        String
+    expiresAt   DateTime @map("expires_at")
+    verified    Boolean  @default(false)
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([phoneNumber])
+    @@index([userId])
+    @@map("otp_codes")
 }

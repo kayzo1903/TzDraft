@@ -21,26 +21,129 @@
   "auth": {
     "login": {
       "title": "Karibu Tena",
-      "subtitle": "Ingia ili uendelee kucheza.",
+      "subtitle": "Ingia ili uendelee kucheza",
       "button": "Ingia",
-      "forgotPassword": "Umesahau Nenosiri?",
+      "buttonLoading": "Inaingia...",
+      "forgotPassword": "Umesahau nenosiri?",
       "rememberMe": "Nikumbuke",
-      "noAccount": "Mpya kwa TzDraft?",
-      "signupLink": "Jisajili"
+      "noAccount": "Huna akaunti?",
+      "signupLink": "Fungua Akaunti",
+      "identifier": "Nambari ya Simu au Jina la Utumiaji",
+      "identifierPlaceholder": "07** *** *** au jina la utumiaji",
+      "identifierHint": "Unaweza kuingia kwa nambari ya simu au jina la utumiaji"
     },
     "signup": {
       "title": "Fungua Akaunti",
-      "subtitle": "Jiunge na jumuiya ya TzDraft leo.",
+      "subtitle": "Jiunge na jumuiya ya TzDraft leo",
       "button": "Jisajili",
+      "buttonLoading": "Inafungua akaunti...",
       "haveAccount": "Tayari una akaunti?",
-      "loginLink": "Ingia"
+      "loginLink": "Ingia",
+      "steps": {
+        "phone": {
+          "title": "Fungua Akaunti",
+          "subtitle": "Weka nambari yako ya simu ili kuanza",
+          "button": "Endelea",
+          "buttonLoading": "Inatuma msimbo..."
+        },
+        "otp": {
+          "title": "Thibitisha Simu",
+          "subtitle": "Msimbo umetumwa kwa {phone}",
+          "label": "Msimbo wa Uthibitishaji",
+          "placeholder": "000000",
+          "hint": "Msimbo utaisha baada ya dakika 5",
+          "button": "Thibitisha Msimbo",
+          "buttonLoading": "Inathibitisha...",
+          "changePhone": "Badilisha Nambari ya Simu"
+        },
+        "details": {
+          "title": "Kamilisha Wasifu",
+          "subtitle": "Maelezo machache zaidi tu",
+          "verified": "Nambari ya simu imethibitishwa!",
+          "button": "Fungua Akaunti",
+          "buttonLoading": "Inafungua Akaunti..."
+        }
+      },
+      "progress": {
+        "phone": "Simu",
+        "verify": "Thibitisha",
+        "profile": "Wasifu"
+      }
     },
     "google": "Endelea na Google",
     "or": "AU",
-    "placeholders": {
+    "fields": {
+      "phoneNumber": "Nambari ya Simu",
+      "phonePlaceholder": "07** *** ***",
       "username": "Jina la Utumiaji",
+      "usernamePlaceholder": "Chagua jina la utumiaji",
+      "displayName": "Jina la Kuonyesha",
+      "displayNamePlaceholder": "Tunapaswaje kukuita?",
       "email": "Barua Pepe",
-      "password": "Nenosiri"
+      "password": "Nenosiri",
+      "confirmPassword": "Thibitisha Nenosiri",
+      "required": "*"
+    },
+    "errors": {
+      "passwordMismatch": "Nenosiri hazilingani",
+      "invalidCredentials": "Taarifa za kuingia si sahihi",
+      "otpFailed": "Imeshindwa kutuma msimbo. Tafadhali jaribu tena.",
+      "otpInvalid": "Msimbo si sahihi. Tafadhali jaribu tena.",
+      "registrationFailed": "Usajili umeshindwa. Tafadhali jaribu tena.",
+      "passwordTooShort": "Nenosiri lazima liwe na angalau herufi 8",
+      "userAlreadyExists": "Mtumiaji aliye na nambari hii ya simu, jina la mtumiaji, au barua pepe tayari yupo",
+      "phoneAlreadyRegistered": "Nambari hii ya simu tayari imesajiliwa. Tafadhali ingia badala yake."
+    },
+    "forgotPassword": {
+      "title": "Umesahau Nenosiri?",
+      "subtitle": "Tutatuma nambari ya kuthibitisha utambulisho wako",
+      "steps": {
+        "phone": {
+          "title": "Ingiza Nambari Yako ya Simu",
+          "subtitle": "Tutatuma nambari ya uthibitisho",
+          "button": "Tuma OTP",
+          "buttonLoading": "Inatuma..."
+        },
+        "otp": {
+          "title": "Thibitisha OTP",
+          "subtitle": "Ingiza nambari iliyotumwa kwa {phone}",
+          "button": "Thibitisha na Uendelee",
+          "buttonLoading": "Inathibitisha...",
+          "resend": "Tuma tena OTP"
+        }
+      },
+      "backToLogin": "Rudi kwenye Kuingia",
+      "errors": {
+        "phoneRequired": "Nambari ya simu inahitajika",
+        "phoneInvalid": "Tafadhali ingiza nambari sahihi ya simu",
+        "otpRequired": "Nambari ya OTP inahitajika",
+        "otpInvalid": "Nambari ya OTP si sahihi",
+        "userNotFound": "Hakuna akaunti iliyopatikana na nambari hii",
+        "serverError": "Hitilafu imetokea. Tafadhali jaribu tena."
+      }
+    },
+    "resetPassword": {
+      "title": "Weka Upya Nenosiri",
+      "subtitle": "Weka nenosiri lako jipya",
+      "newPasswordLabel": "Nenosiri Jipya",
+      "confirmPasswordLabel": "Thibitisha Nenosiri",
+      "submitButton": "Weka Upya Nenosiri",
+      "submitButtonLoading": "Inaweka upya...",
+      "successTitle": "Nenosiri limebadilishwa kikamilifu",
+      "successMessage": "Nenosiri lako limebadilishwa. Inaelekeza kwenye kuingia...",
+      "errors": {
+        "passwordRequired": "Nenosiri linahitajika",
+        "passwordTooShort": "Nenosiri lazima liwe na angalau herufi 8",
+        "passwordMismatch": "Nenosiri hazilingani",
+        "serverError": "Imeshindwa kuweka upya nenosiri. Tafadhali jaribu tena."
+      }
+    },
+    "passwordStrength": {
+      "weak": "Dhaifu",
+      "fair": "Wastani",
+      "good": "Nzuri",
+      "strong": "Imara",
+      "veryStrong": "Imara Sana"
     }
   },
   "support": {

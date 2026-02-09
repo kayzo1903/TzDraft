@@ -8,13 +8,17 @@ async function main() {
   const users = [
     {
       id: 'user-1',
+      phoneNumber: '+255712345678',
       username: 'player1',
+      email: 'player1@example.com',
       displayName: 'Player One',
       passwordHash: 'dummy',
     },
     {
       id: 'user-2',
+      phoneNumber: '+255723456789',
       username: 'player2',
+      email: 'player2@example.com',
       displayName: 'Player Two',
       passwordHash: 'dummy',
     },

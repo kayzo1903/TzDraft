@@ -7,7 +7,7 @@ export declare class MoveController {
     private readonly getLegalMovesUseCase;
     private readonly endGameUseCase;
     constructor(makeMoveUseCase: MakeMoveUseCase, getLegalMovesUseCase: GetLegalMovesUseCase, endGameUseCase: EndGameUseCase);
-    makeMove(gameId: string, playerId: string, dto: MakeMoveDto): Promise<{
+    makeMove(user: any, gameId: string, dto: MakeMoveDto): Promise<{
         success: boolean;
         data: {
             game: import("../../../domain/game/entities/game.entity").Game;
@@ -22,7 +22,7 @@ export declare class MoveController {
         success: boolean;
         data: import("../../../domain/game/entities/move.entity").Move[];
     }>;
-    resign(gameId: string, playerId: string): Promise<{
+    resign(user: any, gameId: string): Promise<{
         success: boolean;
         message: string;
     }>;

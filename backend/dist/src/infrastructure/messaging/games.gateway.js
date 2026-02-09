@@ -16,21 +16,25 @@ exports.GamesGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const common_1 = require("@nestjs/common");
+const ws_jwt_guard_1 = require("../../auth/guards/ws-jwt.guard");
 let GamesGateway = class GamesGateway {
     server;
     logger = new common_1.Logger('GamesGateway');
     handleConnection(client) {
-        this.logger.log(`Client connected: ${client.id}`);
+        const userId = client.data.user?.id;
+        this.logger.log(`Client connected: ${client.id} (User: ${userId || 'unknown'})`);
     }
     handleDisconnect(client) {
-        this.logger.log(`Client disconnected: ${client.id}`);
+        const userId = client.data.user?.id;
+        this.logger.log(`Client disconnected: ${client.id} (User: ${userId || 'unknown'})`);
     }
     handleJoinGame(gameId, client) {
         if (!gameId) {
             return { status: 'error', message: 'Game ID required' };
         }
+        const userId = client.data.user?.id;
         client.join(gameId);
-        this.logger.log(`Client ${client.id} joined game room: ${gameId}`);
+        this.logger.log(`Client ${client.id} (User: ${userId}) joined game room: ${gameId}`);
         return { status: 'success', message: `Joined game ${gameId}` };
     }
     emitGameStateUpdate(gameId, gameState) {
@@ -58,9 +62,11 @@ __decorate([
 exports.GamesGateway = GamesGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            origin: '*',
+            origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+            credentials: true,
         },
         namespace: 'games',
-    })
+    }),
+    (0, common_1.UseGuards)(ws_jwt_guard_1.WsJwtGuard)
 ], GamesGateway);
 //# sourceMappingURL=games.gateway.js.map

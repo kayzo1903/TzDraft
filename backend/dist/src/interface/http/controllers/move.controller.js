@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MoveController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
+const current_user_decorator_1 = require("../../../auth/decorators/current-user.decorator");
 const make_move_use_case_1 = require("../../../application/use-cases/make-move.use-case");
 const get_legal_moves_use_case_1 = require("../../../application/use-cases/get-legal-moves.use-case");
 const end_game_use_case_1 = require("../../../application/use-cases/end-game.use-case");
@@ -28,8 +30,8 @@ let MoveController = class MoveController {
         this.getLegalMovesUseCase = getLegalMovesUseCase;
         this.endGameUseCase = endGameUseCase;
     }
-    async makeMove(gameId, playerId, dto) {
-        const result = await this.makeMoveUseCase.execute(gameId, playerId, dto.from, dto.to, dto.path);
+    async makeMove(user, gameId, dto) {
+        const result = await this.makeMoveUseCase.execute(gameId, user.id, dto.from, dto.to, dto.path);
         return {
             success: true,
             data: result,
@@ -49,8 +51,8 @@ let MoveController = class MoveController {
             data: moves,
         };
     }
-    async resign(gameId, playerId) {
-        await this.endGameUseCase.resign(gameId, playerId);
+    async resign(user, gameId) {
+        await this.endGameUseCase.resign(gameId, user.id);
         return {
             success: true,
             message: 'Game resigned successfully',
@@ -78,11 +80,11 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Make a move in the game' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Move executed successfully' }),
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid move' }),
-    __param(0, (0, common_1.Param)('gameId')),
-    __param(1, (0, common_1.Query)('playerId')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('gameId')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, make_move_dto_1.MakeMoveDto]),
+    __metadata("design:paramtypes", [Object, String, make_move_dto_1.MakeMoveDto]),
     __metadata("design:returntype", Promise)
 ], MoveController.prototype, "makeMove", null);
 __decorate([
@@ -109,10 +111,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'Resign from the game' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Game resigned' }),
-    __param(0, (0, common_1.Param)('gameId')),
-    __param(1, (0, common_1.Query)('playerId')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('gameId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MoveController.prototype, "resign", null);
 __decorate([
@@ -138,7 +140,9 @@ __decorate([
 ], MoveController.prototype, "abort", null);
 exports.MoveController = MoveController = __decorate([
     (0, swagger_1.ApiTags)('moves'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('games/:gameId/moves'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [make_move_use_case_1.MakeMoveUseCase,
         get_legal_moves_use_case_1.GetLegalMovesUseCase,
         end_game_use_case_1.EndGameUseCase])

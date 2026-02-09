@@ -31,7 +31,6 @@ export class PrismaGameRepository implements IGameRepository {
         whiteElo: game.whiteElo,
         blackElo: game.blackElo,
         aiLevel: game.aiLevel,
-        currentTurn: game.currentTurn,
         winner: game.winner,
         endReason: game.endReason,
         createdAt: game.createdAt,
@@ -59,7 +58,6 @@ export class PrismaGameRepository implements IGameRepository {
 
     console.log('📖 Loaded game from DB:', {
       id: game.id,
-      currentTurn: game.currentTurn,
       status: game.status,
       moveCount: game.moves?.length || 0,
     });
@@ -71,14 +69,12 @@ export class PrismaGameRepository implements IGameRepository {
     console.log('🔍 Updating game:', {
       id: game.id,
       status: game.status,
-      currentTurn: game.currentTurn,
     });
 
     const updated = await this.prisma.game.update({
       where: { id: game.id },
       data: {
         status: game.status,
-        currentTurn: game.currentTurn,
         winner: game.winner,
         endReason: game.endReason,
         startedAt: game.startedAt,
@@ -88,7 +84,6 @@ export class PrismaGameRepository implements IGameRepository {
 
     console.log('✅ Game updated in DB:', {
       id: updated.id,
-      currentTurn: updated.currentTurn,
     });
 
     return this.toDomain(updated);
@@ -193,7 +188,6 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.status as GameStatus,
       prismaGame.winner as Winner | null,
       prismaGame.endReason as EndReason | null,
-      prismaGame.currentTurn as PlayerColor,
     );
 
     // Reconstruct board state from moves if needed

@@ -21,26 +21,129 @@
   "auth": {
     "login": {
       "title": "Welcome Back",
-      "subtitle": "Log in to continue playing.",
-      "button": "Log In",
-      "forgotPassword": "Forgot Password?",
+      "subtitle": "Sign in to continue playing",
+      "button": "Sign In",
+      "buttonLoading": "Signing in...",
+      "forgotPassword": "Forgot password?",
       "rememberMe": "Remember me",
-      "noAccount": "New to TzDraft?",
-      "signupLink": "Sign Up"
+      "noAccount": "Don't have an account?",
+      "signupLink": "Create Account",
+      "identifier": "Phone Number or Username",
+      "identifierPlaceholder": "07** *** *** or username",
+      "identifierHint": "You can login with your phone number or username"
     },
     "signup": {
       "title": "Create Account",
-      "subtitle": "Join the TzDraft community today.",
+      "subtitle": "Join the TzDraft community today",
       "button": "Sign Up",
+      "buttonLoading": "Creating account...",
       "haveAccount": "Already have an account?",
-      "loginLink": "Log In"
+      "loginLink": "Sign In",
+      "steps": {
+        "phone": {
+          "title": "Create Account",
+          "subtitle": "Enter your phone number to get started",
+          "button": "Continue",
+          "buttonLoading": "Sending Code..."
+        },
+        "otp": {
+          "title": "Verify Phone",
+          "subtitle": "Code sent to {phone}",
+          "label": "Verification Code",
+          "placeholder": "000000",
+          "hint": "Code expires in 5 minutes",
+          "button": "Verify Code",
+          "buttonLoading": "Verifying...",
+          "changePhone": "Change Phone Number"
+        },
+        "details": {
+          "title": "Complete Profile",
+          "subtitle": "Just a few more details to finish",
+          "verified": "Phone number verified successfully!",
+          "button": "Create Account",
+          "buttonLoading": "Creating Account..."
+        }
+      },
+      "progress": {
+        "phone": "Phone",
+        "verify": "Verify",
+        "profile": "Profile"
+      }
     },
     "google": "Continue with Google",
     "or": "OR",
-    "placeholders": {
+    "fields": {
+      "phoneNumber": "Phone Number",
+      "phonePlaceholder": "07** *** ***",
       "username": "Username",
+      "usernamePlaceholder": "Choose a username",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "How should we call you?",
       "email": "Email Address",
-      "password": "Password"
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "required": "*"
+    },
+    "errors": {
+      "passwordMismatch": "Passwords do not match",
+      "invalidCredentials": "Invalid credentials",
+      "otpFailed": "Failed to send OTP. Please try again.",
+      "otpInvalid": "Invalid OTP code. Please try again.",
+      "registrationFailed": "Registration failed. Please try again.",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "userAlreadyExists": "User with this phone number, username, or email already exists",
+      "phoneAlreadyRegistered": "This phone number is already registered. Please login instead."
+    },
+    "forgotPassword": {
+      "title": "Forgot Password?",
+      "subtitle": "We'll send you an OTP to verify your identity",
+      "steps": {
+        "phone": {
+          "title": "Enter Your Phone Number",
+          "subtitle": "We'll send you a verification code",
+          "button": "Send OTP",
+          "buttonLoading": "Sending..."
+        },
+        "otp": {
+          "title": "Verify OTP",
+          "subtitle": "Enter the code sent to {phone}",
+          "button": "Verify & Continue",
+          "buttonLoading": "Verifying...",
+          "resend": "Resend OTP"
+        }
+      },
+      "backToLogin": "Back to Login",
+      "errors": {
+        "phoneRequired": "Phone number is required",
+        "phoneInvalid": "Please enter a valid phone number",
+        "otpRequired": "OTP code is required",
+        "otpInvalid": "Invalid OTP code",
+        "userNotFound": "No account found with this phone number",
+        "serverError": "Something went wrong. Please try again."
+      }
+    },
+    "resetPassword": {
+      "title": "Reset Password",
+      "subtitle": "Enter your new password",
+      "newPasswordLabel": "New Password",
+      "confirmPasswordLabel": "Confirm Password",
+      "submitButton": "Reset Password",
+      "submitButtonLoading": "Resetting...",
+      "successTitle": "Password Reset Successful",
+      "successMessage": "Your password has been reset. Redirecting to login...",
+      "errors": {
+        "passwordRequired": "Password is required",
+        "passwordTooShort": "Password must be at least 8 characters",
+        "passwordMismatch": "Passwords do not match",
+        "serverError": "Failed to reset password. Please try again."
+      }
+    },
+    "passwordStrength": {
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong",
+      "veryStrong": "Very Strong"
     }
   },
   "support": {
