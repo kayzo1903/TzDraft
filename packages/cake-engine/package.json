@@ -1,0 +1,43 @@
+{
+  "name": "@tzdraft/cake-engine",
+  "version": "1.0.0",
+  "description": "CAKE Engine for Tanzania Drafti - Browser-safe game engine for 8x8 draughts",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "BROWSER_COMPAT.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "tanzanian-drafti",
+    "draughts",
+    "checkers",
+    "game-engine",
+    "board-game",
+    "ai"
+  ],
+  "author": "TzDraft Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.7.3"
+  }
+}

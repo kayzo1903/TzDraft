@@ -1,0 +1,20 @@
+{
+  "name": "tzdraft",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tanzania Drafti - A modern online drafts game platform",
+  "license": "UNLICENSED",
+  "pnpm": {
+    "workspaces": [
+      "backend",
+      "frontend",
+      "packages/*"
+    ]
+  },
+  "scripts": {
+    "dev": "pnpm -r run start:dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint"
+  }
+}

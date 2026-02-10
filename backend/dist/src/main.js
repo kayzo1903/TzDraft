@@ -16,7 +16,7 @@ async function bootstrap() {
         credentials: true,
     });
     const configService = app.get(config_1.ConfigService);
-    const port = configService.get('PORT') || 3000;
+    const port = configService.get('PORT') || 3002;
     await app.listen(port);
     console.log(`🚀 TzDraft server running on http://localhost:${port}`);
 }
