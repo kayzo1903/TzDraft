@@ -24,6 +24,7 @@ export interface LocalGameState {
   isAiThinking: boolean;
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+  mustContinueFrom: number | null;
 }
 
 const STORAGE_KEY = "tzdraft:local-game";
@@ -35,6 +36,7 @@ type SavedGame = {
   moveCount: number;
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+  mustContinueFrom: number | null;
   moves: {
     id: string;
     gameId: string;
@@ -100,6 +102,7 @@ const loadSavedGame = (
   result: { winner: Winner } | null;
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+  mustContinueFrom: Position | null;
 } | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -140,6 +143,10 @@ const loadSavedGame = (
       result: parsed.result,
       timeLeft: parsed.timeLeft,
       endgameCountdown: parsed.endgameCountdown ?? null,
+      mustContinueFrom:
+        typeof parsed.mustContinueFrom === "number"
+          ? new Position(parsed.mustContinueFrom)
+          : null,
     };
   } catch {
     return null;
@@ -155,6 +162,7 @@ const saveGame = (
     result: { winner: Winner } | null;
     timeLeft: { WHITE: number; BLACK: number };
     endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+    mustContinueFrom: Position | null;
   },
   aiLevel: number,
   playerColor: PlayerColor,
@@ -189,6 +197,7 @@ const saveGame = (
     timeLeft: state.timeLeft,
     endgameCountdown: state.endgameCountdown,
     result: state.result,
+    mustContinueFrom: state.mustContinueFrom?.value ?? null,
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -222,6 +231,9 @@ export const useLocalGame = (
     favored: PlayerColor;
     remaining: number;
   } | null>(loaded?.endgameCountdown ?? null);
+  const [mustContinueFrom, setMustContinueFrom] = useState<Position | null>(
+    loaded?.mustContinueFrom ?? null,
+  );
   const aiTimeoutRef = useRef<number | null>(null);
   const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -238,15 +250,22 @@ export const useLocalGame = (
   const legalMoves = useMemo(() => {
     const map: Record<number, number[]> = {};
     const moves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
-    for (const move of moves) {
+    const filteredMoves =
+      mustContinueFrom
+        ? moves.filter((m) => m.from.equals(mustContinueFrom))
+        : moves;
+    for (const move of filteredMoves) {
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
       if (!map[fromIndex]) map[fromIndex] = [];
       map[fromIndex].push(toIndex);
     }
     return map;
-  }, [board, currentPlayer, moveCount, flipForPlayer]);
+  }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom]);
   const forcedPieces = useMemo(() => {
+    if (mustContinueFrom) {
+      return [positionToIndex(mustContinueFrom, flipForPlayer)];
+    }
     const moves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
     const captureMoves = moves.filter((m) => m.capturedSquares.length > 0);
     if (captureMoves.length === 0) return [];
@@ -255,7 +274,7 @@ export const useLocalGame = (
       set.add(positionToIndex(move.from, flipForPlayer));
     }
     return Array.from(set);
-  }, [board, currentPlayer, moveCount, flipForPlayer]);
+  }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom]);
 
   const evaluateEndgameCountdown = useCallback(
     (nextBoard: BoardState, movePlayer: PlayerColor) => {
@@ -306,16 +325,36 @@ export const useLocalGame = (
       }
       const nextBoard = CakeEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
+      const movedPiece = nextBoard.getPieceAt(move.to);
+      const canContinueCapture =
+        move.capturedSquares.length > 0 &&
+        !move.isPromotion &&
+        movedPiece &&
+        new CaptureFindingService().findCapturesForPiece(
+          nextBoard,
+          movedPiece,
+        ).length > 0;
 
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
       setMoveCount((prev) => prev + 1);
-      setCurrentPlayer(nextPlayer);
+      if (canContinueCapture) {
+        setMustContinueFrom(move.to);
+        setCurrentPlayer(currentPlayer);
+      } else {
+        setMustContinueFrom(null);
+        setCurrentPlayer(nextPlayer);
+      }
       evaluateEndgameCountdown(nextBoard, move.player);
 
-      const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
-      if (gameResult) {
-        setResult({ winner: gameResult.winner });
+      if (!canContinueCapture) {
+        const gameResult = CakeEngine.evaluateGameResult(
+          nextBoard,
+          nextPlayer,
+        );
+        if (gameResult) {
+          setResult({ winner: gameResult.winner });
+        }
       }
     },
     [board, currentPlayer, evaluateEndgameCountdown],
@@ -335,11 +374,15 @@ export const useLocalGame = (
         currentPlayer,
         moveCount,
       );
-      const match = legalMoves.find(
+      const filteredMoves = mustContinueFrom
+        ? legalMoves.filter((m) => m.from.equals(mustContinueFrom))
+        : legalMoves;
+      const match = filteredMoves.find(
         (move) => move.from.equals(from) && move.to.equals(to),
       );
 
       if (!match) return;
+      if (mustContinueFrom && !match.from.equals(mustContinueFrom)) return;
       if (match.capturedSquares.length > 0) {
         const piece = board.getPieceAt(from);
         if (piece) {
@@ -349,27 +392,7 @@ export const useLocalGame = (
             (capture) => capture.from.equals(from) && capture.to.equals(to),
           );
           if (captureMatch) {
-            const fromCoords = from.toRowCol();
-            const toCoords = to.toRowCol();
-            const rowStep = Math.sign(toCoords.row - fromCoords.row);
-            const colStep = Math.sign(toCoords.col - fromCoords.col);
-            const jumped: Position[] = [];
-            if (rowStep !== 0 && colStep !== 0) {
-              let r = fromCoords.row + rowStep;
-              let c = fromCoords.col + colStep;
-              while (r !== toCoords.row && c !== toCoords.col) {
-                const pos = Position.fromRowCol(r, c);
-                const occupant = board.getPieceAt(pos);
-                if (occupant && occupant.color !== piece.color) {
-                  jumped.push(pos);
-                }
-                r += rowStep;
-                c += colStep;
-              }
-            }
-
-            const capturedSquares =
-              jumped.length === 1 ? jumped : captureMatch.capturedSquares;
+            const capturedSquares = captureMatch.capturedSquares;
             const notation = Move.generateNotation(from, to, capturedSquares);
             const rebuilt = new Move(
               match.id,
@@ -427,7 +450,7 @@ export const useLocalGame = (
       }
       applyMove(match);
     },
-    [applyMove, board, currentPlayer, moveCount, playerColor, result],
+    [applyMove, board, currentPlayer, moveCount, playerColor, result, mustContinueFrom],
   );
 
   const reset = useCallback(() => {
@@ -440,6 +463,7 @@ export const useLocalGame = (
     setIsAiThinking(false);
     setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
     setEndgameCountdown(null);
+    setMustContinueFrom(null);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -487,6 +511,7 @@ export const useLocalGame = (
     setCurrentPlayer(nextPlayer);
     setResult(null);
     setIsAiThinking(false);
+    setMustContinueFrom(null);
   }, [moves, playerColor]);
 
   useEffect(() => {
@@ -607,6 +632,7 @@ export const useLocalGame = (
         result,
         timeLeft,
         endgameCountdown,
+        mustContinueFrom,
       },
       aiLevel,
       playerColor,
@@ -619,6 +645,7 @@ export const useLocalGame = (
     result,
     timeLeft,
     endgameCountdown,
+    mustContinueFrom,
     aiLevel,
     playerColor,
   ]);
@@ -633,6 +660,9 @@ export const useLocalGame = (
       isAiThinking,
       timeLeft,
       endgameCountdown,
+      mustContinueFrom: mustContinueFrom
+        ? positionToIndex(mustContinueFrom, flipForPlayer)
+        : null,
     } as LocalGameState,
     pieces,
     legalMoves,

@@ -14,7 +14,7 @@ export default function SetupAiPage() {
     const { user } = useAuthStore();
     const [selectedBot, setSelectedBot] = useState(BOTS[0]);
     const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
-    const [selectedTime, setSelectedTime] = useState<0 | 5 | 10 | 15>(10);
+    const [selectedTime, setSelectedTime] = useState<0 | 5 | 10 | 15>(0);
     const [loading, setLoading] = useState(false);
 
         const handleStartGame = async () => {
@@ -161,7 +161,7 @@ export default function SetupAiPage() {
                                 </div>
                             </div>
                             <div className="mt-2 text-sm text-neutral-500 font-mono">
-                                Time Control: {selectedTime} min
+                                Time Control: {selectedTime === 0 ? "No time" : `${selectedTime} min`}
                             </div>
                         </div>
 
