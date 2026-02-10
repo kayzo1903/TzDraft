@@ -124,6 +124,18 @@ export default function LocalGamePage() {
             onInvalidSelect={playWarning}
             readOnly={state.isAiThinking}
           />
+          {state.endgameCountdown && (
+            <div className="mt-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-center text-sm text-orange-200">
+              Endgame countdown:{" "}
+              <span className="font-semibold">
+                {state.endgameCountdown.remaining}
+              </span>{" "}
+              moves remaining for{" "}
+              <span className="font-semibold">
+                {state.endgameCountdown.favored}
+              </span>
+            </div>
+          )}
           {state.result && (
             <div className="mt-4 text-center text-lg font-semibold text-orange-300">
               Winner: {state.result.winner}

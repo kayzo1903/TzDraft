@@ -19,6 +19,12 @@ export const Footer: React.FC = () => {
 
                     <div className="flex items-center gap-6">
                         <Link
+                            href="/rules"
+                            className="text-[#999999] hover:text-[var(--primary)] text-sm transition-colors"
+                        >
+                            {t('rules')}
+                        </Link>
+                        <Link
                             href="/policy"
                             className="text-[#999999] hover:text-[var(--primary)] text-sm transition-colors"
                         >

@@ -23,6 +23,7 @@ export interface LocalGameState {
   result: { winner: Winner } | null;
   isAiThinking: boolean;
   timeLeft: { WHITE: number; BLACK: number };
+  endgameCountdown: { favored: PlayerColor; remaining: number } | null;
 }
 
 const STORAGE_KEY = "tzdraft:local-game";
@@ -33,6 +34,7 @@ type SavedGame = {
   currentPlayer: PlayerColor;
   moveCount: number;
   timeLeft: { WHITE: number; BLACK: number };
+  endgameCountdown: { favored: PlayerColor; remaining: number } | null;
   moves: {
     id: string;
     gameId: string;
@@ -97,6 +99,7 @@ const loadSavedGame = (
   moves: Move[];
   result: { winner: Winner } | null;
   timeLeft: { WHITE: number; BLACK: number };
+  endgameCountdown: { favored: PlayerColor; remaining: number } | null;
 } | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -136,6 +139,7 @@ const loadSavedGame = (
       moves,
       result: parsed.result,
       timeLeft: parsed.timeLeft,
+      endgameCountdown: parsed.endgameCountdown ?? null,
     };
   } catch {
     return null;
@@ -150,6 +154,7 @@ const saveGame = (
     moves: Move[];
     result: { winner: Winner } | null;
     timeLeft: { WHITE: number; BLACK: number };
+    endgameCountdown: { favored: PlayerColor; remaining: number } | null;
   },
   aiLevel: number,
   playerColor: PlayerColor,
@@ -182,6 +187,7 @@ const saveGame = (
     moves,
     pieces,
     timeLeft: state.timeLeft,
+    endgameCountdown: state.endgameCountdown,
     result: state.result,
   };
 
@@ -212,6 +218,10 @@ export const useLocalGame = (
   const [timeLeft, setTimeLeft] = useState<{ WHITE: number; BLACK: number }>(
     loaded?.timeLeft ?? { WHITE: timeSeconds, BLACK: timeSeconds },
   );
+  const [endgameCountdown, setEndgameCountdown] = useState<{
+    favored: PlayerColor;
+    remaining: number;
+  } | null>(loaded?.endgameCountdown ?? null);
   const aiTimeoutRef = useRef<number | null>(null);
   const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -247,6 +257,47 @@ export const useLocalGame = (
     return Array.from(set);
   }, [board, currentPlayer, moveCount, flipForPlayer]);
 
+  const evaluateEndgameCountdown = useCallback(
+    (nextBoard: BoardState, movePlayer: PlayerColor) => {
+      const whitePieces = nextBoard.getPiecesByColor(PlayerColor.WHITE);
+      const blackPieces = nextBoard.getPiecesByColor(PlayerColor.BLACK);
+
+      const whiteKings = whitePieces.filter((p) => p.isKing()).length;
+      const blackKings = blackPieces.filter((p) => p.isKing()).length;
+
+      const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
+      const blackOnlyKing = blackPieces.length === 1 && blackKings === 1;
+
+      const whiteThreeKings = whitePieces.length === 3 && whiteKings === 3;
+      const blackThreeKings = blackPieces.length === 3 && blackKings === 3;
+
+      let favored: PlayerColor | null = null;
+      if (whiteOnlyKing && blackThreeKings) favored = PlayerColor.BLACK;
+      if (blackOnlyKing && whiteThreeKings) favored = PlayerColor.WHITE;
+
+      if (!favored) {
+        setEndgameCountdown(null);
+        return;
+      }
+
+      setEndgameCountdown((prev) => {
+        const next = prev ?? { favored, remaining: 12 };
+        if (next.favored !== favored) {
+          return { favored, remaining: 12 };
+        }
+        if (movePlayer === favored) {
+          const remaining = Math.max(0, next.remaining - 1);
+          if (remaining === 0) {
+            setResult({ winner: Winner.DRAW });
+          }
+          return { favored, remaining };
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   const applyMove = useCallback(
     (move: Move) => {
       if (moveAudioRef.current) {
@@ -260,13 +311,14 @@ export const useLocalGame = (
       setMoves((prev) => [...prev, move]);
       setMoveCount((prev) => prev + 1);
       setCurrentPlayer(nextPlayer);
+      evaluateEndgameCountdown(nextBoard, move.player);
 
       const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) {
         setResult({ winner: gameResult.winner });
       }
     },
-    [board, currentPlayer],
+    [board, currentPlayer, evaluateEndgameCountdown],
   );
 
   const makeMove = useCallback(
@@ -387,6 +439,7 @@ export const useLocalGame = (
     setResult(null);
     setIsAiThinking(false);
     setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
+    setEndgameCountdown(null);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -529,16 +582,21 @@ export const useLocalGame = (
         } else {
           next.BLACK = Math.max(0, next.BLACK - 1);
         }
+        const whitePieces = board.getPiecesByColor(PlayerColor.WHITE).length;
+        const blackPieces = board.getPiecesByColor(PlayerColor.BLACK).length;
+        const isThreeVsOne =
+          (whitePieces === 3 && blackPieces === 1) ||
+          (whitePieces === 1 && blackPieces === 3);
         if (next.WHITE === 0) {
-          setResult({ winner: Winner.BLACK });
+          setResult({ winner: isThreeVsOne ? Winner.DRAW : Winner.BLACK });
         } else if (next.BLACK === 0) {
-          setResult({ winner: Winner.WHITE });
+          setResult({ winner: isThreeVsOne ? Winner.DRAW : Winner.WHITE });
         }
         return next;
       });
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [currentPlayer, result]);
+  }, [board, currentPlayer, result, timeSeconds]);
   useEffect(() => {
     saveGame(
       {
@@ -548,6 +606,7 @@ export const useLocalGame = (
         moves,
         result,
         timeLeft,
+        endgameCountdown,
       },
       aiLevel,
       playerColor,
@@ -559,6 +618,7 @@ export const useLocalGame = (
     moves,
     result,
     timeLeft,
+    endgameCountdown,
     aiLevel,
     playerColor,
   ]);
@@ -572,6 +632,7 @@ export const useLocalGame = (
       result,
       isAiThinking,
       timeLeft,
+      endgameCountdown,
     } as LocalGameState,
     pieces,
     legalMoves,

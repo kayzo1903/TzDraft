@@ -1,22 +1,15 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Board, BoardState } from "@/components/game/Board";
+import { Board, BoardState as UiBoardState } from "@/components/game/Board";
+import {
+  BoardState as EngineBoardState,
+  CakeEngine,
+  PlayerColor,
+} from "@tzdraft/cake-engine";
+import { getBestMove } from "@/lib/ai/bot";
 
-// --- Types ---
-type Move = {
-  from: number;
-  to: number;
-  capture?: number;
-};
-
-// --- Predefined 5-move script ---
-const MOVES: Move[] = [
-  { from: 42, to: 35 },
-  { from: 17, to: 26 },
-  { from: 35, to: 17, capture: 26 },
-  { from: 10, to: 19 },
-  { from: 49, to: 42 },
-];
+const FULL_MOVE_LIMIT = 5;
+const AI_LEVEL = 2; // ~1000 ELO equivalent for this lightweight bot
 
 // --- Timing constants for smooth animation ---
 const TIMING = {
@@ -28,24 +21,25 @@ const TIMING = {
 } as const;
 
 // --- Helpers ---
-const createInitialBoard = (): BoardState => {
-  const pieces: BoardState = {};
-  for (let i = 0; i < 64; i++) {
-    const row = Math.floor(i / 8);
-    const col = i % 8;
-    if ((row + col) % 2 !== 0) {
-      if (row < 3) pieces[i] = { color: "BLACK" };
-      if (row > 4) pieces[i] = { color: "WHITE" };
-    }
+const createInitialBoard = (): EngineBoardState =>
+  CakeEngine.createInitialState();
+
+const toUiPieces = (board: EngineBoardState): UiBoardState => {
+  const pieces: UiBoardState = {};
+  for (const piece of board.getAllPieces()) {
+    const { row, col } = piece.position.toRowCol();
+    const index = row * 8 + col;
+    pieces[index] = { color: piece.color, isKing: piece.isKing() };
   }
   return pieces;
 };
 
 export const HeroBoard: React.FC = () => {
-  const [pieces, setPieces] = useState<BoardState>({});
+  const [pieces, setPieces] = useState<UiBoardState>({});
   const [isAnimating, setIsAnimating] = useState(false);
-  const initialRef = useRef<BoardState>({});
-  const moveIndexRef = useRef(0);
+  const boardRef = useRef<EngineBoardState>(createInitialBoard());
+  const currentPlayerRef = useRef<PlayerColor>(PlayerColor.WHITE);
+  const moveCountRef = useRef(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -61,74 +55,48 @@ export const HeroBoard: React.FC = () => {
     }
   };
 
-  // Execute a single move with smooth state transition
-  const executeMove = (move: Move) => {
-    setIsAnimating(true);
-    
-    setPieces(prev => {
-      const next = { ...prev };
-      const piece = next[move.from];
-      
-      if (!piece) return next;
-
-      // Remove piece from origin
-      delete next[move.from];
-
-      // Handle capture with slight delay for visual effect
-      if (move.capture !== undefined) {
-        // Captured piece will be removed
-        setTimeout(() => {
-          setPieces(current => {
-            const updated = { ...current };
-            delete updated[move.capture!];
-            return updated;
-          });
-        }, TIMING.CAPTURE_FADE);
-      }
-
-      // Place piece at destination
-      next[move.to] = piece;
-      
-      return next;
-    });
-
-    // Mark animation complete after move duration
-    setTimeout(() => {
-      setIsAnimating(false);
-    }, TIMING.MOVE_DURATION);
+  const resetBoard = () => {
+    boardRef.current = createInitialBoard();
+    currentPlayerRef.current = PlayerColor.WHITE;
+    moveCountRef.current = 0;
+    setPieces(toUiPieces(boardRef.current));
   };
 
   // Main animation loop
   const playSequence = () => {
-    const currentMoveIndex = moveIndexRef.current;
+    const currentPlayer = currentPlayerRef.current;
+    const move = getBestMove(boardRef.current, currentPlayer, AI_LEVEL);
 
-    // Check if sequence is complete
-    if (currentMoveIndex >= MOVES.length) {
-      setIsAnimating(true);
-      
-      // Reset to initial state
+    if (!move) {
       timeoutRef.current = setTimeout(() => {
-        setPieces(initialRef.current);
-        moveIndexRef.current = 0;
-        setIsAnimating(false);
-        
-        // Restart sequence
-        timeoutRef.current = setTimeout(() => {
-          animationFrameRef.current = requestAnimationFrame(playSequence);
-        }, TIMING.INITIAL_DELAY);
+        resetBoard();
+        animationFrameRef.current = requestAnimationFrame(playSequence);
       }, TIMING.RESET_PAUSE);
-      
       return;
     }
 
-    // Execute current move
-    const move = MOVES[currentMoveIndex];
-    executeMove(move);
-    
-    // Advance to next move
-    moveIndexRef.current += 1;
-    
-    // Schedule next move
+    setIsAnimating(true);
+    const nextBoard = CakeEngine.applyMove(boardRef.current, move);
+    boardRef.current = nextBoard;
+    setPieces(toUiPieces(nextBoard));
+    currentPlayerRef.current =
+      currentPlayer === PlayerColor.WHITE
+        ? PlayerColor.BLACK
+        : PlayerColor.WHITE;
+    moveCountRef.current += 1;
+
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, TIMING.MOVE_DURATION);
+
+    if (moveCountRef.current >= FULL_MOVE_LIMIT * 2) {
+      timeoutRef.current = setTimeout(() => {
+        resetBoard();
+        animationFrameRef.current = requestAnimationFrame(playSequence);
+      }, TIMING.RESET_PAUSE);
+      return;
+    }
+
     const nextDelay = TIMING.MOVE_DURATION + TIMING.MOVE_DELAY;
     timeoutRef.current = setTimeout(() => {
       animationFrameRef.current = requestAnimationFrame(playSequence);
@@ -137,10 +105,7 @@ export const HeroBoard: React.FC = () => {
 
   // Initialize and start animation loop
   useEffect(() => {
-    // Set up initial board state
-    initialRef.current = createInitialBoard();
-    setPieces(initialRef.current);
-    moveIndexRef.current = 0;
+    resetBoard();
 
     // Start animation sequence after initial delay
     timeoutRef.current = setTimeout(() => {
