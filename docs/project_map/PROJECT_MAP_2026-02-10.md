@@ -465,7 +465,7 @@ enum EndReason { CHECKMATE, RESIGN, TIME, DISCONNECT, DRAW }
 ### ✅ What's Working
 
 1. **Backend**
-   - ✅ Better Auth configuration ([auth.config.ts](file:///c:/Users/Admin/Desktop/TzDraft/backend/src/auth/auth.config.ts))
+   - ✅ Better Auth configuration
    - ✅ Auth controller (proxies to Better Auth)
    - ✅ Database schema (User, Session, Account, Verification)
    - ✅ Google OAuth setup
@@ -473,7 +473,7 @@ enum EndReason { CHECKMATE, RESIGN, TIME, DISCONNECT, DRAW }
    - ✅ Password reset flow
 
 2. **Frontend**
-   - ✅ Auth client configured ([auth-client.ts](file:///c:/Users/Admin/Desktop/TzDraft/frontend/src/lib/auth-client.ts))
+   - ✅ Auth client configured
    - ✅ Login page (email + Google OAuth)
    - ✅ Signup page (with username)
    - ✅ Forgot password page
@@ -509,35 +509,35 @@ enum EndReason { CHECKMATE, RESIGN, TIME, DISCONNECT, DRAW }
 
 ## 📚 Documentation Files
 
-Located in [`docs/README/`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/):
+Located in `docs/README/`:
 
 1. **Architecture & Design**
-   - [`NESTJS_DDD_folder_structure.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/NESTJS_DDD_folder_structure.md) - DDD folder structure
-   - [`drafti_technology_stack_ddd_integration.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_technology_stack_ddd_integration.md) - Tech stack overview
-   - [`drafti_game_domain_class_diagram_8_8_tanzania_drafti.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_game_domain_class_diagram_8_8_tanzania_drafti.md) - Domain class diagram
+   - `NESTJS_DDD_folder_structure.md` - DDD folder structure
+   - `drafti_technology_stack_ddd_integration.md` - Tech stack overview
+   - `drafti_game_domain_class_diagram_8_8_tanzania_drafti.md` - Domain class diagram
 
 2. **Game Rules & Mechanics**
-   - [`formal_tanzania_drafti_rule_specification_8_8.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/formal_tanzania_drafti_rule_specification_8_8.md) - Official game rules
-   - [`drafti_official_game_policy.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_official_game_policy.md) - Game policies
-   - [`drafti_clock_and_time_control_mechanics.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_clock_and_time_control_mechanics.md) - Time control system
+   - `formal_tanzania_drafti_rule_specification_8_8.md` - Official game rules
+   - `drafti_official_game_policy.md` - Game policies
+   - `drafti_clock_and_time_control_mechanics.md` - Time control system
 
 3. **Algorithms & Implementation**
-   - [`drafti_move_validation_algorithm_exact_steps.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_move_validation_algorithm_exact_steps.md) - Move validation
-   - [`drafti_optimized_capture_finding_algorithm.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_optimized_capture_finding_algorithm.md) - Capture detection
-   - [`drafti_engine_based_architecture_8_x_8_tanzania_drafti.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_engine_based_architecture_8_x_8_tanzania_drafti.md) - Engine architecture
-   - [`drafti_engine_move_translation_spec_cake_↔_8_8_tanzania_drafti.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_engine_move_translation_spec_cake_↔_8_8_tanzania_drafti.md) - Engine translation
+   - `drafti_move_validation_algorithm_exact_steps.md` - Move validation
+   - `drafti_optimized_capture_finding_algorithm.md` - Capture detection
+   - `drafti_engine_based_architecture_8_x_8_tanzania_drafti.md` - Engine architecture
+   - `drafti_engine_move_translation_spec_cake_↔_8_8_tanzania_drafti.md` - Engine translation
 
 4. **Database & API**
-   - [`drafti_database_schema_for_games_moves.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_database_schema_for_games_moves.md) - Database design
-   - [`drafti_realtime_sync_protocol_web_socket_flow.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_realtime_sync_protocol_web_socket_flow.md) - WebSocket protocol
+   - `drafti_database_schema_for_games_moves.md` - Database design
+   - `drafti_realtime_sync_protocol_web_socket_flow.md` - WebSocket protocol
 
 5. **Frontend & Testing**
-   - [`drafti_frontend_plan_chess.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_frontend_plan_chess.md) - Frontend architecture
-   - [`drafti_rule_derived_test_cases.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_rule_derived_test_cases.md) - Test cases
+   - `drafti_frontend_plan_chess.md` - Frontend architecture
+   - `drafti_rule_derived_test_cases.md` - Test cases
 
 6. **Project Management**
-   - [`drafti_project_overview.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_project_overview.md) - Project overview
-   - [`drafti_policy_and_privacy_guidelines.md`](file:///C:/Users/Admin/Desktop/TzDraft/docs/README/drafti_policy_and_privacy_guidelines.md) - Policies
+   - `drafti_project_overview.md` - Project overview
+   - `drafti_policy_and_privacy_guidelines.md` - Policies
 
 ---
 
@@ -657,11 +657,10 @@ pnpm start
 
 ## 🔗 Important Links
 
-- **Backend README:** [backend/README.md](file:///C:/Users/Admin/Desktop/TzDraft/backend/README.md)
-- **Frontend README:** [frontend/README.md](file:///C:/Users/Admin/Desktop/TzDraft/frontend/README.md)
-- **Implementation Plan:** [tasks/implementation_plan.md](file:///C:/Users/Admin/Desktop/TzDraft/tasks/implementation_plan.md)
-- **Task List:** [tasks/task.md](file:///C:/Users/Admin/Desktop/TzDraft/tasks/task.md)
-- **Auth Analysis:** [Previous conversation analysis](file:///C:/Users/Admin/.gemini/antigravity/brain/9e80f3cc-1e93-446a-9980-ab23ea5c6a6d/auth_analysis.md)
+- **Backend README:** backend/README.md
+- **Frontend README:** frontend/README.md
+- **Implementation Plan:** tasks/implementation_plan.md
+- **Task List:** tasks/task.md
 
 ---
 
