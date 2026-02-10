@@ -84,13 +84,14 @@ export class GameController {
   @ApiResponse({ status: 200, description: 'Game found' })
   @ApiResponse({ status: 404, description: 'Game not found' })
   async getGame(@Param('id') id: string) {
-    const { game, moves } = await this.getGameStateUseCase.execute(id);
+    const { game, moves, players } = await this.getGameStateUseCase.execute(id);
 
     return {
       success: true,
       data: {
         game,
         moves,
+        players,
       },
     };
   }

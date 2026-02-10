@@ -9,9 +9,9 @@
   },
   "hero": {
     "title": "Cheza TzDraft",
-    "subtitle": "Cheza mchezo unaopendwa wa TzDraft mtandaoni na marafiki au dhidi ya kompyuta. Uzoefu halisi, popote ulipo.",
+    "subtitle": "Cheza mchezo unaopendwa wa TzDraft mtandaoni na marafiki au dhidi ya AI. Uzoefu halisi, popote ulipo.",
     "playOnline": "Cheza Mtandaoni",
-    "playComputer": "Cheza na Kompyuta",
+    "playComputer": "Cheza na AI",
     "features": {
       "online": "Wachezaji Wengi",
       "blitz": "Michezo ya Haraka",
@@ -171,6 +171,42 @@
       "a2": "Ndio! Bonyeza 'Cheza Mtandaoni' ili kuanzisha chumba, kisha shiriki Kitambulisho cha Mchezo (Game ID) na rafiki yako.",
       "q3": "Nimepata tatizo, ninaliripoti vipi?",
       "a3": "Tafadhali tumia fomu iliyo hapa chini kuelezea tatizo. Jumuisha Kitambulisho cha Mchezo ikiwa kinafaa."
+    }
+  },
+  "play": {
+    "title": "Chagua Namna ya Kucheza",
+    "subtitle": "Chagua jinsi unavyotaka kucheza. Shindana mtandaoni, fanya mazoezi na AI, au changamoto marafiki.",
+    "modes": {
+      "online": {
+        "title": "Cheza Mtandaoni",
+        "description": "Mechi za Daraja na za Kawaida dhidi ya wachezaji ulimwenguni kote.",
+        "action": "Cheza Sasa",
+        "unavailable": "Haijapatikana",
+        "comingSoon": "Inakuja Hivi Karibuni"
+      },
+      "ai": {
+        "title": "Cheza na AI",
+        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish.",
+        "action": "Cheza Sasa"
+      },
+      "friend": {
+        "title": "Cheza na Rafiki",
+        "description": "Mualike rafiki kwa mechi ya faragha kupitia kiungo.",
+        "action": "Cheza Sasa",
+        "unavailable": "Haijapatikana",
+        "comingSoon": "Inakuja Hivi Karibuni"
+      },
+      "tournament": {
+        "title": "Mashindano",
+        "description": "Jiunge na matukio ya ushindani na ujishindie zawadi.",
+        "action": "Cheza Sasa",
+        "unavailable": "Haijapatikana",
+        "comingSoon": "Inakuja Hivi Karibuni"
+      }
+    },
+    "stats": {
+      "activePlayers": "Wachezaji Hai",
+      "matchesNow": "Mechi Zinaendelea"
     }
   }
 }

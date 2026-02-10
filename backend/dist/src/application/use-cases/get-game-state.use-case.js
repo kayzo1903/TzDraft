@@ -14,12 +14,15 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetGameStateUseCase = void 0;
 const common_1 = require("@nestjs/common");
+const user_service_1 = require("../../domain/user/user.service");
 let GetGameStateUseCase = class GetGameStateUseCase {
     gameRepository;
     moveRepository;
-    constructor(gameRepository, moveRepository) {
+    userService;
+    constructor(gameRepository, moveRepository, userService) {
         this.gameRepository = gameRepository;
         this.moveRepository = moveRepository;
+        this.userService = userService;
     }
     async execute(gameId) {
         const game = await this.gameRepository.findById(gameId);
@@ -27,9 +30,11 @@ let GetGameStateUseCase = class GetGameStateUseCase {
             throw new Error('Game not found');
         }
         const moves = await this.moveRepository.findByGameId(gameId);
+        const players = await this.getPlayers(game);
         return {
             game,
             moves,
+            players,
         };
     }
     async executeWithPagination(gameId, skip, take) {
@@ -41,11 +46,22 @@ let GetGameStateUseCase = class GetGameStateUseCase {
             this.moveRepository.findByGameIdPaginated(gameId, skip, take),
             this.moveRepository.countByGameId(gameId),
         ]);
+        const players = await this.getPlayers(game);
         return {
             game,
             moves,
             totalMoves,
+            players,
         };
+    }
+    async getPlayers(game) {
+        const [white, black] = await Promise.all([
+            this.userService.findById(game.whitePlayerId),
+            game.blackPlayerId
+                ? this.userService.findById(game.blackPlayerId)
+                : Promise.resolve(null),
+        ]);
+        return { white, black };
     }
 };
 exports.GetGameStateUseCase = GetGameStateUseCase;
@@ -53,6 +69,6 @@ exports.GetGameStateUseCase = GetGameStateUseCase = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('IGameRepository')),
     __param(1, (0, common_1.Inject)('IMoveRepository')),
-    __metadata("design:paramtypes", [Object, Object])
+    __metadata("design:paramtypes", [Object, Object, user_service_1.UserService])
 ], GetGameStateUseCase);
 //# sourceMappingURL=get-game-state.use-case.js.map

@@ -18,6 +18,10 @@ export declare class GameController {
         data: {
             game: import("../../../domain/game/entities/game.entity").Game;
             moves: import("../../../domain/game/entities/move.entity").Move[];
+            players: {
+                white: import(".prisma/client").User | null;
+                black: import(".prisma/client").User | null;
+            };
         };
     }>;
     getGameState(id: string, skip?: number, take?: number): Promise<{
@@ -26,6 +30,10 @@ export declare class GameController {
             game: import("../../../domain/game/entities/game.entity").Game;
             moves: import("../../../domain/game/entities/move.entity").Move[];
             totalMoves: number;
+            players: {
+                white: import(".prisma/client").User | null;
+                black: import(".prisma/client").User | null;
+            };
         };
     }>;
 }

@@ -52,4 +52,9 @@ export class CreatePvEGameDto {
   })
   @IsNumber()
   aiLevel: number;
+
+  @ApiProperty({ description: 'Initial time in milliseconds', required: false })
+  @IsNumber()
+  @IsOptional()
+  initialTimeMs?: number;
 }

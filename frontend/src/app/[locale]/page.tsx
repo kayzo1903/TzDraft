@@ -37,7 +37,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col gap-4 max-w-md mx-auto lg:mx-0 w-full">
-            <Link href="/game/new-game" className="w-full">
+            <Link href="/play" className="w-full">
               <Button size="lg" className="w-full gap-3">
                 <span className="text-2xl">♟️</span>
                 <div className="flex flex-col items-start leading-none">
@@ -47,7 +47,7 @@ export default function Home() {
               </Button>
             </Link>
 
-            <Link href="/game/bot" className="w-full">
+            <Link href="/game/setup-ai" className="w-full">
               <Button variant="secondary" size="lg" className="w-full gap-3">
                 <span className="text-2xl">🤖</span>
                 <div className="flex flex-col items-start leading-none">

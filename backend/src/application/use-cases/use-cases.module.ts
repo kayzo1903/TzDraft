@@ -11,8 +11,10 @@ import { EndGameUseCase } from './end-game.use-case';
  * Use Cases Module
  * Provides all application use cases
  */
+import { UserModule } from '../../domain/user/user.module';
+
 @Module({
-  imports: [RepositoryModule, MessagingModule],
+  imports: [RepositoryModule, MessagingModule, UserModule],
   providers: [
     CreateGameUseCase,
     MakeMoveUseCase,

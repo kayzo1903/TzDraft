@@ -36,6 +36,16 @@ let PrismaGameRepository = class PrismaGameRepository {
                 createdAt: game.createdAt,
                 startedAt: game.startedAt,
                 endedAt: game.endedAt,
+                clock: {
+                    create: {
+                        whiteTimeMs: game.initialTimeMs,
+                        blackTimeMs: game.initialTimeMs,
+                        lastMoveAt: new Date(),
+                    },
+                },
+            },
+            include: {
+                clock: true,
             },
         });
         return this.toDomain(created);
@@ -148,8 +158,13 @@ let PrismaGameRepository = class PrismaGameRepository {
         });
     }
     toDomain(prismaGame) {
-        const game = new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner, prismaGame.endReason);
-        return game;
+        return new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, Number(prismaGame.clock?.whiteTimeMs || 600000), prismaGame.clock
+            ? {
+                whiteTimeMs: Number(prismaGame.clock.whiteTimeMs),
+                blackTimeMs: Number(prismaGame.clock.blackTimeMs),
+                lastMoveAt: prismaGame.clock.lastMoveAt,
+            }
+            : undefined, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner);
     }
 };
 exports.PrismaGameRepository = PrismaGameRepository;

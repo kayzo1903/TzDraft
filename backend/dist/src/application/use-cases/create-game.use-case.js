@@ -23,16 +23,16 @@ let CreateGameUseCase = class CreateGameUseCase {
         this.gameRepository = gameRepository;
     }
     async createPvPGame(whitePlayerId, blackPlayerId, whiteElo, blackElo) {
-        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.RANKED, whiteElo, blackElo, null);
+        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.RANKED, whiteElo, blackElo, null, 600000, undefined);
         game.start();
         return this.gameRepository.create(game);
     }
-    async createPvEGame(playerId, playerColor, playerElo, aiLevel) {
+    async createPvEGame(playerId, playerColor, playerElo, aiLevel, dto = {}) {
         const whitePlayerId = playerColor === game_constants_1.PlayerColor.WHITE ? playerId : 'AI';
         const blackPlayerId = playerColor === game_constants_1.PlayerColor.BLACK ? playerId : 'AI';
         const whiteElo = playerColor === game_constants_1.PlayerColor.WHITE ? playerElo : null;
         const blackElo = playerColor === game_constants_1.PlayerColor.BLACK ? playerElo : null;
-        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.AI, whiteElo, blackElo, aiLevel);
+        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.AI, whiteElo, blackElo, aiLevel, dto.initialTimeMs || 600000, undefined);
         game.start();
         return this.gameRepository.create(game);
     }

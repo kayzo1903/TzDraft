@@ -31,6 +31,12 @@ export class Game {
     public readonly whiteElo: number | null = null,
     public readonly blackElo: number | null = null,
     public readonly aiLevel: number | null = null,
+    public readonly initialTimeMs: number = 600000, // Default 10 mins
+    public readonly clockInfo?: {
+      whiteTimeMs: number;
+      blackTimeMs: number;
+      lastMoveAt: Date;
+    },
     public readonly createdAt: Date = new Date(),
     startedAt: Date | null = null,
     endedAt: Date | null = null,
@@ -184,6 +190,13 @@ export class Game {
    */
   getLastMove(): Move | null {
     return this._moves.length > 0 ? this._moves[this._moves.length - 1] : null;
+  }
+
+  get clock(): any {
+    // TODO: Implement clock value object
+    return {
+      initialTimeMs: this.initialTimeMs,
+    };
   }
 
   /**

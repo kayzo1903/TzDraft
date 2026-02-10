@@ -9,6 +9,12 @@ export declare class Game {
     readonly whiteElo: number | null;
     readonly blackElo: number | null;
     readonly aiLevel: number | null;
+    readonly initialTimeMs: number;
+    readonly clockInfo?: {
+        whiteTimeMs: number;
+        blackTimeMs: number;
+        lastMoveAt: Date;
+    } | undefined;
     readonly createdAt: Date;
     private _status;
     private _board;
@@ -18,7 +24,11 @@ export declare class Game {
     private _endReason;
     private _startedAt;
     private _endedAt;
-    constructor(id: string, whitePlayerId: string, blackPlayerId: string | null, gameType: GameType, whiteElo?: number | null, blackElo?: number | null, aiLevel?: number | null, createdAt?: Date, startedAt?: Date | null, endedAt?: Date | null, status?: GameStatus, winner?: Winner | null, endReason?: EndReason | null, currentTurn?: PlayerColor);
+    constructor(id: string, whitePlayerId: string, blackPlayerId: string | null, gameType: GameType, whiteElo?: number | null, blackElo?: number | null, aiLevel?: number | null, initialTimeMs?: number, clockInfo?: {
+        whiteTimeMs: number;
+        blackTimeMs: number;
+        lastMoveAt: Date;
+    } | undefined, createdAt?: Date, startedAt?: Date | null, endedAt?: Date | null, status?: GameStatus, winner?: Winner | null, endReason?: EndReason | null, currentTurn?: PlayerColor);
     get status(): GameStatus;
     get board(): BoardState;
     get moves(): Move[];
@@ -37,6 +47,7 @@ export declare class Game {
     isPlayerTurn(player: PlayerColor): boolean;
     getMoveCount(): number;
     getLastMove(): Move | null;
+    get clock(): any;
     isPvE(): boolean;
     isPvP(): boolean;
     toString(): string;

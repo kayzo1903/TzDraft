@@ -42,12 +42,13 @@ let GameController = class GameController {
         };
     }
     async getGame(id) {
-        const { game, moves } = await this.getGameStateUseCase.execute(id);
+        const { game, moves, players } = await this.getGameStateUseCase.execute(id);
         return {
             success: true,
             data: {
                 game,
                 moves,
+                players,
             },
         };
     }

@@ -47,6 +47,7 @@ class CreatePvEGameDto {
     playerColor;
     playerElo;
     aiLevel;
+    initialTimeMs;
 }
 exports.CreatePvEGameDto = CreatePvEGameDto;
 __decorate([
@@ -74,4 +75,10 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], CreatePvEGameDto.prototype, "aiLevel", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Initial time in milliseconds', required: false }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreatePvEGameDto.prototype, "initialTimeMs", void 0);
 //# sourceMappingURL=create-game.dto.js.map

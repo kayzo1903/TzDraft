@@ -11,6 +11,8 @@ class Game {
     whiteElo;
     blackElo;
     aiLevel;
+    initialTimeMs;
+    clockInfo;
     createdAt;
     _status;
     _board;
@@ -20,7 +22,7 @@ class Game {
     _endReason;
     _startedAt;
     _endedAt;
-    constructor(id, whitePlayerId, blackPlayerId, gameType, whiteElo = null, blackElo = null, aiLevel = null, createdAt = new Date(), startedAt = null, endedAt = null, status = game_constants_1.GameStatus.WAITING, winner = null, endReason = null, currentTurn = game_constants_1.PlayerColor.WHITE) {
+    constructor(id, whitePlayerId, blackPlayerId, gameType, whiteElo = null, blackElo = null, aiLevel = null, initialTimeMs = 600000, clockInfo, createdAt = new Date(), startedAt = null, endedAt = null, status = game_constants_1.GameStatus.WAITING, winner = null, endReason = null, currentTurn = game_constants_1.PlayerColor.WHITE) {
         this.id = id;
         this.whitePlayerId = whitePlayerId;
         this.blackPlayerId = blackPlayerId;
@@ -28,6 +30,8 @@ class Game {
         this.whiteElo = whiteElo;
         this.blackElo = blackElo;
         this.aiLevel = aiLevel;
+        this.initialTimeMs = initialTimeMs;
+        this.clockInfo = clockInfo;
         this.createdAt = createdAt;
         this._status = status;
         this._board = board_state_vo_1.BoardState.createInitialBoard();
@@ -116,6 +120,11 @@ class Game {
     }
     getLastMove() {
         return this._moves.length > 0 ? this._moves[this._moves.length - 1] : null;
+    }
+    get clock() {
+        return {
+            initialTimeMs: this.initialTimeMs,
+        };
     }
     isPvE() {
         return this.gameType === game_constants_1.GameType.AI;

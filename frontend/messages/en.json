@@ -9,9 +9,9 @@
   },
   "hero": {
     "title": "Play TzDraft",
-    "subtitle": "Experience the beloved game of TzDraft online with friends or against the computer. Authentic gameplay, anywhere.",
+    "subtitle": "Experience the beloved game of TzDraft online with friends or against AI. Authentic gameplay, anywhere.",
     "playOnline": "Play Online",
-    "playComputer": "Play Computer",
+    "playComputer": "Play with AI",
     "features": {
       "online": "Multiplayer",
       "blitz": "Blitz Games",
@@ -171,6 +171,42 @@
       "a2": "Yes! Click 'Play Online' to create a game room, then share the Game ID with your friend.",
       "q3": "I found a bug, how do I report it?",
       "a3": "Please use the form below to describe the issue. Include the Game ID if applicable."
+    }
+  },
+  "play": {
+    "title": "Choose Your Game Mode",
+    "subtitle": "Select how you want to play. Compete online, practice with AI, or challenge friends in private matches.",
+    "modes": {
+      "online": {
+        "title": "Play Online",
+        "description": "Ranked & Casual matches against players worldwide.",
+        "action": "Play Now",
+        "unavailable": "Unavailable",
+        "comingSoon": "Coming Soon"
+      },
+      "ai": {
+        "title": "Play vs AI",
+        "description": "Practice and improve against Stockfish engines.",
+        "action": "Play Now"
+      },
+      "friend": {
+        "title": "Play w/ Friend",
+        "description": "Invite a friend to a private match via link.",
+        "action": "Play Now",
+        "unavailable": "Unavailable",
+        "comingSoon": "Coming Soon"
+      },
+      "tournament": {
+        "title": "Tournaments",
+        "description": "Join competitive events and win prizes.",
+        "action": "Play Now",
+        "unavailable": "Unavailable",
+        "comingSoon": "Coming Soon"
+      }
+    },
+    "stats": {
+      "activePlayers": "Active Players",
+      "matchesNow": "Matches Now"
     }
   }
 }

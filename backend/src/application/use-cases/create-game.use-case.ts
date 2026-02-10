@@ -32,6 +32,8 @@ export class CreateGameUseCase {
       whiteElo,
       blackElo,
       null,
+      600000, // Default 10 mins for PvP for now (TODO: Add time selection for PvP)
+      undefined,
     );
 
     game.start();
@@ -46,6 +48,7 @@ export class CreateGameUseCase {
     playerColor: PlayerColor,
     playerElo: number,
     aiLevel: number,
+    dto: { initialTimeMs?: number } = {},
   ): Promise<Game> {
     const whitePlayerId = playerColor === PlayerColor.WHITE ? playerId : 'AI';
     const blackPlayerId = playerColor === PlayerColor.BLACK ? playerId : 'AI';
@@ -60,6 +63,8 @@ export class CreateGameUseCase {
       whiteElo,
       blackElo,
       aiLevel,
+      dto.initialTimeMs || 600000,
+      undefined, // clockInfo
     );
 
     game.start();

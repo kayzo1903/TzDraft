@@ -15,12 +15,13 @@ const make_move_use_case_1 = require("./make-move.use-case");
 const get_game_state_use_case_1 = require("./get-game-state.use-case");
 const get_legal_moves_use_case_1 = require("./get-legal-moves.use-case");
 const end_game_use_case_1 = require("./end-game.use-case");
+const user_module_1 = require("../../domain/user/user.module");
 let UseCasesModule = class UseCasesModule {
 };
 exports.UseCasesModule = UseCasesModule;
 exports.UseCasesModule = UseCasesModule = __decorate([
     (0, common_1.Module)({
-        imports: [repository_module_1.RepositoryModule, messaging_module_1.MessagingModule],
+        imports: [repository_module_1.RepositoryModule, messaging_module_1.MessagingModule, user_module_1.UserModule],
         providers: [
             create_game_use_case_1.CreateGameUseCase,
             make_move_use_case_1.MakeMoveUseCase,

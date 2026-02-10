@@ -35,7 +35,18 @@ export class PrismaGameRepository implements IGameRepository {
         endReason: game.endReason,
         createdAt: game.createdAt,
         startedAt: game.startedAt,
+
         endedAt: game.endedAt,
+        clock: {
+          create: {
+            whiteTimeMs: game.initialTimeMs,
+            blackTimeMs: game.initialTimeMs,
+            lastMoveAt: new Date(),
+          },
+        },
+      },
+      include: {
+        clock: true,
       },
     });
 
@@ -174,7 +185,7 @@ export class PrismaGameRepository implements IGameRepository {
    * Map Prisma model to domain entity
    */
   private toDomain(prismaGame: any): Game {
-    const game = new Game(
+    return new Game(
       prismaGame.id,
       prismaGame.whitePlayerId,
       prismaGame.blackPlayerId,
@@ -182,16 +193,22 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.whiteElo,
       prismaGame.blackElo,
       prismaGame.aiLevel,
+      // Use clock whiteTimeMs as initial time approximation if not stored, or default 10 mins
+      Number(prismaGame.clock?.whiteTimeMs || 600000),
+
+      prismaGame.clock
+        ? {
+            whiteTimeMs: Number(prismaGame.clock.whiteTimeMs),
+            blackTimeMs: Number(prismaGame.clock.blackTimeMs),
+            lastMoveAt: prismaGame.clock.lastMoveAt,
+          }
+        : undefined,
+
       prismaGame.createdAt,
       prismaGame.startedAt,
       prismaGame.endedAt,
       prismaGame.status as GameStatus,
       prismaGame.winner as Winner | null,
-      prismaGame.endReason as EndReason | null,
     );
-
-    // Reconstruct board state from moves if needed
-
-    return game;
   }
 }

@@ -10,4 +10,5 @@ export declare class CreatePvEGameDto {
     playerColor: PlayerColor;
     playerElo?: number;
     aiLevel: number;
+    initialTimeMs?: number;
 }

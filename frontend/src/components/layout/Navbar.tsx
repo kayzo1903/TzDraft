@@ -20,7 +20,7 @@ export const Navbar: React.FC = () => {
 
     const navLinks = [
         { name: t('home'), href: '/' },
-        { name: t('play'), href: '/game/new' },
+        { name: t('play'), href: '/play' },
         { name: t('support'), href: '/support' },
     ];
 
