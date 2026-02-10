@@ -162,7 +162,9 @@
         "account": "Shida ya Akaunti",
         "general": "Maulizo ya Jumla",
         "feedback": "Maoni"
-      }
+      },
+      "success": "Ujumbe umetumwa kikamilifu!",
+      "error": "Imeshindwa kutuma ujumbe. Tafadhali jaribu tena."
     },
     "faqs": {
       "q1": "Ninawezaje kucheza TzDraft?",

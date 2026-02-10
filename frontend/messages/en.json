@@ -162,7 +162,9 @@
         "account": "Account Issue",
         "general": "General Inquiry",
         "feedback": "Feedback"
-      }
+      },
+      "success": "Message sent successfully!",
+      "error": "Failed to send message. Please try again."
     },
     "faqs": {
       "q1": "How do I play TzDraft?",

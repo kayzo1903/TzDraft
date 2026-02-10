@@ -11,13 +11,15 @@ const common_1 = require("@nestjs/common");
 const use_cases_module_1 = require("../../application/use-cases/use-cases.module");
 const game_controller_1 = require("./controllers/game.controller");
 const move_controller_1 = require("./controllers/move.controller");
+const support_controller_1 = require("./controllers/support.controller");
+const email_module_1 = require("../../infrastructure/email/email.module");
 let HttpModule = class HttpModule {
 };
 exports.HttpModule = HttpModule;
 exports.HttpModule = HttpModule = __decorate([
     (0, common_1.Module)({
-        imports: [use_cases_module_1.UseCasesModule],
-        controllers: [game_controller_1.GameController, move_controller_1.MoveController],
+        imports: [use_cases_module_1.UseCasesModule, email_module_1.EmailModule],
+        controllers: [game_controller_1.GameController, move_controller_1.MoveController, support_controller_1.SupportController],
     })
 ], HttpModule);
 //# sourceMappingURL=http.module.js.map
