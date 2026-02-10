@@ -3,6 +3,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 
@@ -49,6 +50,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <Navbar />
           {children}
+          <Footer />
         </NextIntlClientProvider>
       </body>
     </html>

@@ -208,5 +208,11 @@
       "activePlayers": "Wachezaji Hai",
       "matchesNow": "Mechi Zinaendelea"
     }
+  },
+  "footer": {
+    "privacyPolicy": "Sera na Faragha",
+    "rights": "Haki zote zimehifadhiwa.",
+    "madeWith": "Imetengenezwa kwa",
+    "by": "na"
   }
 }

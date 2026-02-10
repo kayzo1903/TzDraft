@@ -208,5 +208,11 @@
       "activePlayers": "Active Players",
       "matchesNow": "Matches Now"
     }
+  },
+  "footer": {
+    "privacyPolicy": "Policy & Privacy",
+    "rights": "All rights reserved.",
+    "madeWith": "Made with",
+    "by": "by"
   }
 }
