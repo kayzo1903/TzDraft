@@ -1,8 +1,7 @@
-import { Game } from '../entities/game.entity';
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
-import { BoardState } from '../value-objects/board-state.vo';
-import { PlayerColor, Winner, EndReason } from '../constants';
+import { Piece } from "../value-objects/piece.vo";
+import { Position } from "../value-objects/position.vo";
+import { BoardState } from "../value-objects/board-state.vo";
+import { PlayerColor, Winner } from "../constants";
 /**
  * Game Rules Service
  * Handles game-level rules like promotion, game end detection, and draw conditions
@@ -21,15 +20,15 @@ export declare class GameRulesService {
     /**
      * Check if the game is over
      */
-    isGameOver(game: Game): boolean;
+    isGameOver(board: BoardState, currentTurn: PlayerColor): boolean;
     /**
      * Detect the winner
      */
-    detectWinner(game: Game): Winner | null;
+    detectWinner(board: BoardState, currentTurn: PlayerColor): Winner | null;
     /**
      * Check if a player has any legal moves
      */
-    hasLegalMoves(game: Game, player: PlayerColor): boolean;
+    hasLegalMoves(board: BoardState, player: PlayerColor): boolean;
     /**
      * Check if a piece has any simple (non-capture) moves
      */
@@ -39,10 +38,6 @@ export declare class GameRulesService {
      * (e.g., king vs king)
      */
     isDrawByInsufficientMaterial(board: BoardState): boolean;
-    /**
-     * End the game with a result
-     */
-    endGame(game: Game, winner: Winner, reason: EndReason): void;
     /**
      * Count pieces for a player
      */

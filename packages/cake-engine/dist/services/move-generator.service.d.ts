@@ -1,8 +1,8 @@
-import { Game } from '../entities/game.entity';
-import { Move } from '../entities/move.entity';
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
+import { Move } from "../entities/move.entity";
+import { Piece } from "../value-objects/piece.vo";
+import { Position } from "../value-objects/position.vo";
+import { BoardState } from "../value-objects/board-state.vo";
+import { PlayerColor } from "../constants";
 /**
  * Move Generator Service
  * Generates all possible legal moves for a player
@@ -14,11 +14,14 @@ export declare class MoveGeneratorService {
     /**
      * Generate all legal moves for a player
      */
-    generateAllMoves(game: Game, player: PlayerColor): Move[];
+    /**
+     * Generate all legal moves for a player
+     */
+    generateAllMoves(board: BoardState, player: PlayerColor, moveCount?: number): Move[];
     /**
      * Generate all moves for a specific piece
      */
-    generateMovesForPiece(game: Game, piece: Piece): Move[];
+    generateMovesForPiece(board: BoardState, piece: Piece, moveCount?: number): Move[];
     /**
      * Generate simple (non-capture) moves for a piece
      */
@@ -26,11 +29,11 @@ export declare class MoveGeneratorService {
     /**
      * Count total legal moves for a player
      */
-    countLegalMoves(game: Game, player: PlayerColor): number;
+    countLegalMoves(board: BoardState, player: PlayerColor, moveCount?: number): number;
     /**
      * Check if a specific move is legal
      */
-    isMoveLegal(game: Game, player: PlayerColor, from: Position, to: Position): boolean;
+    isMoveLegal(board: BoardState, player: PlayerColor, from: Position, to: Position, moveCount?: number): boolean;
     /**
      * Generate a unique move ID
      */

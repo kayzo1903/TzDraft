@@ -1,10 +1,16 @@
-import { BoardState } from './value-objects/board-state.vo';
-import { Game } from './entities/game.entity';
-import { Move } from './entities/move.entity';
-import { Position } from './value-objects/position.vo';
-import { PlayerColor, Winner, GameType, GameStatus, EndReason } from './constants';
-import { MoveGeneratorService } from './services/move-generator.service';
-import { GameRulesService } from './services/game-rules.service';
+import { BoardState } from "./value-objects/board-state.vo";
+import { Game } from "./entities/game.entity";
+import { Move } from "./entities/move.entity";
+import { Position } from "./value-objects/position.vo";
+import {
+  PlayerColor,
+  Winner,
+  GameType,
+  GameStatus,
+  EndReason,
+} from "./constants";
+import { MoveGeneratorService } from "./services/move-generator.service";
+import { GameRulesService } from "./services/game-rules.service";
 
 /**
  * Game Result
@@ -30,33 +36,13 @@ export const CakeEngine = {
   /**
    * Generate all legal moves for a player
    */
-  generateLegalMoves(state: BoardState, player: PlayerColor, moveCount: number = 0): Move[] {
-    // Create a temporary game object for move generation
-    const tempGame = new Game(
-      'temp',
-      'white',
-      'black',
-      GameType.CASUAL,
-      null,
-      null,
-      null,
-      600000,
-      undefined,
-      new Date(),
-      null,
-      null,
-      GameStatus.ACTIVE,
-      null,
-      null,
-      player,
-    );
-
-    // Manually set the board and move count
-    Object.defineProperty(tempGame, '_board', { value: state, writable: true });
-    tempGame['_currentTurn'] = player;
-
+  generateLegalMoves(
+    state: BoardState,
+    player: PlayerColor,
+    moveCount: number = 0,
+  ): Move[] {
     const moveGen = new MoveGeneratorService();
-    return moveGen.generateAllMoves(tempGame, player);
+    return moveGen.generateAllMoves(state, player, moveCount);
   },
 
   /**
@@ -78,39 +64,22 @@ export const CakeEngine = {
   /**
    * Evaluate game result (detect win/draw conditions)
    */
-  evaluateGameResult(state: BoardState, currentPlayer: PlayerColor): GameResult | null {
-    // Create a temporary game object for rule checking
-    const tempGame = new Game(
-      'temp',
-      'white',
-      'black',
-      GameType.CASUAL,
-      null,
-      null,
-      null,
-      600000,
-      undefined,
-      new Date(),
-      null,
-      null,
-      GameStatus.ACTIVE,
-      null,
-      null,
-      currentPlayer,
-    );
-
-    Object.defineProperty(tempGame, '_board', { value: state, writable: true });
-    tempGame['_currentTurn'] = currentPlayer;
-
+  evaluateGameResult(
+    state: BoardState,
+    currentPlayer: PlayerColor,
+  ): GameResult | null {
     const rulesService = new GameRulesService();
 
     // Check for winner
-    const winner = rulesService.detectWinner(tempGame);
+    const winner = rulesService.detectWinner(state, currentPlayer);
     if (winner) {
       let reason = EndReason.RESIGN; // Default
       if (winner === Winner.WHITE && currentPlayer === PlayerColor.BLACK) {
         reason = EndReason.CHECKMATE; // Black has no moves
-      } else if (winner === Winner.BLACK && currentPlayer === PlayerColor.WHITE) {
+      } else if (
+        winner === Winner.BLACK &&
+        currentPlayer === PlayerColor.WHITE
+      ) {
         reason = EndReason.CHECKMATE; // White has no moves
       }
       return { winner, reason };

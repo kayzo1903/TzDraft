@@ -34,7 +34,7 @@ export class CaptureFindingService {
      * Recursively find capture sequences in a direction
      * Handles multi-capture by exploring all possible paths
      */
-    findCaptureInDirection(board, piece, direction, currentPath, capturedSoFar) {
+    findCaptureInDirection(board, piece, direction, currentPath, capturedSoFar, originFrom = piece.position, originPiece = piece) {
         const { row, col } = piece.position.toRowCol();
         const opponentColor = piece.color === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
         // Calculate adjacent square (where opponent piece should be)
@@ -93,15 +93,15 @@ export class CaptureFindingService {
         // Kings can continue in all directions, men only forward
         const nextDirections = getValidDirections(finalPiece);
         for (const nextDir of nextDirections) {
-            const morePaths = this.findCaptureInDirection(tempBoard, finalPiece, nextDir, newPath, newCaptured);
+            const morePaths = this.findCaptureInDirection(tempBoard, finalPiece, nextDir, newPath, newCaptured, originFrom, originPiece);
             furtherCaptures.push(...morePaths);
         }
         // If no further captures, this is a complete path
         if (furtherCaptures.length === 0) {
             return [
                 {
-                    piece,
-                    from: piece.position,
+                    piece: originPiece,
+                    from: originFrom,
                     path: newPath,
                     capturedSquares: newCaptured,
                     to: landingPos,

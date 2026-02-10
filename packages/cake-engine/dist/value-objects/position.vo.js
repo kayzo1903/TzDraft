@@ -25,7 +25,8 @@ export class Position {
         // Tanzania Drafti uses 32 dark squares numbered 1-32
         // Row 0: squares 1-4, Row 1: squares 5-8, etc.
         const row = Math.floor((this._value - 1) / 4);
-        const col = ((this._value - 1) % 4) * 2 + (row % 2);
+        // Dark squares are where (row + col) is odd
+        const col = ((this._value - 1) % 4) * 2 + ((row + 1) % 2);
         return { row, col };
     }
     /**

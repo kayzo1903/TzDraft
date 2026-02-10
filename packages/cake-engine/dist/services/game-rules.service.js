@@ -1,6 +1,6 @@
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor, Winner, } from '../constants';
-import { CaptureFindingService } from './capture-finding.service';
+import { Position } from "../value-objects/position.vo";
+import { PlayerColor, Winner } from "../constants";
+import { CaptureFindingService } from "./capture-finding.service";
 /**
  * Game Rules Service
  * Handles game-level rules like promotion, game end detection, and draw conditions
@@ -44,17 +44,14 @@ export class GameRulesService {
     /**
      * Check if the game is over
      */
-    isGameOver(game) {
-        if (game.isGameOver()) {
-            return true;
-        }
+    isGameOver(board, currentTurn) {
         // Check if current player has no pieces
-        const currentPlayerPieces = game.board.getPiecesByColor(game.currentTurn);
+        const currentPlayerPieces = board.getPiecesByColor(currentTurn);
         if (currentPlayerPieces.length === 0) {
             return true;
         }
         // Check if current player has no legal moves
-        if (!this.hasLegalMoves(game, game.currentTurn)) {
+        if (!this.hasLegalMoves(board, currentTurn)) {
             return true;
         }
         return false;
@@ -62,9 +59,9 @@ export class GameRulesService {
     /**
      * Detect the winner
      */
-    detectWinner(game) {
-        const whitePieces = game.board.getPiecesByColor(PlayerColor.WHITE);
-        const blackPieces = game.board.getPiecesByColor(PlayerColor.BLACK);
+    detectWinner(board, currentTurn) {
+        const whitePieces = board.getPiecesByColor(PlayerColor.WHITE);
+        const blackPieces = board.getPiecesByColor(PlayerColor.BLACK);
         // No pieces left
         if (whitePieces.length === 0) {
             return Winner.BLACK;
@@ -73,12 +70,12 @@ export class GameRulesService {
             return Winner.WHITE;
         }
         // No legal moves (stalemate - opponent wins)
-        const whiteHasMoves = this.hasLegalMoves(game, PlayerColor.WHITE);
-        const blackHasMoves = this.hasLegalMoves(game, PlayerColor.BLACK);
-        if (!whiteHasMoves && game.currentTurn === PlayerColor.WHITE) {
+        const whiteHasMoves = this.hasLegalMoves(board, PlayerColor.WHITE);
+        const blackHasMoves = this.hasLegalMoves(board, PlayerColor.BLACK);
+        if (!whiteHasMoves && currentTurn === PlayerColor.WHITE) {
             return Winner.BLACK;
         }
-        if (!blackHasMoves && game.currentTurn === PlayerColor.BLACK) {
+        if (!blackHasMoves && currentTurn === PlayerColor.BLACK) {
             return Winner.WHITE;
         }
         return null;
@@ -86,16 +83,16 @@ export class GameRulesService {
     /**
      * Check if a player has any legal moves
      */
-    hasLegalMoves(game, player) {
+    hasLegalMoves(board, player) {
         // Check for captures first (mandatory)
-        const captures = this.captureFindingService.findAllCaptures(game.board, player);
+        const captures = this.captureFindingService.findAllCaptures(board, player);
         if (captures.length > 0) {
             return true;
         }
         // Check for simple moves
-        const pieces = game.board.getPiecesByColor(player);
+        const pieces = board.getPiecesByColor(player);
         for (const piece of pieces) {
-            if (this.hasSimpleMovesForPiece(game.board, piece)) {
+            if (this.hasSimpleMovesForPiece(board, piece)) {
                 return true;
             }
         }
@@ -157,12 +154,6 @@ export class GameRulesService {
             return true;
         }
         return false;
-    }
-    /**
-     * End the game with a result
-     */
-    endGame(game, winner, reason) {
-        game.endGame(winner, reason);
     }
     /**
      * Count pieces for a player

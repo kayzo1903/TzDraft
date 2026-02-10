@@ -1,11 +1,10 @@
-import { Game } from '../entities/game.entity';
-import { Move } from '../entities/move.entity';
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
-import { BoardState } from '../value-objects/board-state.vo';
-import { PlayerColor } from '../constants';
-import { CaptureFindingService } from './capture-finding.service';
-import { getValidDirections } from '../types/capture-path.type';
+import { Move } from "../entities/move.entity";
+import { Piece } from "../value-objects/piece.vo";
+import { Position } from "../value-objects/position.vo";
+import { BoardState } from "../value-objects/board-state.vo";
+import { PlayerColor } from "../constants";
+import { CaptureFindingService } from "./capture-finding.service";
+import { getValidDirections } from "../types/capture-path.type";
 
 /**
  * Move Generator Service
@@ -22,19 +21,23 @@ export class MoveGeneratorService {
   /**
    * Generate all legal moves for a player
    */
-  generateAllMoves(game: Game, player: PlayerColor): Move[] {
+  /**
+   * Generate all legal moves for a player
+   */
+  generateAllMoves(
+    board: BoardState,
+    player: PlayerColor,
+    moveCount: number = 0,
+  ): Move[] {
     const moves: Move[] = [];
 
     // Check for captures first (mandatory)
-    const captures = this.captureFindingService.findAllCaptures(
-      game.board,
-      player,
-    );
+    const captures = this.captureFindingService.findAllCaptures(board, player);
 
     if (captures.length > 0) {
       // Only capture moves are legal
       for (const capture of captures) {
-        const moveNumber = game.getMoveCount() + 1;
+        const currentMoveNumber = moveCount + 1;
         const notation = Move.generateNotation(
           capture.from,
           capture.to,
@@ -43,8 +46,8 @@ export class MoveGeneratorService {
 
         const move = new Move(
           this.generateMoveId(),
-          game.id,
-          moveNumber,
+          "temp-game-id", // Engine generates moves without game context initially
+          currentMoveNumber,
           player,
           capture.from,
           capture.to,
@@ -60,10 +63,14 @@ export class MoveGeneratorService {
     }
 
     // No captures available, generate simple moves
-    const pieces = game.board.getPiecesByColor(player);
+    const pieces = board.getPiecesByColor(player);
 
     for (const piece of pieces) {
-      const pieceMoves = this.generateSimpleMovesForPiece(game, piece);
+      const pieceMoves = this.generateSimpleMovesForPiece(
+        board,
+        piece,
+        moveCount,
+      );
       moves.push(...pieceMoves);
     }
 
@@ -73,16 +80,20 @@ export class MoveGeneratorService {
   /**
    * Generate all moves for a specific piece
    */
-  generateMovesForPiece(game: Game, piece: Piece): Move[] {
+  generateMovesForPiece(
+    board: BoardState,
+    piece: Piece,
+    moveCount: number = 0,
+  ): Move[] {
     // Check if captures are available for this piece
     const captures = this.captureFindingService.findCapturesForPiece(
-      game.board,
+      board,
       piece,
     );
 
     if (captures.length > 0) {
       return captures.map((capture) => {
-        const moveNumber = game.getMoveCount() + 1;
+        const currentMoveNumber = moveCount + 1;
         const notation = Move.generateNotation(
           capture.from,
           capture.to,
@@ -91,8 +102,8 @@ export class MoveGeneratorService {
 
         return new Move(
           this.generateMoveId(),
-          game.id,
-          moveNumber,
+          "temp-game-id",
+          currentMoveNumber,
           piece.color,
           capture.from,
           capture.to,
@@ -104,13 +115,17 @@ export class MoveGeneratorService {
     }
 
     // Generate simple moves
-    return this.generateSimpleMovesForPiece(game, piece);
+    return this.generateSimpleMovesForPiece(board, piece, moveCount);
   }
 
   /**
    * Generate simple (non-capture) moves for a piece
    */
-  private generateSimpleMovesForPiece(game: Game, piece: Piece): Move[] {
+  private generateSimpleMovesForPiece(
+    board: BoardState,
+    piece: Piece,
+    moveCount: number,
+  ): Move[] {
     const moves: Move[] = [];
     const { row, col } = piece.position.toRowCol();
     const directions = getValidDirections(piece);
@@ -132,8 +147,8 @@ export class MoveGeneratorService {
       const targetPos = Position.fromRowCol(newRow, newCol);
 
       // Check if square is empty
-      if (game.board.isEmpty(targetPos)) {
-        const moveNumber = game.getMoveCount() + 1;
+      if (board.isEmpty(targetPos)) {
+        const currentMoveNumber = moveCount + 1;
         const notation = Move.generateNotation(piece.position, targetPos, []);
 
         const movedPiece = piece.moveTo(targetPos);
@@ -141,8 +156,8 @@ export class MoveGeneratorService {
 
         const move = new Move(
           this.generateMoveId(),
-          game.id,
-          moveNumber,
+          "temp-game-id",
+          currentMoveNumber,
           piece.color,
           piece.position,
           targetPos,
@@ -161,20 +176,25 @@ export class MoveGeneratorService {
   /**
    * Count total legal moves for a player
    */
-  countLegalMoves(game: Game, player: PlayerColor): number {
-    return this.generateAllMoves(game, player).length;
+  countLegalMoves(
+    board: BoardState,
+    player: PlayerColor,
+    moveCount: number = 0,
+  ): number {
+    return this.generateAllMoves(board, player, moveCount).length;
   }
 
   /**
    * Check if a specific move is legal
    */
   isMoveLegal(
-    game: Game,
+    board: BoardState,
     player: PlayerColor,
     from: Position,
     to: Position,
+    moveCount: number = 0,
   ): boolean {
-    const allMoves = this.generateAllMoves(game, player);
+    const allMoves = this.generateAllMoves(board, player, moveCount);
 
     return allMoves.some(
       (move) => move.from.equals(from) && move.to.equals(to),
@@ -185,7 +205,7 @@ export class MoveGeneratorService {
    * Generate a unique move ID
    */
   private generateMoveId(): string {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
       return crypto.randomUUID();
     }
     // Fallback for environments without crypto.randomUUID

@@ -1,19 +1,15 @@
-import { Game } from '../entities/game.entity';
-import { Move } from '../entities/move.entity';
-import { BoardState } from '../value-objects/board-state.vo';
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
-import {
-  PlayerColor,
-  GameStatus,
-} from '../constants';
-import { CaptureFindingService } from './capture-finding.service';
+import { Move } from "../entities/move.entity";
+import { BoardState } from "../value-objects/board-state.vo";
+import { Piece } from "../value-objects/piece.vo";
+import { Position } from "../value-objects/position.vo";
+import { PlayerColor, GameStatus } from "../constants";
+import { CaptureFindingService } from "./capture-finding.service";
 import {
   ValidationError,
   ValidationErrorCode,
-} from '../types/validation-error.type';
-import { MoveResult } from '../types/move-result.type';
-import { getValidDirections } from '../types/capture-path.type';
+} from "../types/validation-error.type";
+import { MoveResult } from "../types/move-result.type";
+import { getValidDirections } from "../types/capture-path.type";
 
 /**
  * Move Validation Service
@@ -30,7 +26,10 @@ export class MoveValidationService {
    * Validate a move request
    */
   validateMove(
-    game: Game,
+    board: BoardState,
+    currentTurn: PlayerColor,
+    status: GameStatus,
+    moveCount: number,
     player: PlayerColor,
     from: Position,
     to: Position,
@@ -38,24 +37,25 @@ export class MoveValidationService {
   ): MoveResult {
     try {
       // STEP 1: Game state validation
-      this.validateGameState(game);
+      this.validateGameState(status);
 
       // STEP 2: Turn validation
-      this.validateTurn(game, player);
+      this.validateTurn(currentTurn, player);
 
       // STEP 3: Piece ownership validation
-      const piece = this.validatePieceOwnership(game.board, from, player);
+      const piece = this.validatePieceOwnership(board, from, player);
 
       // STEP 4: Detect available captures
       const availableCaptures = this.captureFindingService.findAllCaptures(
-        game.board,
+        board,
         player,
       );
 
       // STEP 5: Enforce mandatory capture
       if (availableCaptures.length > 0) {
         return this.validateCaptureMove(
-          game,
+          board,
+          moveCount,
           piece,
           from,
           to,
@@ -65,7 +65,7 @@ export class MoveValidationService {
       }
 
       // STEP 6: Validate simple move
-      return this.validateSimpleMove(game, piece, from, to);
+      return this.validateSimpleMove(board, moveCount, piece, from, to);
     } catch (error) {
       if (error instanceof ValidationError) {
         return {
@@ -80,8 +80,8 @@ export class MoveValidationService {
   /**
    * STEP 1: Validate game state
    */
-  private validateGameState(game: Game): void {
-    if (game.status !== GameStatus.ACTIVE) {
+  private validateGameState(status: GameStatus): void {
+    if (status !== GameStatus.ACTIVE) {
       throw ValidationError.gameNotActive();
     }
   }
@@ -89,8 +89,8 @@ export class MoveValidationService {
   /**
    * STEP 2: Validate turn
    */
-  private validateTurn(game: Game, player: PlayerColor): void {
-    if (game.currentTurn !== player) {
+  private validateTurn(currentTurn: PlayerColor, player: PlayerColor): void {
+    if (currentTurn !== player) {
       throw ValidationError.wrongTurn(player);
     }
   }
@@ -120,7 +120,8 @@ export class MoveValidationService {
    * Validate a capture move
    */
   private validateCaptureMove(
-    game: Game,
+    board: BoardState,
+    moveCount: number,
     piece: Piece,
     from: Position,
     to: Position,
@@ -137,7 +138,7 @@ export class MoveValidationService {
     }
 
     // Create the move
-    const moveNumber = game.getMoveCount() + 1;
+    const currentMoveNumber = moveCount + 1;
     const notation = Move.generateNotation(
       from,
       to,
@@ -146,8 +147,8 @@ export class MoveValidationService {
 
     const move = new Move(
       this.generateMoveId(),
-      game.id,
-      moveNumber,
+      "temp-game-id",
+      currentMoveNumber,
       piece.color,
       from,
       to,
@@ -157,7 +158,7 @@ export class MoveValidationService {
     );
 
     // Apply the move to get new board state
-    let newBoard = game.board;
+    let newBoard = board;
 
     // Remove captured pieces
     for (const capturedPos of matchingCapture.capturedSquares) {
@@ -178,13 +179,14 @@ export class MoveValidationService {
    * Validate a simple (non-capture) move
    */
   private validateSimpleMove(
-    game: Game,
+    board: BoardState,
+    moveCount: number,
     piece: Piece,
     from: Position,
     to: Position,
   ): MoveResult {
     // Check if destination is empty
-    if (game.board.isOccupied(to)) {
+    if (board.isOccupied(to)) {
       throw new ValidationError(
         ValidationErrorCode.DESTINATION_OCCUPIED,
         `Destination square ${to.value} is occupied`,
@@ -199,7 +201,7 @@ export class MoveValidationService {
     }
 
     // Create the move
-    const moveNumber = game.getMoveCount() + 1;
+    const currentMoveNumber = moveCount + 1;
     const notation = Move.generateNotation(from, to, []);
 
     const movedPiece = piece.moveTo(to);
@@ -207,8 +209,8 @@ export class MoveValidationService {
 
     const move = new Move(
       this.generateMoveId(),
-      game.id,
-      moveNumber,
+      "temp-game-id",
+      currentMoveNumber,
       piece.color,
       from,
       to,
@@ -218,7 +220,7 @@ export class MoveValidationService {
     );
 
     // Apply the move
-    const newBoard = game.board.movePiece(from, to);
+    const newBoard = board.movePiece(from, to);
 
     return {
       isValid: true,
@@ -248,14 +250,18 @@ export class MoveValidationService {
 
     // Check direction is valid for piece type
     const validDirections = getValidDirections(piece);
-    return validDirections.some((dir) => dir.row === rowDiff && dir.col === Math.sign(toCoords.col - fromCoords.col));
+    return validDirections.some(
+      (dir) =>
+        dir.row === rowDiff &&
+        dir.col === Math.sign(toCoords.col - fromCoords.col),
+    );
   }
 
   /**
    * Generate a unique move ID
    */
   private generateMoveId(): string {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
       return crypto.randomUUID();
     }
     // Fallback for environments without crypto.randomUUID

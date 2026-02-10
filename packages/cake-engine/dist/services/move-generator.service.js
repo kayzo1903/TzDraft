@@ -1,7 +1,7 @@
-import { Move } from '../entities/move.entity';
-import { Position } from '../value-objects/position.vo';
-import { CaptureFindingService } from './capture-finding.service';
-import { getValidDirections } from '../types/capture-path.type';
+import { Move } from "../entities/move.entity";
+import { Position } from "../value-objects/position.vo";
+import { CaptureFindingService } from "./capture-finding.service";
+import { getValidDirections } from "../types/capture-path.type";
 /**
  * Move Generator Service
  * Generates all possible legal moves for a player
@@ -20,24 +20,28 @@ export class MoveGeneratorService {
     /**
      * Generate all legal moves for a player
      */
-    generateAllMoves(game, player) {
+    /**
+     * Generate all legal moves for a player
+     */
+    generateAllMoves(board, player, moveCount = 0) {
         const moves = [];
         // Check for captures first (mandatory)
-        const captures = this.captureFindingService.findAllCaptures(game.board, player);
+        const captures = this.captureFindingService.findAllCaptures(board, player);
         if (captures.length > 0) {
             // Only capture moves are legal
             for (const capture of captures) {
-                const moveNumber = game.getMoveCount() + 1;
+                const currentMoveNumber = moveCount + 1;
                 const notation = Move.generateNotation(capture.from, capture.to, capture.capturedSquares);
-                const move = new Move(this.generateMoveId(), game.id, moveNumber, player, capture.from, capture.to, capture.capturedSquares, capture.isPromotion, notation);
+                const move = new Move(this.generateMoveId(), "temp-game-id", // Engine generates moves without game context initially
+                currentMoveNumber, player, capture.from, capture.to, capture.capturedSquares, capture.isPromotion, notation);
                 moves.push(move);
             }
             return moves;
         }
         // No captures available, generate simple moves
-        const pieces = game.board.getPiecesByColor(player);
+        const pieces = board.getPiecesByColor(player);
         for (const piece of pieces) {
-            const pieceMoves = this.generateSimpleMovesForPiece(game, piece);
+            const pieceMoves = this.generateSimpleMovesForPiece(board, piece, moveCount);
             moves.push(...pieceMoves);
         }
         return moves;
@@ -45,23 +49,23 @@ export class MoveGeneratorService {
     /**
      * Generate all moves for a specific piece
      */
-    generateMovesForPiece(game, piece) {
+    generateMovesForPiece(board, piece, moveCount = 0) {
         // Check if captures are available for this piece
-        const captures = this.captureFindingService.findCapturesForPiece(game.board, piece);
+        const captures = this.captureFindingService.findCapturesForPiece(board, piece);
         if (captures.length > 0) {
             return captures.map((capture) => {
-                const moveNumber = game.getMoveCount() + 1;
+                const currentMoveNumber = moveCount + 1;
                 const notation = Move.generateNotation(capture.from, capture.to, capture.capturedSquares);
-                return new Move(this.generateMoveId(), game.id, moveNumber, piece.color, capture.from, capture.to, capture.capturedSquares, capture.isPromotion, notation);
+                return new Move(this.generateMoveId(), "temp-game-id", currentMoveNumber, piece.color, capture.from, capture.to, capture.capturedSquares, capture.isPromotion, notation);
             });
         }
         // Generate simple moves
-        return this.generateSimpleMovesForPiece(game, piece);
+        return this.generateSimpleMovesForPiece(board, piece, moveCount);
     }
     /**
      * Generate simple (non-capture) moves for a piece
      */
-    generateSimpleMovesForPiece(game, piece) {
+    generateSimpleMovesForPiece(board, piece, moveCount) {
         const moves = [];
         const { row, col } = piece.position.toRowCol();
         const directions = getValidDirections(piece);
@@ -78,12 +82,12 @@ export class MoveGeneratorService {
             }
             const targetPos = Position.fromRowCol(newRow, newCol);
             // Check if square is empty
-            if (game.board.isEmpty(targetPos)) {
-                const moveNumber = game.getMoveCount() + 1;
+            if (board.isEmpty(targetPos)) {
+                const currentMoveNumber = moveCount + 1;
                 const notation = Move.generateNotation(piece.position, targetPos, []);
                 const movedPiece = piece.moveTo(targetPos);
                 const isPromotion = movedPiece.shouldPromote();
-                const move = new Move(this.generateMoveId(), game.id, moveNumber, piece.color, piece.position, targetPos, [], isPromotion, notation);
+                const move = new Move(this.generateMoveId(), "temp-game-id", currentMoveNumber, piece.color, piece.position, targetPos, [], isPromotion, notation);
                 moves.push(move);
             }
         }
@@ -92,21 +96,21 @@ export class MoveGeneratorService {
     /**
      * Count total legal moves for a player
      */
-    countLegalMoves(game, player) {
-        return this.generateAllMoves(game, player).length;
+    countLegalMoves(board, player, moveCount = 0) {
+        return this.generateAllMoves(board, player, moveCount).length;
     }
     /**
      * Check if a specific move is legal
      */
-    isMoveLegal(game, player, from, to) {
-        const allMoves = this.generateAllMoves(game, player);
+    isMoveLegal(board, player, from, to, moveCount = 0) {
+        const allMoves = this.generateAllMoves(board, player, moveCount);
         return allMoves.some((move) => move.from.equals(from) && move.to.equals(to));
     }
     /**
      * Generate a unique move ID
      */
     generateMoveId() {
-        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) {
             return crypto.randomUUID();
         }
         // Fallback for environments without crypto.randomUUID

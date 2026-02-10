@@ -59,6 +59,8 @@ export class CaptureFindingService {
     direction: Direction,
     currentPath: Position[],
     capturedSoFar: Position[],
+    originFrom: Position = piece.position,
+    originPiece: Piece = piece,
   ): CapturePath[] {
     const { row, col } = piece.position.toRowCol();
     const opponentColor =
@@ -145,6 +147,8 @@ export class CaptureFindingService {
         nextDir,
         newPath,
         newCaptured,
+        originFrom,
+        originPiece,
       );
       furtherCaptures.push(...morePaths);
     }
@@ -153,8 +157,8 @@ export class CaptureFindingService {
     if (furtherCaptures.length === 0) {
       return [
         {
-          piece,
-          from: piece.position,
+          piece: originPiece,
+          from: originFrom,
           path: newPath,
           capturedSquares: newCaptured,
           to: landingPos,

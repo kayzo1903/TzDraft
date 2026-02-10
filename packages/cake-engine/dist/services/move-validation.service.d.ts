@@ -1,7 +1,7 @@
-import { Game } from '../entities/game.entity';
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
-import { MoveResult } from '../types/move-result.type';
+import { BoardState } from "../value-objects/board-state.vo";
+import { Position } from "../value-objects/position.vo";
+import { PlayerColor, GameStatus } from "../constants";
+import { MoveResult } from "../types/move-result.type";
 /**
  * Move Validation Service
  * Validates moves according to Tanzania Drafti rules
@@ -12,7 +12,7 @@ export declare class MoveValidationService {
     /**
      * Validate a move request
      */
-    validateMove(game: Game, player: PlayerColor, from: Position, to: Position, path?: Position[]): MoveResult;
+    validateMove(board: BoardState, currentTurn: PlayerColor, status: GameStatus, moveCount: number, player: PlayerColor, from: Position, to: Position, path?: Position[]): MoveResult;
     /**
      * STEP 1: Validate game state
      */

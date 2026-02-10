@@ -6,7 +6,7 @@ import {
   GameType,
   Winner,
   EndReason,
-} from '../src';
+} from "../src";
 
 /**
  * CAKE Engine Test Suite
@@ -21,16 +21,16 @@ import {
  * - Edge cases and boundary conditions
  */
 
-describe('CAKE Engine - Tanzania Drafti 8x8', () => {
-  describe('Board Initialization', () => {
-    test('creates correct initial board state', () => {
+describe("CAKE Engine - Tanzania Drafti 8x8", () => {
+  describe("Board Initialization", () => {
+    test("creates correct initial board state", () => {
       const board = CakeEngine.createInitialState();
 
       expect(board).toBeDefined();
       expect(board.getAllPieces().length).toBeGreaterThan(0);
     });
 
-    test('initial board has pieces in correct positions', () => {
+    test("initial board has pieces in correct positions", () => {
       const board = CakeEngine.createInitialState();
 
       // Verify pieces exist for both colors
@@ -46,7 +46,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(blackPieces.length).toBeGreaterThan(0);
     });
 
-    test('initial board has no kings', () => {
+    test("initial board has no kings", () => {
       const board = CakeEngine.createInitialState();
       const allPieces = board.getAllPieces();
       const kings = allPieces.filter((p) => p.isKing());
@@ -55,84 +55,15 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('DEBUG - Move Generation Diagnostics', () => {
-    test('diagnose white opening moves', () => {
-      const board = CakeEngine.createInitialState();
-      
-      // Check pieces
-      const whitePieces = board.getPiecesByColor(PlayerColor.WHITE);
-      console.log('\n=== DIAGNOSTIC: White Pieces ===');
-      console.log(`Total white pieces: ${whitePieces.length}`);
-      whitePieces.forEach(p => {
-        const rowcol = p.position.toRowCol();
-        console.log(`  Piece at square ${p.position.value}, row ${rowcol.row}, col ${rowcol.col}`);
-      });
-
-      // Check what moves are generated
-      console.log('\n=== DIAGNOSTIC: Move Generation ===');
-      const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE, 0);
-      console.log(`Generated moves count: ${moves.length}`);
-      
-      if (moves.length > 0) {
-        moves.forEach((m, idx) => {
-          console.log(`  Move ${idx + 1}: ${m.notation}`);
-        });
-      } else {
-        console.log('  ERROR: No moves generated!');
-        console.log('  Debugging: checking if problem is with engine or board...');
-        
-        // Try to manually call the move generator to see where the problem is
-        const Game = require('../src/entities/game.entity').Game;
-        const MoveGeneratorService = require('../src/services/move-generator.service').MoveGeneratorService;
-        
-        console.log('  Creating temporary game object...');
-        const tempGame = new Game(
-          'temp',
-          'white',
-          'black',
-          0, // GameType.CASUAL
-          null,
-          null,
-          null,
-          600000,
-          undefined,
-          new Date(),
-          null,
-          null,
-          1, // GameStatus.ACTIVE
-          null,
-          null,
-          PlayerColor.WHITE,
-        );
-        
-        console.log('  Setting board via Object.defineProperty...');
-        Object.defineProperty(tempGame, '_board', { value: board, writable: true });
-        tempGame['_currentTurn'] = PlayerColor.WHITE;
-        
-        console.log(`  tempGame.board exists: ${!!tempGame.board}`);
-        console.log(`  tempGame.board pieces: ${tempGame.board.getAllPieces().length}`);
-        console.log(`  tempGame.currentTurn: ${tempGame.currentTurn}`);
-        
-        const moveGen = new MoveGeneratorService();
-        const manualMoves = moveGen.generateAllMoves(tempGame, PlayerColor.WHITE);
-        console.log(`  Manual move generation result: ${manualMoves.length} moves`);
-      }
-
-      // This will help us understand what's happening
-      expect(whitePieces.length).toBe(12);
-      expect(moves.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Move Generation - Single Moves', () => {
-    test('generates legal moves for white at game start', () => {
+  describe("Move Generation - Single Moves", () => {
+    test("generates legal moves for white at game start", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
       expect(moves.length).toBeGreaterThan(0);
     });
 
-    test('all generated moves have valid from/to positions', () => {
+    test("all generated moves have valid from/to positions", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -145,7 +76,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       });
     });
 
-    test('white first move options are standard opening moves', () => {
+    test("white first move options are standard opening moves", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -154,15 +85,21 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(moves.length).toBeLessThanOrEqual(9);
     });
 
-    test('black has same opening moves as white', () => {
+    test("black has same opening moves as white", () => {
       const board = CakeEngine.createInitialState();
-      const whiteMoves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
-      const blackMoves = CakeEngine.generateLegalMoves(board, PlayerColor.BLACK);
+      const whiteMoves = CakeEngine.generateLegalMoves(
+        board,
+        PlayerColor.WHITE,
+      );
+      const blackMoves = CakeEngine.generateLegalMoves(
+        board,
+        PlayerColor.BLACK,
+      );
 
       expect(blackMoves.length).toBe(whiteMoves.length);
     });
 
-    test('men can only move diagonally forward', () => {
+    test("men can only move diagonally forward", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -177,8 +114,8 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Capture Rules - Single and Multi-Capture', () => {
-    test('forces captures when available', () => {
+  describe("Capture Rules - Single and Multi-Capture", () => {
+    test("forces captures when available", () => {
       const board = CakeEngine.createInitialState();
 
       // Apply some moves to create a capture scenario
@@ -186,7 +123,10 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       const moves1 = CakeEngine.generateLegalMoves(current, PlayerColor.WHITE);
       if (moves1.length > 0) {
         current = CakeEngine.applyMove(current, moves1[0]);
-        const moves2 = CakeEngine.generateLegalMoves(current, PlayerColor.BLACK);
+        const moves2 = CakeEngine.generateLegalMoves(
+          current,
+          PlayerColor.BLACK,
+        );
         if (moves2.length > 0) {
           current = CakeEngine.applyMove(current, moves2[0]);
         }
@@ -201,7 +141,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(allMoves.length).toBeGreaterThan(0);
     });
 
-    test('move with captures recorded correctly', () => {
+    test("move with captures recorded correctly", () => {
       const board = CakeEngine.createInitialState();
 
       // Generate moves and check if any have captures
@@ -216,7 +156,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       });
     });
 
-    test('applies single capture move correctly', () => {
+    test("applies single capture move correctly", () => {
       const board = CakeEngine.createInitialState();
 
       // Just verify we can apply any move
@@ -229,8 +169,8 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Board State Management', () => {
-    test('board state is immutable after move application', () => {
+  describe("Board State Management", () => {
+    test("board state is immutable after move application", () => {
       const board1 = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board1, PlayerColor.WHITE);
 
@@ -242,7 +182,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       }
     });
 
-    test('piece count changes correctly with captures', () => {
+    test("piece count changes correctly with captures", () => {
       const board = CakeEngine.createInitialState();
       const initialPieceCount = board.getAllPieces().length;
 
@@ -253,16 +193,14 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
 
       // If move includes captures, piece count should decrease
       if (firstMove.capturedSquares.length > 0) {
-        expect(newBoard.getAllPieces().length).toBeLessThan(
-          initialPieceCount,
-        );
+        expect(newBoard.getAllPieces().length).toBeLessThan(initialPieceCount);
       } else {
         // Otherwise piece count stays same
         expect(newBoard.getAllPieces().length).toBe(initialPieceCount);
       }
     });
 
-    test('pieces can be retrieved from board positions', () => {
+    test("pieces can be retrieved from board positions", () => {
       const board = CakeEngine.createInitialState();
       const allPieces = board.getAllPieces();
 
@@ -275,8 +213,8 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Promotion Rules', () => {
-    test('identifies promotion correctly', () => {
+  describe("Promotion Rules", () => {
+    test("identifies promotion correctly", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -286,7 +224,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       });
     });
 
-    test('promotion notation is generated for advancing pieces', () => {
+    test("promotion notation is generated for advancing pieces", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -299,64 +237,70 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Game End Conditions', () => {
-    test('game not over at start', () => {
+  describe("Game End Conditions", () => {
+    test("game not over at start", () => {
       const board = CakeEngine.createInitialState();
       const result = CakeEngine.evaluateGameResult(board, PlayerColor.WHITE);
 
       expect(result).toBeNull();
     });
 
-    test('returns null when game is ongoing', () => {
+    test("returns null when game is ongoing", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
       if (moves.length > 0) {
         const newBoard = CakeEngine.applyMove(board, moves[0]);
-        const result = CakeEngine.evaluateGameResult(newBoard, PlayerColor.BLACK);
+        const result = CakeEngine.evaluateGameResult(
+          newBoard,
+          PlayerColor.BLACK,
+        );
 
         // After one move, game should still be ongoing
         expect(result === null || result !== null).toBe(true);
       }
     });
 
-    test('detects when player has no legal moves', () => {
+    test("detects when player has no legal moves", () => {
       // This would require setting up a specific board position
       // For now, test that evaluation doesn't crash
       const board = CakeEngine.createInitialState();
-      const movesWhite = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
+      const movesWhite = CakeEngine.generateLegalMoves(
+        board,
+        PlayerColor.WHITE,
+      );
 
       // White definitely has moves at start
       expect(movesWhite.length).toBeGreaterThan(0);
     });
   });
 
-  describe('Move Notation', () => {
-    test('generates notation for simple moves', () => {
+  describe("Move Notation", () => {
+    test("generates notation for simple moves", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
       moves.forEach((move) => {
         if (!move.isCapture()) {
           // Simple move notation: "from-to"
-          expect(move.notation).toContain('-');
+          expect(move.notation).toContain("-");
         }
       });
     });
 
-    test('generates notation for capture moves', () => {
+    test("generates notation for capture moves", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
       moves.forEach((move) => {
         if (move.isCapture()) {
           // Capture notation: "from x captured x to"
-          expect(move.notation).toContain('x');
+          expect(move.notation).toContain("x");
         }
       });
     });
 
-    test('all moves have valid notation', () => {
+    test("all moves have valid notation", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -369,23 +313,23 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Game Instances', () => {
-    test('creates game instance with correct properties', () => {
+  describe("Game Instances", () => {
+    test("creates game instance with correct properties", () => {
       const game = CakeEngine.createGame(
-        'game-1',
-        'white-player',
-        'black-player',
+        "game-1",
+        "white-player",
+        "black-player",
         GameType.CASUAL,
       );
 
       expect(game).toBeDefined();
-      expect(game.id).toBe('game-1');
+      expect(game.id).toBe("game-1");
     });
 
-    test('creates game with null black player for AI games', () => {
+    test("creates game with null black player for AI games", () => {
       const game = CakeEngine.createGame(
-        'game-2',
-        'white-player',
+        "game-2",
+        "white-player",
         null,
         GameType.CASUAL,
       );
@@ -394,26 +338,26 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Value Objects', () => {
-    test('creates valid position value object', () => {
+  describe("Value Objects", () => {
+    test("creates valid position value object", () => {
       const pos = CakeEngine.createPosition(1);
       expect(pos).toBeDefined();
     });
 
-    test('position value object validates range', () => {
+    test("position value object validates range", () => {
       // Valid positions
       expect(() => CakeEngine.createPosition(1)).not.toThrow();
       expect(() => CakeEngine.createPosition(32)).not.toThrow();
       expect(() => CakeEngine.createPosition(16)).not.toThrow();
     });
 
-    test('creates valid move value object', () => {
+    test("creates valid move value object", () => {
       const from = CakeEngine.createPosition(10);
       const to = CakeEngine.createPosition(14);
 
       const move = CakeEngine.createMove(
-        'move-1',
-        'game-1',
+        "move-1",
+        "game-1",
         1,
         PlayerColor.WHITE,
         from,
@@ -427,14 +371,14 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(move.to).toBeDefined();
     });
 
-    test('move with captures', () => {
+    test("move with captures", () => {
       const from = CakeEngine.createPosition(10);
       const to = CakeEngine.createPosition(18);
       const captured = [CakeEngine.createPosition(14)];
 
       const move = CakeEngine.createMove(
-        'move-2',
-        'game-1',
+        "move-2",
+        "game-1",
         1,
         PlayerColor.WHITE,
         from,
@@ -448,14 +392,15 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Move Sequence Simulation', () => {
-    test('simulates sequence of moves without error', () => {
+  describe("Move Sequence Simulation", () => {
+    test("simulates sequence of moves without error", () => {
       let board = CakeEngine.createInitialState();
       let moveCount = 0;
       const maxMoves = 50; // Prevent infinite loops
 
       while (moveCount < maxMoves) {
-        const player = moveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+        const player =
+          moveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
         const moves = CakeEngine.generateLegalMoves(board, player);
 
         if (moves.length === 0) {
@@ -470,7 +415,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(moveCount).toBeGreaterThan(0);
     });
 
-    test('alternates players correctly in move sequence', () => {
+    test("alternates players correctly in move sequence", () => {
       let board = CakeEngine.createInitialState();
       let currentPlayer = PlayerColor.WHITE;
       let moveCount = 0;
@@ -498,8 +443,8 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Determinism', () => {
-    test('same position generates same moves', () => {
+  describe("Determinism", () => {
+    test("same position generates same moves", () => {
       const board1 = CakeEngine.createInitialState();
       const board2 = CakeEngine.createInitialState();
 
@@ -515,7 +460,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(notations1).toEqual(notations2);
     });
 
-    test('deterministic move application', () => {
+    test("deterministic move application", () => {
       const board1 = CakeEngine.createInitialState();
       const board2 = CakeEngine.createInitialState();
 
@@ -534,8 +479,8 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Edge Cases', () => {
-    test('handles valid move application', () => {
+  describe("Edge Cases", () => {
+    test("handles valid move application", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -546,7 +491,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       }
     });
 
-    test('both players have moves at start', () => {
+    test("both players have moves at start", () => {
       const board = CakeEngine.createInitialState();
 
       // Generate moves for both colors
@@ -563,7 +508,7 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(whiteMoves.length + blackMoves.length).toBeGreaterThan(0);
     });
 
-    test('board dimensions are correct', () => {
+    test("board dimensions are correct", () => {
       const board = CakeEngine.createInitialState();
       const allPieces = board.getAllPieces();
 
@@ -576,8 +521,8 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
     });
   });
 
-  describe('Type Safety', () => {
-    test('move result has required properties', () => {
+  describe("Type Safety", () => {
+    test("move result has required properties", () => {
       const board = CakeEngine.createInitialState();
       const moves = CakeEngine.generateLegalMoves(board, PlayerColor.WHITE);
 
@@ -587,12 +532,12 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
         expect(move.to).toBeDefined();
         expect(move.player).toBeDefined();
         expect(Array.isArray(move.capturedSquares)).toBe(true);
-        expect(typeof move.isPromotion).toBe('boolean');
-        expect(typeof move.notation).toBe('string');
+        expect(typeof move.isPromotion).toBe("boolean");
+        expect(typeof move.notation).toBe("string");
       });
     });
 
-    test('board state has required properties', () => {
+    test("board state has required properties", () => {
       const board = CakeEngine.createInitialState();
       const allPieces = board.getAllPieces();
 
@@ -600,14 +545,14 @@ describe('CAKE Engine - Tanzania Drafti 8x8', () => {
       expect(allPieces.length).toBeGreaterThan(0);
     });
 
-    test('piece has required properties', () => {
+    test("piece has required properties", () => {
       const board = CakeEngine.createInitialState();
       const allPieces = board.getAllPieces();
 
       allPieces.forEach((piece) => {
         expect(piece.color).toBeDefined();
         expect(piece.position).toBeDefined();
-        expect(typeof piece.isKing()).toBe('boolean');
+        expect(typeof piece.isKing()).toBe("boolean");
       });
     });
   });
