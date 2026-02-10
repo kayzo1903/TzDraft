@@ -51,7 +51,7 @@ export class MoveValidationService {
         player,
       );
 
-      // STEP 5: Enforce mandatory capture
+      // STEP 5: Enforce mandatory capture (always when any capture exists)
       if (availableCaptures.length > 0) {
         return this.validateCaptureMove(
           board,
@@ -129,9 +129,19 @@ export class MoveValidationService {
     availableCaptures: any[],
   ): MoveResult {
     // Find if this capture is in the available captures
-    const matchingCapture = availableCaptures.find(
-      (capture) => capture.from.equals(from) && capture.to.equals(to),
-    );
+    const matchingCapture = availableCaptures.find((capture) => {
+      const matchesPath =
+        path.length === 0 ||
+        (capture.path.length === path.length &&
+          capture.path.every((pos: Position, idx: number) =>
+            pos.equals(path[idx]),
+          ));
+      return (
+        capture.from.equals(from) &&
+        capture.to.equals(to) &&
+        matchesPath
+      );
+    });
 
     if (!matchingCapture) {
       throw ValidationError.captureRequired();

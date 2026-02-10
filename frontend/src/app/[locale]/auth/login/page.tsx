@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
-import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
@@ -24,26 +24,8 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const { error: authError } = await signIn.email(
-        {
-          email,
-          password,
-          rememberMe,
-          callbackURL: "/",
-        },
-        {
-          onSuccess: () => {
-            router.push("/");
-          },
-          onError: (ctx) => {
-            setError(ctx.error.message || t("errors.invalidCredentials"));
-          },
-        },
-      );
-
-      if (authError) {
-        setError(authError.message || t("errors.invalidCredentials"));
-      }
+      await authClient.login({ identifier: email, password });
+      router.push("/");
     } catch {
       setError(t("errors.unexpected"));
     } finally {
@@ -55,10 +37,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await signIn.social({
-        provider: "google",
-        callbackURL: window.location.origin,
-      });
+      window.location.href = "http://localhost:3002/auth/google";
     } catch {
       setError(t("errors.googleFailed"));
       setIsLoading(false);
@@ -73,11 +52,7 @@ export default function LoginPage() {
       </div>
 
       <div className="space-y-4">
-        <GoogleAuthButton
-          label={t("google")}
-          onClick={handleGoogleSignIn}
-          disabled={isLoading}
-        />
+        <GoogleSignInButton text={t("google")} />
 
         <div className="relative flex items-center py-2">
           <div className="flex-grow border-t border-[#3d3d3d]" />

@@ -20,7 +20,12 @@ export declare class CaptureFindingService {
      * Recursively find capture sequences in a direction
      * Handles multi-capture by exploring all possible paths
      */
-    private findCaptureInDirection;
+    private findManCaptureInDirection;
+    /**
+     * Recursively find capture sequences for a flying king in a direction
+     * Kings can capture over distance and land on any empty square beyond
+     */
+    private findKingCaptureInDirection;
     /**
      * Check if a specific capture is valid
      */

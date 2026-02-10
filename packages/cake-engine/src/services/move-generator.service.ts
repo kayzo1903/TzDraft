@@ -35,7 +35,6 @@ export class MoveGeneratorService {
     const captures = this.captureFindingService.findAllCaptures(board, player);
 
     if (captures.length > 0) {
-      // Only capture moves are legal
       for (const capture of captures) {
         const currentMoveNumber = moveCount + 1;
         const notation = Move.generateNotation(
@@ -85,14 +84,19 @@ export class MoveGeneratorService {
     piece: Piece,
     moveCount: number = 0,
   ): Move[] {
-    // Check if captures are available for this piece
-    const captures = this.captureFindingService.findCapturesForPiece(
+    const allCaptures = this.captureFindingService.findAllCaptures(
       board,
-      piece,
+      piece.color,
+    );
+    const capturesForPiece = allCaptures.filter((capture) =>
+      capture.from.equals(piece.position),
     );
 
-    if (captures.length > 0) {
-      return captures.map((capture) => {
+    if (allCaptures.length > 0) {
+      if (capturesForPiece.length === 0) {
+        return [];
+      }
+      return capturesForPiece.map((capture) => {
         const currentMoveNumber = moveCount + 1;
         const notation = Move.generateNotation(
           capture.from,
@@ -114,7 +118,7 @@ export class MoveGeneratorService {
       });
     }
 
-    // Generate simple moves
+    // Generate simple moves when no captures anywhere
     return this.generateSimpleMovesForPiece(board, piece, moveCount);
   }
 
@@ -131,42 +135,75 @@ export class MoveGeneratorService {
     const directions = getValidDirections(piece);
 
     for (const dir of directions) {
-      const newRow = row + dir.row;
-      const newCol = col + dir.col;
+      if (piece.isKing()) {
+        let newRow = row + dir.row;
+        let newCol = col + dir.col;
 
-      // Check bounds
-      if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
-        continue;
-      }
+        while (newRow >= 0 && newRow <= 7 && newCol >= 0 && newCol <= 7) {
+          const targetPos = Position.fromRowCol(newRow, newCol);
 
-      // Check if it's a dark square
-      if ((newRow + newCol) % 2 === 0) {
-        continue;
-      }
+          if (!board.isEmpty(targetPos)) {
+            break;
+          }
 
-      const targetPos = Position.fromRowCol(newRow, newCol);
+          const currentMoveNumber = moveCount + 1;
+          const notation = Move.generateNotation(piece.position, targetPos, []);
 
-      // Check if square is empty
-      if (board.isEmpty(targetPos)) {
-        const currentMoveNumber = moveCount + 1;
-        const notation = Move.generateNotation(piece.position, targetPos, []);
+          const move = new Move(
+            this.generateMoveId(),
+            "temp-game-id",
+            currentMoveNumber,
+            piece.color,
+            piece.position,
+            targetPos,
+            [],
+            false,
+            notation,
+          );
 
-        const movedPiece = piece.moveTo(targetPos);
-        const isPromotion = movedPiece.shouldPromote();
+          moves.push(move);
 
-        const move = new Move(
-          this.generateMoveId(),
-          "temp-game-id",
-          currentMoveNumber,
-          piece.color,
-          piece.position,
-          targetPos,
-          [],
-          isPromotion,
-          notation,
-        );
+          newRow += dir.row;
+          newCol += dir.col;
+        }
+      } else {
+        const newRow = row + dir.row;
+        const newCol = col + dir.col;
 
-        moves.push(move);
+        // Check bounds
+        if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
+          continue;
+        }
+
+        // Check if it's a dark square
+        if ((newRow + newCol) % 2 === 0) {
+          continue;
+        }
+
+        const targetPos = Position.fromRowCol(newRow, newCol);
+
+        // Check if square is empty
+        if (board.isEmpty(targetPos)) {
+          const currentMoveNumber = moveCount + 1;
+          const notation = Move.generateNotation(piece.position, targetPos, []);
+
+          const movedPiece = piece.moveTo(targetPos);
+          const isPromotion = movedPiece.shouldPromote();
+
+          const move = new Move(
+            this.generateMoveId(),
+            "temp-game-id",
+            currentMoveNumber,
+            piece.color,
+            piece.position,
+            targetPos,
+            [],
+            isPromotion,
+            notation,
+          );
+
+          moves.push(move);
+        }
       }
     }
 

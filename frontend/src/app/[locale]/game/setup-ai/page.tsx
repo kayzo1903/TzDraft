@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth/auth-store";
-import { gameService } from "@/services/game.service";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Loader2 } from "lucide-react";
@@ -15,15 +14,10 @@ export default function SetupAiPage() {
     const { user } = useAuthStore();
     const [selectedBot, setSelectedBot] = useState(BOTS[0]);
     const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
-    const [selectedTime, setSelectedTime] = useState<5 | 10 | 15>(10);
+    const [selectedTime, setSelectedTime] = useState<0 | 5 | 10 | 15>(10);
     const [loading, setLoading] = useState(false);
 
-    const handleStartGame = async () => {
-        if (!user) {
-            router.push("/auth/login?redirect=/game/setup-ai");
-            return;
-        }
-
+        const handleStartGame = async () => {
         setLoading(true);
         try {
             let finalColor = selectedColor;
@@ -31,19 +25,10 @@ export default function SetupAiPage() {
                 finalColor = Math.random() < 0.5 ? "WHITE" : "BLACK";
             }
 
-            const game = await gameService.createPvEGame({
-                playerId: user.id,
-                playerColor: finalColor as "WHITE" | "BLACK",
-                playerElo: typeof user.rating === 'object' ? (user.rating as any).rating : (user.rating || 1200),
-                aiLevel: selectedBot.level,
-                initialTimeMs: selectedTime * 60 * 1000,
-            });
-
-            if (game && game.data && game.data.id) {
-                router.push(`/game/${game.data.id}`);
-            } else {
-                console.error("Invalid game response", game);
-            }
+            const timeSeconds = selectedTime === 0 ? 0 : selectedTime * 60;
+            router.push(
+                `/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`,
+            );
         } catch (error) {
             console.error("Failed to create game:", error);
         } finally {
@@ -92,7 +77,7 @@ export default function SetupAiPage() {
                         <div className="space-y-4">
                             <h2 className="text-xl font-semibold">Select Time</h2>
                             <div className="flex gap-4">
-                                {[5, 10, 15].map((time) => (
+                                {[0, 5, 10, 15].map((time) => (
                                     <button
                                         key={time}
                                         onClick={() => setSelectedTime(time as any)}
@@ -105,7 +90,9 @@ export default function SetupAiPage() {
                                             }
                                         `}
                                     >
-                                        <span className="text-xl font-bold">{time} min</span>
+                                        <span className="text-xl font-bold">
+                                            {time === 0 ? "No time" : `${time} min`}
+                                        </span>
                                     </button>
                                 ))}
                             </div>

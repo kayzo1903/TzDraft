@@ -12,11 +12,24 @@ interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     pieces?: BoardState;
     onMove?: (from: number, to: number) => void;
     readOnly?: boolean;
+    legalMoves?: Record<number, number[]>;
+    forcedPieces?: number[];
+    onInvalidSelect?: () => void;
 }
 
-export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, readOnly = false, className, ...props }) => {
+export const Board: React.FC<BoardProps> = ({
+    pieces: externalPieces,
+    onMove,
+    readOnly = false,
+    legalMoves,
+    forcedPieces = [],
+    onInvalidSelect,
+    className,
+    ...props
+}) => {
     // Temporary state for demonstration/MVP
     const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
+    const [isShaking, setIsShaking] = useState(false);
 
     // Helper to determine square color
     const isDarkSquare = (index: number) => {
@@ -55,6 +68,12 @@ export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, re
         } else {
             // Select piece
             // In real app, check if square has a piece
+            const piece = getPiece(index);
+            if (piece && forcedPieces.length > 0 && !forcedPieces.includes(index)) {
+                onInvalidSelect?.();
+                setIsShaking(true);
+                return;
+            }
             setSelectedSquare(index);
         }
     };
@@ -63,12 +82,11 @@ export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, re
         const isDark = isDarkSquare(i);
         const piece = getPiece(i);
         const isSelected = selectedSquare === i;
-
-        // Tailwind custom colors from globals.css
-        // We use utility classes that map to the CSS variables if setup, 
-        // or we can use arbitrary values referencing the variables.
-        // Since we defined --board-light and --board-dark in :root, 
-        // we can use `bg-[var(--board-light)]` style.
+        const isForcedPiece = forcedPieces.includes(i);
+        const isLegalTarget =
+            selectedSquare !== null &&
+            isDark &&
+            (legalMoves?.[selectedSquare]?.includes(i) ?? false);
 
         return (
             <div
@@ -89,26 +107,87 @@ export const Board: React.FC<BoardProps> = ({ pieces: externalPieces, onMove, re
                     <div className="absolute inset-0 bg-yellow-400/50 pointer-events-none" />
                 )}
 
-                {/* Piece */}
-                {piece && (
-                    <div className="w-full h-full p-1 cursor-pointer">
-                        <Piece color={piece.color} isSelected={isSelected} />
+                {/* Highlight legal target squares */}
+                {isLegalTarget && (
+                    <div className="absolute inset-0 bg-emerald-400/40 ring-2 ring-emerald-300 pointer-events-none" />
+                )}
+
+                {/* Mandatory capture highlight */}
+                {piece && isForcedPiece && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-[80%] h-[80%] rounded-full ring-2 ring-orange-300/80 shadow-[0_0_12px_rgba(251,146,60,0.65)] animate-pulse" />
                     </div>
                 )}
             </div>
         );
     };
 
+    const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
     return (
         <div
             className={clsx(
-                "w-full max-w-[600px] mx-auto aspect-square bg-[#2B2B2B] p-2 rounded-lg shadow-xl ring-1 ring-white/10",
+                "w-full max-w-[600px] mx-auto bg-[#2B2B2B] p-2 rounded-lg shadow-xl ring-1 ring-white/10",
+                isShaking && "board-shake",
                 className
             )}
+            onAnimationEnd={() => setIsShaking(false)}
             {...props}
         >
-            <div className="w-full h-full grid grid-cols-8 grid-rows-8 border-2 border-[#B58863]">
-                {Array.from({ length: 64 }).map((_, i) => renderSquare(i))}
+            <div className="grid grid-cols-[20px_1fr] grid-rows-[1fr_20px] gap-1">
+                <div className="grid grid-rows-8">
+                    {ranks.map((rank) => (
+                        <div
+                            key={rank}
+                            className="flex items-center justify-center text-[10px] text-neutral-300 font-semibold"
+                        >
+                            {rank}
+                        </div>
+                    ))}
+                </div>
+                <div className="w-full aspect-square relative border-2 border-[#B58863]">
+                    <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
+                        {Array.from({ length: 64 }).map((_, i) => renderSquare(i))}
+                    </div>
+                    <div className="absolute inset-0 pointer-events-none">
+                        {externalPieces &&
+                            Object.entries(externalPieces).map(([key, piece]) => {
+                                const index = Number(key);
+                                const row = Math.floor(index / 8);
+                                const col = index % 8;
+                                return (
+                                    <div
+                                        key={key}
+                                        className="absolute flex items-center justify-center transition-all duration-300 ease-out"
+                                        style={{
+                                            left: `${col * 12.5}%`,
+                                            top: `${row * 12.5}%`,
+                                            width: "12.5%",
+                                            height: "12.5%",
+                                        }}
+                                    >
+                                        <Piece
+                                            color={piece.color}
+                                            isKing={piece.isKing}
+                                            isSelected={selectedSquare === index}
+                                        />
+                                    </div>
+                                );
+                            })}
+                    </div>
+                </div>
+                <div />
+                <div className="grid grid-cols-8">
+                    {files.map((file) => (
+                        <div
+                            key={file}
+                            className="flex items-center justify-center text-[10px] text-neutral-300 font-semibold"
+                        >
+                            {file}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

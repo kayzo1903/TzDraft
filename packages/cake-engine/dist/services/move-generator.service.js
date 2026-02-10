@@ -28,7 +28,6 @@ export class MoveGeneratorService {
         // Check for captures first (mandatory)
         const captures = this.captureFindingService.findAllCaptures(board, player);
         if (captures.length > 0) {
-            // Only capture moves are legal
             for (const capture of captures) {
                 const currentMoveNumber = moveCount + 1;
                 const notation = Move.generateNotation(capture.from, capture.to, capture.capturedSquares);
@@ -50,16 +49,19 @@ export class MoveGeneratorService {
      * Generate all moves for a specific piece
      */
     generateMovesForPiece(board, piece, moveCount = 0) {
-        // Check if captures are available for this piece
-        const captures = this.captureFindingService.findCapturesForPiece(board, piece);
-        if (captures.length > 0) {
-            return captures.map((capture) => {
+        const allCaptures = this.captureFindingService.findAllCaptures(board, piece.color);
+        const capturesForPiece = allCaptures.filter((capture) => capture.from.equals(piece.position));
+        if (allCaptures.length > 0) {
+            if (capturesForPiece.length === 0) {
+                return [];
+            }
+            return capturesForPiece.map((capture) => {
                 const currentMoveNumber = moveCount + 1;
                 const notation = Move.generateNotation(capture.from, capture.to, capture.capturedSquares);
                 return new Move(this.generateMoveId(), "temp-game-id", currentMoveNumber, piece.color, capture.from, capture.to, capture.capturedSquares, capture.isPromotion, notation);
             });
         }
-        // Generate simple moves
+        // Generate simple moves when no captures anywhere
         return this.generateSimpleMovesForPiece(board, piece, moveCount);
     }
     /**
@@ -70,25 +72,43 @@ export class MoveGeneratorService {
         const { row, col } = piece.position.toRowCol();
         const directions = getValidDirections(piece);
         for (const dir of directions) {
-            const newRow = row + dir.row;
-            const newCol = col + dir.col;
-            // Check bounds
-            if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
-                continue;
+            if (piece.isKing()) {
+                let newRow = row + dir.row;
+                let newCol = col + dir.col;
+                while (newRow >= 0 && newRow <= 7 && newCol >= 0 && newCol <= 7) {
+                    const targetPos = Position.fromRowCol(newRow, newCol);
+                    if (!board.isEmpty(targetPos)) {
+                        break;
+                    }
+                    const currentMoveNumber = moveCount + 1;
+                    const notation = Move.generateNotation(piece.position, targetPos, []);
+                    const move = new Move(this.generateMoveId(), "temp-game-id", currentMoveNumber, piece.color, piece.position, targetPos, [], false, notation);
+                    moves.push(move);
+                    newRow += dir.row;
+                    newCol += dir.col;
+                }
             }
-            // Check if it's a dark square
-            if ((newRow + newCol) % 2 === 0) {
-                continue;
-            }
-            const targetPos = Position.fromRowCol(newRow, newCol);
-            // Check if square is empty
-            if (board.isEmpty(targetPos)) {
-                const currentMoveNumber = moveCount + 1;
-                const notation = Move.generateNotation(piece.position, targetPos, []);
-                const movedPiece = piece.moveTo(targetPos);
-                const isPromotion = movedPiece.shouldPromote();
-                const move = new Move(this.generateMoveId(), "temp-game-id", currentMoveNumber, piece.color, piece.position, targetPos, [], isPromotion, notation);
-                moves.push(move);
+            else {
+                const newRow = row + dir.row;
+                const newCol = col + dir.col;
+                // Check bounds
+                if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
+                    continue;
+                }
+                // Check if it's a dark square
+                if ((newRow + newCol) % 2 === 0) {
+                    continue;
+                }
+                const targetPos = Position.fromRowCol(newRow, newCol);
+                // Check if square is empty
+                if (board.isEmpty(targetPos)) {
+                    const currentMoveNumber = moveCount + 1;
+                    const notation = Move.generateNotation(piece.position, targetPos, []);
+                    const movedPiece = piece.moveTo(targetPos);
+                    const isPromotion = movedPiece.shouldPromote();
+                    const move = new Move(this.generateMoveId(), "temp-game-id", currentMoveNumber, piece.color, piece.position, targetPos, [], isPromotion, notation);
+                    moves.push(move);
+                }
             }
         }
         return moves;

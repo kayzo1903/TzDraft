@@ -19,7 +19,6 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected }) => {
                 'flex items-center justify-center relative'
             )}
         >
-            {/* Inner detailing for 3D effect */}
             <div
                 className={clsx(
                     'w-[70%] h-[70%] rounded-full border',
@@ -27,10 +26,23 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected }) => {
                 )}
             />
 
-            {/* King Indicator */}
             {isKing && (
-                <div className="absolute inset-0 flex items-center justify-center text-2xl">
-                    👑
+                <div className="absolute inset-0 flex items-center justify-center -translate-y-1.5">
+                    <svg
+                        viewBox="0 0 24 24"
+                        className={clsx(
+                            'w-10 h-10',
+                            color === 'WHITE'
+                                ? 'text-neutral-900'
+                                : 'text-neutral-100'
+                        )}
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M4 18h16l-1 3H5l-1-3zm1-8 3 4 4-6 4 6 3-4 1 7H4l1-7z"
+                            fill="currentColor"
+                        />
+                    </svg>
                 </div>
             )}
         </div>

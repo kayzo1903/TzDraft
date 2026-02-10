@@ -54,9 +54,10 @@ export class Piece {
 
     const { row } = this.position.toRowCol();
 
-    // White pieces promote on row 0, Black pieces promote on row 7
-    if (this.color === PlayerColor.WHITE && row === 0) return true;
-    if (this.color === PlayerColor.BLACK && row === 7) return true;
+    // White pieces start at top and move down; Black starts bottom and moves up
+    // Promotion happens on the opponent's back row
+    if (this.color === PlayerColor.WHITE && row === 7) return true;
+    if (this.color === PlayerColor.BLACK && row === 0) return true;
 
     return false;
   }

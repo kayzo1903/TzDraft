@@ -30,7 +30,7 @@ export class MoveValidationService {
             const piece = this.validatePieceOwnership(board, from, player);
             // STEP 4: Detect available captures
             const availableCaptures = this.captureFindingService.findAllCaptures(board, player);
-            // STEP 5: Enforce mandatory capture
+            // STEP 5: Enforce mandatory capture (always when any capture exists)
             if (availableCaptures.length > 0) {
                 return this.validateCaptureMove(board, moveCount, piece, from, to, path || [], availableCaptures);
             }
@@ -81,7 +81,14 @@ export class MoveValidationService {
      */
     validateCaptureMove(board, moveCount, piece, from, to, path, availableCaptures) {
         // Find if this capture is in the available captures
-        const matchingCapture = availableCaptures.find((capture) => capture.from.equals(from) && capture.to.equals(to));
+        const matchingCapture = availableCaptures.find((capture) => {
+            const matchesPath = path.length === 0 ||
+                (capture.path.length === path.length &&
+                    capture.path.every((pos, idx) => pos.equals(path[idx])));
+            return (capture.from.equals(from) &&
+                capture.to.equals(to) &&
+                matchesPath);
+        });
         if (!matchingCapture) {
             throw ValidationError.captureRequired();
         }

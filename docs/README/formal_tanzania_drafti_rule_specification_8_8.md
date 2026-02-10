@@ -45,6 +45,7 @@ This specification is the **single source of truth** for:
 - Rows: 1–8
 - Columns: A–H
 - Only dark-square coordinates are valid
+- UI displays ranks 1-8 and files A-H to describe moves clearly
 
 ---
 
@@ -58,8 +59,7 @@ This specification is the **single source of truth** for:
 ### 4.2 King
 
 - Created when a Man reaches the opponent’s back row
-- Can move diagonally **both forward and backward**
-- Can capture backward and forward
+- Kings are **flying**: they can move diagonally **any number of squares**\r\n- Kings can capture diagonally forward and backward over distance
 
 ---
 
@@ -80,7 +80,7 @@ This specification is the **single source of truth** for:
 
 ### 6.2 King Movement
 
-- Moves one square diagonally in any direction
+- Moves diagonally **any number of squares** in any direction (flying kings)
 
 ---
 
@@ -189,4 +189,6 @@ All implementations—human or computer—must comply strictly with this documen
 ---
 
 **This document is authoritative and binding for all Drafti gameplay systems.**
+
+
 
