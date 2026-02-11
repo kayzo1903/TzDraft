@@ -1,6 +1,8 @@
 import axiosInstance from "../axios";
 import { useAuthStore } from "./auth-store";
-import { RegisterData, LoginData, AuthResponse, OtpData } from "./types";
+import { RegisterData, LoginData, AuthResponse } from "./types";
+
+export type OtpPurpose = "signup" | "password_reset" | "verify_phone";
 
 export const authClient = {
   async register(data: RegisterData): Promise<AuthResponse> {
@@ -25,9 +27,11 @@ export const authClient = {
 
   async sendOTP(
     phoneNumber: string,
+    purpose: OtpPurpose = "signup",
   ): Promise<{ success: boolean; message: string }> {
     const response = await axiosInstance.post("/auth/send-otp", {
       phoneNumber,
+      purpose,
     });
     return response.data;
   },
@@ -35,10 +39,12 @@ export const authClient = {
   async verifyOTP(
     phoneNumber: string,
     code: string,
+    purpose: OtpPurpose = "signup",
   ): Promise<{ success: boolean; message: string }> {
     const response = await axiosInstance.post("/auth/verify-otp", {
       phoneNumber,
       code,
+      purpose,
     });
     return response.data;
   },

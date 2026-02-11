@@ -1,4 +1,6 @@
-import { IsString, Matches, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+
+export type OtpPurpose = 'signup' | 'password_reset' | 'verify_phone';
 
 export class SendOtpDto {
   @IsString()
@@ -6,6 +8,10 @@ export class SendOtpDto {
     message: 'Phone number must be a valid Tanzanian number',
   })
   phoneNumber: string;
+
+  @IsOptional()
+  @IsIn(['signup', 'password_reset', 'verify_phone'])
+  purpose?: OtpPurpose;
 }
 
 export class VerifyOtpDto {
@@ -19,6 +25,10 @@ export class VerifyOtpDto {
     message: 'OTP code must be 6 digits',
   })
   code: string;
+
+  @IsOptional()
+  @IsIn(['signup', 'password_reset', 'verify_phone'])
+  purpose?: OtpPurpose;
 }
 
 export class ResetPasswordPhoneDto {

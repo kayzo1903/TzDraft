@@ -49,6 +49,25 @@ export class AuthService {
       );
     }
 
+    // Ensure phone number was verified via OTP before creating account
+    const verifiedOtp = await this.prisma.otpCode.findFirst({
+      where: {
+        phoneNumber,
+        verified: true,
+        expiresAt: { gt: new Date() },
+        createdAt: {
+          gt: new Date(Date.now() - 15 * 60 * 1000),
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!verifiedOtp) {
+      throw new BadRequestException(
+        'Phone number must be verified before creating an account',
+      );
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
@@ -60,6 +79,7 @@ export class AuthService {
         username: dto.username,
         displayName: dto.displayName || dto.username,
         passwordHash: hashedPassword,
+        isVerified: true,
         country: dto.country,
         region: dto.region,
         rating: {
@@ -73,8 +93,10 @@ export class AuthService {
       },
     });
 
-    // Phone verification will be handled separately via OTP
-    // No email verification token needed for now
+    // Delete OTP to prevent reuse
+    await this.prisma.otpCode.delete({
+      where: { id: verifiedOtp.id },
+    });
 
     // Generate tokens
     const { accessToken, refreshToken } = await this.generateTokens(user.id);
@@ -134,17 +156,29 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    // Policy: accounts that authenticate with a real phone number are treated as verified.
+    // OAuth placeholder phone numbers (e.g. "oauth_*") are treated as having no phone and are not verified.
+    const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
+    let isVerified = user.isVerified;
+    if (hasRealPhoneNumber && !user.isVerified) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true },
+      });
+      isVerified = true;
+    }
+
     // Generate tokens
     const { accessToken, refreshToken } = await this.generateTokens(user.id);
 
     return {
       user: {
         id: user.id,
-        phoneNumber: user.phoneNumber,
+        phoneNumber: hasRealPhoneNumber ? user.phoneNumber : '',
         email: user.email ?? undefined,
         username: user.username,
         displayName: user.displayName,
-        isVerified: user.isVerified,
+        isVerified: hasRealPhoneNumber ? true : false,
         rating: user.rating?.rating || 1200,
       },
       accessToken,
@@ -330,6 +364,15 @@ export class AuthService {
     });
 
     if (user) {
+      // Ensure non-real-phone OAuth accounts are never treated as verified.
+      if (!user.phoneNumber.startsWith('+255') && user.isVerified) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { isVerified: false },
+          include: { rating: true },
+        });
+      }
+
       // User exists, update googleId if not already set
       if (!user.googleId) {
         user = await this.prisma.user.update({
@@ -357,7 +400,7 @@ export class AuthService {
         googleId: profile.googleId,
         oauthProvider: profile.oauthProvider,
         phoneNumber: `oauth_${profile.googleId}`, // Placeholder since phoneNumber is required
-        isVerified: true,
+        isVerified: false,
         passwordHash: null,
         rating: {
           create: {

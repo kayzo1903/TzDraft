@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
         setLoading(true);
 
         try {
-            await authClient.sendOTP(phone);
+            await authClient.sendOTP(phone, 'password_reset');
             setStep('otp');
         } catch (err: any) {
             setError(err.response?.data?.message || t('errors.serverError'));
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
         setLoading(true);
 
         try {
-            await authClient.verifyOTP(phone, otp);
+            await authClient.verifyOTP(phone, otp, 'password_reset');
             // On success, redirect to reset password page with phone and code
             router.push(`/auth/reset-password?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(otp)}`);
         } catch (err: any) {

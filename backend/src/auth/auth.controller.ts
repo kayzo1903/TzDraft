@@ -6,12 +6,15 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
+  UnauthorizedException,
   Res,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
+import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import {
   RegisterDto,
   LoginDto,
@@ -30,6 +33,34 @@ export class AuthController {
     private otpService: OtpService,
   ) {}
 
+  private getCookie(req: Request, name: string): string | undefined {
+    const raw = req.headers.cookie;
+    if (!raw) return undefined;
+
+    const parts = raw.split(';');
+    for (const part of parts) {
+      const [key, ...rest] = part.trim().split('=');
+      if (key === name) {
+        return rest.join('=');
+      }
+    }
+
+    return undefined;
+  }
+
+  private getCookieOptions() {
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieDomain = process.env.COOKIE_DOMAIN;
+
+    return {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax' as const,
+      path: '/',
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    };
+  }
+
   @Public()
   @Post('register')
   async register(@Body() dto: RegisterDto) {
@@ -47,22 +78,41 @@ export class AuthController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   async sendOtp(@Body() dto: SendOtpDto) {
-    return this.otpService.sendOTP(dto.phoneNumber);
+    return this.otpService.sendOTP(dto.phoneNumber, dto.purpose);
   }
 
   @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpDto) {
-    await this.otpService.verifyOTP(dto.phoneNumber, dto.code);
+    await this.otpService.verifyOTP(dto.phoneNumber, dto.code, dto.purpose);
     return { success: true, message: 'Phone number verified successfully' };
   }
 
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body('refreshToken') refreshToken: string) {
-    return this.authService.refreshTokens(refreshToken);
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body('refreshToken') refreshToken?: string,
+  ) {
+    const tokenFromCookie = this.getCookie(req, 'refreshToken');
+    const token = refreshToken || tokenFromCookie;
+
+    if (!token) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const next = await this.authService.refreshTokens(token);
+
+    // Smooth OAuth flow: allow refresh via httpOnly cookie (cross-subdomain).
+    // Also set access token cookie so cookie-auth can work without localStorage if desired.
+    const opts = this.getCookieOptions();
+    res.cookie('accessToken', next.accessToken, opts);
+    res.cookie('refreshToken', next.refreshToken, opts);
+
+    return next;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -71,8 +121,18 @@ export class AuthController {
   async logout(
     @CurrentUser() user: any,
     @Body('refreshToken') refreshToken: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.logout(user.id, refreshToken);
+    const tokenFromCookie = this.getCookie(req, 'refreshToken');
+    const token = refreshToken || tokenFromCookie;
+    if (token) {
+      await this.authService.logout(user.id, token);
+    }
+
+    const opts = this.getCookieOptions();
+    res.clearCookie('accessToken', opts);
+    res.clearCookie('refreshToken', opts);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -114,24 +174,31 @@ export class AuthController {
 
   @Public()
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleOAuthGuard)
   async googleAuth() {
     // Initiates Google OAuth flow
   }
 
   @Public()
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleOAuthGuard)
   async googleAuthCallback(@CurrentUser() user: any, @Res() res: Response) {
-    // Generate JWT tokens for the OAuth user
-    const { accessToken, refreshToken } = await this.authService.generateTokens(
-      user.id,
-    );
-
-    // Redirect to frontend with tokens
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${frontendUrl}/auth/oauth-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`;
+    const redirectUrl = `${frontendUrl}/auth/oauth-callback`;
 
-    return res.redirect(redirectUrl);
+    try {
+      // Generate JWT tokens for the OAuth user.
+      const { accessToken, refreshToken } =
+        await this.authService.generateTokens(user.id);
+
+      // Production-friendly: store tokens in httpOnly cookies and redirect to frontend.
+      const opts = this.getCookieOptions();
+      res.cookie('accessToken', accessToken, opts);
+      res.cookie('refreshToken', refreshToken, opts);
+
+      return res.redirect(redirectUrl);
+    } catch {
+      return res.redirect(`${frontendUrl}/auth/login?error=google_failed`);
+    }
   }
 }

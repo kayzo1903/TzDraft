@@ -14,9 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
-const passport_1 = require("@nestjs/passport");
 const auth_service_1 = require("./auth.service");
 const otp_service_1 = require("./otp.service");
+const google_oauth_guard_1 = require("./guards/google-oauth.guard");
 const dto_1 = require("./dto");
 const public_decorator_1 = require("./decorators/public.decorator");
 const current_user_decorator_1 = require("./decorators/current-user.decorator");
@@ -28,6 +28,30 @@ let AuthController = class AuthController {
         this.authService = authService;
         this.otpService = otpService;
     }
+    getCookie(req, name) {
+        const raw = req.headers.cookie;
+        if (!raw)
+            return undefined;
+        const parts = raw.split(';');
+        for (const part of parts) {
+            const [key, ...rest] = part.trim().split('=');
+            if (key === name) {
+                return rest.join('=');
+            }
+        }
+        return undefined;
+    }
+    getCookieOptions() {
+        const isProd = process.env.NODE_ENV === 'production';
+        const cookieDomain = process.env.COOKIE_DOMAIN;
+        return {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: 'lax',
+            path: '/',
+            ...(cookieDomain ? { domain: cookieDomain } : {}),
+        };
+    }
     async register(dto) {
         return this.authService.register(dto);
     }
@@ -35,17 +59,33 @@ let AuthController = class AuthController {
         return this.authService.login(dto);
     }
     async sendOtp(dto) {
-        return this.otpService.sendOTP(dto.phoneNumber);
+        return this.otpService.sendOTP(dto.phoneNumber, dto.purpose);
     }
     async verifyOtp(dto) {
-        await this.otpService.verifyOTP(dto.phoneNumber, dto.code);
+        await this.otpService.verifyOTP(dto.phoneNumber, dto.code, dto.purpose);
         return { success: true, message: 'Phone number verified successfully' };
     }
-    async refresh(refreshToken) {
-        return this.authService.refreshTokens(refreshToken);
+    async refresh(req, res, refreshToken) {
+        const tokenFromCookie = this.getCookie(req, 'refreshToken');
+        const token = refreshToken || tokenFromCookie;
+        if (!token) {
+            throw new common_1.UnauthorizedException('Missing refresh token');
+        }
+        const next = await this.authService.refreshTokens(token);
+        const opts = this.getCookieOptions();
+        res.cookie('accessToken', next.accessToken, opts);
+        res.cookie('refreshToken', next.refreshToken, opts);
+        return next;
     }
-    async logout(user, refreshToken) {
-        await this.authService.logout(user.id, refreshToken);
+    async logout(user, refreshToken, req, res) {
+        const tokenFromCookie = this.getCookie(req, 'refreshToken');
+        const token = refreshToken || tokenFromCookie;
+        if (token) {
+            await this.authService.logout(user.id, token);
+        }
+        const opts = this.getCookieOptions();
+        res.clearCookie('accessToken', opts);
+        res.clearCookie('refreshToken', opts);
     }
     async getCurrentUser(user) {
         return user;
@@ -65,10 +105,18 @@ let AuthController = class AuthController {
     async googleAuth() {
     }
     async googleAuthCallback(user, res) {
-        const { accessToken, refreshToken } = await this.authService.generateTokens(user.id);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const redirectUrl = `${frontendUrl}/auth/oauth-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`;
-        return res.redirect(redirectUrl);
+        const redirectUrl = `${frontendUrl}/auth/oauth-callback`;
+        try {
+            const { accessToken, refreshToken } = await this.authService.generateTokens(user.id);
+            const opts = this.getCookieOptions();
+            res.cookie('accessToken', accessToken, opts);
+            res.cookie('refreshToken', refreshToken, opts);
+            return res.redirect(redirectUrl);
+        }
+        catch {
+            return res.redirect(`${frontendUrl}/auth/login?error=google_failed`);
+        }
     }
 };
 exports.AuthController = AuthController;
@@ -111,9 +159,11 @@ __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Post)('refresh'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Body)('refreshToken')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(2, (0, common_1.Body)('refreshToken')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
 __decorate([
@@ -122,8 +172,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)('refreshToken')),
+    __param(2, (0, common_1.Req)()),
+    __param(3, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
 __decorate([
@@ -170,7 +222,7 @@ __decorate([
 __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Get)('google'),
-    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('google')),
+    (0, common_1.UseGuards)(google_oauth_guard_1.GoogleOAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
@@ -178,7 +230,7 @@ __decorate([
 __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Get)('google/callback'),
-    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('google')),
+    (0, common_1.UseGuards)(google_oauth_guard_1.GoogleOAuthGuard),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Res)()),
     __metadata("design:type", Function),

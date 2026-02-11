@@ -87,6 +87,8 @@
     "errors": {
       "passwordMismatch": "Nenosiri hazilingani",
       "invalidCredentials": "Taarifa za kuingia si sahihi",
+      "unexpected": "Kuna hitilafu. Tafadhali jaribu tena.",
+      "googleFailed": "Imeshindikana kuingia kwa Google. Tafadhali jaribu tena.",
       "otpFailed": "Imeshindwa kutuma msimbo. Tafadhali jaribu tena.",
       "otpInvalid": "Msimbo si sahihi. Tafadhali jaribu tena.",
       "registrationFailed": "Usajili umeshindwa. Tafadhali jaribu tena.",
@@ -298,6 +300,107 @@
       "playAgain": "Cheza Tena",
       "nextBot": "AI inayofuata",
       "endGame": "Maliza Mchezo"
+    }
+  },
+  "profile": {
+    "verified": "Imethibitishwa",
+    "notVerified": "Haijathibitishwa",
+    "ratingInline": "Rating: {rating}",
+    "actions": {
+      "settings": "Mipangilio",
+      "signOut": "Toka",
+      "playOnline": "Cheza mtandaoni",
+      "playAi": "Cheza dhidi ya AI",
+      "rules": "Sheria",
+      "support": "Msaada"
+    },
+    "signedOut": {
+      "title": "Wasifu",
+      "subtitle": "Ingia ili kuona taarifa za akaunti na rating yako.",
+      "actions": {
+        "login": "Ingia",
+        "signup": "Fungua akaunti",
+        "play": "Cheza sasa"
+      }
+    },
+    "sections": {
+      "account": "Akaunti",
+      "performance": "Uchezaji",
+      "quickActions": "Vitendo vya haraka",
+      "tips": "Vidokezo"
+    },
+    "fields": {
+      "displayName": "Jina la kuonyesha",
+      "username": "Jina la mtumiaji",
+      "phone": "Simu",
+      "email": "Barua pepe",
+      "userId": "ID ya mtumiaji"
+    },
+    "stats": {
+      "rating": "Rating",
+      "games": "Michezo iliyochezwa",
+      "wins": "Ushindi",
+      "losses": "Kushindwa",
+      "note": "Takwimu zaidi (sare, mfululizo, historia ya mechi) zitaonekana hapa kadri zinavyopatikana."
+    },
+    "tips": {
+      "one": "Cheza dhidi ya AI kujifunza ufunguzi na ulaji.",
+      "two": "Soma sheria kujua ulaji wa lazima na mwendo wa mfalme.",
+      "three": "Tumia Msaada ukikwama kwenye akaunti au mchezo."
+    }
+  },
+  "settings": {
+    "title": "Mipangilio",
+    "subtitle": "Njia za haraka na mapendeleo ya {name}.",
+    "actions": {
+      "viewProfile": "Fungua wasifu",
+      "signOut": "Toka"
+    },
+    "signedOut": {
+      "title": "Mipangilio",
+      "subtitle": "Ingia ili kusimamia mapendeleo na njia za akaunti.",
+      "actions": {
+        "login": "Ingia",
+        "signup": "Fungua akaunti",
+        "support": "Msaada"
+      }
+    },
+    "sections": {
+      "preferences": "Mapendeleo",
+      "security": "Usalama",
+      "account": "Akaunti",
+      "legal": "Sera"
+    },
+    "language": {
+      "title": "Lugha",
+      "subtitle": "Badili kati ya Kiingereza na Kiswahili.",
+      "action": "Sasa: {locale} (badilisha)"
+    },
+    "security": {
+      "password": {
+        "title": "Nenosiri",
+        "subtitle": "Weka upya nenosiri kwa uthibitisho wa simu.",
+        "action": "Weka upya"
+      },
+      "status": {
+        "title": "Hali ya akaunti",
+        "subtitle": "Uthibitisho hulinda akaunti yako.",
+        "verified": "Imethibitishwa",
+        "notVerified": "Haijathibitishwa"
+      }
+    },
+    "account": {
+      "username": "Jina la mtumiaji",
+      "phone": "Simu",
+      "email": "Barua pepe",
+      "actions": {
+        "contactSupport": "Wasiliana na msaada",
+        "openProfile": "Fungua wasifu"
+      }
+    },
+    "legal": {
+      "policy": "Faragha na sera",
+      "rules": "Sheria za mchezo"
     }
   }
 }

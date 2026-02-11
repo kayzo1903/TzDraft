@@ -14,14 +14,21 @@ export default function OAuthCallbackPage() {
     useEffect(() => {
         const handleCallback = async () => {
             try {
-                const accessToken = searchParams.get("accessToken");
-                const refreshToken = searchParams.get("refreshToken");
+                // Preferred flow: backend set httpOnly cookies and we exchange them for tokens here.
+                // Backward-compatible: still supports query tokens if present.
+                let accessToken = searchParams.get("accessToken");
+                let refreshToken = searchParams.get("refreshToken");
+
+                if (!accessToken || !refreshToken) {
+                    const refreshed = await axiosInstance.post("/auth/refresh", {});
+                    accessToken = refreshed.data.accessToken;
+                    refreshToken = refreshed.data.refreshToken;
+                }
 
                 if (!accessToken || !refreshToken) {
                     throw new Error("Missing authentication tokens");
                 }
 
-                // Store tokens
                 localStorage.setItem("accessToken", accessToken);
                 localStorage.setItem("refreshToken", refreshToken);
 

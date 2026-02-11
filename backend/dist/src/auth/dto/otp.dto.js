@@ -13,6 +13,7 @@ exports.ResetPasswordPhoneDto = exports.VerifyOtpDto = exports.SendOtpDto = void
 const class_validator_1 = require("class-validator");
 class SendOtpDto {
     phoneNumber;
+    purpose;
 }
 exports.SendOtpDto = SendOtpDto;
 __decorate([
@@ -22,9 +23,15 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], SendOtpDto.prototype, "phoneNumber", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['signup', 'password_reset', 'verify_phone']),
+    __metadata("design:type", String)
+], SendOtpDto.prototype, "purpose", void 0);
 class VerifyOtpDto {
     phoneNumber;
     code;
+    purpose;
 }
 exports.VerifyOtpDto = VerifyOtpDto;
 __decorate([
@@ -40,6 +47,11 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], VerifyOtpDto.prototype, "code", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['signup', 'password_reset', 'verify_phone']),
+    __metadata("design:type", String)
+], VerifyOtpDto.prototype, "purpose", void 0);
 class ResetPasswordPhoneDto {
     phoneNumber;
     code;

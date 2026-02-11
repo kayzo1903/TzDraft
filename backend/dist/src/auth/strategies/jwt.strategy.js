@@ -35,6 +35,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             where: { id: payload.sub },
             select: {
                 id: true,
+                phoneNumber: true,
                 email: true,
                 username: true,
                 displayName: true,
@@ -42,7 +43,6 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
                 rating: {
                     select: {
                         rating: true,
-                        gamesPlayed: true,
                     },
                 },
             },
@@ -50,7 +50,22 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         if (!user) {
             throw new common_1.UnauthorizedException();
         }
-        return user;
+        const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
+        if (hasRealPhoneNumber && !user.isVerified) {
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: { isVerified: true },
+            });
+        }
+        return {
+            id: user.id,
+            phoneNumber: hasRealPhoneNumber ? user.phoneNumber : '',
+            email: user.email ?? undefined,
+            username: user.username,
+            displayName: user.displayName,
+            isVerified: hasRealPhoneNumber ? true : false,
+            rating: user.rating?.rating ?? 1200,
+        };
     }
 };
 exports.JwtStrategy = JwtStrategy;

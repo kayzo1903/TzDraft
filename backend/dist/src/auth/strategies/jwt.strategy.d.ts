@@ -12,14 +12,12 @@ export declare class JwtStrategy extends JwtStrategy_base {
         sub: string;
     }): Promise<{
         id: string;
-        email: string | null;
+        phoneNumber: string;
+        email: string | undefined;
         username: string;
         displayName: string;
         isVerified: boolean;
-        rating: {
-            rating: number;
-            gamesPlayed: number;
-        } | null;
+        rating: number;
     }>;
 }
 export {};

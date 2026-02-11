@@ -423,8 +423,8 @@ export default createMiddleware(routing);
 
 export const config = {
   // Match all pathnames except for
-  // - … if they start with `/api`, `/_next` or `/_vercel`
-  // - … the ones containing a dot (e.g. `favicon.ico`)
+  // - ... if they start with `/api`, `/_next` or `/_vercel`
+  // - ... the ones containing a dot (e.g. `favicon.ico`)
   matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
 };
 ```
@@ -690,7 +690,7 @@ async login(credentials: LoginDto) {
 
 1. **Create OAuth 2.0 Client ID**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Navigate to: APIs & Services → Credentials
+   - Navigate to: APIs & Services -> Credentials
    - Create OAuth 2.0 Client ID (Web application)
 
 2. **Configure Authorized Redirect URIs**
@@ -751,14 +751,14 @@ async login(credentials: LoginDto) {
 Add logging to track OAuth flow:
 
 ```typescript
-console.log("🔍 OAuth User:", {
+console.log("OAuth User:", {
   googleId: profile.googleId,
   email: profile.email,
   name: profile.name,
 });
 
-console.log("✅ User created/linked:", user.id);
-console.log("🎫 Tokens generated");
+console.log("User created/linked:", user.id);
+console.log("Tokens generated");
 ```
 
 ---
@@ -812,13 +812,27 @@ pnpm build
 
 This implementation provides:
 
-✅ **Secure OAuth2 flow** with Google  
-✅ **JWT-based session management**  
-✅ **Account linking** for existing users  
-✅ **Collision handling** for usernames/display names  
-✅ **Auto-verification** for OAuth users  
-✅ **Protection** against password login for OAuth accounts  
-✅ **Token refresh** mechanism  
-✅ **Production-ready** security practices
+- **Secure OAuth2 flow** with Google  
+- **JWT-based session management**  
+- **Account linking** for existing users  
+- **Collision handling** for usernames/display names  
+- **Auto-verification** for OAuth users  
+- **Protection** against password login for OAuth accounts  
+- **Token refresh** mechanism  
+- **Production-ready** security practices
 
 The system seamlessly integrates OAuth2 authentication with your existing JWT-based auth system, providing users with a smooth sign-in experience while maintaining security best practices.
+
+---
+
+## Addendum: Cookie Redirect Flow + Vercel
+
+This repo also supports a production-friendly variant where the backend callback:
+
+- sets `accessToken` / `refreshToken` as **httpOnly cookies**
+- redirects to the frontend **without tokens in the URL**
+- the frontend finishes sign-in by calling `POST /auth/refresh` and then `GET /auth/me`
+
+Full setup and Vercel deployment steps:
+
+- `docs/Auth_system/oauth2-cookie-vercel-deploy.md`

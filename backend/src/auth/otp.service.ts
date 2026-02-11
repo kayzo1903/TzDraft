@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../infrastructure/database/prisma/prisma.service';
 import { BeamAfricaService } from '../infrastructure/sms/beam-africa.service';
 import { normalizePhoneNumber } from '../shared/utils/phone.util';
+import type { OtpPurpose } from './dto';
 
 /**
  * OTP Service
@@ -28,18 +29,20 @@ export class OtpService {
    */
   async sendOTP(
     phoneNumber: string,
+    purpose: OtpPurpose = 'signup',
   ): Promise<{ success: boolean; message: string }> {
     const normalized = normalizePhoneNumber(phoneNumber);
 
-    // Check if user already exists with this phone number
     const existingUser = await this.prisma.user.findUnique({
       where: { phoneNumber: normalized },
     });
 
-    if (existingUser) {
-      throw new BadRequestException(
-        'User with this phone number already exists',
-      );
+    if (purpose === 'signup' && existingUser) {
+      throw new BadRequestException('User with this phone number already exists');
+    }
+
+    if ((purpose === 'password_reset' || purpose === 'verify_phone') && !existingUser) {
+      throw new BadRequestException('User with this phone number does not exist');
     }
 
     // Generate OTP code
@@ -49,6 +52,7 @@ export class OtpService {
     await this.prisma.otpCode.create({
       data: {
         phoneNumber: normalized,
+        userId: existingUser?.id ?? null,
         code,
         expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
       },
@@ -73,7 +77,13 @@ export class OtpService {
    * @param code - OTP code to verify
    * @returns true if valid, throws error otherwise
    */
-  async verifyOTP(phoneNumber: string, code: string): Promise<boolean> {
+  async verifyOTP(
+    phoneNumber: string,
+    code: string,
+    // Purpose is currently unused, but accepted for forward compatibility
+    // (e.g., stricter rules per-flow).
+    _purpose: OtpPurpose = 'signup',
+  ): Promise<boolean> {
     const normalized = normalizePhoneNumber(phoneNumber);
 
     // Find the most recent OTP for this phone number
@@ -102,6 +112,19 @@ export class OtpService {
       where: { id: otpRecord.id },
       data: { verified: true },
     });
+
+    // If the user exists for this phone number, consider the phone verified
+    // and mark the user as verified.
+    const user = await this.prisma.user.findUnique({
+      where: { phoneNumber: normalized },
+    });
+
+    if (user && !user.isVerified) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true },
+      });
+    }
 
     return true;
   }

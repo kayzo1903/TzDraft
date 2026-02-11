@@ -87,6 +87,8 @@
     "errors": {
       "passwordMismatch": "Passwords do not match",
       "invalidCredentials": "Invalid credentials",
+      "unexpected": "Something went wrong. Please try again.",
+      "googleFailed": "Google sign-in failed. Please try again.",
       "otpFailed": "Failed to send OTP. Please try again.",
       "otpInvalid": "Invalid OTP code. Please try again.",
       "registrationFailed": "Registration failed. Please try again.",
@@ -298,6 +300,107 @@
       "playAgain": "Play Again",
       "nextBot": "Next Bot",
       "endGame": "End Game"
+    }
+  },
+  "profile": {
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "ratingInline": "Rating: {rating}",
+    "actions": {
+      "settings": "Settings",
+      "signOut": "Sign out",
+      "playOnline": "Play online",
+      "playAi": "Play vs AI",
+      "rules": "Rules",
+      "support": "Support"
+    },
+    "signedOut": {
+      "title": "Profile",
+      "subtitle": "Sign in to see your account details and rating.",
+      "actions": {
+        "login": "Log in",
+        "signup": "Create account",
+        "play": "Play now"
+      }
+    },
+    "sections": {
+      "account": "Account",
+      "performance": "Performance",
+      "quickActions": "Quick actions",
+      "tips": "Tips"
+    },
+    "fields": {
+      "displayName": "Display name",
+      "username": "Username",
+      "phone": "Phone",
+      "email": "Email",
+      "userId": "User ID"
+    },
+    "stats": {
+      "rating": "Rating",
+      "games": "Games played",
+      "wins": "Wins",
+      "losses": "Losses",
+      "note": "More stats (draws, streaks, match history) can appear here as they become available."
+    },
+    "tips": {
+      "one": "Play vs AI to practice openings and captures.",
+      "two": "Read the rules to learn mandatory captures and king movement.",
+      "three": "Use Support if you run into account or gameplay issues."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Shortcuts and preferences for {name}.",
+    "actions": {
+      "viewProfile": "View profile",
+      "signOut": "Sign out"
+    },
+    "signedOut": {
+      "title": "Settings",
+      "subtitle": "Sign in to manage your preferences and account shortcuts.",
+      "actions": {
+        "login": "Log in",
+        "signup": "Create account",
+        "support": "Support"
+      }
+    },
+    "sections": {
+      "preferences": "Preferences",
+      "security": "Security",
+      "account": "Account",
+      "legal": "Legal"
+    },
+    "language": {
+      "title": "Language",
+      "subtitle": "Switch between English and Swahili.",
+      "action": "Current: {locale} (toggle)"
+    },
+    "security": {
+      "password": {
+        "title": "Password",
+        "subtitle": "Reset your password using phone verification.",
+        "action": "Reset"
+      },
+      "status": {
+        "title": "Account status",
+        "subtitle": "Verification helps protect your account.",
+        "verified": "Verified",
+        "notVerified": "Not verified"
+      }
+    },
+    "account": {
+      "username": "Username",
+      "phone": "Phone",
+      "email": "Email",
+      "actions": {
+        "contactSupport": "Contact support",
+        "openProfile": "Open profile"
+      }
+    },
+    "legal": {
+      "policy": "Privacy & policy",
+      "rules": "Game rules"
     }
   }
 }

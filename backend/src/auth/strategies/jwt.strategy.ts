@@ -26,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: payload.sub },
       select: {
         id: true,
+        phoneNumber: true,
         email: true,
         username: true,
         displayName: true,
@@ -33,7 +34,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         rating: {
           select: {
             rating: true,
-            gamesPlayed: true,
           },
         },
       },
@@ -43,6 +43,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
 
-    return user;
+    const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
+
+    if (hasRealPhoneNumber && !user.isVerified) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true },
+      });
+    }
+
+    return {
+      id: user.id,
+      phoneNumber: hasRealPhoneNumber ? user.phoneNumber : '',
+      email: user.email ?? undefined,
+      username: user.username,
+      displayName: user.displayName,
+      isVerified: hasRealPhoneNumber ? true : false,
+      rating: user.rating?.rating ?? 1200,
+    };
   }
 }

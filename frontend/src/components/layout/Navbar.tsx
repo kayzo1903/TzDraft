@@ -112,7 +112,19 @@ export const Navbar: React.FC = () => {
                                     <div className="absolute right-0 mt-2 w-56 bg-[#2a2a2a] border border-gray-700 rounded-lg shadow-xl overflow-hidden">
                                         <div className="px-4 py-3 border-b border-gray-700">
                                             <p className="text-sm text-gray-400">Signed in as</p>
-                                            <p className="text-sm font-medium text-white truncate">{user.username}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-medium text-white truncate">{user.username}</p>
+                                                <span
+                                                    className={clsx(
+                                                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border",
+                                                        user.isVerified
+                                                            ? "bg-green-500/10 text-green-300 border-green-500/30"
+                                                            : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                                                    )}
+                                                >
+                                                    {user.isVerified ? "VERIFIED" : "UNVERIFIED"}
+                                                </span>
+                                            </div>
                                             <p className="text-xs text-gray-500 mt-1">Rating: {typeof user.rating === 'object' ? user.rating.rating : user.rating}</p>
                                         </div>
                                         <div className="py-1">

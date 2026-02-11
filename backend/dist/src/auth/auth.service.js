@@ -79,6 +79,20 @@ let AuthService = class AuthService {
         if (existingUser) {
             throw new common_1.ConflictException('User with this phone number, username, or email already exists');
         }
+        const verifiedOtp = await this.prisma.otpCode.findFirst({
+            where: {
+                phoneNumber,
+                verified: true,
+                expiresAt: { gt: new Date() },
+                createdAt: {
+                    gt: new Date(Date.now() - 15 * 60 * 1000),
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!verifiedOtp) {
+            throw new common_1.BadRequestException('Phone number must be verified before creating an account');
+        }
         const hashedPassword = await bcrypt.hash(dto.password, 10);
         const user = await this.prisma.user.create({
             data: {
@@ -87,6 +101,7 @@ let AuthService = class AuthService {
                 username: dto.username,
                 displayName: dto.displayName || dto.username,
                 passwordHash: hashedPassword,
+                isVerified: true,
                 country: dto.country,
                 region: dto.region,
                 rating: {
@@ -98,6 +113,9 @@ let AuthService = class AuthService {
             include: {
                 rating: true,
             },
+        });
+        await this.prisma.otpCode.delete({
+            where: { id: verifiedOtp.id },
         });
         const { accessToken, refreshToken } = await this.generateTokens(user.id);
         return {
@@ -140,15 +158,24 @@ let AuthService = class AuthService {
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
         });
+        const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
+        let isVerified = user.isVerified;
+        if (hasRealPhoneNumber && !user.isVerified) {
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: { isVerified: true },
+            });
+            isVerified = true;
+        }
         const { accessToken, refreshToken } = await this.generateTokens(user.id);
         return {
             user: {
                 id: user.id,
-                phoneNumber: user.phoneNumber,
+                phoneNumber: hasRealPhoneNumber ? user.phoneNumber : '',
                 email: user.email ?? undefined,
                 username: user.username,
                 displayName: user.displayName,
-                isVerified: user.isVerified,
+                isVerified: hasRealPhoneNumber ? true : false,
                 rating: user.rating?.rating || 1200,
             },
             accessToken,
@@ -272,6 +299,13 @@ let AuthService = class AuthService {
             include: { rating: true },
         });
         if (user) {
+            if (!user.phoneNumber.startsWith('+255') && user.isVerified) {
+                user = await this.prisma.user.update({
+                    where: { id: user.id },
+                    data: { isVerified: false },
+                    include: { rating: true },
+                });
+            }
             if (!user.googleId) {
                 user = await this.prisma.user.update({
                     where: { id: user.id },
@@ -295,7 +329,7 @@ let AuthService = class AuthService {
                 googleId: profile.googleId,
                 oauthProvider: profile.oauthProvider,
                 phoneNumber: `oauth_${profile.googleId}`,
-                isVerified: true,
+                isVerified: false,
                 passwordHash: null,
                 rating: {
                     create: {

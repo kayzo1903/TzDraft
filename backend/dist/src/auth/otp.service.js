@@ -24,18 +24,22 @@ let OtpService = class OtpService {
     generateCode() {
         return Math.floor(100000 + Math.random() * 900000).toString();
     }
-    async sendOTP(phoneNumber) {
+    async sendOTP(phoneNumber, purpose = 'signup') {
         const normalized = (0, phone_util_1.normalizePhoneNumber)(phoneNumber);
         const existingUser = await this.prisma.user.findUnique({
             where: { phoneNumber: normalized },
         });
-        if (existingUser) {
+        if (purpose === 'signup' && existingUser) {
             throw new common_1.BadRequestException('User with this phone number already exists');
+        }
+        if ((purpose === 'password_reset' || purpose === 'verify_phone') && !existingUser) {
+            throw new common_1.BadRequestException('User with this phone number does not exist');
         }
         const code = this.generateCode();
         await this.prisma.otpCode.create({
             data: {
                 phoneNumber: normalized,
+                userId: existingUser?.id ?? null,
                 code,
                 expiresAt: new Date(Date.now() + 5 * 60 * 1000),
             },
@@ -49,7 +53,7 @@ let OtpService = class OtpService {
             message: 'OTP sent successfully',
         };
     }
-    async verifyOTP(phoneNumber, code) {
+    async verifyOTP(phoneNumber, code, _purpose = 'signup') {
         const normalized = (0, phone_util_1.normalizePhoneNumber)(phoneNumber);
         const otpRecord = await this.prisma.otpCode.findFirst({
             where: {
@@ -71,6 +75,15 @@ let OtpService = class OtpService {
             where: { id: otpRecord.id },
             data: { verified: true },
         });
+        const user = await this.prisma.user.findUnique({
+            where: { phoneNumber: normalized },
+        });
+        if (user && !user.isVerified) {
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: { isVerified: true },
+            });
+        }
         return true;
     }
     async cleanupExpiredOTPs() {
