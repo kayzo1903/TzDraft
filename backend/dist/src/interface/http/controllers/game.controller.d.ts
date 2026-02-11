@@ -19,8 +19,8 @@ export declare class GameController {
             game: import("../../../domain/game/entities/game.entity").Game;
             moves: import("../../../domain/game/entities/move.entity").Move[];
             players: {
-                white: import(".prisma/client").User | null;
-                black: import(".prisma/client").User | null;
+                white: import("@prisma/client").User | null;
+                black: import("@prisma/client").User | null;
             };
         };
     }>;
@@ -31,8 +31,8 @@ export declare class GameController {
             moves: import("../../../domain/game/entities/move.entity").Move[];
             totalMoves: number;
             players: {
-                white: import(".prisma/client").User | null;
-                black: import(".prisma/client").User | null;
+                white: import("@prisma/client").User | null;
+                black: import("@prisma/client").User | null;
             };
         };
     }>;
