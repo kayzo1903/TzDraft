@@ -62,14 +62,31 @@ export const Board: React.FC<BoardProps> = ({
         }
 
         if (selectedSquare !== null) {
-            // Attempt move
+            // Attempt move only if it's a legal target (when provided)
+            const legalTargets = legalMoves?.[selectedSquare];
+            if (legalTargets && !legalTargets.includes(index)) {
+                onInvalidSelect?.();
+                setIsShaking(true);
+                return;
+            }
+
             onMove?.(selectedSquare, index);
             setSelectedSquare(null);
         } else {
-            // Select piece
-            // In real app, check if square has a piece
             const piece = getPiece(index);
-            if (piece && forcedPieces.length > 0 && !forcedPieces.includes(index)) {
+            if (!piece) {
+                return;
+            }
+
+            // If mandatory capture is active, only allow selecting forced pieces.
+            if (forcedPieces.length > 0 && !forcedPieces.includes(index)) {
+                onInvalidSelect?.();
+                setIsShaking(true);
+                return;
+            }
+
+            // If legal moves are provided, only allow selecting pieces that can move.
+            if (legalMoves && forcedPieces.length === 0 && !legalMoves[index]) {
                 onInvalidSelect?.();
                 setIsShaking(true);
                 return;

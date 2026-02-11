@@ -7,6 +7,7 @@ import { Board } from '@/components/game/Board';
 import { gameService } from '@/services/game.service';
 import { getBotByLevel } from '@/lib/game/bots';
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function GamePage() {
     const { id: gameId } = useParams();
@@ -94,7 +95,7 @@ export default function GamePage() {
             return {
                 name: bot.name,
                 rating: bot.elo,
-                avatar: bot.avatar,
+                avatarSrc: bot.avatarSrc,
                 isAi: true
             };
         }
@@ -102,7 +103,7 @@ export default function GamePage() {
         return {
             name: player?.username || 'Unknown',
             rating: typeof player?.rating === 'object' ? player.rating.rating : (player?.rating || 1200),
-            avatar: undefined, // User avatar logic here if needed
+            avatarSrc: undefined, // User avatar logic here if needed
             isAi: false
         };
     };
@@ -157,7 +158,19 @@ export default function GamePage() {
                 <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-neutral-600 flex items-center justify-center text-2xl">
-                            {topPlayer.isAi ? topPlayer.avatar : '👤'}
+                            {topPlayer.isAi && topPlayer.avatarSrc ? (
+                                <div className="relative w-full h-full">
+                                    <Image
+                                        src={topPlayer.avatarSrc}
+                                        alt={topPlayer.name}
+                                        fill
+                                        sizes="40px"
+                                        className="object-cover rounded-full"
+                                    />
+                                </div>
+                            ) : (
+                                '👤'
+                            )}
                         </div>
                         <div>
                             <div className="font-bold text-neutral-200">{topPlayer.name}</div>
@@ -178,7 +191,19 @@ export default function GamePage() {
                 <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-2xl">
-                            {bottomPlayer.isAi ? bottomPlayer.avatar : '👤'}
+                            {bottomPlayer.isAi && bottomPlayer.avatarSrc ? (
+                                <div className="relative w-full h-full">
+                                    <Image
+                                        src={bottomPlayer.avatarSrc}
+                                        alt={bottomPlayer.name}
+                                        fill
+                                        sizes="40px"
+                                        className="object-cover rounded-full"
+                                    />
+                                </div>
+                            ) : (
+                                '👤'
+                            )}
                         </div>
                         <div>
                             <div className="font-bold text-neutral-200">{bottomPlayer.name}</div>

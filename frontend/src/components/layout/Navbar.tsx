@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
 import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
 
 export const Navbar: React.FC = () => {
     const t = useTranslations('nav');
@@ -47,7 +48,19 @@ export const Navbar: React.FC = () => {
                     {/* Left: Logo & Desktop Links */}
                     <div className="flex items-center gap-8">
                         <Link href="/" className="flex items-center gap-2">
-                            <span className="text-2xl font-black text-[var(--primary)] tracking-tight">TzDraft</span>
+                            <div className="relative w-9 h-9">
+                                <Image
+                                    src="/logo/logo.png"
+                                    alt="TzDraft"
+                                    fill
+                                    sizes="36px"
+                                    className="object-contain"
+                                    priority
+                                />
+                            </div>
+                            <span className="text-2xl font-black text-[var(--primary)] tracking-tight">
+                                TzDraft
+                            </span>
                         </Link>
 
                         <div className="hidden md:flex items-center gap-1">

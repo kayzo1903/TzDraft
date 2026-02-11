@@ -208,6 +208,7 @@ export const useLocalGame = (
   playerColor: PlayerColor,
   timeSeconds: number,
 ) => {
+  // Engine state uses WHITE at the top by default; flip only when the human plays WHITE.
   const flipForPlayer = playerColor === PlayerColor.WHITE;
   const loaded = loadSavedGame(aiLevel, playerColor);
   const [board, setBoard] = useState<BoardState>(() =>

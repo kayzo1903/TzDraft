@@ -217,5 +217,76 @@
     "rights": "All rights reserved.",
     "madeWith": "Made with",
     "by": "by"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Page not found",
+    "subtitle": "The page you are looking for does not exist (or it moved).",
+    "actions": {
+      "home": "Go Home",
+      "back": "Go Back",
+      "play": "Play vs AI",
+      "rules": "Read Rules"
+    }
+  },
+  "setupAi": {
+    "title": "Play vs AI",
+    "subtitle": "Choose your opponent and color",
+    "selectOpponent": "Select Opponent",
+    "selectTime": "Select Time",
+    "selectColor": "Select Color",
+    "colors": {
+      "white": "White",
+      "random": "Random",
+      "black": "Black"
+    },
+    "time": {
+      "noTime": "No time",
+      "minutes": "{minutes} min"
+    },
+    "preview": {
+      "title": "Match Preview",
+      "you": "You",
+      "vs": "VS",
+      "timeControl": "Time Control"
+    },
+    "start": {
+      "cta": "Start Game",
+      "loading": "Starting Game..."
+    }
+  },
+  "gameArena": {
+    "loading": "Loading game...",
+    "you": "You",
+    "title": "Game Arena",
+    "aiLevel": "AI Level",
+    "status": {
+      "gameOver": "Game over",
+      "aiThinking": "AI thinking...",
+      "continueCapture": "Continue capture",
+      "yourMove": "Your move",
+      "botToMove": "Bot to move"
+    },
+    "endgameCountdown": "Endgame countdown: {remaining} moves remaining for {favored}",
+    "winnerInline": "Winner: {winner}",
+    "actions": {
+      "undo": "Undo",
+      "resign": "Resign",
+      "reset": "Reset Game"
+    },
+    "resign": {
+      "confirmTitle": "Confirm Resign",
+      "confirmQuestion": "Are you sure you want to resign?",
+      "confirmCta": "Yes, Resign",
+      "cancel": "Cancel"
+    },
+    "gameOver": {
+      "title": "Game Over",
+      "congrats": "Congratulations!",
+      "congratsNamed": "Congratulations, {name}!",
+      "winnerLabel": "Winner:",
+      "playAgain": "Play Again",
+      "endGame": "End Game"
+    }
   }
 }

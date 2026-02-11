@@ -8,6 +8,8 @@ import { useLocalGame } from "@/hooks/useLocalGame";
 import { getBotByLevel } from "@/lib/game/bots";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor } from "@tzdraft/cake-engine";
+import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 const parseColor = (value: string | null): PlayerColor => {
   if (!value) return PlayerColor.WHITE;
@@ -42,6 +44,7 @@ const formatTime = (seconds: number) => {
 };
 
 export default function LocalGamePage() {
+  const t = useTranslations("gameArena");
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const paramsRoute = useParams<{ locale: string }>();
@@ -67,33 +70,51 @@ export default function LocalGamePage() {
   if (!mounted) {
     return (
       <main className="min-h-screen flex items-center justify-center p-4 text-neutral-300">
-        Loading game...
+        {t("loading")}
       </main>
     );
   }
 
-  const userLabel = user?.username || "You";
-  const playerIsWhite = playerColor === PlayerColor.WHITE;
-  const topPlayer = playerIsWhite ? bot : { name: userLabel, rating: 1200 };
-  const bottomPlayer = playerIsWhite ? { name: userLabel, rating: 1200 } : bot;
+  const userLabel = user?.username || t("you");
+  const topPlayer = bot;
+  const userRating =
+    typeof user?.rating === "object" && user?.rating
+      ? (user.rating as any).rating ?? 1200
+      : (user?.rating ?? 1200);
+  const bottomPlayer = { name: userLabel, rating: userRating };
+  const botColor =
+    playerColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
   const locale = paramsRoute?.locale ?? "en";
   const setupAiPath = `/${locale}/game/setup-ai`;
+
+  const timeFor = (color: PlayerColor) =>
+    formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
+
+  const statusText = state.result
+    ? t("status.gameOver")
+    : state.isAiThinking
+      ? t("status.aiThinking")
+      : state.currentPlayer === playerColor
+        ? state.mustContinueFrom !== null
+          ? t("status.continueCapture")
+          : t("status.yourMove")
+        : t("status.botToMove");
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4 gap-8">
       <div className="w-full max-w-4xl flex items-center justify-between bg-neutral-800 p-4 rounded-xl shadow-lg border border-neutral-700">
         <div className="flex items-center gap-4">
           <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-yellow-200">
-            Local Game
+            {t("title")}
           </div>
           <div className="h-6 w-px bg-neutral-600"></div>
           <div className="text-neutral-400 text-sm">
-            AI Level:{" "}
+            {t("aiLevel")}:{" "}
             <span className="font-mono text-neutral-200">{level}</span>
           </div>
         </div>
         <div className="flex items-center gap-3 text-sm text-neutral-300">
-          {state.isAiThinking ? "AI thinking..." : "Your move"}
+          {statusText}
         </div>
       </div>
 
@@ -101,17 +122,23 @@ export default function LocalGamePage() {
         <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-neutral-600 flex items-center justify-center text-sm font-bold text-neutral-100">
-              {"avatar" in topPlayer ? topPlayer.avatar : "AI"}
+              <div className="relative w-full h-full">
+                <Image
+                  src={topPlayer.avatarSrc}
+                  alt={topPlayer.name}
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                />
+              </div>
             </div>
             <div>
               <div className="font-bold text-neutral-200">{topPlayer.name}</div>
-              <div className="text-xs text-neutral-500">
-                {"rating" in topPlayer ? topPlayer.rating : bot.elo}
-              </div>
+              <div className="text-xs text-neutral-500">{topPlayer.elo}</div>
             </div>
           </div>
           <div className="bg-neutral-900 rounded p-2 text-center font-mono text-xl text-neutral-400">
-            {formatTime(state.timeLeft.WHITE)}
+            {timeFor(botColor)}
           </div>
         </div>
 
@@ -126,19 +153,15 @@ export default function LocalGamePage() {
           />
           {state.endgameCountdown && (
             <div className="mt-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-center text-sm text-orange-200">
-              Endgame countdown:{" "}
-              <span className="font-semibold">
-                {state.endgameCountdown.remaining}
-              </span>{" "}
-              moves remaining for{" "}
-              <span className="font-semibold">
-                {state.endgameCountdown.favored}
-              </span>
+              {t("endgameCountdown", {
+                remaining: state.endgameCountdown.remaining,
+                favored: state.endgameCountdown.favored,
+              })}
             </div>
           )}
           {state.result && (
             <div className="mt-4 text-center text-lg font-semibold text-orange-300">
-              Winner: {state.result.winner}
+              {t("winnerInline", { winner: state.result.winner })}
             </div>
           )}
         </div>
@@ -146,32 +169,32 @@ export default function LocalGamePage() {
         <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-sm font-bold text-white">
-              {"avatar" in bottomPlayer ? bottomPlayer.avatar : "YOU"}
+              YOU
             </div>
             <div>
               <div className="font-bold text-neutral-200">
                 {bottomPlayer.name}
               </div>
               <div className="text-xs text-neutral-500">
-                {"rating" in bottomPlayer ? bottomPlayer.rating : bot.elo}
+                {bottomPlayer.rating}
               </div>
             </div>
           </div>
           <div className="bg-neutral-800 rounded p-2 text-center font-mono text-xl text-white border border-neutral-600">
-            {formatTime(state.timeLeft.BLACK)}
+            {timeFor(playerColor)}
           </div>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
         <Button variant="secondary" onClick={undo}>
-          Undo
+          {t("actions.undo")}
         </Button>
         <Button variant="secondary" onClick={() => setShowResign(true)}>
-          Resign
+          {t("actions.resign")}
         </Button>
         <Button variant="secondary" onClick={reset}>
-          Reset Game
+          {t("actions.reset")}
         </Button>
       </div>
 
@@ -180,10 +203,10 @@ export default function LocalGamePage() {
           <div className="w-full max-w-sm mx-4 rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl">
             <div className="p-6 border-b border-neutral-800">
               <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">
-                Confirm Resign
+                {t("resign.confirmTitle")}
               </div>
               <div className="mt-2 text-xl font-bold text-neutral-100">
-                Are you sure you want to resign?
+                {t("resign.confirmQuestion")}
               </div>
             </div>
             <div className="p-6 flex flex-col gap-3">
@@ -193,10 +216,10 @@ export default function LocalGamePage() {
                   resign();
                 }}
               >
-                Yes, Resign
+                {t("resign.confirmCta")}
               </Button>
               <Button variant="secondary" onClick={() => setShowResign(false)}>
-                Cancel
+                {t("resign.cancel")}
               </Button>
             </div>
           </div>
@@ -208,22 +231,24 @@ export default function LocalGamePage() {
           <div className="w-full max-w-md mx-4 rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl">
             <div className="p-6 border-b border-neutral-800">
               <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">
-                Game Over
+                {t("gameOver.title")}
               </div>
               <div className="mt-2 text-3xl font-black text-neutral-100">
-                {user?.username ? `Congratulations, ${user.username}!` : "Congratulations!"}
+                {user?.username
+                  ? t("gameOver.congratsNamed", { name: user.username })
+                  : t("gameOver.congrats")}
               </div>
               <div className="mt-2 text-neutral-400">
-                Winner:{" "}
+                {t("gameOver.winnerLabel")}{" "}
                 <span className="font-semibold text-orange-300">
                   {state.result.winner}
                 </span>
               </div>
             </div>
             <div className="p-6 flex flex-col gap-3">
-              <Button onClick={reset}>Play Again</Button>
+              <Button onClick={reset}>{t("gameOver.playAgain")}</Button>
               <Button variant="secondary" onClick={() => router.push(setupAiPath)}>
-                End Game
+                {t("gameOver.endGame")}
               </Button>
             </div>
           </div>

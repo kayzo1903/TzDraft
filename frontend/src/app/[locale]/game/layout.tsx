@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Account",
+  title: "Game",
   robots: {
     index: false,
     follow: false,
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function GameLayout({ children }: { children: React.ReactNode }) {
   return children;
 }
 

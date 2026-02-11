@@ -4,26 +4,65 @@ import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { Geist, Geist_Mono } from "next/font/google";
-import "../globals.css";
+import type { Metadata } from "next";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "TzDraft - Tanzania Drafti",
-  description: "Play the classic Tanzania Drafti game online.",
-  icons: {
-    icon: "/icon.png",
-  },
+const getSiteUrl = () => {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  try {
+    return new URL(raw);
+  } catch {
+    return new URL("http://localhost:3000");
+  }
 };
+
+const SITE_NAME = "TzDraft";
+const DEFAULT_DESCRIPTION =
+  "Play Tanzania Drafti (8x8) online. Learn the rules, practice vs AI, and enjoy the classic game.";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }> | { locale: string };
+}): Promise<Metadata> {
+  const resolvedParams = params instanceof Promise ? await params : params;
+  const locale = resolvedParams.locale;
+
+  const siteUrl = getSiteUrl();
+  const canonical = new URL(`/${locale}`, siteUrl);
+
+  return {
+    metadataBase: siteUrl,
+    applicationName: SITE_NAME,
+    title: {
+      default: `${SITE_NAME} — Tanzania Drafti`,
+      template: `%s — ${SITE_NAME}`,
+    },
+    description: DEFAULT_DESCRIPTION,
+    alternates: {
+      canonical,
+      languages: {
+        sw: new URL("/sw", siteUrl),
+        en: new URL("/en", siteUrl),
+      },
+    },
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      title: `${SITE_NAME} — Tanzania Drafti`,
+      description: DEFAULT_DESCRIPTION,
+      url: canonical,
+      locale,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${SITE_NAME} — Tanzania Drafti`,
+      description: DEFAULT_DESCRIPTION,
+    },
+    icons: {
+      icon: "/logo/logo.png",
+    },
+  };
+}
 
 export default async function LocaleLayout({
   children,
@@ -45,14 +84,10 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <NextIntlClientProvider messages={messages}>
-          <Navbar />
-          {children}
-          <Footer />
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      <Navbar />
+      {children}
+      <Footer />
+    </NextIntlClientProvider>
   );
 }

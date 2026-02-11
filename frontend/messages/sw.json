@@ -217,5 +217,76 @@
     "rights": "Haki zote zimehifadhiwa.",
     "madeWith": "Imetengenezwa kwa",
     "by": "na"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Ukurasa haupatikani",
+    "subtitle": "Ukurasa unaoutafuta haupo (au umehamishwa).",
+    "actions": {
+      "home": "Rudi Nyumbani",
+      "back": "Rudi Nyuma",
+      "play": "Cheza na AI",
+      "rules": "Soma Sheria"
+    }
+  },
+  "setupAi": {
+    "title": "Cheza dhidi ya AI",
+    "subtitle": "Chagua mpinzani na rangi",
+    "selectOpponent": "Chagua Mpinzani",
+    "selectTime": "Chagua Muda",
+    "selectColor": "Chagua Rangi",
+    "colors": {
+      "white": "Nyeupe",
+      "random": "Bila Mpangilio",
+      "black": "Nyeusi"
+    },
+    "time": {
+      "noTime": "Bila muda",
+      "minutes": "Dakika {minutes}"
+    },
+    "preview": {
+      "title": "Muhtasari wa Mechi",
+      "you": "Wewe",
+      "vs": "DHIDI",
+      "timeControl": "Muda"
+    },
+    "start": {
+      "cta": "Anza Mchezo",
+      "loading": "Inaandaa mchezo..."
+    }
+  },
+  "gameArena": {
+    "loading": "Inapakia mchezo...",
+    "you": "Wewe",
+    "title": "Uwanja wa Mchezo",
+    "aiLevel": "Kiwango cha AI",
+    "status": {
+      "gameOver": "Mchezo umeisha",
+      "aiThinking": "AI inafikiri...",
+      "continueCapture": "Endelea kula",
+      "yourMove": "Zamu yako",
+      "botToMove": "Zamu ya AI"
+    },
+    "endgameCountdown": "Hesabu ya mwisho: hatua {remaining} zimebaki kwa {favored}",
+    "winnerInline": "Mshindi: {winner}",
+    "actions": {
+      "undo": "Rudisha",
+      "resign": "Jisalimishe",
+      "reset": "Anza Upya"
+    },
+    "resign": {
+      "confirmTitle": "Thibitisha Kujisalimisha",
+      "confirmQuestion": "Una uhakika unataka kujisalimisha?",
+      "confirmCta": "Ndiyo, Jisalimishe",
+      "cancel": "Ghairi"
+    },
+    "gameOver": {
+      "title": "Mchezo Umeisha",
+      "congrats": "Hongera!",
+      "congratsNamed": "Hongera, {name}!",
+      "winnerLabel": "Mshindi:",
+      "playAgain": "Cheza Tena",
+      "endGame": "Maliza Mchezo"
+    }
   }
 }
