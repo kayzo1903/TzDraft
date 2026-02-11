@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -10,6 +10,7 @@ import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { BOTS } from "@/lib/game/bots";
+import { getMaxUnlockedBotLevel } from "@/lib/game/bot-progression";
 
 export default function SetupAiPage() {
   const t = useTranslations("setupAi");
@@ -18,12 +19,29 @@ export default function SetupAiPage() {
   const locale = typeof params?.locale === "string" ? params.locale : "en";
   const { user } = useAuthStore();
 
+  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(1);
+  useEffect(() => {
+    setMaxUnlockedLevel(getMaxUnlockedBotLevel());
+  }, []);
+
+  const highestUnlockedBot = (() => {
+    let best = BOTS[0];
+    for (const bot of BOTS) {
+      if (bot.level <= maxUnlockedLevel) best = bot;
+    }
+    return best;
+  })();
+
   const [selectedBot, setSelectedBot] = useState(BOTS[0]);
   const [selectedColor, setSelectedColor] = useState<
     "WHITE" | "BLACK" | "RANDOM"
   >("RANDOM");
   const [selectedTime, setSelectedTime] = useState<0 | 5 | 10 | 15>(0);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedBot.level > maxUnlockedLevel) setSelectedBot(highestUnlockedBot);
+  }, [highestUnlockedBot, maxUnlockedLevel, selectedBot.level]);
 
   const handleStartGame = async () => {
     setLoading(true);
@@ -52,40 +70,59 @@ export default function SetupAiPage() {
           <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
 
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm text-neutral-300">
+          <span className="font-semibold text-neutral-100">
+            {t("progress.title")}
+          </span>{" "}
+          <span className="text-neutral-400">
+            {t("progress.unlocked", { level: maxUnlockedLevel, total: 7 })}
+          </span>
+          <span className="text-neutral-500"> {"\u2022"} </span>
+          <span className="text-neutral-400">{t("progress.rule")}</span>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">{t("selectOpponent")}</h2>
             <div className="grid grid-cols-1 gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-              {BOTS.map((bot) => (
-                <Card
-                  key={bot.level}
-                  className={`p-4 cursor-pointer transition-all hover:bg-neutral-800 border-2 flex items-center gap-4 ${
-                    selectedBot.level === bot.level
-                      ? "border-orange-500 bg-neutral-800"
-                      : "border-transparent bg-neutral-900"
-                  }`}
-                  onClick={() => setSelectedBot(bot)}
-                >
-                  <div className="relative w-12 h-12 rounded-full bg-neutral-950/40 border border-neutral-700 overflow-hidden shrink-0">
-                    <Image
-                      src={bot.avatarSrc}
-                      alt={bot.name}
-                      fill
-                      sizes="48px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold">{bot.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {bot.description}
+              {BOTS.map((bot) => {
+                const locked = bot.level > maxUnlockedLevel;
+                return (
+                  <Card
+                    key={bot.level}
+                    className={`relative p-4 border-2 flex items-center gap-4 transition-all ${
+                      locked
+                        ? "opacity-60 grayscale cursor-not-allowed border-transparent bg-neutral-900"
+                        : selectedBot.level === bot.level
+                          ? "cursor-pointer border-orange-500 bg-neutral-800 hover:bg-neutral-800"
+                          : "cursor-pointer border-transparent bg-neutral-900 hover:bg-neutral-800"
+                    }`}
+                    onClick={() => {
+                      if (locked) return;
+                      setSelectedBot(bot);
+                    }}
+                  >
+                    <div className="relative w-12 h-12 rounded-full bg-neutral-950/40 border border-neutral-700 overflow-hidden shrink-0">
+                      <Image
+                        src={bot.avatarSrc}
+                        alt={bot.name}
+                        fill
+                        sizes="48px"
+                        className="object-cover object-[50%_60%]"
+                      />
                     </div>
-                  </div>
-                  <div className="font-mono text-sm font-bold text-orange-400">
-                    {bot.elo}
-                  </div>
-                </Card>
-              ))}
+                    <div className="flex-1">
+                      <div className="font-bold">{bot.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {locked ? t("locked") : bot.description}
+                      </div>
+                    </div>
+                    <div className="font-mono text-sm font-bold text-orange-400">
+                      {bot.elo}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           </div>
 
@@ -188,7 +225,7 @@ export default function SetupAiPage() {
                         alt={selectedBot.name}
                         fill
                         sizes="64px"
-                        className="object-cover"
+                        className="object-cover object-[50%_60%]"
                       />
                     </div>
                   </div>
@@ -227,4 +264,3 @@ export default function SetupAiPage() {
     </div>
   );
 }
-

@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { Board } from "@/components/game/Board";
 import { Button } from "@/components/ui/Button";
 import { useLocalGame } from "@/hooks/useLocalGame";
 import { getBotByLevel } from "@/lib/game/bots";
 import { useAuthStore } from "@/lib/auth/auth-store";
-import { PlayerColor } from "@tzdraft/cake-engine";
+import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { getMaxUnlockedBotLevel } from "@/lib/game/bot-progression";
 
 const parseColor = (value: string | null): PlayerColor => {
   if (!value) return PlayerColor.WHITE;
@@ -55,6 +56,7 @@ export default function LocalGamePage() {
   const timeSeconds = useMemo(() => parseTime(params.get("time")), [params]);
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const { user } = useAuthStore();
+  const maxUnlockedAtStartRef = useRef<number>(1);
 
   const { state, pieces, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } = useLocalGame(
     level,
@@ -62,10 +64,26 @@ export default function LocalGamePage() {
     timeSeconds,
   );
   const [showResign, setShowResign] = useState(false);
+  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(1);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const max = getMaxUnlockedBotLevel();
+    maxUnlockedAtStartRef.current = max;
+    setMaxUnlockedLevel(max);
+  }, [level]);
+
+  useEffect(() => {
+    if (!state.result) return;
+    // Local unlock runs inside `useLocalGame`; re-read after result settles.
+    const id = window.setTimeout(() => {
+      setMaxUnlockedLevel(getMaxUnlockedBotLevel());
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [state.result]);
 
   if (!mounted) {
     return (
@@ -86,6 +104,16 @@ export default function LocalGamePage() {
     playerColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
   const locale = paramsRoute?.locale ?? "en";
   const setupAiPath = `/${locale}/game/setup-ai`;
+  const nextBotLevel = Math.min(level + 1, 7);
+  const didHumanWin =
+    state.result?.winner ===
+    (playerColor === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK);
+  const canOfferNextBot =
+    Boolean(state.result) &&
+    didHumanWin &&
+    !state.undoUsed &&
+    level < 7 &&
+    maxUnlockedAtStartRef.current < nextBotLevel;
 
   const timeFor = (color: PlayerColor) =>
     formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
@@ -128,7 +156,7 @@ export default function LocalGamePage() {
                   alt={topPlayer.name}
                   fill
                   sizes="40px"
-                  className="object-cover"
+                  className="object-cover object-[50%_60%]"
                 />
               </div>
             </div>
@@ -197,6 +225,11 @@ export default function LocalGamePage() {
           {t("actions.reset")}
         </Button>
       </div>
+      {state.undoUsed && !state.result && (
+        <div className="text-sm text-neutral-400">
+          {t("progression.disabled")}
+        </div>
+      )}
 
       {showResign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -244,9 +277,27 @@ export default function LocalGamePage() {
                   {state.result.winner}
                 </span>
               </div>
+              {canOfferNextBot && (
+                <div className="mt-3 text-sm text-neutral-400">
+                  {t("gameOver.unlockedNext", { level: nextBotLevel })}
+                </div>
+              )}
             </div>
             <div className="p-6 flex flex-col gap-3">
               <Button onClick={reset}>{t("gameOver.playAgain")}</Button>
+              {canOfferNextBot && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    reset();
+                    router.push(
+                      `/${locale}/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`,
+                    );
+                  }}
+                >
+                  {t("gameOver.nextBot")}
+                </Button>
+              )}
               <Button variant="secondary" onClick={() => router.push(setupAiPath)}>
                 {t("gameOver.endGame")}
               </Button>

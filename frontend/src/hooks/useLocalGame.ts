@@ -14,6 +14,7 @@ import {
 } from "@tzdraft/cake-engine";
 import type { BoardState as UiBoardState } from "@/components/game/Board";
 import { getBestMove } from "@/lib/ai/bot";
+import { unlockNextBotLevel } from "@/lib/game/bot-progression";
 
 export interface LocalGameState {
   board: BoardState;
@@ -25,6 +26,7 @@ export interface LocalGameState {
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor; remaining: number } | null;
   mustContinueFrom: number | null;
+  undoUsed: boolean;
 }
 
 const STORAGE_KEY = "tzdraft:local-game";
@@ -37,6 +39,7 @@ type SavedGame = {
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor; remaining: number } | null;
   mustContinueFrom: number | null;
+  undoUsed: boolean;
   moves: {
     id: string;
     gameId: string;
@@ -59,6 +62,12 @@ type SavedGame = {
 
 const getOpponent = (player: PlayerColor): PlayerColor =>
   player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+
+const didHumanWin = (winner: Winner, humanColor: PlayerColor): boolean => {
+  if (winner === Winner.DRAW) return false;
+  if (humanColor === PlayerColor.WHITE) return winner === Winner.WHITE;
+  return winner === Winner.BLACK;
+};
 
 const positionToIndex = (position: Position, flip: boolean): number => {
   const { row, col } = position.toRowCol();
@@ -103,6 +112,7 @@ const loadSavedGame = (
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor; remaining: number } | null;
   mustContinueFrom: Position | null;
+  undoUsed: boolean;
 } | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -147,6 +157,7 @@ const loadSavedGame = (
         typeof parsed.mustContinueFrom === "number"
           ? new Position(parsed.mustContinueFrom)
           : null,
+      undoUsed: Boolean(parsed.undoUsed),
     };
   } catch {
     return null;
@@ -163,6 +174,7 @@ const saveGame = (
     timeLeft: { WHITE: number; BLACK: number };
     endgameCountdown: { favored: PlayerColor; remaining: number } | null;
     mustContinueFrom: Position | null;
+    undoUsed: boolean;
   },
   aiLevel: number,
   playerColor: PlayerColor,
@@ -198,6 +210,7 @@ const saveGame = (
     endgameCountdown: state.endgameCountdown,
     result: state.result,
     mustContinueFrom: state.mustContinueFrom?.value ?? null,
+    undoUsed: state.undoUsed,
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -224,6 +237,7 @@ export const useLocalGame = (
   const [result, setResult] = useState<{ winner: Winner } | null>(
     loaded ? loaded.result : null,
   );
+  const [undoUsed, setUndoUsed] = useState<boolean>(loaded?.undoUsed ?? false);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ WHITE: number; BLACK: number }>(
     loaded?.timeLeft ?? { WHITE: timeSeconds, BLACK: timeSeconds },
@@ -462,6 +476,7 @@ export const useLocalGame = (
     setMoves([]);
     setResult(null);
     setIsAiThinking(false);
+    setUndoUsed(false);
     setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
     setEndgameCountdown(null);
     setMustContinueFrom(null);
@@ -481,6 +496,7 @@ export const useLocalGame = (
   }, [playerColor]);
 
   const undo = useCallback(() => {
+    setUndoUsed(true);
     if (aiTimeoutRef.current !== null) {
       window.clearTimeout(aiTimeoutRef.current);
       aiTimeoutRef.current = null;
@@ -560,6 +576,15 @@ export const useLocalGame = (
     }
   }, [result]);
 
+  useEffect(() => {
+    if (!result) return;
+    if (undoUsed) return;
+    if (!didHumanWin(result.winner, playerColor)) return;
+
+    // Unlock next bot level only if the user didn't use Undo in this game.
+    unlockNextBotLevel(aiLevel);
+  }, [aiLevel, playerColor, result, undoUsed]);
+
   const playWarning = useCallback(() => {
     if (!warningAudioRef.current) return;
     warningAudioRef.current.currentTime = 0;
@@ -634,6 +659,7 @@ export const useLocalGame = (
         timeLeft,
         endgameCountdown,
         mustContinueFrom,
+        undoUsed,
       },
       aiLevel,
       playerColor,
@@ -647,6 +673,7 @@ export const useLocalGame = (
     timeLeft,
     endgameCountdown,
     mustContinueFrom,
+    undoUsed,
     aiLevel,
     playerColor,
   ]);
@@ -664,6 +691,7 @@ export const useLocalGame = (
       mustContinueFrom: mustContinueFrom
         ? positionToIndex(mustContinueFrom, flipForPlayer)
         : null,
+      undoUsed,
     } as LocalGameState,
     pieces,
     legalMoves,

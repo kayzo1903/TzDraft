@@ -165,7 +165,7 @@ export default function GamePage() {
                                         alt={topPlayer.name}
                                         fill
                                         sizes="40px"
-                                        className="object-cover rounded-full"
+                                        className="object-cover object-[50%_60%] rounded-full"
                                     />
                                 </div>
                             ) : (
@@ -198,7 +198,7 @@ export default function GamePage() {
                                         alt={bottomPlayer.name}
                                         fill
                                         sizes="40px"
-                                        className="object-cover rounded-full"
+                                        className="object-cover object-[50%_60%] rounded-full"
                                     />
                                 </div>
                             ) : (

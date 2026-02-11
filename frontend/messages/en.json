@@ -232,6 +232,12 @@
   "setupAi": {
     "title": "Play vs AI",
     "subtitle": "Choose your opponent and color",
+    "progress": {
+      "title": "Progress",
+      "unlocked": "Unlocked: Level {level}/{total}",
+      "rule": "Win without using Undo to unlock the next bot."
+    },
+    "locked": "Locked — win without Undo to unlock",
     "selectOpponent": "Select Opponent",
     "selectTime": "Select Time",
     "selectColor": "Select Color",
@@ -274,6 +280,9 @@
       "resign": "Resign",
       "reset": "Reset Game"
     },
+    "progression": {
+      "disabled": "Undo used — this game will not unlock the next bot."
+    },
     "resign": {
       "confirmTitle": "Confirm Resign",
       "confirmQuestion": "Are you sure you want to resign?",
@@ -284,8 +293,10 @@
       "title": "Game Over",
       "congrats": "Congratulations!",
       "congratsNamed": "Congratulations, {name}!",
+      "unlockedNext": "Unlocked next bot: Level {level}",
       "winnerLabel": "Winner:",
       "playAgain": "Play Again",
+      "nextBot": "Next Bot",
       "endGame": "End Game"
     }
   }

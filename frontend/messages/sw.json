@@ -232,6 +232,12 @@
   "setupAi": {
     "title": "Cheza dhidi ya AI",
     "subtitle": "Chagua mpinzani na rangi",
+    "progress": {
+      "title": "Maendeleo",
+      "unlocked": "Umefungua: Kiwango {level}/{total}",
+      "rule": "Shinda bila kutumia Rudisha ili kufungua bot inayofuata."
+    },
+    "locked": "Imefungwa — shinda bila Rudisha ili kufungua",
     "selectOpponent": "Chagua Mpinzani",
     "selectTime": "Chagua Muda",
     "selectColor": "Chagua Rangi",
@@ -274,6 +280,9 @@
       "resign": "Jisalimishe",
       "reset": "Anza Upya"
     },
+    "progression": {
+      "disabled": "Umetumia Rudisha — mchezo huu hautafungua bot inayofuata."
+    },
     "resign": {
       "confirmTitle": "Thibitisha Kujisalimisha",
       "confirmQuestion": "Una uhakika unataka kujisalimisha?",
@@ -284,8 +293,10 @@
       "title": "Mchezo Umeisha",
       "congrats": "Hongera!",
       "congratsNamed": "Hongera, {name}!",
+      "unlockedNext": "Umefungua bot inayofuata: Kiwango {level}",
       "winnerLabel": "Mshindi:",
       "playAgain": "Cheza Tena",
+      "nextBot": "AI inayofuata",
       "endGame": "Maliza Mchezo"
     }
   }
