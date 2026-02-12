@@ -110,15 +110,10 @@ export const Board: React.FC<BoardProps> = ({
                 key={i}
                 onClick={() => handleSquareClick(i)}
                 className={clsx(
-                    'w-full h-full aspect-square flex items-center justify-center relative',
+                    'w-full h-full aspect-square flex items-center justify-center relative select-none touch-manipulation',
                     isDark ? 'bg-[var(--board-dark)] text-white' : 'bg-[var(--board-light)]',
-                    // Show coordinates (optional, for dev)
-                    'text-xs select-none'
                 )}
             >
-                {/* Rank/File Labels (simplified) */}
-                {/* {i} */}
-
                 {/* Highlight selected square */}
                 {isSelected && isDark && (
                     <div className="absolute inset-0 bg-yellow-400/50 pointer-events-none" />
@@ -135,6 +130,15 @@ export const Board: React.FC<BoardProps> = ({
                         <div className="w-[80%] h-[80%] rounded-full ring-2 ring-orange-300/80 shadow-[0_0_12px_rgba(251,146,60,0.65)] animate-pulse" />
                     </div>
                 )}
+
+                {/* When no external state is provided, render the fallback pieces inside the squares. */}
+                {piece && !externalPieces && (
+                    <Piece
+                        color={piece.color}
+                        isKing={piece.isKing}
+                        isSelected={isSelected}
+                    />
+                )}
             </div>
         );
     };
@@ -145,15 +149,15 @@ export const Board: React.FC<BoardProps> = ({
     return (
         <div
             className={clsx(
-                "w-full max-w-[600px] mx-auto bg-[#2B2B2B] p-2 rounded-lg shadow-xl ring-1 ring-white/10",
+                "w-full max-w-[min(94vw,600px)] mx-auto bg-[#2B2B2B] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-xl ring-1 ring-white/10 touch-manipulation",
                 isShaking && "board-shake",
                 className
             )}
             onAnimationEnd={() => setIsShaking(false)}
             {...props}
         >
-            <div className="grid grid-cols-[20px_1fr] grid-rows-[1fr_20px] gap-1">
-                <div className="grid grid-rows-8">
+            <div className="grid grid-cols-1 grid-rows-1 gap-1 sm:grid-cols-[20px_1fr] sm:grid-rows-[1fr_20px]">
+                <div className="hidden sm:grid sm:grid-rows-8">
                     {ranks.map((rank) => (
                         <div
                             key={rank}
@@ -167,9 +171,9 @@ export const Board: React.FC<BoardProps> = ({
                     <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
                         {Array.from({ length: 64 }).map((_, i) => renderSquare(i))}
                     </div>
-                    <div className="absolute inset-0 pointer-events-none">
-                        {externalPieces &&
-                            Object.entries(externalPieces).map(([key, piece]) => {
+                    {externalPieces && (
+                        <div className="absolute inset-0 pointer-events-none">
+                            {Object.entries(externalPieces).map(([key, piece]) => {
                                 const index = Number(key);
                                 const row = Math.floor(index / 8);
                                 const col = index % 8;
@@ -192,10 +196,11 @@ export const Board: React.FC<BoardProps> = ({
                                     </div>
                                 );
                             })}
-                    </div>
+                        </div>
+                    )}
                 </div>
-                <div />
-                <div className="grid grid-cols-8">
+                <div className="hidden sm:block" />
+                <div className="hidden sm:grid sm:grid-cols-8">
                     {files.map((file) => (
                         <div
                             key={file}

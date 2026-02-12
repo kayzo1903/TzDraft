@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
@@ -12,21 +12,36 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Loader2 } from "lucide-react";
 
 const heroStats = [
-  { label: "Blitz games", value: "83" },
-  { label: "Players online", value: "412" },
-  { label: "Tournaments", value: "5" },
-  { label: "Top rating", value: "2098" },
+  { labelKey: "heroStats.blitzGames", value: "83" },
+  { labelKey: "heroStats.playersOnline", value: "412" },
+  { labelKey: "heroStats.tournaments", value: "5" },
+  { labelKey: "heroStats.topRating", value: "2098" },
 ];
 
 export default function LoginPage() {
   const t = useTranslations("auth");
   const router = useRouter();
 
+  const [showHeroBoard, setShowHeroBoard] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const update = () => setShowHeroBoard(mediaQuery.matches);
+    update();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", update);
+      return () => mediaQuery.removeEventListener("change", update);
+    }
+
+    mediaQuery.addListener(update);
+    return () => mediaQuery.removeListener(update);
+  }, []);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,32 +65,34 @@ export default function LoginPage() {
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-16 lg:py-20 space-y-10 lg:space-y-0 lg:flex lg:items-stretch lg:gap-10">
           <div className="lg:w-1/2 space-y-8">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.5em] text-neutral-500">
-              <span>TzDraft Station</span>
-              <span>Chapter 01</span>
+              <span>{t("login.station")}</span>
+              <span>{t("login.chapter")}</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black leading-tight mt-4">Sign in and continue ruling the board.</h1>
+            <h1 className="text-4xl md:text-5xl font-black leading-tight mt-4">{t("login.heroTitle")}</h1>
             <p className="mt-3 text-base text-neutral-400 max-w-2xl">
-              One verified login unlocks tours, AI coaching, and community ladders. Stay signed in, secure your rating, and keep climbing.
+              {t("login.heroDescription")}
             </p>
-            <div className="grid grid-cols-2 gap-4">
-              {heroStats.map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-white/5 bg-[#111] p-4">
-                  <div className="text-3xl font-black">{stat.value}</div>
-                  <div className="text-[10px] uppercase tracking-[0.6em] text-neutral-500 mt-1">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="relative rounded-[32px] border border-white/5 bg-black/40 p-6 overflow-hidden shadow-[0_45px_120px_rgba(0,0,0,0.55)]">
-              <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle,_rgba(37,99,235,0.25),_transparent_65%)]" />
-              <div className="relative">
-                <HeroBoard />
-              </div>
-            </div>
-          </div>
-          <div className="lg:w-1/2">
-            <div className="rounded-[32px] border border-white/10 bg-[#111111]/80 shadow-[0_40px_120px_rgba(0,0,0,0.65)]">
-              <div className="p-8 space-y-6">
-                <div className="text-xs uppercase tracking-[0.5em] text-neutral-500">Login Base</div>
+             <div className="grid grid-cols-2 gap-4">
+               {heroStats.map((stat) => (
+                 <div key={stat.labelKey} className="rounded-2xl border border-white/5 bg-[#111] p-4">
+                   <div className="text-3xl font-black">{stat.value}</div>
+                   <div className="text-[10px] uppercase tracking-[0.6em] text-neutral-500 mt-1">{t(stat.labelKey)}</div>
+                 </div>
+               ))}
+             </div>
+             {showHeroBoard && (
+               <div className="hidden lg:block relative rounded-[32px] border border-white/5 bg-black/40 p-6 overflow-hidden shadow-[0_45px_120px_rgba(0,0,0,0.55)]">
+                 <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle,_rgba(37,99,235,0.25),_transparent_65%)]" />
+                 <div className="relative">
+                   <HeroBoard />
+                 </div>
+               </div>
+             )}
+           </div>
+           <div className="lg:w-1/2">
+             <div className="rounded-[32px] border border-white/10 bg-[#111111]/80 shadow-[0_40px_120px_rgba(0,0,0,0.65)]">
+               <div className="p-8 space-y-6">
+                <div className="text-xs uppercase tracking-[0.5em] text-neutral-500">{t("login.base")}</div>
                 <div className="space-y-2">
                   <h2 className="text-3xl font-black">{t("login.title")}</h2>
                   <p className="text-sm text-neutral-400">{t("login.subtitle")}</p>

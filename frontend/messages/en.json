@@ -20,6 +20,11 @@
   },
   "auth": {
     "login": {
+      "station": "TzDraft Station",
+      "chapter": "Chapter 01",
+      "heroTitle": "Sign in and continue ruling the board.",
+      "heroDescription": "One verified login unlocks tours, AI coaching, and community ladders. Stay signed in, secure your rating, and keep climbing.",
+      "base": "Login Base",
       "title": "Welcome Back",
       "subtitle": "Sign in to continue playing",
       "button": "Sign In",
@@ -30,15 +35,33 @@
       "signupLink": "Create Account",
       "identifier": "Phone Number or Username",
       "identifierPlaceholder": "07** *** *** or username",
-      "identifierHint": "You can login with your phone number or username"
+      "identifierHint": "You can login with your phone number or username",
+      "heroStats": {
+        "blitzGames": "Blitz games",
+        "playersOnline": "Players online",
+        "tournaments": "Tournaments",
+        "topRating": "Top rating"
+      }
     },
     "signup": {
+      "academy": "TzDraft Academy",
+      "heroTitle": "Join the Draft. Verify your number. Rule the 8x8 board.",
+      "heroDescription": "Every verified phone unlocks ranked matches, weekly tournaments, and AI sparring sessions. Sign up in three steps and carry the verified badge into every challenge.",
+      "liveFeed": "Live Feed",
+      "verificationCircuit": "Verification Circuit",
+      "step": "STEP",
       "title": "Create Account",
       "subtitle": "Join the TzDraft community today",
       "button": "Sign Up",
       "buttonLoading": "Creating account...",
       "haveAccount": "Already have an account?",
       "loginLink": "Sign In",
+      "quickStats": {
+        "liveTournaments": "Live tournaments",
+        "playersOnline": "Players online",
+        "longestStreak": "Longest streak",
+        "aiChallenges": "AI challenges"
+      },
       "steps": {
         "phone": {
           "title": "Create Account",

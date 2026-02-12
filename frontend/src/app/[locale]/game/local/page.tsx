@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { Board } from "@/components/game/Board";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { getMaxUnlockedBotLevel } from "@/lib/game/bot-progression";
+import { Trophy } from "lucide-react";
 
 const parseColor = (value: string | null): PlayerColor => {
   if (!value) return PlayerColor.WHITE;
@@ -56,7 +57,7 @@ export default function LocalGamePage() {
   const timeSeconds = useMemo(() => parseTime(params.get("time")), [params]);
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const { user } = useAuthStore();
-  const maxUnlockedAtStartRef = useRef<number>(1);
+  const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(1);
 
   const { state, pieces, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } = useLocalGame(
     level,
@@ -64,26 +65,31 @@ export default function LocalGamePage() {
     timeSeconds,
   );
   const [showResign, setShowResign] = useState(false);
-  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(1);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    const max = getMaxUnlockedBotLevel();
-    maxUnlockedAtStartRef.current = max;
-    setMaxUnlockedLevel(max);
-  }, [level]);
+    const prevHtmlOverflowY = document.documentElement.style.overflowY;
+    const prevBodyOverflowY = document.body.style.overflowY;
+    const prevBodyOverscrollBehavior = document.body.style.overscrollBehavior;
+
+    document.documentElement.style.overflowY = "hidden";
+    document.body.style.overflowY = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.documentElement.style.overflowY = prevHtmlOverflowY;
+      document.body.style.overflowY = prevBodyOverflowY;
+      document.body.style.overscrollBehavior = prevBodyOverscrollBehavior;
+    };
+  }, []);
 
   useEffect(() => {
-    if (!state.result) return;
-    // Local unlock runs inside `useLocalGame`; re-read after result settles.
-    const id = window.setTimeout(() => {
-      setMaxUnlockedLevel(getMaxUnlockedBotLevel());
-    }, 50);
-    return () => window.clearTimeout(id);
-  }, [state.result]);
+    const max = getMaxUnlockedBotLevel();
+    setMaxUnlockedAtStart(max);
+  }, [level]);
 
   if (!mounted) {
     return (
@@ -95,10 +101,15 @@ export default function LocalGamePage() {
 
   const userLabel = user?.username || t("you");
   const topPlayer = bot;
-  const userRating =
-    typeof user?.rating === "object" && user?.rating
-      ? (user.rating as any).rating ?? 1200
-      : (user?.rating ?? 1200);
+  const userRating = (() => {
+    const rating = user?.rating;
+    if (typeof rating === "number") return rating;
+    if (rating && typeof rating === "object" && "rating" in rating) {
+      const nested = (rating as { rating?: unknown }).rating;
+      return typeof nested === "number" ? nested : 1200;
+    }
+    return 1200;
+  })();
   const bottomPlayer = { name: userLabel, rating: userRating };
   const botColor =
     playerColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
@@ -113,40 +124,19 @@ export default function LocalGamePage() {
     didHumanWin &&
     !state.undoUsed &&
     level < 7 &&
-    maxUnlockedAtStartRef.current < nextBotLevel;
+    maxUnlockedAtStart < nextBotLevel;
 
   const timeFor = (color: PlayerColor) =>
     formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
 
-  const statusText = state.result
-    ? t("status.gameOver")
-    : state.isAiThinking
-      ? t("status.aiThinking")
-      : state.currentPlayer === playerColor
-        ? state.mustContinueFrom !== null
-          ? t("status.continueCapture")
-          : t("status.yourMove")
-        : t("status.botToMove");
+  const winnerIcon =
+    state.result?.winner === Winner.WHITE || state.result?.winner === Winner.BLACK ? (
+      <Trophy className="h-5 w-5 text-orange-300" aria-hidden="true" />
+    ) : null;
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 gap-8">
-      <div className="w-full max-w-4xl flex items-center justify-between bg-neutral-800 p-4 rounded-xl shadow-lg border border-neutral-700">
-        <div className="flex items-center gap-4">
-          <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-yellow-200">
-            {t("title")}
-          </div>
-          <div className="h-6 w-px bg-neutral-600"></div>
-          <div className="text-neutral-400 text-sm">
-            {t("aiLevel")}:{" "}
-            <span className="font-mono text-neutral-200">{level}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-neutral-300">
-          {statusText}
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-8 w-full max-w-6xl items-start justify-center">
+    <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-4 sm:gap-8">
+      <div className="flex flex-col md:flex-row gap-4 sm:gap-8 w-full max-w-6xl items-stretch md:items-start justify-center">
         <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-neutral-600 flex items-center justify-center text-sm font-bold text-neutral-100">
@@ -170,7 +160,32 @@ export default function LocalGamePage() {
           </div>
         </div>
 
-        <div className="flex-1 max-w-[650px]">
+        <div className="flex-1 max-w-[650px] w-full mx-auto">
+          <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-neutral-700 overflow-hidden shrink-0">
+                <div className="relative w-full h-full">
+                  <Image
+                    src={topPlayer.avatarSrc}
+                    alt={topPlayer.name}
+                    fill
+                    sizes="36px"
+                    className="object-cover object-[50%_60%]"
+                  />
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-neutral-200 truncate">
+                  {topPlayer.name}
+                </div>
+                <div className="text-xs text-neutral-500">{topPlayer.elo}</div>
+              </div>
+            </div>
+            <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+              {timeFor(botColor)}
+            </div>
+          </div>
+
           <Board
             onMove={makeMove}
             pieces={pieces}
@@ -179,6 +194,24 @@ export default function LocalGamePage() {
             onInvalidSelect={playWarning}
             readOnly={state.isAiThinking}
           />
+
+          <div className="md:hidden mt-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                YOU
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-neutral-200 truncate">
+                  {bottomPlayer.name}
+                </div>
+                <div className="text-xs text-neutral-500">{bottomPlayer.rating}</div>
+              </div>
+            </div>
+            <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+              {timeFor(playerColor)}
+            </div>
+          </div>
+
           {state.endgameCountdown && (
             <div className="mt-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-center text-sm text-orange-200">
               {t("endgameCountdown", {
@@ -188,8 +221,9 @@ export default function LocalGamePage() {
             </div>
           )}
           {state.result && (
-            <div className="mt-4 text-center text-lg font-semibold text-orange-300">
-              {t("winnerInline", { winner: state.result.winner })}
+            <div className="mt-4 flex items-center justify-center gap-2 text-center text-lg font-semibold text-orange-300">
+              {winnerIcon}
+              <span>{t("winnerInline", { winner: state.result.winner })}</span>
             </div>
           )}
         </div>
@@ -214,22 +248,40 @@ export default function LocalGamePage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <Button variant="secondary" onClick={undo}>
-          {t("actions.undo")}
-        </Button>
-        <Button variant="secondary" onClick={() => setShowResign(true)}>
-          {t("actions.resign")}
-        </Button>
-        <Button variant="secondary" onClick={reset}>
-          {t("actions.reset")}
-        </Button>
-      </div>
       {state.undoUsed && !state.result && (
         <div className="text-sm text-neutral-400">
           {t("progression.disabled")}
         </div>
       )}
+
+      <div className="w-full max-w-[650px] sticky bottom-0 z-20 -mx-3 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-[var(--background)]/90 backdrop-blur border-t border-neutral-800 sm:static sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-center sm:gap-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+            onClick={undo}
+          >
+            {t("actions.undo")}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+            onClick={() => setShowResign(true)}
+          >
+            {t("actions.resign")}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+            onClick={reset}
+          >
+            {t("actions.reset")}
+          </Button>
+        </div>
+      </div>
 
       {showResign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -262,25 +314,26 @@ export default function LocalGamePage() {
       {state.result && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md mx-4 rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl">
-            <div className="p-6 border-b border-neutral-800">
-              <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">
-                {t("gameOver.title")}
+          <div className="p-6 border-b border-neutral-800">
+            <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">
+              {t("gameOver.title")}
+            </div>
+            <div className="mt-2 text-3xl font-black text-neutral-100">
+              {user?.username
+                ? t("gameOver.congratsNamed", { name: user.username })
+                : t("gameOver.congrats")}
+            </div>
+            <div className="mt-2 text-neutral-400">
+              {t("gameOver.winnerLabel")}{" "}
+              <span className="inline-flex items-center gap-2 font-semibold text-orange-300">
+                {winnerIcon}
+                <span>{state.result.winner}</span>
+              </span>
+            </div>
+            {canOfferNextBot && (
+              <div className="mt-3 text-sm text-neutral-400">
+                {t("gameOver.unlockedNext", { level: nextBotLevel })}
               </div>
-              <div className="mt-2 text-3xl font-black text-neutral-100">
-                {user?.username
-                  ? t("gameOver.congratsNamed", { name: user.username })
-                  : t("gameOver.congrats")}
-              </div>
-              <div className="mt-2 text-neutral-400">
-                {t("gameOver.winnerLabel")}{" "}
-                <span className="font-semibold text-orange-300">
-                  {state.result.winner}
-                </span>
-              </div>
-              {canOfferNextBot && (
-                <div className="mt-3 text-sm text-neutral-400">
-                  {t("gameOver.unlockedNext", { level: nextBotLevel })}
-                </div>
               )}
             </div>
             <div className="p-6 flex flex-col gap-3">

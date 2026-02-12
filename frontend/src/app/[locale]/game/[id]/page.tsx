@@ -6,21 +6,60 @@ import { useSocket } from '@/hooks/useSocket';
 import { Board } from '@/components/game/Board';
 import { gameService } from '@/services/game.service';
 import { getBotByLevel } from '@/lib/game/bots';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User } from 'lucide-react';
 import Image from 'next/image';
 
+type Rating = number | { rating: number };
+
+type PlayerRecord = {
+    username?: string;
+    rating?: Rating;
+};
+
+type PlayersResponse = {
+    white?: PlayerRecord;
+    black?: PlayerRecord;
+};
+
+type ClockInfo = {
+    whiteTimeMs: number;
+    blackTimeMs: number;
+};
+
+type GameResponse = {
+    whitePlayerId: string;
+    blackPlayerId: string;
+    aiLevel?: number;
+    clockInfo?: ClockInfo;
+};
+
 export default function GamePage() {
-    const { id: gameId } = useParams();
+    const { id: gameId } = useParams<{ id: string }>();
     const socket = useSocket();
-    const [isConnected, setIsConnected] = useState(false);
-    const [game, setGame] = useState<any>(null);
-    const [players, setPlayers] = useState<any>(null);
+    const [game, setGame] = useState<GameResponse | null>(null);
+    const [players, setPlayers] = useState<PlayersResponse | null>(null);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const prevHtmlOverflowY = document.documentElement.style.overflowY;
+        const prevBodyOverflowY = document.body.style.overflowY;
+        const prevBodyOverscrollBehavior = document.body.style.overscrollBehavior;
+
+        document.documentElement.style.overflowY = 'hidden';
+        document.body.style.overflowY = 'hidden';
+        document.body.style.overscrollBehavior = 'none';
+
+        return () => {
+            document.documentElement.style.overflowY = prevHtmlOverflowY;
+            document.body.style.overflowY = prevBodyOverflowY;
+            document.body.style.overscrollBehavior = prevBodyOverscrollBehavior;
+        };
+    }, []);
 
     useEffect(() => {
         const fetchGame = async () => {
             try {
-                const data = await gameService.getGame(gameId as string);
+                const data = await gameService.getGame(gameId);
                 setGame(data.data.game);
                 setPlayers(data.data.players);
             } catch (error) {
@@ -32,25 +71,6 @@ export default function GamePage() {
 
         fetchGame();
     }, [gameId]);
-
-    useEffect(() => {
-        if (!socket) return;
-
-        setIsConnected(socket.connected);
-
-        const onConnect = () => setIsConnected(true);
-        const onDisconnect = () => setIsConnected(false);
-
-        socket.on('connect', onConnect);
-        socket.on('disconnect', onDisconnect);
-
-        return () => {
-            socket.off('connect', onConnect);
-            socket.off('disconnect', onDisconnect);
-        };
-    }, [socket]);
-
-    const status = isConnected ? 'Connected' : 'Connecting...';
 
     useEffect(() => {
         if (!socket) return;
@@ -102,7 +122,12 @@ export default function GamePage() {
 
         return {
             name: player?.username || 'Unknown',
-            rating: typeof player?.rating === 'object' ? player.rating.rating : (player?.rating || 1200),
+            rating:
+                typeof player?.rating === 'number'
+                    ? player.rating
+                    : typeof player?.rating === 'object' && player.rating
+                        ? player.rating.rating
+                        : 1200,
             avatarSrc: undefined, // User avatar logic here if needed
             isAi: false
         };
@@ -136,24 +161,8 @@ export default function GamePage() {
     };
 
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-4 gap-8">
-            {/* Header / Status */}
-            <div className="w-full max-w-4xl flex items-center justify-between bg-neutral-800 p-4 rounded-xl shadow-lg border border-neutral-700">
-                <div className="flex items-center gap-4">
-                    <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-yellow-200">
-                        TzDraft
-                    </div>
-                    <div className="h-6 w-px bg-neutral-600"></div>
-                    <div className="text-neutral-400 text-sm">Game ID: <span className="font-mono text-neutral-200">{gameId}</span></div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}></div>
-                    <span className="text-sm font-medium text-neutral-300">{status}</span>
-                </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-8 w-full max-w-6xl items-start justify-center">
+        <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-4 sm:gap-8">
+            <div className="flex flex-col md:flex-row gap-4 sm:gap-8 w-full max-w-6xl items-stretch md:items-start justify-center">
                 {/* Top Player (Black) */}
                 <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
                     <div className="flex items-center gap-3">
@@ -169,7 +178,7 @@ export default function GamePage() {
                                     />
                                 </div>
                             ) : (
-                                '👤'
+                                <User className="h-6 w-6 text-neutral-200" aria-hidden="true" />
                             )}
                         </div>
                         <div>
@@ -183,8 +192,62 @@ export default function GamePage() {
                 </div>
 
                 {/* Game Board */}
-                <div className="flex-1 max-w-[650px]">
+                <div className="flex-1 max-w-[650px] w-full mx-auto">
+                    <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden shrink-0">
+                                {topPlayer.isAi && topPlayer.avatarSrc ? (
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={topPlayer.avatarSrc}
+                                            alt={topPlayer.name}
+                                            fill
+                                            sizes="36px"
+                                            className="object-cover object-[50%_60%] rounded-full"
+                                        />
+                                    </div>
+                                ) : (
+                                    <User className="h-5 w-5 text-neutral-200" aria-hidden="true" />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="font-semibold text-neutral-200 truncate">{topPlayer.name}</div>
+                                <div className="text-xs text-neutral-500">{topPlayer.rating}</div>
+                            </div>
+                        </div>
+                        <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+                            {getPlayerTime('BLACK')}
+                        </div>
+                    </div>
+
                     <Board onMove={handleMove} />
+
+                    <div className="md:hidden mt-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center overflow-hidden shrink-0">
+                                {bottomPlayer.isAi && bottomPlayer.avatarSrc ? (
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={bottomPlayer.avatarSrc}
+                                            alt={bottomPlayer.name}
+                                            fill
+                                            sizes="36px"
+                                            className="object-cover object-[50%_60%] rounded-full"
+                                        />
+                                    </div>
+                                ) : (
+                                    <User className="h-5 w-5 text-white" aria-hidden="true" />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="font-semibold text-neutral-200 truncate">{bottomPlayer.name}</div>
+                                <div className="text-xs text-neutral-500">{bottomPlayer.rating}</div>
+                            </div>
+                        </div>
+                        <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+                            {getPlayerTime('WHITE')}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Bottom Player (White) */}
@@ -202,7 +265,7 @@ export default function GamePage() {
                                     />
                                 </div>
                             ) : (
-                                '👤'
+                                <User className="h-6 w-6 text-white" aria-hidden="true" />
                             )}
                         </div>
                         <div>

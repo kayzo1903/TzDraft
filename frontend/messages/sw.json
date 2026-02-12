@@ -20,6 +20,11 @@
   },
   "auth": {
     "login": {
+      "station": "Kituo cha TzDraft",
+      "chapter": "Sehemu ya 01",
+      "heroTitle": "Ingia na endelea kumiliki ubao.",
+      "heroDescription": "Kuingia kama mmiliki kunafungua mafunzo, msaada wa AI, na mizani ya jumuiya. Baki umeingizwa, salimisha kiwango chako, na endelea kupanda.",
+      "base": "Kituo cha Kuingia",
       "title": "Karibu Tena",
       "subtitle": "Ingia ili uendelee kucheza",
       "button": "Ingia",
@@ -30,15 +35,33 @@
       "signupLink": "Fungua Akaunti",
       "identifier": "Nambari ya Simu au Jina la Utumiaji",
       "identifierPlaceholder": "07** *** *** au jina la utumiaji",
-      "identifierHint": "Unaweza kuingia kwa nambari ya simu au jina la utumiaji"
+      "identifierHint": "Unaweza kuingia kwa nambari ya simu au jina la utumiaji",
+      "heroStats": {
+        "blitzGames": "Michezo ya Blitz",
+        "playersOnline": "Wachezaji Mtandaoni",
+        "tournaments": "Mashindano",
+        "topRating": "Rating ya Juu"
+      }
     },
     "signup": {
+      "academy": "Chuo cha TzDraft",
+      "heroTitle": "Jiunge na Draft. Thibitisha nambari yako. Miliki ubao wa 8x8.",
+      "heroDescription": "Kila simu iliyothibitishwa inafungua mechi yenye daraja, mashindano ya kila wiki, na vikao vya AI. Jisajili kwa hatua tatu na chukua sera ya kuuthibitishwa katika kila changamoto.",
+      "liveFeed": "Mtandao Hai",
+      "verificationCircuit": "Mlangoni wa Uthibitishaji",
+      "step": "HATUA",
       "title": "Fungua Akaunti",
       "subtitle": "Jiunge na jumuiya ya TzDraft leo",
       "button": "Jisajili",
       "buttonLoading": "Inafungua akaunti...",
       "haveAccount": "Tayari una akaunti?",
       "loginLink": "Ingia",
+      "quickStats": {
+        "liveTournaments": "Mashindano ya Hai",
+        "playersOnline": "Wachezaji Mtandaoni",
+        "longestStreak": "Mfululizo Mrefu Zaidi",
+        "aiChallenges": "Changamoto za AI"
+      },
       "steps": {
         "phone": {
           "title": "Fungua Akaunti",

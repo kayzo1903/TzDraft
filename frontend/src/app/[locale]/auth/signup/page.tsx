@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
@@ -29,10 +29,10 @@ import {
 } from "lucide-react";
 
 const quickStats = [
-  { label: "Live tournaments", value: "12" },
-  { label: "Players online", value: "412" },
-  { label: "Longest streak", value: "15 wins" },
-  { label: "AI challenges", value: "8" },
+  { labelKey: "signup.quickStats.liveTournaments", value: "12" },
+  { labelKey: "signup.quickStats.playersOnline", value: "412" },
+  { labelKey: "signup.quickStats.longestStreak", value: "15 wins" },
+  { labelKey: "signup.quickStats.aiChallenges", value: "8" },
 ];
 
 export default function SignupPage() {
@@ -40,6 +40,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { register } = useAuth();
 
+  const [showHeroBoard, setShowHeroBoard] = useState(false);
   const [step, setStep] = useState<"phone" | "otp" | "details">("phone");
   const [formData, setFormData] = useState({
     phoneNumber: "",
@@ -51,6 +52,20 @@ export default function SignupPage() {
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const update = () => setShowHeroBoard(mediaQuery.matches);
+    update();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", update);
+      return () => mediaQuery.removeEventListener("change", update);
+    }
+
+    mediaQuery.addListener(update);
+    return () => mediaQuery.removeListener(update);
+  }, []);
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,42 +158,44 @@ export default function SignupPage() {
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-16 lg:py-20 space-y-10 lg:space-y-0 lg:flex lg:items-stretch lg:gap-10">
           <div className="lg:w-1/2 space-y-8">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.5em] text-neutral-500">
-              <span>TzDraft Academy</span>
+              <span>{t("signup.academy")}</span>
               <span>Chapter {step === "phone" ? "01" : step === "otp" ? "02" : "03"}</span>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-5xl font-black leading-tight text-white">
-              Join the Draft. Verify your number. Rule the 8x8 board.
+              {t("signup.heroTitle")}
             </h1>
             <p className="text-base md:text-lg text-neutral-400 max-w-xl">
-              Every verified phone unlocks ranked matches, weekly tournaments, and AI sparring sessions. Sign up in three steps and carry the verified badge into every challenge.
+              {t("signup.heroDescription")}
             </p>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-4 shadow-[0_40px_120px_rgba(0,0,0,0.35)]">
-              <p className="text-sm uppercase tracking-[0.4em] text-neutral-500">Live Feed</p>
-              <div className="grid grid-cols-2 gap-4">
-                {quickStats.map((stat) => (
-                  <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
+             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-4 shadow-[0_40px_120px_rgba(0,0,0,0.35)]">
+               <p className="text-sm uppercase tracking-[0.4em] text-neutral-500">{t("signup.liveFeed")}</p>
+               <div className="grid grid-cols-2 gap-4">
+                 {quickStats.map((stat) => (
+                  <div key={stat.labelKey} className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
                     <div className="text-2xl font-black">{stat.value}</div>
                     <div className="text-[10px] uppercase tracking-[0.8em] text-neutral-500 mt-1">
-                      {stat.label}
+                      {t(stat.labelKey)}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="relative rounded-[32px] border border-white/10 bg-black/30 shadow-[0_50px_100px_rgba(0,0,0,0.65)]">
-              <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle,_rgba(249,115,22,0.4),_transparent_60%)] opacity-60" />
-              <div className="relative isolate">
-                <HeroBoard />
+            {showHeroBoard && (
+              <div className="hidden lg:block relative rounded-[32px] border border-white/10 bg-black/30 shadow-[0_50px_100px_rgba(0,0,0,0.65)]">
+                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle,_rgba(249,115,22,0.4),_transparent_60%)] opacity-60" />
+                <div className="relative isolate">
+                  <HeroBoard />
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <div className="lg:w-1/2">
             <div className="rounded-[36px] border border-white/10 bg-[#111111]/90 shadow-[0_40px_120px_rgba(0,0,0,0.65)] overflow-hidden">
               <div className="p-8 space-y-6">
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.5em] text-neutral-500">
-                  <span>Verification Circuit</span>
+                  <span>{t("signup.verificationCircuit")}</span>
                   <span className="text-[#81b64c] font-semibold">
-                    STEP {step === "phone" ? "01" : step === "otp" ? "02" : "03"}
+                    {t("signup.step")} {step === "phone" ? "01" : step === "otp" ? "02" : "03"}
                   </span>
                 </div>
                 <div className="space-y-2 text-center">

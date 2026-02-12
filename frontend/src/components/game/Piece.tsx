@@ -31,7 +31,7 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected }) => {
                     <svg
                         viewBox="0 0 24 24"
                         className={clsx(
-                            'w-10 h-10',
+                            'w-7 h-7 sm:w-10 sm:h-10',
                             color === 'WHITE'
                                 ? 'text-neutral-900'
                                 : 'text-neutral-100'
