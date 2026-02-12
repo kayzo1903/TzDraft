@@ -156,7 +156,7 @@ export default function SignupPage() {
         <div className="absolute -top-16 left-1/4 h-72 w-72 rounded-full bg-[#f97316]/30 blur-[120px] pointer-events-none" />
         <div className="absolute -right-10 top-1/3 h-80 w-80 rounded-full bg-[#8b5cf6]/20 blur-[140px] pointer-events-none" />
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-16 lg:py-20 space-y-10 lg:space-y-0 lg:flex lg:items-stretch lg:gap-10">
-          <div className="lg:w-1/2 space-y-8">
+          <div className="hidden lg:block lg:w-1/2 space-y-8">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.5em] text-neutral-500">
               <span>{t("signup.academy")}</span>
               <span>Chapter {step === "phone" ? "01" : step === "otp" ? "02" : "03"}</span>

@@ -12,10 +12,10 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { Loader2 } from "lucide-react";
 
 const heroStats = [
-  { labelKey: "heroStats.blitzGames", value: "83" },
-  { labelKey: "heroStats.playersOnline", value: "412" },
-  { labelKey: "heroStats.tournaments", value: "5" },
-  { labelKey: "heroStats.topRating", value: "2098" },
+  { labelKey: "login.heroStats.blitzGames", value: "83" },
+  { labelKey: "login.heroStats.playersOnline", value: "412" },
+  { labelKey: "login.heroStats.tournaments", value: "5" },
+  { labelKey: "login.heroStats.topRating", value: "2098" },
 ];
 
 export default function LoginPage() {
@@ -63,7 +63,7 @@ export default function LoginPage() {
       <div className="relative isolate overflow-hidden">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.3),_transparent_45%)]" />
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-16 lg:py-20 space-y-10 lg:space-y-0 lg:flex lg:items-stretch lg:gap-10">
-          <div className="lg:w-1/2 space-y-8">
+          <div className="hidden lg:block lg:w-1/2 space-y-8">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.5em] text-neutral-500">
               <span>{t("login.station")}</span>
               <span>{t("login.chapter")}</span>
