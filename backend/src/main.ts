@@ -30,8 +30,18 @@ async function bootstrap() {
     'http://localhost:3000';
 
   const allowedOrigins = corsOriginsRaw
-    .split(',')
+    .split(/[,\n]/g)
     .map((origin) => origin.trim())
+    .map((origin) => {
+      if (
+        origin.length >= 2 &&
+        origin[0] === origin[origin.length - 1] &&
+        (origin[0] === '"' || origin[0] === "'")
+      ) {
+        return origin.slice(1, -1).trim();
+      }
+      return origin;
+    })
     .map((origin) => origin.replace(/\/$/, ''))
     .filter(Boolean);
 
@@ -47,12 +57,9 @@ async function bootstrap() {
 
       if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
 
-      return callback(
-        new Error(
-          `CORS origin not allowed: ${normalizedOrigin}. Allowed: ${allowedOrigins.join(', ')}`,
-        ),
-        false,
-      );
+      // Do not throw here: passing an Error causes a 500 response which can be confusing during CORS debugging.
+      // Returning `false` omits CORS headers, which correctly blocks the browser while keeping the status code stable.
+      return callback(null, false);
     },
     credentials: true,
     optionsSuccessStatus: 204,
