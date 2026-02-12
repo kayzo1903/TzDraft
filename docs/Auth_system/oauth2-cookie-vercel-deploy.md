@@ -65,6 +65,7 @@ Set these in your backend hosting platform:
 
 - `NODE_ENV=production`
 - `PORT=3002` (or whatever your host uses)
+- `BACKEND_URL=https://api.tzdraft.co.tz`
 - `FRONTEND_URL=https://tzdraft.co.tz`
 - `COOKIE_DOMAIN=.tzdraft.co.tz`
 - `CORS_ORIGIN=https://tzdraft.co.tz`
@@ -76,6 +77,7 @@ Set these in your backend hosting platform:
 Notes:
 - `COOKIE_DOMAIN=.tzdraft.co.tz` allows cookies to be shared with subdomains.
 - Cookies are sent only over HTTPS when `NODE_ENV=production` (because `secure: true`).
+- `BACKEND_URL` must match your public API origin used by Google OAuth (and your redirect URI).
 
 ## Frontend Environment Variables (Vercel)
 

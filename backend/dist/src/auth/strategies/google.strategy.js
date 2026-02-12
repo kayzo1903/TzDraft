@@ -22,7 +22,9 @@ let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrateg
         const clientID = configService.get('GOOGLE_CLIENT_ID') || '';
         const clientSecret = configService.get('GOOGLE_CLIENT_SECRET') || '';
         const port = configService.get('PORT') || '3002';
-        const callbackURL = `http://localhost:${port}/auth/google/callback`;
+        const backendUrl = (configService.get('BACKEND_URL') || '').replace(/\/$/, '') ||
+            `http://localhost:${port}`;
+        const callbackURL = `${backendUrl}/auth/google/callback`;
         console.log('🔍 Google OAuth Configuration:');
         console.log('Client ID:', clientID ? `${clientID.substring(0, 20)}...` : 'MISSING');
         console.log('Client Secret:', clientSecret ? `${clientSecret.substring(0, 10)}...` : 'MISSING');

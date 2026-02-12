@@ -14,7 +14,11 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const clientSecret =
       configService.get<string>('GOOGLE_CLIENT_SECRET') || '';
     const port = configService.get<string>('PORT') || '3002';
-    const callbackURL = `http://localhost:${port}/auth/google/callback`;
+
+    const backendUrl =
+      (configService.get<string>('BACKEND_URL') || '').replace(/\/$/, '') ||
+      `http://localhost:${port}`;
+    const callbackURL = `${backendUrl}/auth/google/callback`;
 
     console.log('🔍 Google OAuth Configuration:');
     console.log(
