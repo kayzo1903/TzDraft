@@ -57,6 +57,43 @@ async function bootstrap() {
 
       if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
 
+      // Support wildcard subdomains like: https://*.tzdraft.co.tz
+      for (const allowedOrigin of allowedOrigins) {
+        if (!allowedOrigin.includes('*')) continue;
+
+        try {
+          const allowed = new URL(allowedOrigin.replace('*.', ''));
+          const incoming = new URL(normalizedOrigin);
+
+          if (incoming.protocol !== allowed.protocol) continue;
+          if (incoming.port !== allowed.port) continue;
+
+          const allowedHost = allowed.hostname;
+          const incomingHost = incoming.hostname;
+          if (incomingHost === allowedHost) continue; // requires subdomain
+          if (incomingHost.endsWith(`.${allowedHost}`)) return callback(null, true);
+        } catch {
+          // ignore invalid patterns
+        }
+      }
+
+      // Convenience: if you configured apex domain, allow its www variant (and vice-versa).
+      try {
+        const incoming = new URL(normalizedOrigin);
+        const incomingHost = incoming.hostname;
+
+        const wwwToggledHost = incomingHost.startsWith('www.')
+          ? incomingHost.slice(4)
+          : `www.${incomingHost}`;
+        const toggledOrigin = `${incoming.protocol}//${wwwToggledHost}${
+          incoming.port ? `:${incoming.port}` : ''
+        }`;
+
+        if (allowedOrigins.includes(toggledOrigin)) return callback(null, true);
+      } catch {
+        // ignore invalid origins
+      }
+
       // Do not throw here: passing an Error causes a 500 response which can be confusing during CORS debugging.
       // Returning `false` omits CORS headers, which correctly blocks the browser while keeping the status code stable.
       return callback(null, false);
