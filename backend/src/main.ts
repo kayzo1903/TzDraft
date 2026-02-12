@@ -1,10 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const isProd = process.env.NODE_ENV === 'production';
+
+  const app = await NestFactory.create(AppModule, {
+    logger: isProd ? false : undefined,
+  });
 
   // Enable validation
   app.useGlobalPipes(
@@ -21,11 +25,14 @@ async function bootstrap() {
   const corsOriginsRaw =
     configService.get<string>('CORS_ORIGINS') ||
     configService.get<string>('CORS_ORIGIN') ||
+    configService.get<string>('FRONTEND_URL') ||
+    configService.get<string>('APP_URL') ||
     'http://localhost:3000';
 
   const allowedOrigins = corsOriginsRaw
     .split(',')
     .map((origin) => origin.trim())
+    .map((origin) => origin.replace(/\/$/, ''))
     .filter(Boolean);
 
   app.enableCors({
@@ -33,20 +40,31 @@ async function bootstrap() {
       // Non-browser requests (curl, health checks) may not send Origin.
       if (!origin) return callback(null, true);
 
+      const normalizedOrigin = origin.replace(/\/$/, '');
+
       // Allow all (use with care). With credentials=true, browsers will reflect the request origin.
       if (allowedOrigins.includes('*')) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
 
-      return callback(new Error(`CORS origin not allowed: ${origin}`), false);
+      return callback(
+        new Error(
+          `CORS origin not allowed: ${normalizedOrigin}. Allowed: ${allowedOrigins.join(', ')}`,
+        ),
+        false,
+      );
     },
     credentials: true,
+    optionsSuccessStatus: 204,
   });
 
   const port = configService.get('PORT') || 3002;
 
   // Explicitly bind to all interfaces (required by some PaaS port scanners).
   await app.listen(port, '0.0.0.0');
-  console.log(`TzDraft server listening on port ${port}`);
+
+  if (!isProd) {
+    new Logger('Bootstrap').log(`TzDraft server listening on port ${port}`);
+  }
 }
 bootstrap();
