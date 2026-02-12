@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +10,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private configService: ConfigService,
     private authService: AuthService,
   ) {
+    const logger = new Logger(GoogleStrategy.name);
+
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID') || '';
     const clientSecret =
       configService.get<string>('GOOGLE_CLIENT_SECRET') || '';
@@ -20,16 +22,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       `http://localhost:${port}`;
     const callbackURL = `${backendUrl}/auth/google/callback`;
 
-    console.log('🔍 Google OAuth Configuration:');
-    console.log(
-      'Client ID:',
-      clientID ? `${clientID.substring(0, 20)}...` : 'MISSING',
-    );
-    console.log(
-      'Client Secret:',
-      clientSecret ? `${clientSecret.substring(0, 10)}...` : 'MISSING',
-    );
-    console.log('Callback URL:', callbackURL);
+    if (!clientID || !clientSecret) {
+      logger.warn('Google OAuth credentials not configured');
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(`Google OAuth callback URL: ${callbackURL}`);
+    }
 
     super({
       clientID,

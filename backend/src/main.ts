@@ -24,7 +24,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get('PORT') || 3002;
 
-  await app.listen(port);
-  console.log(`🚀 TzDraft server running on http://localhost:${port}`);
+  // Explicitly bind to all interfaces (required by some PaaS port scanners).
+  await app.listen(port, '0.0.0.0');
+  console.log(`TzDraft server listening on port ${port}`);
 }
 bootstrap();
