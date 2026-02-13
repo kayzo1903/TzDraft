@@ -27,7 +27,7 @@ async function bootstrap() {
       console.log(
         '[AUTH_LOGIN_DEBUG]',
         JSON.stringify({
-          logVersion: 'v2-express-json',
+          logVersion: 'v3-debug-stream',
           method: req.method,
           path: req.path,
           origin: req.headers.origin,
@@ -35,13 +35,21 @@ async function bootstrap() {
           contentLength: req.headers['content-length'],
           bodyType: body === null ? 'null' : typeof body,
           bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
-          identifierType: typeof identifier,
-          identifierLength:
-            typeof identifier === 'string' ? identifier.length : null,
-          passwordType: typeof password,
-          passwordLength: typeof password === 'string' ? password.length : null,
         }),
       );
+
+      // Diagnostic: Try to read stream if body is missing
+      if (!body || Object.keys(body).length === 0) {
+        const chunks: any[] = [];
+        req.on('data', (chunk) => chunks.push(chunk));
+        req.on('end', () => {
+          const raw = Buffer.concat(chunks).toString();
+          console.log(
+            '[AUTH_LOGIN_STREAM]',
+            JSON.stringify({ rawLength: raw.length, rawContent: raw }),
+          );
+        });
+      }
     }
 
     next();
