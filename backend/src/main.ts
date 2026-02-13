@@ -2,12 +2,43 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as express from 'express';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create(AppModule, {
     logger: isProd ? false : undefined,
+  });
+
+  // Be explicit about request body parsing in every environment.
+  app.use(express.json({ limit: '1mb', type: ['application/json', 'application/*+json'] }));
+  app.use(express.urlencoded({ extended: true }));
+  app.use('/auth/login', (req, _res, next) => {
+    if (process.env.AUTH_DEBUG_LOG === 'true') {
+      const body = req.body as Record<string, unknown> | undefined;
+      const identifier = body?.identifier;
+      const password = body?.password;
+
+      // Temporary production diagnostics for login body parsing/CORS troubleshooting.
+      console.log(
+        '[AUTH_LOGIN_DEBUG]',
+        JSON.stringify({
+          method: req.method,
+          path: req.path,
+          origin: req.headers.origin,
+          contentType: req.headers['content-type'],
+          bodyType: body === null ? 'null' : typeof body,
+          bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
+          identifierType: typeof identifier,
+          identifierLength: typeof identifier === 'string' ? identifier.length : null,
+          passwordType: typeof password,
+          passwordLength: typeof password === 'string' ? password.length : null,
+        }),
+      );
+    }
+
+    next();
   });
 
   // Enable validation
@@ -99,6 +130,8 @@ async function bootstrap() {
       return callback(null, false);
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     optionsSuccessStatus: 204,
   });
 

@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var GoogleStrategy_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GoogleStrategy = void 0;
 const common_1 = require("@nestjs/common");
@@ -15,20 +16,23 @@ const passport_1 = require("@nestjs/passport");
 const passport_google_oauth20_1 = require("passport-google-oauth20");
 const config_1 = require("@nestjs/config");
 const auth_service_1 = require("../auth.service");
-let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrategy)(passport_google_oauth20_1.Strategy, 'google') {
+let GoogleStrategy = GoogleStrategy_1 = class GoogleStrategy extends (0, passport_1.PassportStrategy)(passport_google_oauth20_1.Strategy, 'google') {
     configService;
     authService;
     constructor(configService, authService) {
+        const logger = new common_1.Logger(GoogleStrategy_1.name);
         const clientID = configService.get('GOOGLE_CLIENT_ID') || '';
         const clientSecret = configService.get('GOOGLE_CLIENT_SECRET') || '';
         const port = configService.get('PORT') || '3002';
         const backendUrl = (configService.get('BACKEND_URL') || '').replace(/\/$/, '') ||
             `http://localhost:${port}`;
         const callbackURL = `${backendUrl}/auth/google/callback`;
-        console.log('🔍 Google OAuth Configuration:');
-        console.log('Client ID:', clientID ? `${clientID.substring(0, 20)}...` : 'MISSING');
-        console.log('Client Secret:', clientSecret ? `${clientSecret.substring(0, 10)}...` : 'MISSING');
-        console.log('Callback URL:', callbackURL);
+        if (!clientID || !clientSecret) {
+            logger.warn('Google OAuth credentials not configured');
+        }
+        if (process.env.NODE_ENV !== 'production') {
+            logger.debug(`Google OAuth callback URL: ${callbackURL}`);
+        }
         super({
             clientID,
             clientSecret,
@@ -50,7 +54,7 @@ let GoogleStrategy = class GoogleStrategy extends (0, passport_1.PassportStrateg
     }
 };
 exports.GoogleStrategy = GoogleStrategy;
-exports.GoogleStrategy = GoogleStrategy = __decorate([
+exports.GoogleStrategy = GoogleStrategy = GoogleStrategy_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService,
         auth_service_1.AuthService])
