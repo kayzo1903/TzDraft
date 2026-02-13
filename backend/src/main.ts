@@ -14,8 +14,9 @@ async function bootstrap() {
   });
 
   // Ensure body parsing is explicitly enabled in production runtime.
-  app.useBodyParser('json', { limit: '1mb' });
-  app.useBodyParser('urlencoded', { extended: true });
+  // Ensure body parsing is explicitly enabled in production runtime.
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true }));
 
   app.use('/auth/login', (req, _res, next) => {
     if (process.env.AUTH_DEBUG_LOG === 'true') {
@@ -27,7 +28,7 @@ async function bootstrap() {
       console.log(
         '[AUTH_LOGIN_DEBUG]',
         JSON.stringify({
-          logVersion: 'v3-debug-stream',
+          logVersion: 'v4-fix-applied',
           method: req.method,
           path: req.path,
           origin: req.headers.origin,
@@ -37,19 +38,6 @@ async function bootstrap() {
           bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
         }),
       );
-
-      // Diagnostic: Try to read stream if body is missing
-      if (!body || Object.keys(body).length === 0) {
-        const chunks: any[] = [];
-        req.on('data', (chunk) => chunks.push(chunk));
-        req.on('end', () => {
-          const raw = Buffer.concat(chunks).toString();
-          console.log(
-            '[AUTH_LOGIN_STREAM]',
-            JSON.stringify({ rawLength: raw.length, rawContent: raw }),
-          );
-        });
-      }
     }
 
     next();
