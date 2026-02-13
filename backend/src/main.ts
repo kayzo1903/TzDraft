@@ -27,10 +27,12 @@ async function bootstrap() {
       console.log(
         '[AUTH_LOGIN_DEBUG]',
         JSON.stringify({
+          logVersion: 'v2-express-json',
           method: req.method,
           path: req.path,
           origin: req.headers.origin,
           contentType: req.headers['content-type'],
+          contentLength: req.headers['content-length'],
           bodyType: body === null ? 'null' : typeof body,
           bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
           identifierType: typeof identifier,
