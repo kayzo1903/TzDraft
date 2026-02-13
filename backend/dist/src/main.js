@@ -9,28 +9,28 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule, {
         logger: isProd ? false : undefined,
     });
-    app.useBodyParser('json', { limit: '1mb' });
-    app.useBodyParser('urlencoded', { extended: true });
-    app.use('/auth/login', (req, _res, next) => {
-        if (process.env.AUTH_DEBUG_LOG === 'true') {
-            const body = req.body;
-            const identifier = body?.identifier;
-            const password = body?.password;
-            console.log('[AUTH_LOGIN_DEBUG]', JSON.stringify({
-                method: req.method,
-                path: req.path,
-                origin: req.headers.origin,
-                contentType: req.headers['content-type'],
-                bodyType: body === null ? 'null' : typeof body,
-                bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
-                identifierType: typeof identifier,
-                identifierLength: typeof identifier === 'string' ? identifier.length : null,
-                passwordType: typeof password,
-                passwordLength: typeof password === 'string' ? password.length : null,
-            }));
-        }
-        next();
-    });
+    if (process.env.AUTH_DEBUG_LOG === 'true') {
+        app.use((req, _res, next) => {
+            if (req.path === '/auth/login' && req.method === 'POST') {
+                const body = req.body;
+                const identifier = body?.identifier;
+                const password = body?.password;
+                console.log('[AUTH_LOGIN_DEBUG]', JSON.stringify({
+                    method: req.method,
+                    path: req.path,
+                    origin: req.headers.origin,
+                    contentType: req.headers['content-type'],
+                    bodyType: body === null ? 'null' : typeof body,
+                    bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
+                    identifierType: typeof identifier,
+                    identifierLength: typeof identifier === 'string' ? identifier.length : null,
+                    passwordType: typeof password,
+                    passwordLength: typeof password === 'string' ? password.length : null,
+                }));
+            }
+            next();
+        });
+    }
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,

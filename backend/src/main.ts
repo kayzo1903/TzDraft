@@ -3,19 +3,13 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: isProd ? false : undefined,
-    bodyParser: false,
-  });
-
-  // 1. Body parsing FIRST
-  app.use(json({ limit: '1mb' }));
-  app.use(urlencoded({ extended: true }));
+  }); // Body parsing is now handled by NestJS defaults.
 
   // 2. THEN other middleware (not path-specific)
   if (process.env.AUTH_DEBUG_LOG === 'true') {
@@ -33,12 +27,14 @@ async function bootstrap() {
             origin: req.headers.origin,
             contentType: req.headers['content-type'],
             bodyType: body === null ? 'null' : typeof body,
-            bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
+            bodyKeys:
+              body && typeof body === 'object' ? Object.keys(body) : null,
             identifierType: typeof identifier,
             identifierLength:
               typeof identifier === 'string' ? identifier.length : null,
             passwordType: typeof password,
-            passwordLength: typeof password === 'string' ? password.length : null,
+            passwordLength:
+              typeof password === 'string' ? password.length : null,
           }),
         );
       }
