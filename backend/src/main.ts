@@ -10,6 +10,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: isProd ? false : undefined,
+    bodyParser: false,
   });
 
   // Ensure body parsing is explicitly enabled in production runtime.
