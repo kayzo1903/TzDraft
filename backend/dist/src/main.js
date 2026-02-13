@@ -4,13 +4,15 @@ const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const express_1 = require("express");
 async function bootstrap() {
     const isProd = process.env.NODE_ENV === 'production';
     const app = await core_1.NestFactory.create(app_module_1.AppModule, {
         logger: isProd ? false : undefined,
+        bodyParser: false,
     });
-    app.useBodyParser('json', { limit: '1mb' });
-    app.useBodyParser('urlencoded', { extended: true });
+    app.use((0, express_1.json)({ limit: '1mb' }));
+    app.use((0, express_1.urlencoded)({ extended: true }));
     app.use('/auth/login', (req, _res, next) => {
         if (process.env.AUTH_DEBUG_LOG === 'true') {
             const body = req.body;
