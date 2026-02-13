@@ -9,6 +9,8 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule, {
         logger: isProd ? false : undefined,
     });
+    app.useBodyParser('json', { limit: '1mb' });
+    app.useBodyParser('urlencoded', { extended: true });
     app.use('/auth/login', (req, _res, next) => {
         if (process.env.AUTH_DEBUG_LOG === 'true') {
             const body = req.body;
@@ -52,7 +54,15 @@ async function bootstrap() {
         return origin;
     })
         .map((origin) => origin.replace(/\/$/, ''))
-        .filter(Boolean);
+        .filter(Boolean)
+        .flatMap((origin) => {
+        if (origin === '*')
+            return ['*'];
+        if (origin.startsWith('http://') || origin.startsWith('https://')) {
+            return [origin];
+        }
+        return [`https://${origin}`, `http://${origin}`];
+    });
     app.enableCors({
         origin: (origin, callback) => {
             if (!origin)

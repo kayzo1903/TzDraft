@@ -2,13 +2,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: isProd ? false : undefined,
   });
+
+  // Ensure body parsing is explicitly enabled in production runtime.
+  app.useBodyParser('json', { limit: '1mb' });
+  app.useBodyParser('urlencoded', { extended: true });
 
   app.use('/auth/login', (req, _res, next) => {
     if (process.env.AUTH_DEBUG_LOG === 'true') {
