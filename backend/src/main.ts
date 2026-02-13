@@ -13,38 +13,38 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  // Ensure body parsing is explicitly enabled in production runtime.
-  // We use standard express middleware instead of NestJS wrappers for better control.
+  // 1. Body parsing FIRST
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ extended: true }));
 
-  app.use('/auth/login', (req, _res, next) => {
-    if (process.env.AUTH_DEBUG_LOG === 'true') {
-      const body = req.body as Record<string, unknown> | undefined;
-      const identifier = body?.identifier;
-      const password = body?.password;
+  // 2. THEN other middleware (not path-specific)
+  if (process.env.AUTH_DEBUG_LOG === 'true') {
+    app.use((req, _res, next) => {
+      if (req.path === '/auth/login' && req.method === 'POST') {
+        const body = req.body as Record<string, unknown> | undefined;
+        const identifier = body?.identifier;
+        const password = body?.password;
 
-      // Temporary production diagnostics for login body parsing/CORS troubleshooting.
-      console.log(
-        '[AUTH_LOGIN_DEBUG]',
-        JSON.stringify({
-          method: req.method,
-          path: req.path,
-          origin: req.headers.origin,
-          contentType: req.headers['content-type'],
-          bodyType: body === null ? 'null' : typeof body,
-          bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
-          identifierType: typeof identifier,
-          identifierLength:
-            typeof identifier === 'string' ? identifier.length : null,
-          passwordType: typeof password,
-          passwordLength: typeof password === 'string' ? password.length : null,
-        }),
-      );
-    }
-
-    next();
-  });
+        console.log(
+          '[AUTH_LOGIN_DEBUG]',
+          JSON.stringify({
+            method: req.method,
+            path: req.path,
+            origin: req.headers.origin,
+            contentType: req.headers['content-type'],
+            bodyType: body === null ? 'null' : typeof body,
+            bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
+            identifierType: typeof identifier,
+            identifierLength:
+              typeof identifier === 'string' ? identifier.length : null,
+            passwordType: typeof password,
+            passwordLength: typeof password === 'string' ? password.length : null,
+          }),
+        );
+      }
+      next();
+    });
+  }
 
   // Enable validation
   app.useGlobalPipes(
