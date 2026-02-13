@@ -27,7 +27,8 @@ async function bootstrap() {
           bodyType: body === null ? 'null' : typeof body,
           bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
           identifierType: typeof identifier,
-          identifierLength: typeof identifier === 'string' ? identifier.length : null,
+          identifierLength:
+            typeof identifier === 'string' ? identifier.length : null,
           passwordType: typeof password,
           passwordLength: typeof password === 'string' ? password.length : null,
         }),
@@ -56,10 +57,13 @@ async function bootstrap() {
     configService.get<string>('APP_URL') ||
     'http://localhost:3000';
 
+  // Normalize origins: ensure they have protocols.
+  // If a user provides "tzdraft.co.tz", we allow both "https://tzdraft.co.tz" and "http://tzdraft.co.tz".
   const allowedOrigins = corsOriginsRaw
     .split(/[,\n]/g)
     .map((origin) => origin.trim())
     .map((origin) => {
+      // Remove quotes if present
       if (
         origin.length >= 2 &&
         origin[0] === origin[origin.length - 1] &&
@@ -70,7 +74,16 @@ async function bootstrap() {
       return origin;
     })
     .map((origin) => origin.replace(/\/$/, ''))
-    .filter(Boolean);
+    .filter(Boolean)
+    .flatMap((origin) => {
+      if (origin === '*') return ['*'];
+      // If it already has a protocol, keep it as is.
+      if (origin.startsWith('http://') || origin.startsWith('https://')) {
+        return [origin];
+      }
+      // If no protocol, allow both https and http.
+      return [`https://${origin}`, `http://${origin}`];
+    });
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -82,7 +95,8 @@ async function bootstrap() {
       // Allow all (use with care). With credentials=true, browsers will reflect the request origin.
       if (allowedOrigins.includes('*')) return callback(null, true);
 
-      if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
+      if (allowedOrigins.includes(normalizedOrigin))
+        return callback(null, true);
 
       // Support wildcard subdomains like: https://*.tzdraft.co.tz
       for (const allowedOrigin of allowedOrigins) {
@@ -98,7 +112,8 @@ async function bootstrap() {
           const allowedHost = allowed.hostname;
           const incomingHost = incoming.hostname;
           if (incomingHost === allowedHost) continue; // requires subdomain
-          if (incomingHost.endsWith(`.${allowedHost}`)) return callback(null, true);
+          if (incomingHost.endsWith(`.${allowedHost}`))
+            return callback(null, true);
         } catch {
           // ignore invalid patterns
         }
