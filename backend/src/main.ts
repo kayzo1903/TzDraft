@@ -15,7 +15,22 @@ async function bootstrap() {
 
   // Ensure body parsing is explicitly enabled in production runtime.
   // Ensure body parsing is explicitly enabled in production runtime.
-  app.use(json({ limit: '1mb' }));
+  const bodyParserMiddleware = json({ limit: '1mb' });
+  app.use((req: any, res: any, next: any) => {
+    console.log('[DEBUG_MW] Entering json parser');
+    bodyParserMiddleware(req, res, (err) => {
+      if (err) {
+        console.error('[DEBUG_MW] Error in json parser', err);
+        return next(err);
+      }
+      console.log(
+        '[DEBUG_MW] Exiting json parser. Body keys:',
+        Object.keys(req.body || {}),
+      );
+      next();
+    });
+  });
+
   app.use(urlencoded({ extended: true }));
 
   app.use('/auth/login', (req, _res, next) => {
@@ -28,7 +43,7 @@ async function bootstrap() {
       console.log(
         '[AUTH_LOGIN_DEBUG]',
         JSON.stringify({
-          logVersion: 'v4-fix-applied',
+          logVersion: 'v5-debug-middleware',
           method: req.method,
           path: req.path,
           origin: req.headers.origin,
