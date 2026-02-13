@@ -4,11 +4,14 @@ const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const express_1 = require("express");
 async function bootstrap() {
     const isProd = process.env.NODE_ENV === 'production';
     const app = await core_1.NestFactory.create(app_module_1.AppModule, {
         logger: isProd ? false : undefined,
     });
+    app.set('trust proxy', 1);
+    app.use((0, express_1.json)());
     if (process.env.AUTH_DEBUG_LOG === 'true') {
         app.use((req, _res, next) => {
             if (req.path === '/auth/login' && req.method === 'POST') {
@@ -20,12 +23,17 @@ async function bootstrap() {
                     path: req.path,
                     origin: req.headers.origin,
                     contentType: req.headers['content-type'],
+                    contentLength: req.headers['content-length'],
+                    transferEncoding: req.headers['transfer-encoding'],
+                    userAgent: req.headers['user-agent'],
                     bodyType: body === null ? 'null' : typeof body,
                     bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
                     identifierType: typeof identifier,
                     identifierLength: typeof identifier === 'string' ? identifier.length : null,
                     passwordType: typeof password,
                     passwordLength: typeof password === 'string' ? password.length : null,
+                    isReadable: req.readable,
+                    has_body: '_body' in req,
                 }));
             }
             next();

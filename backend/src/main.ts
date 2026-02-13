@@ -3,13 +3,20 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { json } from 'express';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: isProd ? false : undefined,
-  }); // Body parsing is now handled by NestJS defaults.
+  });
+
+  // Enable trust proxy for Render and other PAAS environments
+  app.set('trust proxy', 1);
+
+  // Explicitly add body parser BEFORE diagnostics
+  app.use(json());
 
   // 2. THEN other middleware (not path-specific)
   if (process.env.AUTH_DEBUG_LOG === 'true') {
@@ -26,6 +33,9 @@ async function bootstrap() {
             path: req.path,
             origin: req.headers.origin,
             contentType: req.headers['content-type'],
+            contentLength: req.headers['content-length'],
+            transferEncoding: req.headers['transfer-encoding'],
+            userAgent: req.headers['user-agent'],
             bodyType: body === null ? 'null' : typeof body,
             bodyKeys:
               body && typeof body === 'object' ? Object.keys(body) : null,
@@ -35,6 +45,8 @@ async function bootstrap() {
             passwordType: typeof password,
             passwordLength:
               typeof password === 'string' ? password.length : null,
+            isReadable: req.readable,
+            has_body: '_body' in req,
           }),
         );
       }
