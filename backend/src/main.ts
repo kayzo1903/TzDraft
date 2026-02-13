@@ -14,9 +14,8 @@ async function bootstrap() {
   });
 
   // Ensure body parsing is explicitly enabled in production runtime.
-  // We use standard express middleware instead of NestJS wrappers for better control.
-  app.use(json({ limit: '1mb' }));
-  app.use(urlencoded({ extended: true }));
+  app.useBodyParser('json', { limit: '1mb' });
+  app.useBodyParser('urlencoded', { extended: true });
 
   app.use('/auth/login', (req, _res, next) => {
     if (process.env.AUTH_DEBUG_LOG === 'true') {
