@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as express from 'express';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -11,9 +10,6 @@ async function bootstrap() {
     logger: isProd ? false : undefined,
   });
 
-  // Be explicit about request body parsing in every environment.
-  app.use(express.json({ limit: '1mb', type: ['application/json', 'application/*+json'] }));
-  app.use(express.urlencoded({ extended: true }));
   app.use('/auth/login', (req, _res, next) => {
     if (process.env.AUTH_DEBUG_LOG === 'true') {
       const body = req.body as Record<string, unknown> | undefined;
