@@ -9,8 +9,7 @@ async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // Temporarily enable logger in production for debugging
-    logger: ['error', 'warn', 'log'],
+    logger: isProd ? false : undefined,
     bodyParser: false,
   });
 
@@ -152,28 +151,7 @@ async function bootstrap() {
 
   app.use(urlencoded({ extended: true }));
 
-  // 4. Debug Logger
-  app.use('/auth/login', (req, _res, next) => {
-    if (process.env.AUTH_DEBUG_LOG === 'true') {
-      const body = req.body as Record<string, unknown> | undefined;
-      console.log(
-        '[AUTH_LOGIN_DEBUG]',
-        JSON.stringify({
-          logVersion: 'v8-custom-parser',
-          method: req.method,
-          path: req.path,
-          origin: req.headers.origin,
-          contentType: req.headers['content-type'],
-          contentLength: req.headers['content-length'],
-          bodyType: body === null ? 'null' : typeof body,
-          bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
-        }),
-      );
-    }
-    next();
-  });
-
-  // 5. Global Pipes
+  // 4. Global Pipes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
