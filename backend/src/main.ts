@@ -13,63 +13,12 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  // Ensure body parsing is explicitly enabled in production runtime.
-  // Ensure body parsing is explicitly enabled in production runtime.
-  const bodyParserMiddleware = json({ limit: '1mb' });
-  app.use((req: any, res: any, next: any) => {
-    console.log('[DEBUG_MW] Entering json parser');
-    bodyParserMiddleware(req, res, (err) => {
-      if (err) {
-        console.error('[DEBUG_MW] Error in json parser', err);
-        return next(err);
-      }
-      console.log(
-        '[DEBUG_MW] Exiting json parser. Body keys:',
-        Object.keys(req.body || {}),
-      );
-      next();
-    });
-  });
-
-  app.use(urlencoded({ extended: true }));
-
-  app.use('/auth/login', (req, _res, next) => {
-    if (process.env.AUTH_DEBUG_LOG === 'true') {
-      const body = req.body as Record<string, unknown> | undefined;
-      const identifier = body?.identifier;
-      const password = body?.password;
-
-      // Temporary production diagnostics for login body parsing/CORS troubleshooting.
-      console.log(
-        '[AUTH_LOGIN_DEBUG]',
-        JSON.stringify({
-          logVersion: 'v5-debug-middleware',
-          method: req.method,
-          path: req.path,
-          origin: req.headers.origin,
-          contentType: req.headers['content-type'],
-          contentLength: req.headers['content-length'],
-          bodyType: body === null ? 'null' : typeof body,
-          bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
-        }),
-      );
-    }
-
-    next();
-  });
-
-  // Enable validation
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
   const configService = app.get(ConfigService);
 
-  // Enable CORS
+  // 1. Trust Proxy - Crucial for Render/Load Balancers
+  app.set('trust proxy', 1);
+
+  // 2. Enable CORS - MUST be before Body Parser
   const corsOriginsRaw =
     configService.get<string>('CORS_ORIGINS') ||
     configService.get<string>('CORS_ORIGIN') ||
@@ -78,12 +27,10 @@ async function bootstrap() {
     'http://localhost:3000';
 
   // Normalize origins: ensure they have protocols.
-  // If a user provides "tzdraft.co.tz", we allow both "https://tzdraft.co.tz" and "http://tzdraft.co.tz".
   const allowedOrigins = corsOriginsRaw
     .split(/[,\n]/g)
     .map((origin) => origin.trim())
     .map((origin) => {
-      // Remove quotes if present
       if (
         origin.length >= 2 &&
         origin[0] === origin[origin.length - 1] &&
@@ -97,67 +44,47 @@ async function bootstrap() {
     .filter(Boolean)
     .flatMap((origin) => {
       if (origin === '*') return ['*'];
-      // If it already has a protocol, keep it as is.
       if (origin.startsWith('http://') || origin.startsWith('https://')) {
         return [origin];
       }
-      // If no protocol, allow both https and http.
       return [`https://${origin}`, `http://${origin}`];
     });
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Non-browser requests (curl, health checks) may not send Origin.
       if (!origin) return callback(null, true);
-
       const normalizedOrigin = origin.replace(/\/$/, '');
-
-      // Allow all (use with care). With credentials=true, browsers will reflect the request origin.
       if (allowedOrigins.includes('*')) return callback(null, true);
-
       if (allowedOrigins.includes(normalizedOrigin))
         return callback(null, true);
 
-      // Support wildcard subdomains like: https://*.tzdraft.co.tz
       for (const allowedOrigin of allowedOrigins) {
         if (!allowedOrigin.includes('*')) continue;
-
         try {
           const allowed = new URL(allowedOrigin.replace('*.', ''));
           const incoming = new URL(normalizedOrigin);
-
           if (incoming.protocol !== allowed.protocol) continue;
           if (incoming.port !== allowed.port) continue;
-
           const allowedHost = allowed.hostname;
           const incomingHost = incoming.hostname;
-          if (incomingHost === allowedHost) continue; // requires subdomain
+          if (incomingHost === allowedHost) continue;
           if (incomingHost.endsWith(`.${allowedHost}`))
             return callback(null, true);
-        } catch {
-          // ignore invalid patterns
-        }
+        } catch {}
       }
 
-      // Convenience: if you configured apex domain, allow its www variant (and vice-versa).
       try {
         const incoming = new URL(normalizedOrigin);
         const incomingHost = incoming.hostname;
-
         const wwwToggledHost = incomingHost.startsWith('www.')
           ? incomingHost.slice(4)
           : `www.${incomingHost}`;
         const toggledOrigin = `${incoming.protocol}//${wwwToggledHost}${
           incoming.port ? `:${incoming.port}` : ''
         }`;
-
         if (allowedOrigins.includes(toggledOrigin)) return callback(null, true);
-      } catch {
-        // ignore invalid origins
-      }
+      } catch {}
 
-      // Do not throw here: passing an Error causes a 500 response which can be confusing during CORS debugging.
-      // Returning `false` omits CORS headers, which correctly blocks the browser while keeping the status code stable.
       return callback(null, false);
     },
     credentials: true,
@@ -166,9 +93,59 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
+  // 3. Body Parsers - After CORS
+  app.use(
+    json({
+      limit: '1mb',
+      verify: (req: any, res, buf) => {
+        if (
+          req.url &&
+          req.url.includes('/auth/login') &&
+          process.env.AUTH_DEBUG_LOG === 'true'
+        ) {
+          console.log(
+            '[DEBUG_VERIFY] Raw buffer received, length:',
+            buf.length,
+          );
+        }
+      },
+    }),
+  );
+  app.use(urlencoded({ extended: true }));
+
+  // 4. Debug Logger
+  app.use('/auth/login', (req, _res, next) => {
+    if (process.env.AUTH_DEBUG_LOG === 'true') {
+      const body = req.body as Record<string, unknown> | undefined;
+      console.log(
+        '[AUTH_LOGIN_DEBUG]',
+        JSON.stringify({
+          logVersion: 'v7-robust-config',
+          method: req.method,
+          path: req.path,
+          origin: req.headers.origin,
+          contentType: req.headers['content-type'],
+          contentLength: req.headers['content-length'],
+          bodyType: body === null ? 'null' : typeof body,
+          bodyKeys: body && typeof body === 'object' ? Object.keys(body) : null,
+        }),
+      );
+    }
+    next();
+  });
+
+  // 5. Global Pipes
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
   const port = configService.get('PORT') || 3002;
 
-  // Explicitly bind to all interfaces (required by some PaaS port scanners).
+  // Explicitly bind to all interfaces
   await app.listen(port, '0.0.0.0');
 
   if (!isProd) {
