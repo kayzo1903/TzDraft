@@ -88,17 +88,14 @@ export class BeamAfricaService {
         `[BEAM_AFRICA] Error details: ${JSON.stringify(error.response?.data || error)}`,
       );
 
-      // TEMPORARY: Log OTP for testing when SMS fails
-      // TODO: Remove before production launch
-      this.logger.warn(
-        `[BEAM_AFRICA] SMS FAILED - OTP for ${phoneNumber}: ${code}`,
-      );
-      this.logger.warn(
-        '[BEAM_AFRICA] Allowing registration to proceed for testing',
-      );
+      // Log OTP for debugging in development only
+      if (this.config.get('NODE_ENV') === 'development') {
+        this.logger.log(`[DEV] OTP for ${phoneNumber}: ${code}`);
+        return true; // Allow in development
+      }
 
-      // Return true temporarily to allow testing
-      return true;
+      // Production: Fail properly - don't allow registration without SMS
+      return false;
     }
   }
 
