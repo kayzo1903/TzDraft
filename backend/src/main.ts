@@ -9,7 +9,8 @@ async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: isProd ? false : undefined,
+    // Temporarily enable logger in production for debugging
+    logger: ['error', 'warn', 'log'],
     bodyParser: false,
   });
 
