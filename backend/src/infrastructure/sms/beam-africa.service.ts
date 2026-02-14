@@ -83,18 +83,14 @@ export class BeamAfricaService {
         return false;
       }
     } catch (error) {
-      this.logger.error(`[BEAM_AFRICA] Error sending OTP: ${error.message}`);
-      this.logger.error(
-        `[BEAM_AFRICA] Error details: ${JSON.stringify(error.response?.data || error)}`,
-      );
+      this.logger.error(`Error sending OTP: ${error.message}`);
 
-      // Log OTP for debugging in development only
+      // In development, log the OTP for testing
       if (this.config.get('NODE_ENV') === 'development') {
         this.logger.log(`[DEV] OTP for ${phoneNumber}: ${code}`);
-        return true; // Allow in development
+        return true; // Simulate success in development
       }
 
-      // Production: Fail properly - don't allow registration without SMS
       return false;
     }
   }
