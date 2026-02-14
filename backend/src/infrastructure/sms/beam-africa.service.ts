@@ -33,6 +33,14 @@ export class BeamAfricaService {
    */
   async sendOTP(phoneNumber: string, code: string): Promise<boolean> {
     try {
+      // Log API configuration (without exposing secrets)
+      this.logger.log(`[BEAM_AFRICA] Attempting to send OTP to ${phoneNumber}`);
+      this.logger.log(`[BEAM_AFRICA] API Key configured: ${!!this.apiKey}`);
+      this.logger.log(
+        `[BEAM_AFRICA] Secret Key configured: ${!!this.secretKey}`,
+      );
+      this.logger.log(`[BEAM_AFRICA] Sender ID: ${this.senderId}`);
+
       const message = `Your TzDraft verification code is: ${code}. Valid for 5 minutes.`;
 
       const response = await axios.post(
@@ -57,6 +65,10 @@ export class BeamAfricaService {
         },
       );
 
+      this.logger.log(
+        `[BEAM_AFRICA] Response: ${JSON.stringify(response.data)}`,
+      );
+
       // Beem Africa returns success with message "Message Submitted Successfully"
       if (
         response.data.message?.includes('Successfully') ||
@@ -71,7 +83,10 @@ export class BeamAfricaService {
         return false;
       }
     } catch (error) {
-      this.logger.error(`Error sending OTP: ${error.message}`);
+      this.logger.error(`[BEAM_AFRICA] Error sending OTP: ${error.message}`);
+      this.logger.error(
+        `[BEAM_AFRICA] Error details: ${JSON.stringify(error.response?.data || error)}`,
+      );
 
       // In development, log the OTP for testing
       if (this.config.get('NODE_ENV') === 'development') {
