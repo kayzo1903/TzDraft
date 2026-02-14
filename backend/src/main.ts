@@ -93,24 +93,62 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  // 3. Body Parsers - After CORS
-  app.use(
-    json({
-      limit: '1mb',
-      verify: (req: any, res, buf) => {
+  // 3. Custom Body Parser (Render Fix)
+  // express.json() was mysteriously skipping requests on Render despite correct headers.
+  // This custom implementation bypasses the Content-Type checking quirks.
+  app.use((req: any, res, next) => {
+    const contentType = req.headers['content-type'] || '';
+
+    // Only handle JSON requests
+    if (!contentType.toLowerCase().includes('json')) {
+      return next();
+    }
+
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
+    const MAX_SIZE = 1024 * 1024; // 1MB limit
+
+    req.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_SIZE) {
+        req.removeAllListeners('data');
+        req.removeAllListeners('end');
+        res.status(413).json({ error: 'Payload too large' });
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8');
+
         if (
-          req.url &&
-          req.url.includes('/auth/login') &&
-          process.env.AUTH_DEBUG_LOG === 'true'
+          process.env.AUTH_DEBUG_LOG === 'true' &&
+          req.url?.includes('/auth/login')
         ) {
-          console.log(
-            '[DEBUG_VERIFY] Raw buffer received, length:',
-            buf.length,
-          );
+          console.log('[CUSTOM_PARSER] Raw buffer length:', raw.length);
         }
-      },
-    }),
-  );
+
+        if (raw.length === 0) {
+          req.body = {};
+        } else {
+          req.body = JSON.parse(raw);
+        }
+
+        next();
+      } catch (err) {
+        console.error('[CUSTOM_PARSER] JSON parse error:', err);
+        res.status(400).json({ error: 'Invalid JSON' });
+      }
+    });
+
+    req.on('error', (err) => {
+      console.error('[CUSTOM_PARSER] Stream error:', err);
+      res.status(400).json({ error: 'Request error' });
+    });
+  });
+
   app.use(urlencoded({ extended: true }));
 
   // 4. Debug Logger
@@ -120,7 +158,7 @@ async function bootstrap() {
       console.log(
         '[AUTH_LOGIN_DEBUG]',
         JSON.stringify({
-          logVersion: 'v7-robust-config',
+          logVersion: 'v8-custom-parser',
           method: req.method,
           path: req.path,
           origin: req.headers.origin,
