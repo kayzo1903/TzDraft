@@ -1,8 +1,8 @@
-import { Piece } from "../value-objects/piece.vo";
-import { Position } from "../value-objects/position.vo";
-import { BoardState } from "../value-objects/board-state.vo";
-import { PlayerColor, Winner, EndReason } from "../constants";
-import { CaptureFindingService } from "./capture-finding.service";
+import { Piece } from "../value-objects/piece.vo.js";
+import { Position } from "../value-objects/position.vo.js";
+import { BoardState } from "../value-objects/board-state.vo.js";
+import { PlayerColor, Winner, EndReason } from "../constants.js";
+import { CaptureFindingService } from "./capture-finding.service.js";
 
 /**
  * Game Rules Service

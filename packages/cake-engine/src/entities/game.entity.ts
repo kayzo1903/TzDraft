@@ -1,5 +1,5 @@
-import { BoardState } from '../value-objects/board-state.vo';
-import { Move } from './move.entity';
+import { BoardState } from '../value-objects/board-state.vo.js';
+import { Move } from './move.entity.js';
 import {
   GameStatus,
   GameType,
@@ -7,7 +7,7 @@ import {
   Winner,
   EndReason,
   RULE_VERSION,
-} from '../constants';
+} from '../constants.js';
 
 /**
  * Game Entity (Aggregate Root)

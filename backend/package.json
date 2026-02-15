@@ -36,6 +36,7 @@
     "@react-email/render": "^2.0.4",
     "@types/passport-google-oauth20": "^2.0.17",
     "@tzdraft/cake-engine": "file:../packages/cake-engine",
+    "@tzdraft/official-engine": "file:../packages/official-engine",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

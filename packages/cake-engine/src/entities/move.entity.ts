@@ -1,5 +1,5 @@
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
+import { Position } from '../value-objects/position.vo.js';
+import { PlayerColor } from '../constants.js';
 
 /**
  * Move Entity

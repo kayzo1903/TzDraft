@@ -1,12 +1,12 @@
-import { BoardState } from '../value-objects/board-state.vo';
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
+import { BoardState } from '../value-objects/board-state.vo.js';
+import { Piece } from '../value-objects/piece.vo.js';
+import { Position } from '../value-objects/position.vo.js';
+import { PlayerColor } from '../constants.js';
 import {
   CapturePath,
   Direction,
   getValidDirections,
-} from '../types/capture-path.type';
+} from '../types/capture-path.type.js';
 
 /**
  * Capture Finding Service

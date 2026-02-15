@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tzdraft/cake-engine": "file:../packages/cake-engine",
+    "@tzdraft/official-engine": "file:../packages/official-engine",
     "@radix-ui/react-label": "^2.1.0",
     "better-auth": "^1.4.18",
     "clsx": "^2.1.1",

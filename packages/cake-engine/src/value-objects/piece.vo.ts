@@ -1,8 +1,8 @@
 import {
   PieceType,
   PlayerColor,
-} from '../constants';
-import { Position } from './position.vo';
+} from '../constants.js';
+import { Position } from './position.vo.js';
 
 /**
  * Piece Value Object

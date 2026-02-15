@@ -61,4 +61,3 @@ export const BOTS: BotProfile[] = [
 export const getBotByLevel = (level: number) => {
   return BOTS.find((bot) => bot.level === level) || BOTS[0];
 };
-

@@ -1,6 +1,6 @@
-import { Piece } from './piece.vo';
-import { Position } from './position.vo';
-import { PlayerColor, PIECES_PER_PLAYER, } from '../constants';
+import { Piece } from './piece.vo.js';
+import { Position } from './position.vo.js';
+import { PlayerColor, PIECES_PER_PLAYER, } from '../constants.js';
 /**
  * BoardState Value Object
  * Represents the complete state of the game board
@@ -123,4 +123,4 @@ export class BoardState {
     }
 }
 // Import at the end to avoid circular dependency
-import { PieceType } from '../constants';
+import { PieceType } from '../constants.js';

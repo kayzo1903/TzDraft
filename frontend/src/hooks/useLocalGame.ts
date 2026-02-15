@@ -29,7 +29,11 @@ export interface LocalGameState {
   undoUsed: boolean;
 }
 
-const STORAGE_KEY = "tzdraft:local-game";
+const DEFAULT_STORAGE_KEY = "tzdraft:local-game";
+
+type UseLocalGameOptions = {
+  storageKey?: string;
+};
 
 type SavedGame = {
   playerColor: PlayerColor;
@@ -103,6 +107,7 @@ const boardToUiPieces = (board: BoardState, flip: boolean): UiBoardState => {
 const loadSavedGame = (
   aiLevel: number,
   playerColor: PlayerColor,
+  storageKey: string,
 ): {
   board: BoardState;
   currentPlayer: PlayerColor;
@@ -116,7 +121,7 @@ const loadSavedGame = (
 } | null => {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SavedGame;
 
@@ -178,6 +183,7 @@ const saveGame = (
   },
   aiLevel: number,
   playerColor: PlayerColor,
+  storageKey: string,
 ) => {
   if (typeof window === "undefined") return;
   const pieces = state.board.getAllPieces().map((p) => ({
@@ -213,17 +219,19 @@ const saveGame = (
     undoUsed: state.undoUsed,
   };
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  window.localStorage.setItem(storageKey, JSON.stringify(payload));
 };
 
 export const useLocalGame = (
   aiLevel: number,
   playerColor: PlayerColor,
   timeSeconds: number,
+  options?: UseLocalGameOptions,
 ) => {
+  const storageKey = options?.storageKey ?? DEFAULT_STORAGE_KEY;
   // Engine state uses WHITE at the top by default; flip only when the human plays WHITE.
   const flipForPlayer = playerColor === PlayerColor.WHITE;
-  const loaded = loadSavedGame(aiLevel, playerColor);
+  const loaded = loadSavedGame(aiLevel, playerColor, storageKey);
   const [board, setBoard] = useState<BoardState>(() =>
     loaded ? loaded.board : CakeEngine.createInitialState(),
   );
@@ -481,7 +489,7 @@ export const useLocalGame = (
     setEndgameCountdown(null);
     setMustContinueFrom(null);
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(storageKey);
     }
     if (startAudioRef.current) {
       startAudioRef.current.currentTime = 0;
@@ -663,6 +671,7 @@ export const useLocalGame = (
       },
       aiLevel,
       playerColor,
+      storageKey,
     );
   }, [
     board,
@@ -676,6 +685,7 @@ export const useLocalGame = (
     undoUsed,
     aiLevel,
     playerColor,
+    storageKey,
   ]);
 
   return {

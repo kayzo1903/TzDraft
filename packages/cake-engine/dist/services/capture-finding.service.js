@@ -1,6 +1,6 @@
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
-import { getValidDirections, } from '../types/capture-path.type';
+import { Position } from '../value-objects/position.vo.js';
+import { PlayerColor } from '../constants.js';
+import { getValidDirections, } from '../types/capture-path.type.js';
 /**
  * Capture Finding Service
  * Finds all possible captures for a player, including multi-capture sequences
