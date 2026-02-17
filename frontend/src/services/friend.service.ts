@@ -16,10 +16,16 @@ export const friendService = {
     return response.data;
   },
 
+  // Get sent friend requests
+  async getSentRequests() {
+    const response = await axiosInstance.get("/friends/requests/sent");
+    return response.data;
+  },
+
   // Accept friend request
   async acceptFriendRequest(requesterId: string) {
     const response = await axiosInstance.post(
-      `/friends/requests/${requesterId}/accept`
+      `/friends/requests/${requesterId}/accept`,
     );
     return response.data;
   },
@@ -27,7 +33,7 @@ export const friendService = {
   // Reject friend request
   async rejectFriendRequest(requesterId: string) {
     const response = await axiosInstance.post(
-      `/friends/requests/${requesterId}/reject`
+      `/friends/requests/${requesterId}/reject`,
     );
     return response.data;
   },
@@ -41,6 +47,14 @@ export const friendService = {
   // Remove friend
   async removeFriend(friendId: string) {
     const response = await axiosInstance.delete(`/friends/${friendId}`);
+    return response.data;
+  },
+
+  // Cancel friend request
+  async cancelFriendRequest(requesteeId: string) {
+    const response = await axiosInstance.delete(
+      `/friends/requests/${requesteeId}`,
+    );
     return response.data;
   },
 };
