@@ -101,7 +101,7 @@ export function PendingRequests() {
                 <p className="text-sm text-neutral-400">@{request.requester.username}</p>
                 {request.requester.rating && (
                   <p className="text-xs text-neutral-500 mt-1">
-                    Rating: <span className="font-semibold text-neutral-300">{(request.requester.rating as any).rating || request.requester.rating}</span>
+                    Rating: <span className="font-semibold text-neutral-300">{request.requester.rating}</span>
                   </p>
                 )}
               </div>
@@ -110,28 +110,26 @@ export function PendingRequests() {
               <button
                 onClick={() => handleAccept(request.requester.id)}
                 disabled={responding === request.requester.id}
-                className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-neutral-700 text-green-400 rounded-lg transition flex items-center gap-2 border border-green-500/30 text-sm font-medium"
+                className="p-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-neutral-700 text-green-400 rounded-lg transition flex items-center gap-1 border border-green-500/30"
                 title="Accept request"
               >
                 {responding === request.requester.id ? (
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={18} className="animate-spin" />
                 ) : (
-                  <Check size={16} />
+                  <Check size={18} />
                 )}
-                Accept
               </button>
               <button
                 onClick={() => handleReject(request.requester.id)}
                 disabled={responding === request.requester.id}
-                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 disabled:bg-neutral-700 text-red-400 rounded-lg transition flex items-center gap-2 border border-red-500/30 text-sm font-medium"
+                className="p-2 bg-red-500/20 hover:bg-red-500/30 disabled:bg-neutral-700 text-red-400 rounded-lg transition flex items-center gap-1 border border-red-500/30"
                 title="Reject request"
               >
                 {responding === request.requester.id ? (
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={18} className="animate-spin" />
                 ) : (
-                  <X size={16} />
+                  <X size={18} />
                 )}
-                Decline
               </button>
             </div>
           </div>

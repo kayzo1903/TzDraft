@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { friendService } from "@/services/friend.service";
-import { Loader2, Trash2, Check, X, UserMinus } from "lucide-react";
+import { Loader2, Trash2, Check, X } from "lucide-react";
 
 interface Friend {
   id: string;
@@ -91,17 +91,17 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
                   <p className="text-sm text-neutral-400">@{friend.username}</p>
                   {friend.rating && (
                     <p className="text-xs text-neutral-500 mt-1">
-                      Rating: <span className="font-semibold text-neutral-300">{(friend.rating as any).rating || friend.rating}</span>
+                      Rating: <span className="font-semibold text-neutral-300">{friend.rating}</span>
                     </p>
                   )}
                 </div>
               </div>
               <button
                 onClick={() => handleRemoveFriend(friend.id)}
-                className="ml-4 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition flex items-center gap-2 text-sm font-medium"
+                className="ml-4 p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition"
+                title="Remove friend"
               >
-                <UserMinus size={16} />
-                Unfriend
+                <Trash2 size={18} />
               </button>
             </div>
           ))}

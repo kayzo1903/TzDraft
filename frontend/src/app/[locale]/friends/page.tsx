@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "@/i18n/routing";
-import { FriendSearch, FriendList, PendingRequests, SentRequests } from "@/components/friend";
+import { FriendSearch, FriendList, PendingRequests } from "@/components/friend";
 import { Users } from "lucide-react";
 
 export default function FriendsPage() {
@@ -15,10 +15,7 @@ export default function FriendsPage() {
     // Wait for store to hydrate before checking authentication
     if (!isHydrated) return;
 
-    // Check for token in localStorage as a backup
-    const token = localStorage.getItem("accessToken");
-
-    if (!isAuthenticated && !token) {
+    if (!isAuthenticated) {
       router.push("/auth/login");
     }
   }, [isHydrated, isAuthenticated, router]);
@@ -74,7 +71,6 @@ export default function FriendsPage() {
           {/* Right Column: Pending Requests and Friends List */}
           <div className="lg:col-span-2 space-y-6">
             <PendingRequests />
-            <SentRequests />
             <FriendList refreshTrigger={refreshTrigger} />
           </div>
         </div>
