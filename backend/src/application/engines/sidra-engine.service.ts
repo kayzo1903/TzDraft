@@ -165,24 +165,41 @@ Stack: ${e instanceof Error ? e.stack : ''}
     payload: SidraPayload,
   ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      let cliPath =
-        process.env.SIDRA_CLI_PATH ||
-        path.resolve(process.cwd(), '../engines/sidra/bin/sidra-cli.exe');
+      let cliPath = process.env.SIDRA_CLI_PATH;
 
-      if (!existsSync(cliPath)) {
-        // Fallback: maybe we are running from root?
-        const rootPath = path.resolve(
+      if (!cliPath) {
+        const isWin = process.platform === 'win32';
+        const binName = isWin ? 'sidra-cli.exe' : 'sidra';
+        const binDir = isWin ? 'engines/sidra/bin' : 'engines/sidra/bin'; // Keep same struct
+
+        // 1. Try relative to CWD (usually backend root)
+        const localPath = path.resolve(
           process.cwd(),
-          'engines/sidra/bin/sidra-cli.exe',
+          `../${binDir}/${binName}`,
         );
-        if (existsSync(rootPath)) {
-          console.log('[SiDra] Found CLI at root path, using that instead.');
+
+        // 2. Try relative to project root (if CWD is deep)
+        const rootPath = path.resolve(process.cwd(), `${binDir}/${binName}`);
+
+        if (existsSync(localPath)) {
+          cliPath = localPath;
+        } else if (existsSync(rootPath)) {
           cliPath = rootPath;
         } else {
-          const errorMsg = `CLI not found at ${cliPath} or ${rootPath}`;
-          console.error('[SiDra]', errorMsg);
-          reject(new Error(errorMsg));
-          return;
+          // 3. Try legacy path for Windows dev (vs/bin/Release?) or fallback
+          // logic for existing setup
+          const legacyPath = path.resolve(
+            process.cwd(),
+            '../engines/sidra/bin/sidra-cli.exe',
+          );
+          if (existsSync(legacyPath)) {
+            cliPath = legacyPath;
+          } else {
+            const errorMsg = `Sidra binary not found. Searched: ${localPath}, ${rootPath}`;
+            console.error('[SiDra]', errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
         }
       }
 
