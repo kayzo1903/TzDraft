@@ -84,6 +84,12 @@ let UserService = class UserService {
             },
         });
     }
+    async findAll() {
+        return this.prisma.user.findMany({
+            include: { rating: true },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
     async create(data) {
         const hashedPassword = await bcrypt.hash(data.password, 10);
         const user = await this.prisma.user.create({

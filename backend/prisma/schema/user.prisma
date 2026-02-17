@@ -27,6 +27,12 @@ model User {
     verificationTokens  VerificationToken[]
     passwordResetTokens PasswordResetToken[]
     otpCodes            OtpCode[]
+    
+    // Friend relations
+    friendRequestsSent     FriendRequest[] @relation("Requester")
+    friendRequestsReceived FriendRequest[] @relation("Requestee")
+    friendsInitiated       Friendship[]    @relation("Initiator")
+    friendsReceived        Friendship[]    @relation("Recipient")
 
     @@map("users")
 }

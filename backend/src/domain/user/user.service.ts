@@ -55,6 +55,16 @@ export class UserService {
   }
 
   /**
+   * Get all users (for search functionality)
+   */
+  async findAll() {
+    return this.prisma.user.findMany({
+      include: { rating: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
    * Create a new user with automatic Rating initialization
    */
   async create(data: {

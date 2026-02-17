@@ -6,6 +6,7 @@ import { SupportController } from './controllers/support.controller';
 import { EmailModule } from '../../infrastructure/email/email.module';
 import { EngineModule } from '../../application/engines/engine.module';
 import { SidraController } from './controllers/sidra.controller';
+import { FriendController } from './controllers/friend.controller';
 
 /**
  * HTTP Module
@@ -18,6 +19,7 @@ import { SidraController } from './controllers/sidra.controller';
     MoveController,
     SupportController,
     SidraController,
+    FriendController,
   ],
 })
 export class HttpModule {}

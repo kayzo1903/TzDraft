@@ -9,7 +9,7 @@ export declare class AuthController {
     private getCookie;
     private getCookieOptions;
     register(dto: RegisterDto): Promise<import("./dto").AuthResponseDto>;
-    login(dto: LoginDto): Promise<import("./dto").AuthResponseDto>;
+    login(dto: LoginDto, res: Response): Promise<import("./dto").AuthResponseDto>;
     sendOtp(dto: SendOtpDto): Promise<{
         success: boolean;
         message: string;

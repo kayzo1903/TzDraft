@@ -15,6 +15,7 @@ const support_controller_1 = require("./controllers/support.controller");
 const email_module_1 = require("../../infrastructure/email/email.module");
 const engine_module_1 = require("../../application/engines/engine.module");
 const sidra_controller_1 = require("./controllers/sidra.controller");
+const friend_controller_1 = require("./controllers/friend.controller");
 let HttpModule = class HttpModule {
 };
 exports.HttpModule = HttpModule;
@@ -26,6 +27,7 @@ exports.HttpModule = HttpModule = __decorate([
             move_controller_1.MoveController,
             support_controller_1.SupportController,
             sidra_controller_1.SidraController,
+            friend_controller_1.FriendController,
         ],
     })
 ], HttpModule);

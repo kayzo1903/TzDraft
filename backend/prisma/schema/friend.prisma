@@ -1,0 +1,42 @@
+// ============================================
+// FRIEND DOMAIN
+// ============================================
+
+model FriendRequest {
+    id        String   @id @default(uuid())
+    requesterId String  @map("requester_id")
+    requesteeId String  @map("requestee_id")
+    status    FriendRequestStatus @default(PENDING)
+    createdAt DateTime @default(now()) @map("created_at")
+    respondedAt DateTime? @map("responded_at")
+
+    requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+    requestee User @relation("Requestee", fields: [requesteeId], references: [id], onDelete: Cascade)
+
+    @@unique([requesterId, requesteeId])
+    @@index([requesterId])
+    @@index([requesteeId])
+    @@index([status])
+    @@map("friend_requests")
+}
+
+model Friendship {
+    id         String   @id @default(uuid())
+    initiatorId String  @map("initiator_id")
+    recipientId String  @map("recipient_id")
+    createdAt  DateTime @default(now()) @map("created_at")
+
+    initiator User @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+    recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+    @@unique([initiatorId, recipientId])
+    @@index([initiatorId])
+    @@index([recipientId])
+    @@map("friendships")
+}
+
+enum FriendRequestStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+}

@@ -51,46 +51,16 @@ async function bootstrap() {
     });
 
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      if (allowedOrigins.includes('*')) return callback(null, true);
-      if (allowedOrigins.includes(normalizedOrigin))
-        return callback(null, true);
-
-      for (const allowedOrigin of allowedOrigins) {
-        if (!allowedOrigin.includes('*')) continue;
-        try {
-          const allowed = new URL(allowedOrigin.replace('*.', ''));
-          const incoming = new URL(normalizedOrigin);
-          if (incoming.protocol !== allowed.protocol) continue;
-          if (incoming.port !== allowed.port) continue;
-          const allowedHost = allowed.hostname;
-          const incomingHost = incoming.hostname;
-          if (incomingHost === allowedHost) continue;
-          if (incomingHost.endsWith(`.${allowedHost}`))
-            return callback(null, true);
-        } catch {}
-      }
-
-      try {
-        const incoming = new URL(normalizedOrigin);
-        const incomingHost = incoming.hostname;
-        const wwwToggledHost = incomingHost.startsWith('www.')
-          ? incomingHost.slice(4)
-          : `www.${incomingHost}`;
-        const toggledOrigin = `${incoming.protocol}//${wwwToggledHost}${
-          incoming.port ? `:${incoming.port}` : ''
-        }`;
-        if (allowedOrigins.includes(toggledOrigin)) return callback(null, true);
-      } catch {}
-
-      return callback(null, false);
-    },
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://tzdraft.com',
+      'https://www.tzdraft.com',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean) as string[],
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   // 3. Custom Body Parser (Render Fix)

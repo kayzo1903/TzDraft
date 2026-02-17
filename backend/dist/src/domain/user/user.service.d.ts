@@ -28,6 +28,29 @@ export declare class UserService {
         lastLoginAt: Date | null;
         oauthProvider: string | null;
     }) | null>;
+    findAll(): Promise<({
+        rating: {
+            rating: number;
+            gamesPlayed: number;
+            lastUpdated: Date;
+            userId: string;
+        } | null;
+    } & {
+        id: string;
+        phoneNumber: string;
+        email: string | null;
+        username: string;
+        displayName: string;
+        googleId: string | null;
+        name: string | null;
+        passwordHash: string | null;
+        isVerified: boolean;
+        country: string | null;
+        region: string | null;
+        createdAt: Date;
+        lastLoginAt: Date | null;
+        oauthProvider: string | null;
+    })[]>;
     create(data: {
         phoneNumber: string;
         email?: string;

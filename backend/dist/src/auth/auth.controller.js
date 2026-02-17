@@ -55,8 +55,12 @@ let AuthController = class AuthController {
     async register(dto) {
         return this.authService.register(dto);
     }
-    async login(dto) {
-        return this.authService.login(dto);
+    async login(dto, res) {
+        const tokens = await this.authService.login(dto);
+        const opts = this.getCookieOptions();
+        res.cookie('accessToken', tokens.accessToken, opts);
+        res.cookie('refreshToken', tokens.refreshToken, opts);
+        return tokens;
     }
     async sendOtp(dto) {
         return this.otpService.sendOTP(dto.phoneNumber, dto.purpose);
@@ -130,11 +134,13 @@ __decorate([
 ], AuthController.prototype, "register", null);
 __decorate([
     (0, public_decorator_1.Public)(),
+    (0, public_decorator_1.Public)(),
     (0, common_1.Post)('login'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [dto_1.LoginDto]),
+    __metadata("design:paramtypes", [dto_1.LoginDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
