@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/Button';
+import { buttonVariants } from '@/components/ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Ghost, Home, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -25,18 +25,14 @@ export function GameNotFound() {
                     </p>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-3 pt-6">
-                    <Button asChild className="w-full gap-2">
-                        <Link href="/game/online">
-                            <Ghost className="w-4 h-4" />
-                            Start New Game
-                        </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="w-full border-neutral-700 hover:bg-neutral-800 text-neutral-300">
-                        <Link href="/" className="flex items-center gap-2">
-                            <Home className="w-4 h-4" />
-                            Return Home
-                        </Link>
-                    </Button>
+                    <Link href="/game/online" className={buttonVariants({ className: "w-full gap-2" })}>
+                        <Ghost className="w-4 h-4" />
+                        Start New Game
+                    </Link>
+                    <Link href="/" className={buttonVariants({ variant: "outline", className: "w-full border-neutral-700 hover:bg-neutral-800 text-neutral-300 flex items-center gap-2" })}>
+                        <Home className="w-4 h-4" />
+                        Return Home
+                    </Link>
                 </CardFooter>
             </Card>
         </div>
