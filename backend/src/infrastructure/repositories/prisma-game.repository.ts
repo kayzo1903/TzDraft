@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
-import { BoardState } from '../../domain/game/value-objects/board-state.vo';
+import { Move } from '../../domain/game/entities/move.entity';
+import { Position } from '../../domain/game/value-objects/position.vo';
 import {
   GameStatus,
   GameType,
@@ -192,7 +193,7 @@ export class PrismaGameRepository implements IGameRepository {
     const currentTurn =
       moveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
 
-    return new Game(
+    const game = new Game(
       prismaGame.id,
       prismaGame.whitePlayerId,
       prismaGame.blackPlayerId,
@@ -218,8 +219,30 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.endedAt,
       prismaGame.status as GameStatus,
       prismaGame.winner as Winner | null,
-      null,
+      (prismaGame.endReason as EndReason | null) || null,
       currentTurn,
     );
+
+    // Rebuild board state from persisted moves (enables persistence across refreshes / next moves).
+    if (Array.isArray(prismaGame.moves) && prismaGame.moves.length > 0) {
+      const moves = prismaGame.moves.map(
+        (m: any) =>
+          new Move(
+            m.id,
+            m.gameId,
+            m.moveNumber,
+            m.player as PlayerColor,
+            new Position(m.fromSquare),
+            new Position(m.toSquare),
+            (m.capturedSquares || []).map((s: number) => new Position(s)),
+            Boolean(m.isPromotion),
+            m.notation,
+            m.createdAt,
+          ),
+      );
+      game.rehydrateMoves(moves);
+    }
+
+    return game;
   }
 }

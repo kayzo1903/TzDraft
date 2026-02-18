@@ -136,6 +136,30 @@ export class Game {
   }
 
   /**
+   * Rebuild board + move list from persisted move history.
+   * Used by repositories when hydrating a Game from the database.
+   */
+  rehydrateMoves(moves: Move[]): void {
+    this._board = BoardState.createInitialBoard();
+    this._moves = [];
+    this._currentTurn = PlayerColor.WHITE;
+
+    const sorted = [...moves].sort((a, b) => a.moveNumber - b.moveNumber);
+    for (const move of sorted) {
+      // Remove captures first, then move (promotion handled in BoardState.movePiece).
+      move.capturedSquares.forEach((capturedPos) => {
+        this._board = this._board.removePiece(capturedPos);
+      });
+      this._board = this._board.movePiece(move.from, move.to);
+      this._moves.push(move);
+      this._currentTurn =
+        this._currentTurn === PlayerColor.WHITE
+          ? PlayerColor.BLACK
+          : PlayerColor.WHITE;
+    }
+  }
+
+  /**
    * End the game with a winner and reason
    */
   endGame(winner: Winner, reason: EndReason): void {
@@ -246,5 +270,30 @@ export class Game {
 
   toString(): string {
     return `Game ${this.id}: ${this._status} - ${this._currentTurn} to move`;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      whitePlayerId: this.whitePlayerId,
+      blackPlayerId: this.blackPlayerId,
+      whiteGuestName: this.whiteGuestName,
+      blackGuestName: this.blackGuestName,
+      gameType: this.gameType,
+      whiteElo: this.whiteElo,
+      blackElo: this.blackElo,
+      aiLevel: this.aiLevel,
+      initialTimeMs: this.initialTimeMs,
+      clockInfo: this.clockInfo,
+      createdAt: this.createdAt,
+      startedAt: this._startedAt,
+      endedAt: this._endedAt,
+      status: this._status,
+      winner: this._winner,
+      endReason: this._endReason,
+      currentTurn: this._currentTurn,
+      board: this._board.toJSON(),
+      moves: this._moves,
+    };
   }
 }

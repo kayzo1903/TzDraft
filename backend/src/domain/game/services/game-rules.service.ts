@@ -30,12 +30,13 @@ export class GameRulesService {
 
     const { row } = position.toRowCol();
 
-    // White pieces promote on row 0, Black pieces promote on row 7
-    if (piece.color === PlayerColor.WHITE && row === 0) {
+    // White moves "down" (toward row 7); Black moves "up" (toward row 0).
+    // Promotion happens on the opponent's back row.
+    if (piece.color === PlayerColor.WHITE && row === 7) {
       return true;
     }
 
-    if (piece.color === PlayerColor.BLACK && row === 7) {
+    if (piece.color === PlayerColor.BLACK && row === 0) {
       return true;
     }
 

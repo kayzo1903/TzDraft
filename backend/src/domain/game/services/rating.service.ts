@@ -19,7 +19,8 @@ export class RatingService {
     }
 
     if (winner === Winner.DRAW) {
-      await this.calculateAndApply(game.whitePlayerId, game.blackPlayerId, 0.5);
+      // Product decision: draws do not change rating.
+      return;
     } else if (winner === Winner.WHITE) {
       await this.calculateAndApply(game.whitePlayerId, game.blackPlayerId, 1);
     } else if (winner === Winner.BLACK) {

@@ -170,6 +170,7 @@ export class GameController {
       endedAt: game.endedAt,
       currentTurn: game.currentTurn,
       clockInfo,
+      board: game.board?.toJSON ? game.board.toJSON() : game.board,
     };
   }
 
@@ -200,8 +201,10 @@ export class GameController {
     const turn = game.currentTurn === 'BLACK' ? 'BLACK' : 'WHITE';
 
     return {
-      whiteTimeMs: turn === 'WHITE' ? Math.max(0, whiteTimeMs - elapsedMs) : whiteTimeMs,
-      blackTimeMs: turn === 'BLACK' ? Math.max(0, blackTimeMs - elapsedMs) : blackTimeMs,
+      whiteTimeMs:
+        turn === 'WHITE' ? Math.max(0, whiteTimeMs - elapsedMs) : whiteTimeMs,
+      blackTimeMs:
+        turn === 'BLACK' ? Math.max(0, blackTimeMs - elapsedMs) : blackTimeMs,
       lastMoveAt: lastMoveAt.toISOString(),
     };
   }

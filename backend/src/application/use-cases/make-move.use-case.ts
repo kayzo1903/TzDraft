@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  forwardRef,
+} from '@nestjs/common';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
@@ -24,6 +29,7 @@ export class MakeMoveUseCase {
     private readonly gameRepository: IGameRepository,
     @Inject('IMoveRepository')
     private readonly moveRepository: IMoveRepository,
+    @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
   ) {
     this.moveValidationService = new MoveValidationService();
@@ -53,8 +59,8 @@ export class MakeMoveUseCase {
     const playerColor = this.getPlayerColor(game, playerId);
 
     // 3. Get actual move count from database
-    const existingMoves = await this.moveRepository.findByGameId(gameId);
-    const moveNumber = existingMoves.length + 1;
+    const existingMoveCount = await this.moveRepository.countByGameId(gameId);
+    const moveNumber = existingMoveCount + 1;
 
     // 4. Validate and execute move
     const fromPos = new Position(from);
@@ -142,13 +148,36 @@ export class MakeMoveUseCase {
     */
 
     // 8. Save game and move
-    await this.gameRepository.update(game);
-    await this.moveRepository.create(correctedMove);
+    await Promise.all([
+      this.gameRepository.update(game),
+      this.moveRepository.create(correctedMove),
+    ]);
 
     // 7. Emit game state update
     this.gamesGateway.emitGameStateUpdate(gameId, {
-      ...game,
-      lastMove: correctedMove,
+      id: game.id,
+      status: game.status,
+      gameType: game.gameType,
+      whitePlayerId: game.whitePlayerId,
+      blackPlayerId: game.blackPlayerId,
+      whiteGuestName: game.whiteGuestName,
+      blackGuestName: game.blackGuestName,
+      winner: game.winner,
+      endReason: game.endReason,
+      currentTurn: game.currentTurn,
+      clockInfo: game.clockInfo,
+      board: game.board?.toJSON ? game.board.toJSON() : (game as any).board,
+      lastMove: {
+        id: correctedMove.id,
+        player: correctedMove.player,
+        from: correctedMove.from.value,
+        to: correctedMove.to.value,
+        notation: correctedMove.notation,
+        isPromotion: correctedMove.isPromotion,
+        capturedSquares: correctedMove.capturedSquares.map((p) => p.value),
+        moveNumber: correctedMove.moveNumber,
+        createdAt: correctedMove.createdAt,
+      },
     });
 
     // 8. Schedule timeout for next player

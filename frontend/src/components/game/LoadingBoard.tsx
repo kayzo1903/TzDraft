@@ -8,7 +8,7 @@ interface LoadingBoardProps {
 
 export const LoadingBoard: React.FC<LoadingBoardProps> = ({ message = "Loading..." }) => {
     return (
-        <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto gap-6 relative">
+        <div className="flex flex-col items-center justify-center w-[600px] mx-auto gap-6 relative">
             <div className="relative w-full">
                 {/* Render an empty board */}
                 <Board

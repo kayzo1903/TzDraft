@@ -1,16 +1,21 @@
 "use client";
 
+import { io, Socket } from 'socket.io-client';
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useSocket } from '@/hooks/useSocket';
+// import { useSocket } from '@/hooks/useSocket'; // Disabled to use local socket
 import { Board } from '@/components/game/Board';
+import { LoadingBoard } from '@/components/game/LoadingBoard';
 import { gameService } from '@/services/game.service';
 import { getBotByLevel } from '@/lib/game/bots';
-import { Loader2, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import Image from 'next/image';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { useRouter } from '@/i18n/routing';
 import { GameNotFound } from '@/components/game/GameNotFound';
+import { boardIndexToPosition, displayIndexToBoardIndex, positionToBoardIndex, serverPosToUiPos, uiPosToServerPos } from '@/lib/game/board-coords';
+import { computeUiLegalMoves, type BackendPiece } from '@/lib/game/ui-legal-moves';
+import { nowFromServer, syncServerTime } from '@/lib/server-time';
 
 type Rating = number | { rating: number };
 
@@ -30,6 +35,12 @@ type ClockInfo = {
     lastMoveAt?: string;
 };
 
+type ClockSnapshot = {
+    clockInfo: ClockInfo;
+    currentTurn: 'WHITE' | 'BLACK';
+    serverTimeMs: number;
+};
+
 type GameResponse = {
     status?: 'WAITING' | 'ACTIVE' | 'FINISHED' | 'ABORTED';
     whitePlayerId: string | null;
@@ -40,6 +51,9 @@ type GameResponse = {
     gameType: 'RANKED' | 'CASUAL' | 'AI';
     aiLevel?: number;
     clockInfo?: ClockInfo;
+    winner?: 'WHITE' | 'BLACK' | 'DRAW' | null;
+    endReason?: string | null;
+    board?: Record<number, unknown>;
 };
 
 function ColorBadge({ color }: { color: 'WHITE' | 'BLACK' }) {
@@ -61,7 +75,9 @@ function ColorBadge({ color }: { color: 'WHITE' | 'BLACK' }) {
 export default function GamePage() {
     const { id: gameId } = useParams<{ id: string }>();
     const router = useRouter();
-    const socket = useSocket();
+    // const socket = useSocket();
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
     const { user } = useAuthStore();
     const [game, setGame] = useState<GameResponse | null>(null);
     const [players, setPlayers] = useState<PlayersResponse | null>(null);
@@ -70,16 +86,84 @@ export default function GamePage() {
     const [actionError, setActionError] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<'resign' | 'abort' | null>(null);
     const [resultCard, setResultCard] = useState<
-        'resign' | 'abort' | 'opponent_resigned' | 'opponent_aborted' | 'timeout' | 'opponent_timeout' | null
+        'resign' | 'abort' | 'opponent_resigned' | 'opponent_aborted' | 'timeout' | 'opponent_timeout' | 'win' | 'loss' | 'draw' | 'end' | null
     >(
         null,
     );
     const [loading, setLoading] = useState(true);
     const [displayClock, setDisplayClock] = useState<ClockInfo | null>(null);
+    const clockSnapshotRef = useRef<ClockSnapshot | null>(null);
     const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
     const [selfDisconnectCountdown, setSelfDisconnectCountdown] = useState<number | null>(null);
     const gameIdRef = useRef(gameId);
     const viewerColorRef = useRef(viewerColor);
+    const [pieces, setPieces] = useState<Record<number, BackendPiece>>({});
+    const [hasAnyMove, setHasAnyMove] = useState(false);
+    const [drawOffer, setDrawOffer] = useState<
+        | null
+        | {
+            offeredBy: string;
+            expiresAt: number;
+            isMine: boolean;
+        }
+    >(null);
+    const lastBoardSignatureRef = useRef<string | null>(null);
+
+    const getBoardSignature = useRef(
+        (board: Record<number, unknown>) => {
+            const keys = Object.keys(board).sort((a, b) => Number(a) - Number(b));
+            let signature = "";
+            for (const key of keys) {
+                const piece = (board as any)[key];
+                if (!piece) continue;
+                const color = piece.color ?? "";
+                const type = piece.type ?? "";
+                const isKing = piece.isKing ? "1" : "0";
+                signature += `${key}:${color}:${type}:${isKing}|`;
+            }
+            return signature;
+        },
+    ).current;
+
+    // Convert backend pieces (1-32) to frontend pieces (0-63)
+    const frontendPieces = React.useMemo(() => {
+        const result: Record<number, { color: 'WHITE' | 'BLACK', isKing?: boolean }> = {};
+        Object.entries(pieces).forEach(([key, piece]) => {
+            const pos = Number(key);
+            const uiPos = serverPosToUiPos(pos);
+            const index = positionToBoardIndex(uiPos);
+            result[index] = { color: piece.color, isKing: piece.isKing || piece.type === 'KING' };
+        });
+        return result;
+    }, [pieces]);
+
+    const canInteract = React.useMemo(() => {
+        if (!user?.id) return false;
+        if (game?.status !== 'ACTIVE') return false;
+        const isPlayer =
+            (viewerColor === 'WHITE' && game.whitePlayerId === user.id) ||
+            (viewerColor === 'BLACK' && game.blackPlayerId === user.id);
+        if (!isPlayer) return false;
+        return (game.currentTurn ?? 'WHITE') === viewerColor;
+    }, [game?.blackPlayerId, game?.currentTurn, game?.status, game?.whitePlayerId, user?.id, viewerColor]);
+
+    const canRequestDraw = React.useMemo(() => {
+        if (!user?.id) return false;
+        if (game?.status !== 'ACTIVE') return false;
+        return game.whitePlayerId === user.id || game.blackPlayerId === user.id;
+    }, [game?.blackPlayerId, game?.status, game?.whitePlayerId, user?.id]);
+
+    const { legalMoves, forcedPieces } = React.useMemo(
+        () =>
+            computeUiLegalMoves({
+                piecesByPosition: pieces,
+                viewerColor,
+                canInteract,
+                moveCount: 0,
+                flipped: viewerColor === 'BLACK',
+            }),
+        [canInteract, pieces, viewerColor],
+    );
 
     useEffect(() => {
         const prevHtmlOverflowY = document.documentElement.style.overflowY;
@@ -101,8 +185,18 @@ export default function GamePage() {
         const fetchGame = async () => {
             try {
                 const data = await gameService.getGame(gameId);
-                setGame(data.data.game);
-                setPlayers(data.data.players);
+                console.log('Fetched game data:', data);
+                // Check if data is nested or direct
+                const gameData = data.data?.game || data.game || data;
+                const playersData = data.data?.players || data.players;
+                const movesData = data.data?.moves;
+
+                console.log('Processed game:', gameData);
+                console.log('Board:', gameData?.board);
+
+                setGame(gameData);
+                setPlayers(playersData);
+                setHasAnyMove(Array.isArray(movesData) && movesData.length > 0);
             } catch (error) {
                 console.error('Failed to fetch game:', error);
             } finally {
@@ -118,13 +212,6 @@ export default function GamePage() {
 
         let resolvedColor: 'WHITE' | 'BLACK' | null = null;
 
-        if (typeof window !== 'undefined') {
-            const stored = window.sessionStorage.getItem(`tzdraft:game:${gameId}:color`);
-            if (stored === 'WHITE' || stored === 'BLACK') {
-                resolvedColor = stored;
-            }
-        }
-
         if (!resolvedColor && user?.id) {
             if (user.id === game.whitePlayerId) {
                 resolvedColor = 'WHITE';
@@ -133,52 +220,99 @@ export default function GamePage() {
             }
         }
 
-        setViewerColor(resolvedColor || 'WHITE');
+        if (!resolvedColor && typeof window !== 'undefined') {
+            const stored = window.sessionStorage.getItem(`tzdraft:game:${gameId}:color`);
+            if (stored === 'WHITE' || stored === 'BLACK') {
+                resolvedColor = stored;
+            }
+        }
+
+        setViewerColor((prev) => {
+            const next = resolvedColor || 'WHITE';
+            return prev === next ? prev : next;
+        });
     }, [game, gameId, user?.id]);
 
     useEffect(() => {
-        let active = true;
-        let intervalId: number | null = null;
+        let cancelled = false;
+        syncServerTime().catch(() => { });
 
-        const pullClock = async () => {
+        const pullClockSnapshot = async () => {
             try {
                 const response = await gameService.getGameClock(gameId);
-                if (!active) return;
+                if (cancelled) return;
 
-                const serverGame = response?.data;
-                if (!serverGame) return;
+                const serverGame = response?.data as {
+                    status?: string;
+                    currentTurn?: 'WHITE' | 'BLACK';
+                    clockInfo?: ClockInfo | null;
+                    serverTimeMs?: number;
+                } | undefined;
+                if (!serverGame?.clockInfo) return;
 
-                setDisplayClock(serverGame.clockInfo || null);
+                const serverTimeMs = Number(serverGame.serverTimeMs);
+                clockSnapshotRef.current = {
+                    clockInfo: serverGame.clockInfo,
+                    currentTurn: serverGame.currentTurn ?? 'WHITE',
+                    serverTimeMs: Number.isFinite(serverTimeMs) ? serverTimeMs : nowFromServer(),
+                };
+
+                setDisplayClock(serverGame.clockInfo);
                 setGame((prev) =>
                     prev
                         ? {
                             ...prev,
-                            status: serverGame.status ?? prev.status,
+                            status: (serverGame.status as any) ?? prev.status,
                             currentTurn: serverGame.currentTurn ?? prev.currentTurn,
                             clockInfo: serverGame.clockInfo ?? prev.clockInfo,
                         }
                         : prev,
                 );
             } catch {
-                // Keep last known clock if polling fails momentarily.
+                // Keep last known clock snapshot if fetching fails momentarily.
             }
         };
 
-        pullClock();
-        intervalId = window.setInterval(pullClock, 1000);
-
+        pullClockSnapshot();
+        const resyncId = window.setInterval(pullClockSnapshot, 15_000);
         return () => {
-            active = false;
-            if (intervalId) window.clearInterval(intervalId);
+            cancelled = true;
+            window.clearInterval(resyncId);
         };
     }, [gameId]);
+
+    useEffect(() => {
+        const tickId = window.setInterval(() => {
+            const snap = clockSnapshotRef.current;
+            if (!snap) return;
+            const now = nowFromServer();
+            const elapsed = Math.max(0, now - snap.serverTimeMs);
+
+            const whiteTimeMs =
+                snap.currentTurn === 'WHITE'
+                    ? Math.max(0, snap.clockInfo.whiteTimeMs - elapsed)
+                    : snap.clockInfo.whiteTimeMs;
+            const blackTimeMs =
+                snap.currentTurn === 'BLACK'
+                    ? Math.max(0, snap.clockInfo.blackTimeMs - elapsed)
+                    : snap.clockInfo.blackTimeMs;
+
+            setDisplayClock({
+                whiteTimeMs,
+                blackTimeMs,
+                lastMoveAt: snap.clockInfo.lastMoveAt,
+            });
+        }, 250);
+
+        return () => window.clearInterval(tickId);
+    }, []);
 
     useEffect(() => {
         gameIdRef.current = gameId;
         viewerColorRef.current = viewerColor;
     }, [gameId, viewerColor]);
 
-    const [pieces, setPieces] = useState<Record<number, { color: 'WHITE' | 'BLACK', isKing?: boolean }>>({});
+
 
     useEffect(() => {
         if (disconnectCountdown === null) return;
@@ -200,16 +334,115 @@ export default function GamePage() {
     }, [game]);
 
     useEffect(() => {
+        if (!socket) {
+            console.log('Initializing socket connection...');
+            // Ensure we are connecting to the correct namespace
+            const accessToken =
+                typeof window !== 'undefined'
+                    ? window.localStorage.getItem('accessToken')
+                    : null;
+            const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002/games', {
+                withCredentials: true,
+                auth: accessToken ? { token: accessToken } : undefined,
+                autoConnect: true,
+                transports: ['websocket', 'polling'], // Allow polling fallback
+                reconnection: true,
+                reconnectionAttempts: 5,
+            });
+
+            setSocket(newSocket);
+
+            newSocket.on('connect', () => {
+                const transport = (newSocket.io?.engine?.transport as any)?.name;
+                if (process.env.NODE_ENV === 'development') {
+                    console.debug('Socket connected successfully:', newSocket.id, { transport });
+                }
+                setIsConnected(true);
+                setActionError(null);
+
+                if (gameIdRef.current) {
+                    console.log('Emitting joinGame for:', gameIdRef.current);
+                    newSocket.emit('joinGame', { gameId: gameIdRef.current });
+                }
+            });
+
+            newSocket.on('connect_error', (err) => {
+                console.error('Socket connection error:', err.message);
+                // Only show error if persistent
+                if (!newSocket.active) {
+                    setActionError(`Connection failed: ${err.message}`);
+                    setIsConnected(false);
+                }
+            });
+
+            newSocket.on('disconnect', (reason) => {
+                console.warn('Socket disconnected:', reason);
+                setIsConnected(false);
+                if (reason === 'io server disconnect') {
+                    // unexpected disconnect by server
+                    newSocket.connect();
+                }
+            });
+
+            newSocket.on('connect_error', (error) => {
+                console.error('Socket connect_error:', error?.message || error);
+                setIsConnected(false);
+            });
+
+            return () => {
+                console.log('Cleaning up socket...');
+                newSocket.disconnect();
+            }
+        }
+    }, []); // Only run once on mount
+
+    useEffect(() => {
         if (!socket) return;
 
-        socket.emit('joinGame', { gameId: gameIdRef.current });
+        // Re-join if gameId changes or on reconnection
+        const handleRejoin = () => {
+            if (socket.connected && gameId) {
+                console.log('Re-joining game room:', gameId);
+                socket.emit('joinGame', { gameId });
+            }
+        };
+
+        handleRejoin();
+        socket.on('connect', handleRejoin);
+
+        socket.on('joinedGame', (data: { gameId?: string; playerColor?: 'WHITE' | 'BLACK' }) => {
+            if (!data?.playerColor) return;
+            setViewerColor(data.playerColor);
+            if (typeof window !== 'undefined' && data.gameId) {
+                window.sessionStorage.setItem(`tzdraft:game:${data.gameId}:color`, data.playerColor);
+            }
+        });
 
         socket.on('gameStateUpdated', (data: any) => {
-            console.log('Game state updated:', data);
-            if (data.board) {
-                setPieces(data.board);
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('Game state updated');
             }
-            // Also update other game state if needed (turn, status etc)
+
+            const nextBoard = data.board as Record<number, unknown> | undefined;
+            const nextBoardSignature = nextBoard ? getBoardSignature(nextBoard) : null;
+            const boardChanged =
+                nextBoardSignature !== null && nextBoardSignature !== lastBoardSignatureRef.current;
+
+            if (nextBoard && boardChanged) {
+                lastBoardSignatureRef.current = nextBoardSignature;
+                setPieces(nextBoard as any);
+            }
+            if (data.lastMove?.moveNumber && Number(data.lastMove.moveNumber) > 0) {
+                setHasAnyMove(true);
+            }
+            if (data.clockInfo && (data.currentTurn === 'WHITE' || data.currentTurn === 'BLACK')) {
+                clockSnapshotRef.current = {
+                    clockInfo: data.clockInfo,
+                    currentTurn: data.currentTurn,
+                    serverTimeMs: nowFromServer(),
+                };
+                setDisplayClock(data.clockInfo);
+            }
             setGame((prev) => {
                 if (!prev) return null;
                 return {
@@ -218,16 +451,46 @@ export default function GamePage() {
                     status: data.status,
                     winner: data.winner,
                     endReason: data.endReason,
-                    board: data.board // Keep generic cache updated
+                    clockInfo: data.clockInfo ?? prev.clockInfo,
+                    board: boardChanged ? data.board : prev.board,
                 } as any;
             });
         });
 
+        socket.on('drawOffered', (data: { gameId?: string; offeredBy?: string; expiresAt?: number }) => {
+            if (!data?.gameId || data.gameId !== gameIdRef.current) return;
+            if (!data.offeredBy || !data.expiresAt) return;
+            const mine = Boolean(user?.id && data.offeredBy === user.id);
+            setDrawOffer({ offeredBy: data.offeredBy, expiresAt: data.expiresAt, isMine: mine });
+        });
+
+        socket.on('drawDeclined', (data: { gameId?: string }) => {
+            if (!data?.gameId || data.gameId !== gameIdRef.current) return;
+            setDrawOffer(null);
+        });
+
+        socket.on('drawCancelled', (data: { gameId?: string }) => {
+            if (!data?.gameId || data.gameId !== gameIdRef.current) return;
+            setDrawOffer(null);
+        });
+
+        socket.on('drawOfferExpired', (data: { gameId?: string }) => {
+            if (!data?.gameId || data.gameId !== gameIdRef.current) return;
+            setDrawOffer(null);
+        });
+
         socket.on('gameOver', (data: { winner?: 'WHITE' | 'BLACK' | 'DRAW' | null; reason?: string }) => {
+            console.log('Game Over:', data);
             setDisconnectCountdown(null);
             setSelfDisconnectCountdown(null);
+            setDrawOffer(null);
             if (data.reason === 'ABORTED') {
                 setResultCard('opponent_aborted');
+                return;
+            }
+
+            if (data.reason === 'DRAW' || data.winner === 'DRAW') {
+                setResultCard('draw');
                 return;
             }
 
@@ -237,17 +500,24 @@ export default function GamePage() {
                 } else {
                     setResultCard('resign');
                 }
-            }
-            if (data.reason === 'DISCONNECT' && data.winner === viewerColorRef.current) {
-                setResultCard('opponent_resigned');
-            }
-
-            if (data.reason === 'TIME') {
+            } else if (data.reason === 'DISCONNECT') {
+                if (data.winner === viewerColorRef.current) {
+                    setResultCard('opponent_resigned');
+                }
+            } else if (data.reason === 'TIME') {
                 if (data.winner === viewerColorRef.current) {
                     setResultCard('opponent_timeout');
                 } else {
                     setResultCard('timeout');
                 }
+            } else if (data.winner) {
+                if (data.winner === viewerColorRef.current) {
+                    setResultCard('win');
+                } else {
+                    setResultCard('loss');
+                }
+            } else {
+                setResultCard('draw');
             }
         });
 
@@ -273,8 +543,13 @@ export default function GamePage() {
         });
 
         return () => {
+            socket.off('joinedGame');
             socket.off('gameStateUpdated');
             socket.off('gameOver');
+            socket.off('drawOffered');
+            socket.off('drawDeclined');
+            socket.off('drawCancelled');
+            socket.off('drawOfferExpired');
             socket.off('playerDisconnected');
             socket.off('playerReconnected');
             socket.off('disconnect');
@@ -295,11 +570,33 @@ export default function GamePage() {
     }, [selfDisconnectCountdown]);
 
     const handleMove = (from: number, to: number) => {
-        const normalizedFrom = viewerColor === 'BLACK' ? 63 - from : from;
-        const normalizedTo = viewerColor === 'BLACK' ? 63 - to : to;
-        console.log(`Move attempt: ${from} -> ${to}`);
+        if (!canInteract) return;
+
+        const flipped = viewerColor === 'BLACK';
+        const fromBoardIndex = displayIndexToBoardIndex(from, flipped);
+        const toBoardIndex = displayIndexToBoardIndex(to, flipped);
+
+        const fromUiPos = boardIndexToPosition(fromBoardIndex);
+        const toUiPos = boardIndexToPosition(toBoardIndex);
+        const fromPos = fromUiPos ? uiPosToServerPos(fromUiPos) : null;
+        const toPos = toUiPos ? uiPosToServerPos(toUiPos) : null;
+
+        if (!fromPos || !toPos) {
+            console.error('Invalid move coordinates (light square)');
+            return;
+        }
+
+        console.log(`Move attempt (Pos): ${fromPos}->${toPos}`);
         if (socket) {
-            socket.emit('makeMove', { gameId, from: normalizedFrom, to: normalizedTo });
+            socket.emit(
+                'makeMove',
+                { gameId: gameIdRef.current, from: fromPos, to: toPos },
+                (response?: { status?: string; message?: string }) => {
+                    if (response?.status === 'error') {
+                        console.warn('makeMove rejected:', response.message);
+                    }
+                },
+            );
         }
     };
 
@@ -319,6 +616,40 @@ export default function GamePage() {
         } finally {
             setActionLoading(null);
         }
+    };
+
+    const handleRequestDraw = () => {
+        if (!socket) return;
+        if (!gameIdRef.current) return;
+        socket.emit('requestDraw', { gameId: gameIdRef.current }, (response?: { status?: string; message?: string }) => {
+            if (response?.status === 'error') {
+                setActionError(response.message || 'Failed to request draw.');
+            }
+        });
+    };
+
+    const handleRespondDraw = (accept: boolean) => {
+        if (!socket) return;
+        if (!gameIdRef.current) return;
+        socket.emit('respondDraw', { gameId: gameIdRef.current, accept }, (response?: { status?: string; message?: string }) => {
+            if (response?.status === 'error') {
+                setActionError(response.message || 'Failed to respond to draw.');
+            } else {
+                setDrawOffer(null);
+            }
+        });
+    };
+
+    const handleCancelDraw = () => {
+        if (!socket) return;
+        if (!gameIdRef.current) return;
+        socket.emit('cancelDraw', { gameId: gameIdRef.current }, (response?: { status?: string; message?: string }) => {
+            if (response?.status === 'error') {
+                setActionError(response.message || 'Failed to cancel draw.');
+            } else {
+                setDrawOffer(null);
+            }
+        });
     };
 
     const handleAbort = async () => {
@@ -341,8 +672,8 @@ export default function GamePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
+            <div className="min-h-screen flex items-center justify-center bg-stone-900 p-4">
+                <LoadingBoard message="Loading match..." />
             </div>
         );
     }
@@ -401,6 +732,10 @@ export default function GamePage() {
         const ms = color === 'WHITE' ? source.whiteTimeMs : source.blackTimeMs;
         return formatTime(ms);
     };
+
+
+
+
 
     return (
         <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-4 sm:gap-8">
@@ -473,27 +808,51 @@ export default function GamePage() {
                     </div>
 
                     <Board
-                        pieces={pieces}
+                        pieces={frontendPieces}
                         onMove={handleMove}
                         flipped={viewerColor === 'BLACK'}
+                        readOnly={!canInteract}
+                        legalMoves={legalMoves}
+                        forcedPieces={forcedPieces}
                     />
 
                     <div className="mt-3 flex items-center justify-center gap-3">
                         <button
-                            onClick={() => setConfirmAction('resign')}
+                            onClick={() => setConfirmAction(hasAnyMove ? 'resign' : 'abort')}
                             disabled={actionLoading !== null}
-                            className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/25 disabled:opacity-60"
+                            className={
+                                hasAnyMove
+                                    ? "rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/25 disabled:opacity-60"
+                                    : "rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/25 disabled:opacity-60"
+                            }
                         >
-                            {actionLoading === 'resign' ? 'Resigning...' : 'Resign'}
+                            {hasAnyMove
+                                ? actionLoading === 'resign'
+                                    ? 'Resigning...'
+                                    : 'Resign'
+                                : actionLoading === 'abort'
+                                    ? 'Aborting...'
+                                    : 'Abort Game'}
                         </button>
                         <button
-                            onClick={() => setConfirmAction('abort')}
-                            disabled={actionLoading !== null}
-                            className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/25 disabled:opacity-60"
+                            onClick={() => {
+                                if (drawOffer?.isMine) {
+                                    handleCancelDraw();
+                                } else {
+                                    handleRequestDraw();
+                                }
+                            }}
+                            disabled={actionLoading !== null || !canRequestDraw}
+                            className="rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700 disabled:opacity-60"
                         >
-                            {actionLoading === 'abort' ? 'Aborting...' : 'Abort Game'}
+                            {drawOffer?.isMine ? 'Cancel Draw' : 'Offer Draw'}
                         </button>
                     </div>
+                    {drawOffer?.isMine && (
+                        <div className="mt-2 rounded-lg border border-neutral-700/60 bg-neutral-900/40 px-3 py-2 text-center text-sm text-neutral-200">
+                            Draw offer sent.
+                        </div>
+                    )}
                     {actionError && (
                         <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200">
                             {actionError}
@@ -618,6 +977,32 @@ export default function GamePage() {
                 </div>
             )}
 
+            {drawOffer && !drawOffer.isMine && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="w-full max-w-md mx-4 rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl">
+                        <div className="p-6 border-b border-neutral-800">
+                            <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">Draw Offer</div>
+                            <div className="mt-2 text-2xl font-bold text-neutral-100">Opponent offered a draw</div>
+                            <div className="mt-2 text-sm text-neutral-400">Do you want to accept?</div>
+                        </div>
+                        <div className="p-6 flex gap-3 justify-end">
+                            <button
+                                onClick={() => handleRespondDraw(false)}
+                                className="rounded-lg border border-neutral-700 bg-transparent px-4 py-2 text-sm font-semibold text-neutral-300 hover:bg-neutral-800"
+                            >
+                                Decline
+                            </button>
+                            <button
+                                onClick={() => handleRespondDraw(true)}
+                                className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/25"
+                            >
+                                Accept
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {resultCard && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                     <div className="w-full max-w-md mx-4 rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl">
@@ -628,20 +1013,28 @@ export default function GamePage() {
                             <div className="mt-2 text-2xl font-bold text-neutral-100">
                                 {resultCard === 'abort' || resultCard === 'opponent_aborted'
                                     ? 'Game Aborted'
+                                    : resultCard === 'win' || resultCard === 'opponent_timeout'
+                                        ? 'You Won'
+                                        : resultCard === 'loss' || resultCard === 'timeout'
+                                            ? 'You Lost'
+                                            : resultCard === 'draw'
+                                                ? 'Draw'
                                     : resultCard === 'opponent_resigned'
                                         ? 'Opponent Resigned'
-                                        : resultCard === 'timeout'
-                                            ? 'Time Out'
-                                            : resultCard === 'opponent_timeout'
-                                                ? 'Opponent Time Out'
-                                                : 'You Resigned'}
+                                        : 'You Resigned'}
                             </div>
                             <div className="mt-2 text-sm text-neutral-400">
                                 {resultCard === 'abort' || resultCard === 'opponent_aborted'
                                     ? 'No rating change when the game is aborted before any move.'
+                                    : resultCard === 'win'
+                                        ? 'You won the game.'
+                                        : resultCard === 'loss'
+                                            ? 'You lost the game.'
+                                            : resultCard === 'draw'
+                                                ? 'The game ended in a draw.'
                                     : resultCard === 'opponent_resigned'
                                         ? 'Opponent resigned. This game is over.'
-                                        : resultCard === 'opponent_timeout'
+                                    : resultCard === 'opponent_timeout'
                                             ? 'Opponent ran out of time. You win!'
                                             : resultCard === 'timeout'
                                                 ? 'You ran out of time. You lose.'
