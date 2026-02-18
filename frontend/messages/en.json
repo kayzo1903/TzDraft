@@ -234,7 +234,15 @@
     "stats": {
       "activePlayers": "Active Players",
       "matchesNow": "Matches Now"
-    }
+    },
+    "play_online": "Play Online",
+    "select_mode": "Select your preferred game mode",
+    "play_ranked": "Play Ranked",
+    "login_required": "Login required",
+    "or": "OR",
+    "play_as_guest": "Play as Guest",
+    "joining_ranked_queue": "Joining Ranked Queue...",
+    "login_to_play_ranked": "Login to Play Ranked"
   },
   "footer": {
     "rules": "Rules",

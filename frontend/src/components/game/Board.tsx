@@ -15,6 +15,7 @@ interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     legalMoves?: Record<number, number[]>;
     forcedPieces?: number[];
     onInvalidSelect?: () => void;
+    flipped?: boolean;
 }
 
 export const Board: React.FC<BoardProps> = ({
@@ -24,6 +25,7 @@ export const Board: React.FC<BoardProps> = ({
     legalMoves,
     forcedPieces = [],
     onInvalidSelect,
+    flipped = false,
     className,
     ...props
 }) => {
@@ -38,16 +40,20 @@ export const Board: React.FC<BoardProps> = ({
         return (row + col) % 2 !== 0;
     };
 
+    const toBoardIndex = (displayIndex: number) =>
+        flipped ? 63 - displayIndex : displayIndex;
+
     // Internal initial setup (fallback if no pieces prop provided)
-    const getPiece = (index: number): PieceState | null => {
+    const getPiece = (displayIndex: number): PieceState | null => {
+        const boardIndex = toBoardIndex(displayIndex);
         // If external pieces are provided, use them
         if (externalPieces) {
-            return externalPieces[index] || null;
+            return externalPieces[boardIndex] || null;
         }
 
         // Fallback to initial setup
-        if (!isDarkSquare(index)) return null;
-        const row = Math.floor(index / 8);
+        if (!isDarkSquare(displayIndex)) return null;
+        const row = Math.floor(boardIndex / 8);
         if (row < 3) return { color: 'BLACK' };
         if (row > 4) return { color: 'WHITE' };
         return null;
@@ -143,8 +149,12 @@ export const Board: React.FC<BoardProps> = ({
         );
     };
 
-    const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+    const files = flipped
+        ? ['H', 'G', 'F', 'E', 'D', 'C', 'B', 'A']
+        : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const ranks = flipped
+        ? ['1', '2', '3', '4', '5', '6', '7', '8']
+        : ['8', '7', '6', '5', '4', '3', '2', '1'];
 
     return (
         <div
@@ -174,9 +184,10 @@ export const Board: React.FC<BoardProps> = ({
                     {externalPieces && (
                         <div className="absolute inset-0 pointer-events-none">
                             {Object.entries(externalPieces).map(([key, piece]) => {
-                                const index = Number(key);
-                                const row = Math.floor(index / 8);
-                                const col = index % 8;
+                                const boardIndex = Number(key);
+                                const displayIndex = flipped ? 63 - boardIndex : boardIndex;
+                                const row = Math.floor(displayIndex / 8);
+                                const col = displayIndex % 8;
                                 return (
                                     <div
                                         key={key}
@@ -191,7 +202,7 @@ export const Board: React.FC<BoardProps> = ({
                                         <Piece
                                             color={piece.color}
                                             isKing={piece.isKing}
-                                            isSelected={selectedSquare === index}
+                                            isSelected={selectedSquare === displayIndex}
                                         />
                                     </div>
                                 );

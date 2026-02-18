@@ -8,10 +8,13 @@ model Game {
     gameType    GameType   @map("game_type")
     ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
 
-    whitePlayerId String  @map("white_player_id")
+    whitePlayerId String? @map("white_player_id")
     blackPlayerId String? @map("black_player_id")
-    whitePlayer   User    @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
+    whitePlayer   User?   @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
     blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
+
+    whiteGuestName String? @map("white_guest_name")
+    blackGuestName String? @map("black_guest_name")
 
     whiteElo Int? @map("white_elo")
     blackElo Int? @map("black_elo")

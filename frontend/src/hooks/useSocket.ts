@@ -7,26 +7,18 @@ export function useSocket() {
   const { accessToken, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) {
-      // Close existing socket if user is not authenticated
-      if (socket) {
-        socket.close();
-        setSocket(null);
-      }
-      return;
-    }
+    // If authenticated, prefer store token but fall back to localStorage on reload.
+    const storedToken =
+      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const token = isAuthenticated ? accessToken || storedToken : null;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+    const socketUrl = `${baseUrl.replace(/\/$/, "")}/games`;
 
-    const newSocket = io(
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002",
-      {
-        auth: {
-          token: accessToken,
-        },
-        extraHeaders: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    );
+    const newSocket = io(socketUrl, {
+      auth: token ? { token } : undefined,
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
 
     newSocket.on("connect", () => {
       console.log("Connected to WebSocket");
@@ -38,6 +30,10 @@ export function useSocket() {
 
     newSocket.on("connect_error", (error) => {
       console.error("WebSocket connection error:", error);
+    });
+
+    newSocket.io.on("error", (error) => {
+      console.error("websocket error", error);
     });
 
     setSocket(newSocket);

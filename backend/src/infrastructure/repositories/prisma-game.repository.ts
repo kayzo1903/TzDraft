@@ -28,6 +28,8 @@ export class PrismaGameRepository implements IGameRepository {
         ruleVersion: game.ruleVersion,
         whitePlayerId: game.whitePlayerId,
         blackPlayerId: game.blackPlayerId,
+        whiteGuestName: game.whiteGuestName || undefined,
+        blackGuestName: game.blackGuestName || undefined,
         whiteElo: game.whiteElo,
         blackElo: game.blackElo,
         aiLevel: game.aiLevel,
@@ -57,6 +59,7 @@ export class PrismaGameRepository implements IGameRepository {
     const game = await this.prisma.game.findUnique({
       where: { id },
       include: {
+        clock: true,
         moves: {
           orderBy: { moveNumber: 'asc' },
         },
@@ -66,12 +69,6 @@ export class PrismaGameRepository implements IGameRepository {
     if (!game) {
       return null;
     }
-
-    console.log('📖 Loaded game from DB:', {
-      id: game.id,
-      status: game.status,
-      moveCount: game.moves?.length || 0,
-    });
 
     return this.toDomain(game);
   }
@@ -109,6 +106,7 @@ export class PrismaGameRepository implements IGameRepository {
         },
       },
       include: {
+        clock: true,
         moves: {
           orderBy: { moveNumber: 'asc' },
         },
@@ -123,6 +121,7 @@ export class PrismaGameRepository implements IGameRepository {
     const games = await this.prisma.game.findMany({
       where: { status },
       include: {
+        clock: true,
         moves: {
           orderBy: { moveNumber: 'asc' },
         },
@@ -137,6 +136,7 @@ export class PrismaGameRepository implements IGameRepository {
     const games = await this.prisma.game.findMany({
       where: { gameType },
       include: {
+        clock: true,
         moves: {
           orderBy: { moveNumber: 'asc' },
         },
@@ -162,6 +162,7 @@ export class PrismaGameRepository implements IGameRepository {
         OR: [{ whitePlayerId: playerId }, { blackPlayerId: playerId }],
       },
       include: {
+        clock: true,
         moves: {
           orderBy: { moveNumber: 'asc' },
         },
@@ -185,10 +186,18 @@ export class PrismaGameRepository implements IGameRepository {
    * Map Prisma model to domain entity
    */
   private toDomain(prismaGame: any): Game {
+    const moveCount = Array.isArray(prismaGame.moves)
+      ? prismaGame.moves.length
+      : 0;
+    const currentTurn =
+      moveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+
     return new Game(
       prismaGame.id,
       prismaGame.whitePlayerId,
       prismaGame.blackPlayerId,
+      prismaGame.whiteGuestName || null,
+      prismaGame.blackGuestName || null,
       prismaGame.gameType as GameType,
       prismaGame.whiteElo,
       prismaGame.blackElo,
@@ -209,6 +218,8 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.endedAt,
       prismaGame.status as GameStatus,
       prismaGame.winner as Winner | null,
+      null,
+      currentTurn,
     );
   }
 }

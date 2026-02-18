@@ -1,8 +1,15 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GameType, PlayerColor } from '../../shared/constants/game.constants';
 import { randomUUID } from 'crypto';
+
+import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 
 /**
  * Create Game Use Case
@@ -13,31 +20,52 @@ export class CreateGameUseCase {
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
+    @Inject(forwardRef(() => GamesGateway))
+    private readonly gamesGateway: GamesGateway,
   ) {}
 
   /**
    * Create a new PvP game
    */
   async createPvPGame(
-    whitePlayerId: string,
-    blackPlayerId: string,
-    whiteElo: number,
-    blackElo: number,
+    whitePlayerId: string | null,
+    blackPlayerId: string | null,
+    whiteElo: number | null,
+    blackElo: number | null,
+    whiteGuestName?: string,
+    blackGuestName?: string,
+    gameType: GameType = GameType.RANKED,
   ): Promise<Game> {
     const game = new Game(
       randomUUID(),
       whitePlayerId,
       blackPlayerId,
-      GameType.RANKED,
+      whiteGuestName || null,
+      blackGuestName || null,
+      gameType,
       whiteElo,
       blackElo,
       null,
-      600000, // Default 10 mins for PvP for now (TODO: Add time selection for PvP)
-      undefined,
+      600000, // Default 10 mins
+      {
+        whiteTimeMs: 600000,
+        blackTimeMs: 600000,
+        lastMoveAt: new Date(),
+      },
     );
 
     game.start();
-    return this.gameRepository.create(game);
+    const createdGame = await this.gameRepository.create(game);
+
+    if (whitePlayerId) {
+      this.gamesGateway.scheduleGameTimeout(
+        createdGame.id,
+        600000,
+        whitePlayerId,
+      );
+    }
+
+    return createdGame;
   }
 
   /**
@@ -59,6 +87,8 @@ export class CreateGameUseCase {
       randomUUID(),
       whitePlayerId,
       blackPlayerId,
+      null, // Guest names not used for AI
+      null,
       GameType.AI,
       whiteElo,
       blackElo,

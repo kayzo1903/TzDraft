@@ -7,6 +7,7 @@ import { EmailModule } from '../../infrastructure/email/email.module';
 import { EngineModule } from '../../application/engines/engine.module';
 import { SidraController } from './controllers/sidra.controller';
 import { FriendController } from './controllers/friend.controller';
+import { SystemController } from './controllers/system.controller';
 
 /**
  * HTTP Module
@@ -20,6 +21,7 @@ import { FriendController } from './controllers/friend.controller';
     SupportController,
     SidraController,
     FriendController,
+    SystemController,
   ],
 })
 export class HttpModule {}

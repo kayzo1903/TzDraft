@@ -15,7 +15,12 @@ interface PendingRequest {
   createdAt: string;
 }
 
-export function PendingRequests() {
+interface PendingRequestsProps {
+  refreshTrigger?: number;
+  onActionComplete?: () => void;
+}
+
+export function PendingRequests({ refreshTrigger, onActionComplete }: PendingRequestsProps) {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +41,20 @@ export function PendingRequests() {
 
   useEffect(() => {
     loadRequests();
-  }, []);
+
+    const intervalId = setInterval(() => {
+      loadRequests();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [refreshTrigger]);
 
   const handleAccept = async (requesterId: string) => {
     try {
       setResponding(requesterId);
       await friendService.acceptFriendRequest(requesterId);
       setRequests(requests.filter((r) => r.requester.id !== requesterId));
+      onActionComplete?.();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to accept request");
     } finally {
@@ -55,6 +67,7 @@ export function PendingRequests() {
       setResponding(requesterId);
       await friendService.rejectFriendRequest(requesterId);
       setRequests(requests.filter((r) => r.requester.id !== requesterId));
+      onActionComplete?.();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to reject request");
     } finally {

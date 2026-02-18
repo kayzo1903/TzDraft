@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
 import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
 import { CreateGameUseCase } from './create-game.use-case';
@@ -14,6 +14,7 @@ import { GetPendingFriendRequestsUseCase } from './get-pending-friend-requests.u
 import { RemoveFriendUseCase } from './remove-friend.use-case';
 import { GetSentFriendRequestsUseCase } from './get-sent-friend-requests.use-case';
 import { CancelFriendRequestUseCase } from './cancel-friend-request.use-case';
+import { RatingService } from '../../domain/game/services/rating.service';
 
 /**
  * Use Cases Module
@@ -23,7 +24,12 @@ import { UserModule } from '../../domain/user/user.module';
 import { FriendModule } from '../../domain/friend/friend.module';
 
 @Module({
-  imports: [RepositoryModule, MessagingModule, UserModule, FriendModule],
+  imports: [
+    RepositoryModule,
+    forwardRef(() => MessagingModule),
+    UserModule,
+    FriendModule,
+  ],
   providers: [
     CreateGameUseCase,
     MakeMoveUseCase,
@@ -37,7 +43,9 @@ import { FriendModule } from '../../domain/friend/friend.module';
     GetPendingFriendRequestsUseCase,
     RemoveFriendUseCase,
     GetSentFriendRequestsUseCase,
+    GetSentFriendRequestsUseCase,
     CancelFriendRequestUseCase,
+    RatingService,
   ],
   exports: [
     CreateGameUseCase,

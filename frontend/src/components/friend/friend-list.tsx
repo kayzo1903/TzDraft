@@ -36,6 +36,12 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
 
   useEffect(() => {
     loadFriends();
+
+    const intervalId = setInterval(() => {
+      loadFriends();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
   }, [refreshTrigger]);
 
   const handleRemoveFriend = async (friendId: string) => {

@@ -14,6 +14,7 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+  const isDevelopment = (configService.get<string>('NODE_ENV') || 'development') !== 'production';
 
   // 1. Trust Proxy - Crucial for Render/Load Balancers
   app.set('trust proxy', 1);
@@ -50,14 +51,35 @@ async function bootstrap() {
       return [`https://${origin}`, `http://${origin}`];
     });
 
+  const explicitOrigins = Array.from(
+    new Set(
+      [
+        ...allowedOrigins,
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'https://tzdraft.com',
+        'https://www.tzdraft.com',
+      ].filter(Boolean),
+    ),
+  );
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://tzdraft.com',
-      'https://www.tzdraft.com',
-      process.env.FRONTEND_URL,
-    ].filter(Boolean) as string[],
+    origin: (origin, callback) => {
+      // Non-browser requests may omit origin.
+      if (!origin) return callback(null, true);
+
+      if (isDevelopment) {
+        return callback(null, true);
+      }
+
+      if (explicitOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked origin: ${origin}`), false);
+    },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

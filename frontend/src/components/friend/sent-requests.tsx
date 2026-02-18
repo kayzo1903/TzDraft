@@ -16,7 +16,12 @@ interface FriendRequest {
     createdAt: string;
 }
 
-export function SentRequests() {
+interface SentRequestsProps {
+    refreshTrigger?: number;
+    onActionComplete?: () => void;
+}
+
+export function SentRequests({ refreshTrigger, onActionComplete }: SentRequestsProps) {
     const [requests, setRequests] = useState<FriendRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [cancelingId, setCancelingId] = useState<string | null>(null);
@@ -35,13 +40,20 @@ export function SentRequests() {
 
     useEffect(() => {
         fetchRequests();
-    }, []);
+
+        const intervalId = setInterval(() => {
+            fetchRequests();
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [refreshTrigger]);
 
     const handleCancel = async (requesteeId: string) => {
         try {
             setCancelingId(requesteeId);
             await friendService.cancelFriendRequest(requesteeId);
             setRequests((prev) => prev.filter((req) => req.requestee.id !== requesteeId));
+            onActionComplete?.();
         } catch (error) {
             console.error("Failed to cancel request:", error);
         } finally {

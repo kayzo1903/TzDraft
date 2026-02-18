@@ -101,4 +101,25 @@ export class UserService {
 
     return user;
   }
+
+  /**
+   * Update player's rating after a ranked game.
+   * Uses upsert to recover gracefully if a rating row is missing.
+   */
+  async updateRating(userId: string, newRating: number): Promise<void> {
+    await this.prisma.rating.upsert({
+      where: { userId },
+      create: {
+        userId,
+        rating: newRating,
+        gamesPlayed: 1,
+      },
+      update: {
+        rating: newRating,
+        gamesPlayed: {
+          increment: 1,
+        },
+      },
+    });
+  }
 }

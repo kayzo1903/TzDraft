@@ -227,14 +227,21 @@
         "title": "Mashindano",
         "description": "Jiunge na matukio ya ushindani na ujishindie zawadi.",
         "action": "Cheza Sasa",
-        "unavailable": "Haijapatikana",
         "comingSoon": "Inakuja Hivi Karibuni"
       }
     },
     "stats": {
       "activePlayers": "Wachezaji Hai",
       "matchesNow": "Mechi Zinaendelea"
-    }
+    },
+    "play_online": "Cheza Mtandaoni",
+    "select_mode": "Chagua mtindo unayopendelea",
+    "play_ranked": "Cheza kwa Daraja",
+    "login_required": "Ingia kwanza",
+    "or": "AU",
+    "play_as_guest": "Cheza kama Mgeni",
+    "joining_ranked_queue": "Inajiunga na Foleni ya Daraja...",
+    "login_to_play_ranked": "Ingia Kucheza kwa Daraja"
   },
   "footer": {
     "rules": "Sheria",

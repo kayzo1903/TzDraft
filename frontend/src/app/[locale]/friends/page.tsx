@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "@/i18n/routing";
-import { FriendSearch, FriendList, PendingRequests } from "@/components/friend";
+import { FriendSearch, FriendList, PendingRequests, SentRequests } from "@/components/friend";
 import { Users } from "lucide-react";
 
 export default function FriendsPage() {
@@ -39,7 +39,7 @@ export default function FriendsPage() {
   }
 
   const handleFriendAdded = () => {
-    // Trigger refresh of friend list
+    // Trigger refresh of all friendship panels
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -70,7 +70,8 @@ export default function FriendsPage() {
 
           {/* Right Column: Pending Requests and Friends List */}
           <div className="lg:col-span-2 space-y-6">
-            <PendingRequests />
+            <PendingRequests refreshTrigger={refreshTrigger} onActionComplete={handleFriendAdded} />
+            <SentRequests refreshTrigger={refreshTrigger} onActionComplete={handleFriendAdded} />
             <FriendList refreshTrigger={refreshTrigger} />
           </div>
         </div>

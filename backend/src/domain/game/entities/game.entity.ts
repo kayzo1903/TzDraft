@@ -25,14 +25,16 @@ export class Game {
 
   constructor(
     public readonly id: string,
-    public readonly whitePlayerId: string,
+    public readonly whitePlayerId: string | null,
     public readonly blackPlayerId: string | null,
+    public readonly whiteGuestName: string | null,
+    public readonly blackGuestName: string | null,
     public readonly gameType: GameType,
     public readonly whiteElo: number | null = null,
     public readonly blackElo: number | null = null,
     public readonly aiLevel: number | null = null,
     public readonly initialTimeMs: number = 600000, // Default 10 mins
-    public readonly clockInfo?: {
+    public clockInfo?: {
       whiteTimeMs: number;
       blackTimeMs: number;
       lastMoveAt: Date;
@@ -213,6 +215,33 @@ export class Game {
     return (
       this.gameType === GameType.RANKED || this.gameType === GameType.CASUAL
     );
+  }
+
+  /**
+   * Update clock based on elapsed time
+   */
+  updateClock(elapsedMs: number): void {
+    if (!this.clockInfo) {
+      // Initialize clock if not present (shouldn't happen in active games ideally)
+      this.clockInfo = {
+        whiteTimeMs: this.initialTimeMs,
+        blackTimeMs: this.initialTimeMs,
+        lastMoveAt: new Date(),
+      };
+    }
+
+    if (this._currentTurn === PlayerColor.WHITE) {
+      this.clockInfo.whiteTimeMs = Math.max(
+        0,
+        this.clockInfo.whiteTimeMs - elapsedMs,
+      );
+    } else {
+      this.clockInfo.blackTimeMs = Math.max(
+        0,
+        this.clockInfo.blackTimeMs - elapsedMs,
+      );
+    }
+    this.clockInfo.lastMoveAt = new Date();
   }
 
   toString(): string {
