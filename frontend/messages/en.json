@@ -21,7 +21,7 @@
       "cta": {
         "playBadge": "Play",
         "aiBadge": "AI",
-        "aiSubtitle": "Stockfish (Cake)"
+        "aiSubtitle": "Training Mode"
       },
       "stats": {
         "playersOnline": "124 Players Online",
@@ -264,7 +264,7 @@
       },
       "ai": {
         "title": "Play vs AI",
-        "description": "Practice and improve against Stockfish engines.",
+        "description": "Practice and improve against AI opponents.",
         "action": "Play Now"
       },
       "friend": {

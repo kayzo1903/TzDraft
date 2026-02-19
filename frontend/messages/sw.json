@@ -21,7 +21,7 @@
       "cta": {
         "playBadge": "Cheza",
         "aiBadge": "AI",
-        "aiSubtitle": "Stockfish (Cake)"
+        "aiSubtitle": "Modi ya Mazoezi"
       },
       "stats": {
         "playersOnline": "Wachezaji 124 Mtandaoni",
@@ -264,7 +264,7 @@
       },
       "ai": {
         "title": "Cheza na AI",
-        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish.",
+        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya AI.",
         "action": "Cheza Sasa"
       },
       "friend": {
