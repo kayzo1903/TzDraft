@@ -46,9 +46,6 @@ export const Board: React.FC<BoardProps> = ({
     const toBoardIndex = (displayIndex: number) =>
         flipped ? 63 - displayIndex : displayIndex;
 
-    const toDisplayIndex = (boardIndex: number) =>
-        flipped ? 63 - boardIndex : boardIndex;
-
     const fileFor = (displayCol: number) => {
         const base = "a".charCodeAt(0);
         return String.fromCharCode(base + (flipped ? 7 - displayCol : displayCol));
@@ -62,19 +59,30 @@ export const Board: React.FC<BoardProps> = ({
             return;
         }
 
-        const nextTargets = Object.entries(externalPieces).map(([key, piece]) => ({
-            color: piece.color,
-            isKing: piece.isKing,
-            displayIndex: toDisplayIndex(Number(key)),
-        }));
+        const nextTargets = Object.entries(externalPieces)
+            .map(([key, piece]) => ({
+                color: piece.color,
+                isKing: piece.isKing,
+                displayIndex: flipped ? 63 - Number(key) : Number(key),
+            }))
+            // Sort targets in display-space so greedy matching is deterministic for both
+            // orientations and doesn't accidentally "swap identities" (which looks like
+            // a snap/teleport instead of a smooth transition).
+            .sort((a, b) => a.displayIndex - b.displayIndex);
 
         setAnimatedPieces((prev) => {
+            const prevSorted = [...prev].sort((a, b) => {
+                const pos = a.displayIndex - b.displayIndex;
+                if (pos !== 0) return pos;
+                return a.id.localeCompare(b.id);
+            });
+
             const usedPrevIds = new Set<string>();
             const next = new Array<AnimatedPiece>(nextTargets.length);
             const unmatchedTargetIndexes: number[] = [];
             const prevByExactSquare = new Map<string, AnimatedPiece>();
 
-            for (const candidate of prev) {
+            for (const candidate of prevSorted) {
                 prevByExactSquare.set(
                     `${candidate.displayIndex}|${candidate.color}|${Boolean(candidate.isKing)}`,
                     candidate,
@@ -105,7 +113,7 @@ export const Board: React.FC<BoardProps> = ({
                 let bestMatch: AnimatedPiece | null = null;
                 let bestScore = Number.POSITIVE_INFINITY;
 
-                for (const candidate of prev) {
+                for (const candidate of prevSorted) {
                     if (usedPrevIds.has(candidate.id)) continue;
                     if (candidate.color !== target.color) continue;
 
@@ -113,12 +121,18 @@ export const Board: React.FC<BoardProps> = ({
                     const fromCol = candidate.displayIndex % 8;
                     const toRow = Math.floor(target.displayIndex / 8);
                     const toCol = target.displayIndex % 8;
-                    const distance = Math.abs(fromRow - toRow) + Math.abs(fromCol - toCol);
+                    const distance =
+                        Math.abs(fromRow - toRow) + Math.abs(fromCol - toCol);
                     const kingMismatchPenalty =
                         Boolean(candidate.isKing) === Boolean(target.isKing) ? 0 : 100;
                     const score = distance + kingMismatchPenalty;
 
-                    if (score < bestScore) {
+                    if (
+                        score < bestScore ||
+                        (score === bestScore &&
+                            bestMatch !== null &&
+                            candidate.id.localeCompare(bestMatch.id) < 0)
+                    ) {
                         bestScore = score;
                         bestMatch = candidate;
                     }

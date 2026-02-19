@@ -10,6 +10,7 @@ Phase 11 focuses on online game correctness and real-time reliability:
 - Server-authoritative move flow (validate, persist, broadcast canonical state).
 - Client sync flow (render server board, recover on reconnect, prevent illegal interactions).
 - Integration parity (1-32 engine/server coordinates vs 8x8 UI, clock/timing consistency).
+- PvP architecture decisions + realtime protocol: `docs/architecture/pvp-realtime-architecture.md`
 
 ## 2. Current Implementation Snapshot
 
@@ -46,6 +47,9 @@ Phase 11 focuses on online game correctness and real-time reliability:
 - Board hydration after reload is implemented via move replay.
 - Client clock rendering uses server snapshot + `serverTimeMs` latency adjustment.
 - Illegal move rejection path is surfaced to user through `moveRejected`.
+- Fixed backend multi-capture detection/validation so PvP online accepts multi-jump captures (origin preserved through capture recursion).
+- Fixed backend king movement validation to allow flying-king simple moves (prevents false “Piece cannot move from X to Y” after promotion).
+- Improved online result modal to always show Win/Loss/Draw and a clear end condition (resign/time/disconnect/draw/rule end), with actions: Rematch / New Match / Home.
 
 ## 4. Remaining to Close Phase 11
 

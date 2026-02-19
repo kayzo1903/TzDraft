@@ -128,9 +128,15 @@ export class MoveValidationService {
     availableCaptures: any[],
   ): MoveResult {
     // Find if this capture is in the available captures
-    const matchingCapture = availableCaptures.find(
-      (capture) => capture.from.equals(from) && capture.to.equals(to),
-    );
+    const matchingCapture = availableCaptures.find((capture) => {
+      const matchesPath =
+        path.length === 0 ||
+        (capture.path.length === path.length &&
+          capture.path.every((pos: Position, idx: number) =>
+            pos.equals(path[idx]),
+          ));
+      return capture.from.equals(from) && capture.to.equals(to) && matchesPath;
+    });
 
     if (!matchingCapture) {
       throw ValidationError.captureRequired();
@@ -192,7 +198,7 @@ export class MoveValidationService {
     }
 
     // Check if move is valid for this piece type
-    if (!this.isValidSimpleMove(piece, from, to)) {
+    if (!this.isValidSimpleMove(game.board, piece, from, to)) {
       throw ValidationError.invalidMove(
         `Piece cannot move from ${from.value} to ${to.value}`,
       );
@@ -228,13 +234,20 @@ export class MoveValidationService {
   }
 
   /**
-   * Check if a simple move is valid (one diagonal square)
+   * Check if a simple move is valid.
+   * - Men: one diagonal square forward
+   * - Kings: any number of diagonal squares (flying king), path must be clear
    */
   private isValidSimpleMove(
+    board: BoardState,
     piece: Piece,
     from: Position,
     to: Position,
   ): boolean {
+    if (piece.isKing()) {
+      return this.isValidKingSimpleMove(board, from, to);
+    }
+
     const fromCoords = from.toRowCol();
     const toCoords = to.toRowCol();
 
@@ -256,5 +269,44 @@ export class MoveValidationService {
     return validDirections.some(
       (dir) => dir.row === moveDirection.row && dir.col === moveDirection.col,
     );
+  }
+
+  private isValidKingSimpleMove(
+    board: BoardState,
+    from: Position,
+    to: Position,
+  ): boolean {
+    const fromCoords = from.toRowCol();
+    const toCoords = to.toRowCol();
+
+    const rowDiff = toCoords.row - fromCoords.row;
+    const colDiff = toCoords.col - fromCoords.col;
+
+    const absRowDiff = Math.abs(rowDiff);
+    const absColDiff = Math.abs(colDiff);
+
+    if (absRowDiff === 0 || absColDiff === 0) {
+      return false;
+    }
+
+    // Must move diagonally any distance
+    if (absRowDiff !== absColDiff) {
+      return false;
+    }
+
+    const stepRow = Math.sign(rowDiff);
+    const stepCol = Math.sign(colDiff);
+
+    // All intermediate squares must be empty
+    for (let i = 1; i < absRowDiff; i++) {
+      const r = fromCoords.row + stepRow * i;
+      const c = fromCoords.col + stepCol * i;
+      const pos = Position.fromRowCol(r, c);
+      if (board.isOccupied(pos)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

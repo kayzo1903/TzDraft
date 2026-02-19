@@ -1,7 +1,7 @@
 "use client";
 
 import { io, Socket } from 'socket.io-client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 // import { useSocket } from '@/hooks/useSocket'; // Disabled to use local socket
 import { Board } from '@/components/game/Board';
@@ -15,6 +15,7 @@ import { useRouter } from '@/i18n/routing';
 import { GameNotFound } from '@/components/game/GameNotFound';
 import { boardIndexToPosition, displayIndexToBoardIndex, positionToBoardIndex, serverPosToUiPos, uiPosToServerPos } from '@/lib/game/board-coords';
 import { applyOptimisticUiMove, computeUiLegalMoves, type BackendPiece } from '@/lib/game/ui-legal-moves';
+import { BoardState, CakeEngine, Piece, PieceType, PlayerColor, Position } from '@tzdraft/cake-engine';
 
 type Rating = number | { rating: number };
 
@@ -56,6 +57,19 @@ type GameResponse = {
     board?: Record<number, unknown>;
 };
 
+type GameOverEvent = {
+    winner?: 'WHITE' | 'BLACK' | 'DRAW' | null;
+    reason?: string;
+    endedBy?: string;
+    noMoves?: boolean;
+};
+
+type ResultCardState = {
+    outcome: 'WIN' | 'LOSS' | 'DRAW';
+    title: string;
+    detail: string;
+};
+
 function ColorBadge({ color }: { color: 'WHITE' | 'BLACK' }) {
     const isWhite = color === 'WHITE';
     return (
@@ -85,11 +99,7 @@ export default function GamePage() {
     const [actionLoading, setActionLoading] = useState<'resign' | 'abort' | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<'resign' | 'abort' | null>(null);
-    const [resultCard, setResultCard] = useState<
-        'resign' | 'abort' | 'opponent_resigned' | 'opponent_aborted' | 'timeout' | 'opponent_timeout' | 'win' | 'loss' | 'draw' | 'end' | null
-    >(
-        null,
-    );
+    const [resultCard, setResultCard] = useState<ResultCardState | null>(null);
     const [loading, setLoading] = useState(true);
     const [displayClock, setDisplayClock] = useState<ClockInfo | null>(null);
     const clockSnapshotRef = useRef<ClockSnapshot | null>(null);
@@ -103,6 +113,7 @@ export default function GamePage() {
     const gameIdRef = useRef(gameId);
     const viewerColorRef = useRef(viewerColor);
     const [pieces, setPieces] = useState<Record<number, BackendPiece>>({});
+    const piecesRef = useRef<Record<number, BackendPiece>>({});
     const [hasAnyMove, setHasAnyMove] = useState(false);
     const [drawOffer, setDrawOffer] = useState<
         | null
@@ -113,6 +124,117 @@ export default function GamePage() {
         }
     >(null);
     const lastBoardSignatureRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        piecesRef.current = pieces;
+    }, [pieces]);
+
+    const buildResultCard = useCallback(
+        (data: GameOverEvent): ResultCardState => {
+            const winner = data.winner ?? null;
+            const reason = data.reason ?? null;
+            const endedBy = data.endedBy ?? null;
+            const noMoves = Boolean(data.noMoves);
+            const viewer = viewerColorRef.current;
+            const myUserId = user?.id ?? null;
+
+            const outcome: ResultCardState['outcome'] =
+                winner === 'DRAW' || reason === 'DRAW' || reason === 'ABORTED'
+                    ? 'DRAW'
+                    : winner === viewer
+                        ? 'WIN'
+                        : winner
+                            ? 'LOSS'
+                            : 'DRAW';
+
+            const asYouOpponent = (messageForYou: string, messageForOpponent: string) => {
+                if (!endedBy || !myUserId) return outcome === 'WIN' ? messageForOpponent : messageForYou;
+                return endedBy === myUserId ? messageForYou : messageForOpponent;
+            };
+
+            const piecesSnapshot = piecesRef.current;
+            const countPieces = (color: 'WHITE' | 'BLACK') =>
+                Object.values(piecesSnapshot).filter((p) => p?.color === color).length;
+
+            const toEngineBoard = (byPos: Record<number, BackendPiece>) => {
+                const enginePieces: Piece[] = [];
+                for (const [key, piece] of Object.entries(byPos)) {
+                    const pos = Number(key);
+                    if (!Number.isFinite(pos)) continue;
+                    const engineColor = piece.color === 'BLACK' ? PlayerColor.BLACK : PlayerColor.WHITE;
+                    const engineType = piece.type === 'KING' || piece.isKing ? PieceType.KING : PieceType.MAN;
+                    enginePieces.push(new Piece(engineType, engineColor, new Position(pos)));
+                }
+                return new BoardState(enginePieces);
+            };
+
+            const inferRuleEnding = () => {
+                if (winner !== 'WHITE' && winner !== 'BLACK') {
+                    return 'Game ended.';
+                }
+
+                const loser: 'WHITE' | 'BLACK' = winner === 'WHITE' ? 'BLACK' : 'WHITE';
+                const loserPieceCount = countPieces(loser);
+                if (loserPieceCount === 0) {
+                    return loser === viewer ? 'All your pieces were captured.' : 'All opponent pieces were captured.';
+                }
+
+                try {
+                    const board = toEngineBoard(piecesSnapshot);
+                    const loserPlayer = loser === 'BLACK' ? PlayerColor.BLACK : PlayerColor.WHITE;
+                    const loserHasMoves = CakeEngine.generateLegalMoves(board, loserPlayer, 0).length > 0;
+                    if (!loserHasMoves) {
+                        return loser === viewer ? 'You have no legal moves.' : 'Opponent has no legal moves.';
+                    }
+                } catch {
+                    // Ignore and fall back.
+                }
+
+                return 'Game ended by rule.';
+            };
+
+            const detail = (() => {
+                if (reason === 'ABORTED') {
+                    return asYouOpponent(
+                        'You aborted the game before any move. No rating change.',
+                        'Opponent aborted the game before any move. No rating change.',
+                    );
+                }
+                if (reason === 'DRAW' || winner === 'DRAW') {
+                    if (reason === 'DISCONNECT' && noMoves) {
+                        return 'Draw: disconnect before any move. No rating change.';
+                    }
+                    if (reason === 'DRAW') {
+                        return 'Draw agreed by both players.';
+                    }
+                    if (reason === 'DISCONNECT') {
+                        return 'Draw: game ended due to disconnect.';
+                    }
+                    return 'The game ended in a draw.';
+                }
+                if (reason === 'RESIGN') {
+                    return asYouOpponent('You resigned.', 'Opponent resigned.');
+                }
+                if (reason === 'TIME') {
+                    return asYouOpponent('You ran out of time.', 'Opponent ran out of time.');
+                }
+                if (reason === 'DISCONNECT') {
+                    return asYouOpponent('You disconnected and forfeited.', 'Opponent disconnected and forfeited.');
+                }
+                if (reason === 'CHECKMATE') {
+                    return inferRuleEnding();
+                }
+                return inferRuleEnding();
+            })();
+
+            return {
+                outcome,
+                title: outcome === 'WIN' ? 'Win' : outcome === 'LOSS' ? 'Loss' : 'Draw',
+                detail,
+            };
+        },
+        [user?.id],
+    );
 
     const getBoardSignature = useRef(
         (board: Record<number, unknown>) => {
@@ -522,46 +644,12 @@ export default function GamePage() {
             setDrawOffer(null);
         });
 
-        socket.on('gameOver', (data: { winner?: 'WHITE' | 'BLACK' | 'DRAW' | null; reason?: string }) => {
+        socket.on('gameOver', (data: GameOverEvent) => {
             console.log('Game Over:', data);
             setDisconnectCountdown(null);
             setSelfDisconnectCountdown(null);
             setDrawOffer(null);
-            if (data.reason === 'ABORTED') {
-                setResultCard('opponent_aborted');
-                return;
-            }
-
-            if (data.reason === 'DRAW' || data.winner === 'DRAW') {
-                setResultCard('draw');
-                return;
-            }
-
-            if (data.reason === 'RESIGN') {
-                if (data.winner === viewerColorRef.current) {
-                    setResultCard('opponent_resigned');
-                } else {
-                    setResultCard('resign');
-                }
-            } else if (data.reason === 'DISCONNECT') {
-                if (data.winner === viewerColorRef.current) {
-                    setResultCard('opponent_resigned');
-                }
-            } else if (data.reason === 'TIME') {
-                if (data.winner === viewerColorRef.current) {
-                    setResultCard('opponent_timeout');
-                } else {
-                    setResultCard('timeout');
-                }
-            } else if (data.winner) {
-                if (data.winner === viewerColorRef.current) {
-                    setResultCard('win');
-                } else {
-                    setResultCard('loss');
-                }
-            } else {
-                setResultCard('draw');
-            }
+            setResultCard(buildResultCard(data));
         });
 
         socket.on('playerDisconnected', (data: { playerId?: string; timeoutSec?: number }) => {
@@ -599,7 +687,7 @@ export default function GamePage() {
             socket.off('disconnect');
             socket.off('connect');
         };
-    }, [getBoardSignature, socket, syncClockSnapshot, user?.id]);
+    }, [buildResultCard, getBoardSignature, socket, syncClockSnapshot, user?.id]);
 
     useEffect(() => {
         if (selfDisconnectCountdown === null) return;
@@ -633,6 +721,13 @@ export default function GamePage() {
 
         const previousPieces = { ...pieces };
         const previousGame = game ? { ...game } : null;
+
+        // Lock interaction immediately after sending a move request (even if we can't apply an optimistic board).
+        // This prevents "double move" attempts before the server broadcasts the canonical next turn.
+        optimisticSnapshotRef.current = { pieces: previousPieces, game: previousGame };
+        setIsOptimistic(true);
+        setActionError(null);
+
         const optimisticPieces = applyOptimisticUiMove({
             piecesByPosition: pieces,
             viewerColor,
@@ -643,9 +738,6 @@ export default function GamePage() {
         });
 
         if (optimisticPieces) {
-            optimisticSnapshotRef.current = { pieces: previousPieces, game: previousGame };
-            setIsOptimistic(true);
-            setActionError(null);
             setPieces(optimisticPieces);
             lastBoardSignatureRef.current = getBoardSignature(optimisticPieces as Record<number, unknown>);
             setGame((prev) =>
@@ -690,7 +782,8 @@ export default function GamePage() {
             setActionLoading('resign');
             setActionError(null);
             await gameService.resignGame(gameId);
-            setResultCard('resign');
+            const winner = viewerColorRef.current === 'WHITE' ? 'BLACK' : 'WHITE';
+            setResultCard(buildResultCard({ winner, reason: 'RESIGN', endedBy: user.id }));
         } catch (error: any) {
             setActionError(error?.response?.data?.message || 'Failed to resign game.');
         } finally {
@@ -742,7 +835,7 @@ export default function GamePage() {
             setActionLoading('abort');
             setActionError(null);
             await gameService.abortGame(gameId);
-            setResultCard('abort');
+            setResultCard(buildResultCard({ winner: null, reason: 'ABORTED', endedBy: user.id }));
         } catch (error: any) {
             setActionError(error?.response?.data?.message || 'Failed to abort game.');
         } finally {
@@ -798,6 +891,17 @@ export default function GamePage() {
     const bottomColor: 'WHITE' | 'BLACK' = viewerColor;
     const topPlayer = topColor === 'WHITE' ? whiteInfo : blackInfo;
     const bottomPlayer = bottomColor === 'WHITE' ? whiteInfo : blackInfo;
+    const currentTurn: 'WHITE' | 'BLACK' = (game.currentTurn === 'BLACK' ? 'BLACK' : 'WHITE');
+    const isTopTurn = game.status === 'ACTIVE' && currentTurn === topColor;
+    const isBottomTurn = game.status === 'ACTIVE' && currentTurn === bottomColor;
+    const turnHighlight = (isTurn: boolean) =>
+        isTurn
+            ? 'border-emerald-400/60 bg-neutral-800/60 ring-1 ring-emerald-400/30 shadow-[0_0_28px_rgba(52,211,153,0.12)]'
+            : 'border-neutral-700/50 bg-neutral-800/50';
+    const turnHighlightMobile = (isTurn: boolean) =>
+        isTurn
+            ? 'border-emerald-400/60 bg-neutral-900/50 ring-1 ring-emerald-400/30'
+            : 'border-neutral-700/50 bg-neutral-900/40';
 
     const formatTime = (ms: number) => {
         const totalSeconds = Math.floor(ms / 1000);
@@ -820,8 +924,8 @@ export default function GamePage() {
     return (
         <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-4 sm:gap-8">
             <div className="flex flex-col md:flex-row gap-4 sm:gap-8 w-full max-w-6xl items-stretch md:items-start justify-center">
-                {/* Top Player (Black) */}
-                <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
+                {/* Top Player */}
+                <div className={`hidden md:flex flex-col gap-4 w-64 p-4 rounded-xl border ${turnHighlight(isTopTurn)}`}>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-neutral-600 flex items-center justify-center text-2xl">
                             {topPlayer.isAi && topPlayer.avatarSrc ? (
@@ -848,14 +952,14 @@ export default function GamePage() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-neutral-900 rounded p-2 text-center font-mono text-xl text-neutral-400">
+                    <div className={`bg-neutral-900 rounded p-2 text-center font-mono text-xl ${isTopTurn ? 'text-emerald-200' : 'text-neutral-400'}`}>
                         {getPlayerTime(topColor)}
                     </div>
                 </div>
 
                 {/* Game Board */}
                 <div className="flex-1 max-w-[650px] w-full mx-auto">
-                    <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+                    <div className={`md:hidden mb-2 rounded-xl border backdrop-blur px-3 py-2 flex items-center justify-between gap-3 ${turnHighlightMobile(isTopTurn)}`}>
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-full bg-neutral-700 flex items-center justify-center overflow-hidden shrink-0">
                                 {topPlayer.isAi && topPlayer.avatarSrc ? (
@@ -882,7 +986,7 @@ export default function GamePage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+                        <div className={`shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base border ${isTopTurn ? 'text-emerald-100 border-emerald-400/40' : 'text-neutral-100 border-neutral-700/60'}`}>
                             {getPlayerTime(topColor)}
                         </div>
                     </div>
@@ -949,7 +1053,7 @@ export default function GamePage() {
                         </div>
                     )}
 
-                    <div className="md:hidden mt-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+                    <div className={`md:hidden mt-2 rounded-xl border backdrop-blur px-3 py-2 flex items-center justify-between gap-3 ${turnHighlightMobile(isBottomTurn)}`}>
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center overflow-hidden shrink-0">
                                 {bottomPlayer.isAi && bottomPlayer.avatarSrc ? (
@@ -976,14 +1080,14 @@ export default function GamePage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+                        <div className={`shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base border ${isBottomTurn ? 'text-emerald-100 border-emerald-400/40' : 'text-neutral-100 border-neutral-700/60'}`}>
                             {getPlayerTime(bottomColor)}
                         </div>
                     </div>
                 </div>
 
-                {/* Bottom Player (White) */}
-                <div className="hidden md:flex flex-col gap-4 w-64 bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/50">
+                {/* Bottom Player */}
+                <div className={`hidden md:flex flex-col gap-4 w-64 p-4 rounded-xl border ${turnHighlight(isBottomTurn)}`}>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-2xl">
                             {bottomPlayer.isAi && bottomPlayer.avatarSrc ? (
@@ -1010,7 +1114,7 @@ export default function GamePage() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-neutral-800 rounded p-2 text-center font-mono text-xl text-white border border-neutral-600">
+                    <div className={`bg-neutral-800 rounded p-2 text-center font-mono text-xl border ${isBottomTurn ? 'text-emerald-100 border-emerald-400/40' : 'text-white border-neutral-600'}`}>
                         {getPlayerTime(bottomColor)}
                     </div>
                 </div>
@@ -1091,42 +1195,18 @@ export default function GamePage() {
                                 Game Result
                             </div>
                             <div className="mt-2 text-2xl font-bold text-neutral-100">
-                                {resultCard === 'abort' || resultCard === 'opponent_aborted'
-                                    ? 'Game Aborted'
-                                    : resultCard === 'win' || resultCard === 'opponent_timeout'
-                                        ? 'You Won'
-                                        : resultCard === 'loss' || resultCard === 'timeout'
-                                            ? 'You Lost'
-                                            : resultCard === 'draw'
-                                                ? 'Draw'
-                                    : resultCard === 'opponent_resigned'
-                                        ? 'Opponent Resigned'
-                                        : 'You Resigned'}
+                                {resultCard.title}
                             </div>
                             <div className="mt-2 text-sm text-neutral-400">
-                                {resultCard === 'abort' || resultCard === 'opponent_aborted'
-                                    ? 'No rating change when the game is aborted before any move.'
-                                    : resultCard === 'win'
-                                        ? 'You won the game.'
-                                        : resultCard === 'loss'
-                                            ? 'You lost the game.'
-                                            : resultCard === 'draw'
-                                                ? 'The game ended in a draw.'
-                                    : resultCard === 'opponent_resigned'
-                                        ? 'Opponent resigned. This game is over.'
-                                    : resultCard === 'opponent_timeout'
-                                            ? 'Opponent ran out of time. You win!'
-                                            : resultCard === 'timeout'
-                                                ? 'You ran out of time. You lose.'
-                                                : 'This resignation has been recorded as a loss.'}
+                                {resultCard.detail}
                             </div>
                         </div>
                         <div className="p-6 flex flex-col gap-3">
                             <button
-                                onClick={() => router.push('/')}
+                                onClick={() => router.push('/game/online?rematch=1')}
                                 className="rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
                             >
-                                Go Home
+                                Rematch
                             </button>
                             <button
                                 onClick={() => router.push('/game/online')}
@@ -1134,15 +1214,12 @@ export default function GamePage() {
                             >
                                 New Match Online
                             </button>
-                            {/* Only show rematch if not aborted? Or maybe simplify */}
-                            {!(resultCard === 'abort' || resultCard === 'opponent_aborted') && (
-                                <button
-                                    onClick={() => router.push('/game/online?rematch=1')}
-                                    className="rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
-                                >
-                                    Rematch
-                                </button>
-                            )}
+                            <button
+                                onClick={() => router.push('/')}
+                                className="rounded-lg border border-neutral-700 bg-transparent px-4 py-2 text-sm font-semibold text-neutral-300 hover:bg-neutral-800"
+                            >
+                                Home
+                            </button>
                         </div>
                     </div>
                 </div>
