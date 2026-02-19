@@ -12,7 +12,7 @@ import { Logger, UseGuards } from '@nestjs/common';
 import { WsOptionalJwtGuard } from '../../auth/guards/ws-optional-jwt.guard';
 
 import { MatchmakingService } from '../../application/services/matchmaking.service';
-import { GameType } from '../../shared/constants/game.constants';
+import { GameType, PlayerColor } from '../../shared/constants/game.constants';
 import { forwardRef, Inject } from '@nestjs/common';
 import { EndGameUseCase } from '../../application/use-cases/end-game.use-case';
 import { MakeMoveUseCase } from '../../application/use-cases/make-move.use-case';
@@ -37,6 +37,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private logger = new Logger('GamesGateway');
   private readonly disconnectTimers = new Map<string, NodeJS.Timeout>();
+  private readonly disconnectState = new Map<
+    string,
+    { gameId: string; playerId: string; deadlineMs: number }
+  >();
   private readonly gameTimers = new Map<string, NodeJS.Timeout>();
   private readonly DISCONNECT_GRACE_MS = 60_000;
   private readonly drawOffers = new Map<
@@ -63,6 +67,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(
       `Client connected: ${client.id} (User: ${userId || 'unknown'})`,
     );
+    if (userId) {
+      this.clearDisconnectForfeit(userId);
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -106,6 +113,17 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
       if (game.status !== 'ACTIVE') {
         return { status: 'error', message: 'Game is not active' };
+      }
+
+      // Article 7.2 timing: draw offers are valid after your move
+      // (i.e., when it is the opponent's turn).
+      const offeringColor =
+        game.whitePlayerId === userId ? PlayerColor.WHITE : PlayerColor.BLACK;
+      if (game.currentTurn === offeringColor) {
+        return {
+          status: 'error',
+          message: 'Draw offer must be made after completing your move',
+        };
       }
 
       const existing = this.drawOffers.get(gameId);
@@ -241,6 +259,24 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         if (playerColor) {
           client.emit('joinedGame', { gameId, playerColor });
         }
+
+        const disconnectEntries = [...this.disconnectState.values()].filter(
+          (entry) =>
+            entry.gameId === gameId &&
+            Date.now() < entry.deadlineMs &&
+            entry.playerId !== userId,
+        );
+        for (const entry of disconnectEntries) {
+          client.emit('playerDisconnected', {
+            gameId,
+            playerId: entry.playerId,
+            timeoutSec: Math.max(
+              1,
+              Math.ceil((entry.deadlineMs - Date.now()) / 1000),
+            ),
+            deadlineMs: entry.deadlineMs,
+          });
+        }
       } catch (error) {
         this.logger.warn(
           `Failed to resolve playerColor for joinGame game=${gameId} user=${userId}`,
@@ -348,7 +384,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   emitGameOver(gameId: string, result: any) {
     this.clearGameTimer(gameId);
     this.server.to(gameId).emit('gameOver', result);
-    this.logger.log(`Emitted gameOver for game: ${gameId}`);
+    this.logger.log(
+      `Emitted gameOver for game: ${gameId} | reason=${result?.reason ?? 'UNKNOWN'} | winner=${result?.winner ?? 'null'} | endedBy=${result?.endedBy ?? 'n/a'} | noMoves=${result?.noMoves ?? 'n/a'}`,
+    );
   }
 
   emitGameStart(gameId: string, players: string[]) {
@@ -405,7 +443,23 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return `${gameId}:${userId}`;
   }
 
+  private async hasConnectedSocket(userId: string, roomId?: string): Promise<boolean> {
+    const sockets = roomId
+      ? await this.server.in(roomId).fetchSockets()
+      : await this.server.fetchSockets();
+    return sockets.some((socket) => socket.data.user?.id === userId);
+  }
+
   private async scheduleDisconnectForfeit(userId: string) {
+    // Guard against transient socket churn (refresh/reconnect/multi-tab):
+    // only schedule forfeit when the user truly has no active socket.
+    if (await this.hasConnectedSocket(userId)) {
+      this.logger.log(
+        `Skipping disconnect forfeit scheduling for user=${userId} (another socket is still connected)`,
+      );
+      return;
+    }
+
     let activeGames: { id: string }[] = [];
     try {
       activeGames = await this.gameRepository.findActiveGamesByPlayer(userId);
@@ -417,12 +471,41 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     for (const game of activeGames) {
+      const connectedInGameRoom = await this.hasConnectedSocket(userId, game.id);
+      if (connectedInGameRoom) {
+        this.logger.log(
+          `Skipping disconnect forfeit game=${game.id} user=${userId} (still connected in room)`,
+        );
+        continue;
+      }
+
       const key = this.disconnectKey(game.id, userId);
       if (this.disconnectTimers.has(key)) continue;
+      const deadlineMs = Date.now() + this.DISCONNECT_GRACE_MS;
 
       const timer = setTimeout(async () => {
         this.disconnectTimers.delete(key);
+        this.disconnectState.delete(key);
         try {
+          this.logger.warn(
+            `Disconnect timer fired key=${key} game=${game.id} user=${userId}`,
+          );
+          const sockets = await this.server.in(game.id).fetchSockets();
+          const reconnectedInRoom = sockets.some(
+            (socket) => socket.data.user?.id === userId,
+          );
+          this.logger.log(
+            `Disconnect timer check key=${key} game=${game.id} user=${userId} sockets=${sockets.length} reconnected=${reconnectedInRoom}`,
+          );
+          if (reconnectedInRoom) {
+            this.server.to(game.id).emit('playerReconnected', {
+              playerId: userId,
+            });
+            this.logger.log(
+              `Disconnect forfeit skipped key=${key} game=${game.id} user=${userId} (user already reconnected)`,
+            );
+            return;
+          }
           await this.endGameUseCase.disconnectForfeit(game.id, userId);
         } catch (error) {
           this.logger.error(
@@ -433,12 +516,19 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }, this.DISCONNECT_GRACE_MS);
 
       this.disconnectTimers.set(key, timer);
+      this.disconnectState.set(key, {
+        gameId: game.id,
+        playerId: userId,
+        deadlineMs,
+      });
       this.server.to(game.id).emit('playerDisconnected', {
+        gameId: game.id,
         playerId: userId,
         timeoutSec: Math.floor(this.DISCONNECT_GRACE_MS / 1000),
+        deadlineMs,
       });
       this.logger.warn(
-        `Player ${userId} disconnected in game ${game.id}. Forfeit in ${this.DISCONNECT_GRACE_MS}ms if not reconnected.`,
+        `Player ${userId} disconnected in game ${game.id}. key=${key} deadlineMs=${deadlineMs} timeoutMs=${this.DISCONNECT_GRACE_MS}`,
       );
     }
   }
@@ -460,6 +550,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!timer) continue;
       clearTimeout(timer);
       this.disconnectTimers.delete(key);
+      this.disconnectState.delete(key);
+      this.logger.log(
+        `Disconnect timer cleared key=${key} game=${game.id} user=${userId}`,
+      );
       this.server.to(game.id).emit('playerReconnected', {
         playerId: userId,
       });

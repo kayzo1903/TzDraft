@@ -50,13 +50,25 @@ Phase 11 focuses on online game correctness and real-time reliability:
 - Fixed backend multi-capture detection/validation so PvP online accepts multi-jump captures (origin preserved through capture recursion).
 - Fixed backend king movement validation to allow flying-king simple moves (prevents false “Piece cannot move from X to Y” after promotion).
 - Improved online result modal to always show Win/Loss/Draw and a clear end condition (resign/time/disconnect/draw/rule end), with actions: Rematch / New Match / Home.
+- Re-enabled server-side post-move game-end detection in `MakeMoveUseCase`:
+  - win on no pieces / no legal moves
+  - automatic draw on Article 8.4 (5 stronger-side moves; KvsK handled as 10 plies)
+  - automatic draw on Article 8.5 (3+ kings vs 1 king, 12 stronger-side moves)
+  - draw-claim flags surfaced in `gameStateUpdated` (`threefoldRepetition`, `thirtyMoveRule`)
+- Implemented timeout Article 10 + 8.1 exception:
+  - timeout now resolves to draw when the non-flagging side has insufficient winning material.
+- Enforced draw-offer timing (Article 7.2 / Article 70):
+  - draw offers are rejected when sent on the offering player's own turn.
 
 ## 4. Remaining to Close Phase 11
 
-### 4.1 Re-enable rule-based game-over in move pipeline
+### 4.1 Keep automatic rule-end draws for 8.2 and 8.3
 
-- `make-move.use-case.ts` still has game-over evaluation disabled behind comments.
-- This should now be re-enabled and validated since board rehydration exists.
+- Claimability flags are computed server-side and sent to clients.
+- Server now auto-declares draw for:
+  - threefold repetition (Article 8.2)
+  - 30-move kings-only rule (Article 8.3)
+- No client claim endpoint is required for these two outcomes.
 
 ### 4.2 Tighten strict timeout enforcement
 

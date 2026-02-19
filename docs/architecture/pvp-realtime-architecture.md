@@ -132,6 +132,7 @@ This section documents **the event contracts actually used**.
   - payload: `{ gameId: string }`
   - response (ack): `{ status: 'success' | 'error', message?: string }`
 
+
 ### 4.2 Server → Client
 
 - `joinedGame`
@@ -225,6 +226,6 @@ This section documents **the event contracts actually used**.
 ## 9) Known Gaps / Follow-ups
 
 - Consider extending WS `makeMove` payload to include `path?: number[]` for multi-capture disambiguation.
-- Re-enable rule-based “no legal moves / no pieces” game-over detection in `MakeMoveUseCase` once fully validated.
+- Keep UI aligned with server auto-draw outcomes for repetition/30-move scenarios.
 - Replace in-memory timers with a durable scheduler (Redis/queue) for production reliability.
 - Unify socket initialization across matchmaking + in-game pages to reduce reconnection drift.

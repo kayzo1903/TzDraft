@@ -112,6 +112,10 @@ export default function GamePage() {
     const [selfDisconnectCountdown, setSelfDisconnectCountdown] = useState<number | null>(null);
     const gameIdRef = useRef(gameId);
     const viewerColorRef = useRef(viewerColor);
+    const gamePlayersRef = useRef<{ whitePlayerId: string | null; blackPlayerId: string | null }>({
+        whitePlayerId: null,
+        blackPlayerId: null,
+    });
     const [pieces, setPieces] = useState<Record<number, BackendPiece>>({});
     const piecesRef = useRef<Record<number, BackendPiece>>({});
     const [hasAnyMove, setHasAnyMove] = useState(false);
@@ -465,6 +469,13 @@ export default function GamePage() {
         viewerColorRef.current = viewerColor;
     }, [gameId, viewerColor]);
 
+    useEffect(() => {
+        gamePlayersRef.current = {
+            whitePlayerId: game?.whitePlayerId ?? null,
+            blackPlayerId: game?.blackPlayerId ?? null,
+        };
+    }, [game?.blackPlayerId, game?.whitePlayerId]);
+
 
 
     useEffect(() => {
@@ -652,16 +663,42 @@ export default function GamePage() {
             setResultCard(buildResultCard(data));
         });
 
-        socket.on('playerDisconnected', (data: { playerId?: string; timeoutSec?: number }) => {
-            if (!user?.id || !data?.playerId) return;
-            if (data.playerId === user.id) return;
+        socket.on('playerDisconnected', (data: { playerId?: string; timeoutSec?: number; deadlineMs?: number }) => {
+            if (!data?.playerId) return;
+
+            const resolvedViewerId =
+                user?.id ??
+                (viewerColorRef.current === 'WHITE'
+                    ? gamePlayersRef.current.whitePlayerId
+                    : gamePlayersRef.current.blackPlayerId);
             const total = Number(data.timeoutSec) || 60;
-            setDisconnectCountdown(total);
+            const remainingFromDeadline = Number.isFinite(data.deadlineMs)
+                ? Math.max(1, Math.ceil((Number(data.deadlineMs) - Date.now()) / 1000))
+                : total;
+            const remaining = Math.max(1, remainingFromDeadline);
+
+            if (resolvedViewerId && data.playerId === resolvedViewerId) {
+                setSelfDisconnectCountdown(remaining);
+                return;
+            }
+
+            setDisconnectCountdown(remaining);
         });
 
         socket.on('playerReconnected', (data: { playerId?: string }) => {
-            if (!user?.id || !data?.playerId) return;
-            if (data.playerId === user.id) return;
+            if (!data?.playerId) return;
+
+            const resolvedViewerId =
+                user?.id ??
+                (viewerColorRef.current === 'WHITE'
+                    ? gamePlayersRef.current.whitePlayerId
+                    : gamePlayersRef.current.blackPlayerId);
+
+            if (resolvedViewerId && data.playerId === resolvedViewerId) {
+                setSelfDisconnectCountdown(null);
+                return;
+            }
+
             setDisconnectCountdown(null);
         });
 

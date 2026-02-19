@@ -13,6 +13,7 @@ import { Position } from '../../domain/game/value-objects/position.vo';
 import { Move } from '../../domain/game/entities/move.entity';
 import { PlayerColor } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { RatingService } from '../../domain/game/services/rating.service';
 
 /**
  * Make Move Use Case
@@ -29,6 +30,7 @@ export class MakeMoveUseCase {
     @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
     private readonly prisma: PrismaService,
+    private readonly ratingService: RatingService,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -131,18 +133,11 @@ export class MakeMoveUseCase {
     // 6. Apply move to game
     game.applyMove(correctedMove);
 
-    // 7. Check for game end
-    // TODO: Re-enable after implementing board state persistence
-    // The board state is not being persisted/reconstructed, so game-over detection
-    // incorrectly thinks there are no pieces on the board
-    /*
-    if (this.gameRulesService.isGameOver(game)) {
-      const winner = this.gameRulesService.detectWinner(game);
-      if (winner) {
-        game.endGame(winner, EndReason.CHECKMATE);
-      }
+    // 7. Check for game end + draw claim eligibility after move
+    const evaluation = this.gameRulesService.evaluatePostMove(game);
+    if (evaluation.outcome) {
+      game.endGame(evaluation.outcome.winner, evaluation.outcome.reason);
     }
-    */
 
     // 8. Save game and move
     await this.prisma.$transaction(async (tx) => {
@@ -224,9 +219,30 @@ export class MakeMoveUseCase {
         moveNumber: correctedMove.moveNumber,
         createdAt: correctedMove.createdAt,
       },
+      drawClaimAvailable: evaluation.drawClaimAvailable,
     });
 
-    // 8. Schedule timeout for next player
+    if (game.status === 'FINISHED') {
+      this.gamesGateway.emitGameOver(gameId, {
+        winner: game.winner,
+        reason: game.endReason,
+        noMoves: evaluation.outcome?.noMoves === true,
+      });
+      if (game.winner) {
+        try {
+          await this.ratingService.updateRatings(game, game.winner);
+        } catch (error) {
+          // Avoid failing move flow when rating update fails.
+          console.error('Failed to update ratings:', error);
+        }
+      }
+      return {
+        game,
+        move: correctedMove,
+      };
+    }
+
+    // 9. Schedule timeout for next player
     if (game.clockInfo && game.status === 'ACTIVE') {
       const nextPlayer = game.currentTurn;
       const timeForNextPlayer =

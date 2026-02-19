@@ -3,6 +3,7 @@ import {
   Inject,
   BadRequestException,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
@@ -14,6 +15,8 @@ import {
 } from '../../shared/constants/game.constants';
 import { RatingService } from '../../domain/game/services/rating.service';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
+import { GameRulesService } from '../../domain/game/services/game-rules.service';
+import { PlayerColor } from '../../shared/constants/game.constants';
 
 /**
  * End Game Use Case
@@ -21,6 +24,9 @@ import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
  */
 @Injectable()
 export class EndGameUseCase {
+  private readonly gameRulesService: GameRulesService;
+  private readonly logger = new Logger(EndGameUseCase.name);
+
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
@@ -29,7 +35,9 @@ export class EndGameUseCase {
     private readonly ratingService: RatingService,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
-  ) {}
+  ) {
+    this.gameRulesService = new GameRulesService();
+  }
 
   /**
    * End game by resignation
@@ -77,6 +85,26 @@ export class EndGameUseCase {
     // Determine winner (opponent of timed-out player)
     const winner =
       game.whitePlayerId === playerId ? Winner.BLACK : Winner.WHITE;
+    const winnerColor =
+      winner === Winner.WHITE ? PlayerColor.WHITE : PlayerColor.BLACK;
+
+    // Article 10 / 8.1: timeout is draw if the opponent cannot force a win.
+    if (
+      this.gameRulesService.isTimeoutDrawByInsufficientMaterial(
+        game.board,
+        winnerColor,
+      )
+    ) {
+      game.endGame(Winner.DRAW, EndReason.DRAW);
+      await this.gameRepository.update(game);
+      this.gamesGateway.emitGameOver(gameId, {
+        winner: Winner.DRAW,
+        reason: EndReason.DRAW,
+        endedBy: playerId,
+      });
+      await this.handleRatingUpdate(game, Winner.DRAW);
+      return;
+    }
 
     game.endGame(winner, EndReason.TIME);
     await this.gameRepository.update(game);
@@ -154,6 +182,9 @@ export class EndGameUseCase {
 
     const moveCount = await this.moveRepository.countByGameId(gameId);
     if (moveCount === 0) {
+      this.logger.warn(
+        `Disconnect forfeit result game=${gameId} disconnected=${disconnectedPlayerId} moveCount=0 -> DRAW`,
+      );
       game.endGame(Winner.DRAW, EndReason.DISCONNECT);
       await this.gameRepository.update(game);
       this.gamesGateway.emitGameOver(gameId, {
@@ -167,6 +198,9 @@ export class EndGameUseCase {
 
     const winner =
       game.whitePlayerId === disconnectedPlayerId ? Winner.BLACK : Winner.WHITE;
+    this.logger.warn(
+      `Disconnect forfeit result game=${gameId} disconnected=${disconnectedPlayerId} moveCount=${moveCount} -> winner=${winner}`,
+    );
     game.endGame(winner, EndReason.DISCONNECT);
     await this.gameRepository.update(game);
     this.gamesGateway.emitGameOver(gameId, {

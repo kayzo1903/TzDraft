@@ -7,7 +7,13 @@ import { Piece } from './Piece';
 // Types for board state
 export type PieceState = { color: 'WHITE' | 'BLACK', isKing?: boolean };
 export type BoardState = Record<number, PieceState>;
-type AnimatedPiece = PieceState & { id: string; displayIndex: number };
+type AnimatedPiece = PieceState & {
+    id: string;
+    displayIndex: number;
+    isExiting?: boolean;
+};
+
+const PIECE_MOVE_DURATION_MS = 240;
 
 interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     pieces?: BoardState;
@@ -71,7 +77,8 @@ export const Board: React.FC<BoardProps> = ({
             .sort((a, b) => a.displayIndex - b.displayIndex);
 
         setAnimatedPieces((prev) => {
-            const prevSorted = [...prev].sort((a, b) => {
+            const prevActive = prev.filter((piece) => !piece.isExiting);
+            const prevSorted = [...prevActive].sort((a, b) => {
                 const pos = a.displayIndex - b.displayIndex;
                 if (pos !== 0) return pos;
                 return a.id.localeCompare(b.id);
@@ -157,9 +164,26 @@ export const Board: React.FC<BoardProps> = ({
                 }
             }
 
-            return next;
+            const exiting = prevSorted
+                .filter((piece) => !usedPrevIds.has(piece.id))
+                .map((piece) => ({
+                    ...piece,
+                    isExiting: true,
+                }));
+
+            return [...next, ...exiting];
         });
     }, [externalPieces, flipped]);
+
+    useEffect(() => {
+        if (!animatedPieces.some((piece) => piece.isExiting)) return;
+
+        const cleanupId = window.setTimeout(() => {
+            setAnimatedPieces((prev) => prev.filter((piece) => !piece.isExiting));
+        }, PIECE_MOVE_DURATION_MS);
+
+        return () => window.clearTimeout(cleanupId);
+    }, [animatedPieces]);
 
     // Internal initial setup (fallback if no pieces prop provided)
     const getPiece = (displayIndex: number): PieceState | null => {
@@ -311,7 +335,10 @@ export const Board: React.FC<BoardProps> = ({
                             return (
                                 <div
                                     key={piece.id}
-                                    className="absolute left-0 top-0 flex items-center justify-center transition-transform duration-200 sm:duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                                    className={clsx(
+                                        "absolute left-0 top-0 flex items-center justify-center transition-all duration-200 sm:duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+                                        piece.isExiting ? "opacity-0 scale-75" : "opacity-100 scale-100",
+                                    )}
                                     style={{
                                         width: "12.5%",
                                         height: "12.5%",
