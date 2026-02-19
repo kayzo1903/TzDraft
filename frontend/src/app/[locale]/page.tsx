@@ -5,6 +5,7 @@ import { Link } from "@/i18n/routing";
 import { HeroBoard } from "@/components/hero/HeroBoard";
 import { Button } from "@/components/ui/Button";
 import { useTranslations } from "next-intl";
+import { Bot, Globe } from "lucide-react";
 
 export default function Home() {
   const t = useTranslations("hero");
@@ -34,7 +35,9 @@ export default function Home() {
             <div className="flex flex-col gap-3 max-w-sm mx-auto lg:mx-0 w-full">
               <Link href="/play" className="w-full">
                 <Button size="lg" className="w-full gap-3">
-                  <span className="text-xl">{t("landing.cta.playBadge")}</span>
+                  <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <Globe className="w-5 h-5 text-blue-300" aria-hidden="true" />
+                  </span>
                   <div className="flex flex-col items-start leading-none">
                     <span className="font-bold">{t("playOnline")}</span>
                     <span className="text-xs font-normal opacity-80">
@@ -46,7 +49,9 @@ export default function Home() {
 
               <Link href="/game/setup-ai" className="w-full">
                 <Button variant="secondary" size="lg" className="w-full gap-3">
-                  <span className="text-xl">{t("landing.cta.aiBadge")}</span>
+                  <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <Bot className="w-5 h-5 text-emerald-300" aria-hidden="true" />
+                  </span>
                   <div className="flex flex-col items-start leading-none">
                     <span className="font-bold">{t("playComputer")}</span>
                     <span className="text-xs font-normal opacity-80">
