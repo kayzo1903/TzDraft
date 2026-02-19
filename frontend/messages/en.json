@@ -16,6 +16,57 @@
       "online": "Multiplayer",
       "blitz": "Blitz Games",
       "tournaments": "Tournaments"
+    },
+    "landing": {
+      "cta": {
+        "playBadge": "Play",
+        "aiBadge": "AI",
+        "aiSubtitle": "Stockfish (Cake)"
+      },
+      "stats": {
+        "playersOnline": "124 Players Online",
+        "gamesToday": "542 Games Today"
+      },
+      "featured": {
+        "title": "Featured Modes",
+        "explore": "Explore all modes",
+        "cards": {
+          "ranked": {
+            "tag": "Competitive",
+            "title": "Live Ranked Battles",
+            "description": "Fast matchmaking, server-authoritative moves, and fair clock enforcement."
+          },
+          "ai": {
+            "tag": "Training",
+            "title": "Play vs Computer",
+            "description": "Train with AI difficulty levels and sharpen your tactical vision."
+          },
+          "friends": {
+            "tag": "Social",
+            "title": "Friends and Custom Matches",
+            "description": "Invite friends, run private games, and test new openings safely."
+          }
+        }
+      },
+      "coreFeatures": {
+        "title": "Core Features",
+        "items": {
+          "sync": "Real-time synchronized gameplay",
+          "capture": "Mandatory-capture move validation",
+          "reconnect": "Reconnect and disconnect-forfeit handling",
+          "mobile": "Mobile-first board interactions"
+        }
+      },
+      "productIdeas": {
+        "title": "Product Ideas",
+        "shareIdea": "Share your idea",
+        "items": {
+          "tournaments": "Tournament weekends with seasonal rewards",
+          "replay": "Game replay with move-by-move analysis",
+          "profiles": "Player profiles with performance graphs",
+          "spectator": "Spectator mode for featured matches"
+        }
+      }
     }
   },
   "auth": {
