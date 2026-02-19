@@ -14,8 +14,7 @@ import { useAuthStore } from '@/lib/auth/auth-store';
 import { useRouter } from '@/i18n/routing';
 import { GameNotFound } from '@/components/game/GameNotFound';
 import { boardIndexToPosition, displayIndexToBoardIndex, positionToBoardIndex, serverPosToUiPos, uiPosToServerPos } from '@/lib/game/board-coords';
-import { computeUiLegalMoves, type BackendPiece } from '@/lib/game/ui-legal-moves';
-import { nowFromServer, syncServerTime } from '@/lib/server-time';
+import { applyOptimisticUiMove, computeUiLegalMoves, type BackendPiece } from '@/lib/game/ui-legal-moves';
 
 type Rating = number | { rating: number };
 
@@ -36,9 +35,10 @@ type ClockInfo = {
 };
 
 type ClockSnapshot = {
-    clockInfo: ClockInfo;
+    whiteTimeMs: number;
+    blackTimeMs: number;
     currentTurn: 'WHITE' | 'BLACK';
-    serverTimeMs: number;
+    lastPerfMs: number;
 };
 
 type GameResponse = {
@@ -93,6 +93,11 @@ export default function GamePage() {
     const [loading, setLoading] = useState(true);
     const [displayClock, setDisplayClock] = useState<ClockInfo | null>(null);
     const clockSnapshotRef = useRef<ClockSnapshot | null>(null);
+    const optimisticSnapshotRef = useRef<{
+        pieces: Record<number, BackendPiece>;
+        game: GameResponse | null;
+    } | null>(null);
+    const [isOptimistic, setIsOptimistic] = useState(false);
     const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
     const [selfDisconnectCountdown, setSelfDisconnectCountdown] = useState<number | null>(null);
     const gameIdRef = useRef(gameId);
@@ -124,6 +129,39 @@ export default function GamePage() {
             return signature;
         },
     ).current;
+
+    const syncClockSnapshot = React.useCallback(
+        (clockInfo: ClockInfo, currentTurn: 'WHITE' | 'BLACK', serverTimeMs?: number) => {
+            const nowPerfMs = performance.now();
+            const whiteTimeMs = Number(clockInfo.whiteTimeMs);
+            const blackTimeMs = Number(clockInfo.blackTimeMs);
+            const latencyMs =
+                Number.isFinite(serverTimeMs) ? Math.max(0, Date.now() - Number(serverTimeMs)) : 0;
+
+            const adjustedWhite =
+                currentTurn === 'WHITE'
+                    ? Math.max(0, whiteTimeMs - latencyMs)
+                    : whiteTimeMs;
+            const adjustedBlack =
+                currentTurn === 'BLACK'
+                    ? Math.max(0, blackTimeMs - latencyMs)
+                    : blackTimeMs;
+
+            clockSnapshotRef.current = {
+                whiteTimeMs: adjustedWhite,
+                blackTimeMs: adjustedBlack,
+                currentTurn,
+                lastPerfMs: nowPerfMs,
+            };
+
+            setDisplayClock({
+                whiteTimeMs: adjustedWhite,
+                blackTimeMs: adjustedBlack,
+                lastMoveAt: clockInfo.lastMoveAt,
+            });
+        },
+        [],
+    );
 
     // Convert backend pieces (1-32) to frontend pieces (0-63)
     const frontendPieces = React.useMemo(() => {
@@ -235,7 +273,6 @@ export default function GamePage() {
 
     useEffect(() => {
         let cancelled = false;
-        syncServerTime().catch(() => { });
 
         const pullClockSnapshot = async () => {
             try {
@@ -250,14 +287,11 @@ export default function GamePage() {
                 } | undefined;
                 if (!serverGame?.clockInfo) return;
 
-                const serverTimeMs = Number(serverGame.serverTimeMs);
-                clockSnapshotRef.current = {
-                    clockInfo: serverGame.clockInfo,
-                    currentTurn: serverGame.currentTurn ?? 'WHITE',
-                    serverTimeMs: Number.isFinite(serverTimeMs) ? serverTimeMs : nowFromServer(),
-                };
-
-                setDisplayClock(serverGame.clockInfo);
+                syncClockSnapshot(
+                    serverGame.clockInfo,
+                    serverGame.currentTurn ?? 'WHITE',
+                    Number(serverGame.serverTimeMs),
+                );
                 setGame((prev) =>
                     prev
                         ? {
@@ -274,35 +308,32 @@ export default function GamePage() {
         };
 
         pullClockSnapshot();
-        const resyncId = window.setInterval(pullClockSnapshot, 15_000);
+        const resyncId = window.setInterval(pullClockSnapshot, 30_000);
         return () => {
             cancelled = true;
             window.clearInterval(resyncId);
         };
-    }, [gameId]);
+    }, [gameId, syncClockSnapshot]);
 
     useEffect(() => {
         const tickId = window.setInterval(() => {
             const snap = clockSnapshotRef.current;
             if (!snap) return;
-            const now = nowFromServer();
-            const elapsed = Math.max(0, now - snap.serverTimeMs);
+            const nowPerfMs = performance.now();
+            const elapsed = Math.max(0, nowPerfMs - snap.lastPerfMs);
+            snap.lastPerfMs = nowPerfMs;
 
-            const whiteTimeMs =
-                snap.currentTurn === 'WHITE'
-                    ? Math.max(0, snap.clockInfo.whiteTimeMs - elapsed)
-                    : snap.clockInfo.whiteTimeMs;
-            const blackTimeMs =
-                snap.currentTurn === 'BLACK'
-                    ? Math.max(0, snap.clockInfo.blackTimeMs - elapsed)
-                    : snap.clockInfo.blackTimeMs;
+            if (snap.currentTurn === 'WHITE') {
+                snap.whiteTimeMs = Math.max(0, snap.whiteTimeMs - elapsed);
+            } else {
+                snap.blackTimeMs = Math.max(0, snap.blackTimeMs - elapsed);
+            }
 
             setDisplayClock({
-                whiteTimeMs,
-                blackTimeMs,
-                lastMoveAt: snap.clockInfo.lastMoveAt,
+                whiteTimeMs: snap.whiteTimeMs,
+                blackTimeMs: snap.blackTimeMs,
             });
-        }, 250);
+        }, 100);
 
         return () => window.clearInterval(tickId);
     }, []);
@@ -329,9 +360,11 @@ export default function GamePage() {
     useEffect(() => {
         // Initialize pieces from initial game state
         if (game && (game as any).board) {
-            setPieces((game as any).board);
+            const initialBoard = (game as any).board as Record<number, BackendPiece>;
+            setPieces(initialBoard);
+            lastBoardSignatureRef.current = getBoardSignature(initialBoard as Record<number, unknown>);
         }
-    }, [game]);
+    }, [game, getBoardSignature]);
 
     useEffect(() => {
         if (!socket) {
@@ -422,6 +455,8 @@ export default function GamePage() {
             if (process.env.NODE_ENV === 'development') {
                 console.debug('Game state updated');
             }
+            setIsOptimistic(false);
+            optimisticSnapshotRef.current = null;
 
             const nextBoard = data.board as Record<number, unknown> | undefined;
             const nextBoardSignature = nextBoard ? getBoardSignature(nextBoard) : null;
@@ -436,12 +471,7 @@ export default function GamePage() {
                 setHasAnyMove(true);
             }
             if (data.clockInfo && (data.currentTurn === 'WHITE' || data.currentTurn === 'BLACK')) {
-                clockSnapshotRef.current = {
-                    clockInfo: data.clockInfo,
-                    currentTurn: data.currentTurn,
-                    serverTimeMs: nowFromServer(),
-                };
-                setDisplayClock(data.clockInfo);
+                syncClockSnapshot(data.clockInfo, data.currentTurn, Number(data.serverTimeMs));
             }
             setGame((prev) => {
                 if (!prev) return null;
@@ -455,6 +485,19 @@ export default function GamePage() {
                     board: boardChanged ? data.board : prev.board,
                 } as any;
             });
+        });
+
+        socket.on('moveRejected', (data: { message?: string }) => {
+            const snapshot = optimisticSnapshotRef.current;
+            if (snapshot) {
+                setPieces(snapshot.pieces);
+                setGame(snapshot.game);
+                const signature = getBoardSignature(snapshot.pieces as Record<number, unknown>);
+                lastBoardSignatureRef.current = signature;
+            }
+            optimisticSnapshotRef.current = null;
+            setIsOptimistic(false);
+            setActionError(data?.message || 'Move rejected by server.');
         });
 
         socket.on('drawOffered', (data: { gameId?: string; offeredBy?: string; expiresAt?: number }) => {
@@ -550,12 +593,13 @@ export default function GamePage() {
             socket.off('drawDeclined');
             socket.off('drawCancelled');
             socket.off('drawOfferExpired');
+            socket.off('moveRejected');
             socket.off('playerDisconnected');
             socket.off('playerReconnected');
             socket.off('disconnect');
             socket.off('connect');
         };
-    }, [socket, user?.id]);
+    }, [getBoardSignature, socket, syncClockSnapshot, user?.id]);
 
     useEffect(() => {
         if (selfDisconnectCountdown === null) return;
@@ -570,7 +614,8 @@ export default function GamePage() {
     }, [selfDisconnectCountdown]);
 
     const handleMove = (from: number, to: number) => {
-        if (!canInteract) return;
+        if (!canInteract || !socket) return;
+        if (isOptimistic) return;
 
         const flipped = viewerColor === 'BLACK';
         const fromBoardIndex = displayIndexToBoardIndex(from, flipped);
@@ -586,18 +631,53 @@ export default function GamePage() {
             return;
         }
 
-        console.log(`Move attempt (Pos): ${fromPos}->${toPos}`);
-        if (socket) {
-            socket.emit(
-                'makeMove',
-                { gameId: gameIdRef.current, from: fromPos, to: toPos },
-                (response?: { status?: string; message?: string }) => {
-                    if (response?.status === 'error') {
-                        console.warn('makeMove rejected:', response.message);
+        const previousPieces = { ...pieces };
+        const previousGame = game ? { ...game } : null;
+        const optimisticPieces = applyOptimisticUiMove({
+            piecesByPosition: pieces,
+            viewerColor,
+            fromDisplay: from,
+            toDisplay: to,
+            flipped,
+            moveCount: 0,
+        });
+
+        if (optimisticPieces) {
+            optimisticSnapshotRef.current = { pieces: previousPieces, game: previousGame };
+            setIsOptimistic(true);
+            setActionError(null);
+            setPieces(optimisticPieces);
+            lastBoardSignatureRef.current = getBoardSignature(optimisticPieces as Record<number, unknown>);
+            setGame((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        board: optimisticPieces as any,
+                        currentTurn: prev.currentTurn === 'WHITE' ? 'BLACK' : 'WHITE',
                     }
-                },
+                    : prev,
             );
+            setHasAnyMove(true);
         }
+
+        console.log(`Move attempt (Pos): ${fromPos}->${toPos}`);
+        socket.emit(
+            'makeMove',
+            { gameId: gameIdRef.current, from: fromPos, to: toPos },
+            (response?: { status?: string; message?: string }) => {
+                if (response?.status !== 'error') return;
+                console.warn('makeMove rejected:', response.message);
+                const snapshot = optimisticSnapshotRef.current;
+                if (snapshot) {
+                    setPieces(snapshot.pieces);
+                    setGame(snapshot.game);
+                    lastBoardSignatureRef.current = getBoardSignature(snapshot.pieces as Record<number, unknown>);
+                }
+                optimisticSnapshotRef.current = null;
+                setIsOptimistic(false);
+                setActionError(response.message || 'Move rejected by server.');
+            },
+        );
     };
 
     const handleResign = async () => {

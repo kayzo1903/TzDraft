@@ -274,6 +274,12 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'success' };
     } catch (error: any) {
       this.logger.error(`Move failed: ${error.message}`);
+      client.emit('moveRejected', {
+        gameId: data.gameId,
+        from: data.from,
+        to: data.to,
+        message: error.message,
+      });
       return { status: 'error', message: error.message };
     }
   }

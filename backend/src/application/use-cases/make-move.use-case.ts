@@ -7,13 +7,12 @@ import {
 import { Game } from '../../domain/game/entities/game.entity';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
-import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
 import { MoveValidationService } from '../../domain/game/services/move-validation.service';
 import { GameRulesService } from '../../domain/game/services/game-rules.service';
 import { Position } from '../../domain/game/value-objects/position.vo';
 import { Move } from '../../domain/game/entities/move.entity';
-import { PlayerColor, EndReason } from '../../shared/constants/game.constants';
-import { ValidationError } from '../../domain/game/types/validation-error.type';
+import { PlayerColor } from '../../shared/constants/game.constants';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 
 /**
  * Make Move Use Case
@@ -27,10 +26,9 @@ export class MakeMoveUseCase {
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
-    @Inject('IMoveRepository')
-    private readonly moveRepository: IMoveRepository,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
+    private readonly prisma: PrismaService,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -59,8 +57,7 @@ export class MakeMoveUseCase {
     const playerColor = this.getPlayerColor(game, playerId);
 
     // 3. Get actual move count from database
-    const existingMoveCount = await this.moveRepository.countByGameId(gameId);
-    const moveNumber = existingMoveCount + 1;
+    const moveNumber = game.getMoveCount() + 1;
 
     // 4. Validate and execute move
     const fromPos = new Position(from);
@@ -148,10 +145,58 @@ export class MakeMoveUseCase {
     */
 
     // 8. Save game and move
-    await Promise.all([
-      this.gameRepository.update(game),
-      this.moveRepository.create(correctedMove),
-    ]);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.game.update({
+        where: { id: game.id },
+        data: {
+          status: game.status,
+          winner: game.winner,
+          endReason: game.endReason,
+          startedAt: game.startedAt,
+          endedAt: game.endedAt,
+        },
+      });
+
+      if (game.clockInfo) {
+        const whiteTimeMs = BigInt(Math.max(0, Math.floor(game.clockInfo.whiteTimeMs)));
+        const blackTimeMs = BigInt(Math.max(0, Math.floor(game.clockInfo.blackTimeMs)));
+        const lastMoveAt =
+          game.clockInfo.lastMoveAt instanceof Date
+            ? game.clockInfo.lastMoveAt
+            : new Date(game.clockInfo.lastMoveAt);
+
+        await tx.clock.upsert({
+          where: { gameId: game.id },
+          create: {
+            gameId: game.id,
+            whiteTimeMs,
+            blackTimeMs,
+            lastMoveAt,
+          },
+          update: {
+            whiteTimeMs,
+            blackTimeMs,
+            lastMoveAt,
+          },
+        });
+      }
+
+      await tx.move.create({
+        data: {
+          id: correctedMove.id,
+          gameId: correctedMove.gameId,
+          moveNumber: correctedMove.moveNumber,
+          player: correctedMove.player,
+          fromSquare: correctedMove.from.value,
+          toSquare: correctedMove.to.value,
+          capturedSquares: correctedMove.capturedSquares.map((p) => p.value),
+          isPromotion: correctedMove.isPromotion,
+          isMultiCapture: correctedMove.isMultiCapture(),
+          notation: correctedMove.notation,
+          createdAt: correctedMove.createdAt,
+        },
+      });
+    });
 
     // 7. Emit game state update
     this.gamesGateway.emitGameStateUpdate(gameId, {
@@ -166,6 +211,7 @@ export class MakeMoveUseCase {
       endReason: game.endReason,
       currentTurn: game.currentTurn,
       clockInfo: game.clockInfo,
+      serverTimeMs: Date.now(),
       board: game.board?.toJSON ? game.board.toJSON() : (game as any).board,
       lastMove: {
         id: correctedMove.id,
