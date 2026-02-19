@@ -70,45 +70,76 @@ export const Board: React.FC<BoardProps> = ({
 
         setAnimatedPieces((prev) => {
             const usedPrevIds = new Set<string>();
-            const next: AnimatedPiece[] = [];
+            const next = new Array<AnimatedPiece>(nextTargets.length);
+            const unmatchedTargetIndexes: number[] = [];
+            const prevByExactSquare = new Map<string, AnimatedPiece>();
 
-            for (const target of nextTargets) {
+            for (const candidate of prev) {
+                prevByExactSquare.set(
+                    `${candidate.displayIndex}|${candidate.color}|${Boolean(candidate.isKing)}`,
+                    candidate,
+                );
+            }
+
+            // Pass 1: preserve identity for pieces that did not move.
+            for (let i = 0; i < nextTargets.length; i += 1) {
+                const target = nextTargets[i];
+                const exactKey = `${target.displayIndex}|${target.color}|${Boolean(target.isKing)}`;
+                const exactMatch = prevByExactSquare.get(exactKey);
+                if (exactMatch && !usedPrevIds.has(exactMatch.id)) {
+                    usedPrevIds.add(exactMatch.id);
+                    next[i] = {
+                        id: exactMatch.id,
+                        color: target.color,
+                        isKing: target.isKing,
+                        displayIndex: target.displayIndex,
+                    };
+                } else {
+                    unmatchedTargetIndexes.push(i);
+                }
+            }
+
+            // Pass 2: match moved/promoted pieces by nearest compatible candidate.
+            for (const targetIndex of unmatchedTargetIndexes) {
+                const target = nextTargets[targetIndex];
                 let bestMatch: AnimatedPiece | null = null;
-                let bestDistance = Number.POSITIVE_INFINITY;
+                let bestScore = Number.POSITIVE_INFINITY;
 
                 for (const candidate of prev) {
                     if (usedPrevIds.has(candidate.id)) continue;
                     if (candidate.color !== target.color) continue;
-                    if (Boolean(candidate.isKing) !== Boolean(target.isKing)) continue;
 
                     const fromRow = Math.floor(candidate.displayIndex / 8);
                     const fromCol = candidate.displayIndex % 8;
                     const toRow = Math.floor(target.displayIndex / 8);
                     const toCol = target.displayIndex % 8;
                     const distance = Math.abs(fromRow - toRow) + Math.abs(fromCol - toCol);
+                    const kingMismatchPenalty =
+                        Boolean(candidate.isKing) === Boolean(target.isKing) ? 0 : 100;
+                    const score = distance + kingMismatchPenalty;
 
-                    if (distance < bestDistance) {
-                        bestDistance = distance;
+                    if (score < bestScore) {
+                        bestScore = score;
                         bestMatch = candidate;
                     }
                 }
 
                 if (bestMatch) {
                     usedPrevIds.add(bestMatch.id);
-                    next.push({
+                    next[targetIndex] = {
                         id: bestMatch.id,
                         color: target.color,
                         isKing: target.isKing,
                         displayIndex: target.displayIndex,
-                    });
+                    };
                 } else {
                     const id = `p-${pieceIdCounterRef.current++}`;
-                    next.push({
+                    next[targetIndex] = {
                         id,
                         color: target.color,
                         isKing: target.isKing,
                         displayIndex: target.displayIndex,
-                    });
+                    };
                 }
             }
 

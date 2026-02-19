@@ -83,7 +83,7 @@ export class CaptureFindingService {
         const newPath = [...currentPath, landingPos];
         const newCaptured = [...capturedSoFar, adjacentPos];
         // Create a temporary board with this capture applied
-        let tempBoard = board.removePiece(adjacentPos);
+        let tempBoard = board;
         const movedPiece = piece.moveTo(landingPos);
         // Check for promotion (promotion ends the capture sequence immediately)
         const shouldPromote = movedPiece.shouldPromote();
@@ -157,7 +157,7 @@ export class CaptureFindingService {
                 const landingPos = pos;
                 const newPath = [...currentPath, landingPos];
                 const newCaptured = [...capturedSoFar, opponentPos];
-                let tempBoard = board.removePiece(opponentPos);
+                let tempBoard = board;
                 const movedPiece = piece.moveTo(landingPos);
                 tempBoard = tempBoard.removePiece(piece.position);
                 tempBoard = tempBoard.placePiece(movedPiece);

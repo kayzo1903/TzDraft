@@ -1,4 +1,4 @@
-import { BoardState } from '../value-objects/board-state.vo.js';
+﻿import { BoardState } from '../value-objects/board-state.vo.js';
 import { Piece } from '../value-objects/piece.vo.js';
 import { Position } from '../value-objects/position.vo.js';
 import { PlayerColor } from '../constants.js';
@@ -120,7 +120,7 @@ export class CaptureFindingService {
     const newCaptured = [...capturedSoFar, adjacentPos];
 
     // Create a temporary board with this capture applied
-    let tempBoard = board.removePiece(adjacentPos);
+    let tempBoard = board;
     const movedPiece = piece.moveTo(landingPos);
 
     // Check for promotion (promotion ends the capture sequence immediately)
@@ -227,7 +227,7 @@ export class CaptureFindingService {
         const newPath = [...currentPath, landingPos];
         const newCaptured = [...capturedSoFar, opponentPos];
 
-        let tempBoard = board.removePiece(opponentPos);
+        let tempBoard = board;
         const movedPiece = piece.moveTo(landingPos);
 
         tempBoard = tempBoard.removePiece(piece.position);
@@ -300,3 +300,4 @@ export class CaptureFindingService {
     return this.findAllCaptures(board, player).length > 0;
   }
 }
+

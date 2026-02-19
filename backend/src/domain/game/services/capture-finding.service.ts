@@ -1,4 +1,4 @@
-import { BoardState } from '../value-objects/board-state.vo';
+﻿import { BoardState } from '../value-objects/board-state.vo';
 import { Piece } from '../value-objects/piece.vo';
 import { Position } from '../value-objects/position.vo';
 import { PlayerColor } from '../../../shared/constants/game.constants';
@@ -122,7 +122,7 @@ export class CaptureFindingService {
     const newCaptured = [...capturedSoFar, adjacentPos];
 
     // Create a temporary board with this capture applied
-    let tempBoard = board.removePiece(adjacentPos);
+    let tempBoard = board;
     const movedPiece = piece.moveTo(landingPos);
 
     // Check for promotion
@@ -193,3 +193,4 @@ export class CaptureFindingService {
     return this.findAllCaptures(board, player).length > 0;
   }
 }
+

@@ -258,6 +258,7 @@ export const useLocalGame = (
     loaded?.mustContinueFrom ?? null,
   );
   const aiTimeoutRef = useRef<number | null>(null);
+  const aiTaskIdRef = useRef(0);
   const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
   const moveAudioPoolRef = useRef<HTMLAudioElement[]>([]);
   const moveAudioCursorRef = useRef(0);
@@ -362,15 +363,9 @@ export const useLocalGame = (
       }
       const nextBoard = CakeEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
-      const movedPiece = nextBoard.getPieceAt(move.to);
-      const canContinueCapture =
-        move.capturedSquares.length > 0 &&
-        !move.isPromotion &&
-        movedPiece &&
-        new CaptureFindingService().findCapturesForPiece(
-          nextBoard,
-          movedPiece,
-        ).length > 0;
+      // CAKE engine moves are full-turn legal moves (including full capture chains).
+      // Do not chain additional captures client-side after applying a move.
+      const canContinueCapture = false;
 
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
@@ -491,6 +486,7 @@ export const useLocalGame = (
   );
 
   const reset = useCallback(() => {
+    aiTaskIdRef.current += 1;
     initialBoardRef.current = CakeEngine.createInitialState();
     setBoard(initialBoardRef.current);
     setCurrentPlayer(PlayerColor.WHITE);
@@ -512,12 +508,14 @@ export const useLocalGame = (
   }, []);
 
   const resign = useCallback(() => {
+    aiTaskIdRef.current += 1;
     const winner =
       playerColor === PlayerColor.WHITE ? Winner.BLACK : Winner.WHITE;
     setResult({ winner });
   }, [playerColor]);
 
   const undo = useCallback(() => {
+    aiTaskIdRef.current += 1;
     setUndoUsed(true);
     if (aiTimeoutRef.current !== null) {
       window.clearTimeout(aiTimeoutRef.current);
@@ -632,14 +630,18 @@ export const useLocalGame = (
       currentPlayer,
     );
     const isForcedSingleMove = legalMoves.length === 1;
-    // Avoid artificial "thinking" on deterministic mandatory moves.
-    const thinkDelayMs = isForcedSingleMove ? 0 : aiLevel >= 8 ? 180 : 350;
+    // Keep AI cadence natural relative to piece animation speed.
+    const thinkDelayMs = isForcedSingleMove ? 180 : aiLevel >= 8 ? 380 : 520;
 
     if (thinkDelayMs > 0) {
       setIsAiThinking(true);
     }
 
+    const taskId = ++aiTaskIdRef.current;
     aiTimeoutRef.current = window.setTimeout(() => {
+      if (taskId !== aiTaskIdRef.current) {
+        return;
+      }
       const aiMove = getBestMove(board, currentPlayer, aiLevel);
       if (aiMove) {
         applyMove(aiMove);
@@ -658,6 +660,7 @@ export const useLocalGame = (
         window.clearTimeout(aiTimeoutRef.current);
         aiTimeoutRef.current = null;
       }
+      aiTaskIdRef.current += 1;
     };
   }, [aiLevel, applyMove, board, currentPlayer, playerColor, result]);
 
