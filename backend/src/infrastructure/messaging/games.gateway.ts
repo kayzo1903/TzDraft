@@ -16,6 +16,7 @@ import { GameType } from '../../shared/constants/game.constants';
 import { forwardRef, Inject } from '@nestjs/common';
 import { EndGameUseCase } from '../../application/use-cases/end-game.use-case';
 import { MakeMoveUseCase } from '../../application/use-cases/make-move.use-case';
+import { BotMoveUseCase } from '../../application/use-cases/bot-move.use-case';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 
 @WebSocketGateway({
@@ -51,6 +52,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly endGameUseCase: EndGameUseCase,
     @Inject(forwardRef(() => MakeMoveUseCase))
     private readonly makeMoveUseCase: MakeMoveUseCase,
+    @Inject(forwardRef(() => BotMoveUseCase))
+    private readonly botMoveUseCase: BotMoveUseCase,
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
   ) {}
@@ -269,6 +272,18 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         data.from,
         data.to,
       );
+
+      // If this is a PvE game and the game is still active, trigger the bot
+      // response asynchronously so the human gets the acknowledgement first.
+      if (result.game.isPvE() && result.game.status === 'ACTIVE') {
+        setImmediate(() => {
+          this.botMoveUseCase.execute(data.gameId).catch((err) => {
+            this.logger.error(
+              `Bot move failed for game ${data.gameId}: ${err?.message}`,
+            );
+          });
+        });
+      }
 
       // Success - update strictly handled by UseCase via emitGameStateUpdate
       return { status: 'success' };

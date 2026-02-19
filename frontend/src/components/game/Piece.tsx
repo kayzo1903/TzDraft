@@ -11,11 +11,11 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected }) => {
     return (
         <div
             className={clsx(
-                'w-[80%] h-[80%] rounded-full shadow-md transition-transform duration-200',
+                'w-[80%] h-[80%] rounded-full shadow-md transition-all duration-200 ease-out transform-gpu',
                 color === 'WHITE'
                     ? 'bg-neutral-100 border-2 border-neutral-300'
                     : 'bg-neutral-800 border-2 border-neutral-600',
-                isSelected && 'ring-4 ring-yellow-400 scale-110',
+                isSelected ? 'ring-4 ring-yellow-400 scale-110 shadow-[0_0_18px_rgba(250,204,21,0.45)]' : 'scale-100',
                 'flex items-center justify-center relative'
             )}
         >

@@ -1,11 +1,13 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
 import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
+import { EngineModule } from '../engines/engine.module';
 import { CreateGameUseCase } from './create-game.use-case';
 import { MakeMoveUseCase } from './make-move.use-case';
 import { GetGameStateUseCase } from './get-game-state.use-case';
 import { GetLegalMovesUseCase } from './get-legal-moves.use-case';
 import { EndGameUseCase } from './end-game.use-case';
+import { BotMoveUseCase } from './bot-move.use-case';
 import { SendFriendRequestUseCase } from './send-friend-request.use-case';
 import { AcceptFriendRequestUseCase } from './accept-friend-request.use-case';
 import { RejectFriendRequestUseCase } from './reject-friend-request.use-case';
@@ -27,6 +29,7 @@ import { FriendModule } from '../../domain/friend/friend.module';
   imports: [
     RepositoryModule,
     forwardRef(() => MessagingModule),
+    EngineModule,
     UserModule,
     FriendModule,
   ],
@@ -36,6 +39,7 @@ import { FriendModule } from '../../domain/friend/friend.module';
     GetGameStateUseCase,
     GetLegalMovesUseCase,
     EndGameUseCase,
+    BotMoveUseCase,
     SendFriendRequestUseCase,
     AcceptFriendRequestUseCase,
     RejectFriendRequestUseCase,
@@ -53,6 +57,7 @@ import { FriendModule } from '../../domain/friend/friend.module';
     GetGameStateUseCase,
     GetLegalMovesUseCase,
     EndGameUseCase,
+    BotMoveUseCase,
     SendFriendRequestUseCase,
     AcceptFriendRequestUseCase,
     RejectFriendRequestUseCase,

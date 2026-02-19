@@ -1,3 +1,4 @@
+export * from './bot-move.use-case';
 export * from './send-friend-request.use-case';
 export * from './accept-friend-request.use-case';
 export * from './reject-friend-request.use-case';

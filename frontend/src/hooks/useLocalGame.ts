@@ -259,7 +259,8 @@ export const useLocalGame = (
   );
   const aiTimeoutRef = useRef<number | null>(null);
   const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
-  const moveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const moveAudioPoolRef = useRef<HTMLAudioElement[]>([]);
+  const moveAudioCursorRef = useRef(0);
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
   const warningAudioRef = useRef<HTMLAudioElement | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -342,9 +343,22 @@ export const useLocalGame = (
 
   const applyMove = useCallback(
     (move: Move) => {
-      if (moveAudioRef.current) {
-        moveAudioRef.current.currentTime = 0;
-        moveAudioRef.current.play().catch(() => {});
+      if (moveAudioPoolRef.current.length > 0) {
+        const idx = moveAudioCursorRef.current % moveAudioPoolRef.current.length;
+        moveAudioCursorRef.current += 1;
+        const moveAudio = moveAudioPoolRef.current[idx];
+
+        const captureBoost = move.capturedSquares.length > 0 ? 0.07 : 0;
+        const baseVolume = 0.34 + captureBoost;
+        const volumeVariance = (Math.random() - 0.5) * 0.07;
+        moveAudio.volume = Math.min(0.55, Math.max(0.2, baseVolume + volumeVariance));
+
+        const baseRate = move.capturedSquares.length > 0 ? 0.95 : 1.0;
+        const rateVariance = (Math.random() - 0.5) * 0.12;
+        moveAudio.playbackRate = Math.min(1.12, Math.max(0.9, baseRate + rateVariance));
+
+        moveAudio.currentTime = 0;
+        moveAudio.play().catch(() => {});
       }
       const nextBoard = CakeEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
@@ -541,10 +555,14 @@ export const useLocalGame = (
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const moveAudio = new Audio("/sfx/move1.mp3");
-    moveAudio.preload = "auto";
-    moveAudio.volume = 0.4;
-    moveAudioRef.current = moveAudio;
+    const moveAudioPool = Array.from({ length: 3 }, () => {
+      const a = new Audio("/sfx/move1.mp3");
+      a.preload = "auto";
+      a.volume = 0.34;
+      return a;
+    });
+    moveAudioPoolRef.current = moveAudioPool;
+    moveAudioCursorRef.current = 0;
 
     const startAudio = new Audio("/sfx/start.mp3");
     startAudio.preload = "auto";
@@ -567,7 +585,8 @@ export const useLocalGame = (
       startedRef.current = true;
     }
     return () => {
-      moveAudioRef.current = null;
+      moveAudioPoolRef.current = [];
+      moveAudioCursorRef.current = 0;
       startAudioRef.current = null;
       warningAudioRef.current = null;
       victoryAudioRef.current = null;
@@ -608,7 +627,18 @@ export const useLocalGame = (
     if (result) return;
     if (currentPlayer === playerColor) return;
 
-    setIsAiThinking(true);
+    const legalMoves = CakeEngine.generateLegalMoves(
+      board,
+      currentPlayer,
+    );
+    const isForcedSingleMove = legalMoves.length === 1;
+    // Avoid artificial "thinking" on deterministic mandatory moves.
+    const thinkDelayMs = isForcedSingleMove ? 0 : aiLevel >= 8 ? 180 : 350;
+
+    if (thinkDelayMs > 0) {
+      setIsAiThinking(true);
+    }
+
     aiTimeoutRef.current = window.setTimeout(() => {
       const aiMove = getBestMove(board, currentPlayer, aiLevel);
       if (aiMove) {
@@ -621,7 +651,7 @@ export const useLocalGame = (
       }
       setIsAiThinking(false);
       aiTimeoutRef.current = null;
-    }, 350);
+    }, thinkDelayMs);
 
     return () => {
       if (aiTimeoutRef.current !== null) {

@@ -27,7 +27,7 @@ const parseColor = (value: string | null): PlayerColor => {
 const parseLevel = (value: string | null): number => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return 1;
-  return Math.min(Math.max(parsed, 1), 7);
+  return Math.min(Math.max(parsed, 1), 9);
 };
 
 const parseTime = (value: string | null): number => {
@@ -115,7 +115,7 @@ export default function LocalGamePage() {
     playerColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
   const locale = paramsRoute?.locale ?? "en";
   const setupAiPath = `/${locale}/game/setup-ai`;
-  const nextBotLevel = Math.min(level + 1, 7);
+  const nextBotLevel = Math.min(level + 1, 9);
   const didHumanWin =
     state.result?.winner ===
     (playerColor === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK);
@@ -123,7 +123,7 @@ export default function LocalGamePage() {
     Boolean(state.result) &&
     didHumanWin &&
     !state.undoUsed &&
-    level < 7 &&
+    level < 9 &&
     maxUnlockedAtStart < nextBotLevel;
 
   const timeFor = (color: PlayerColor) =>

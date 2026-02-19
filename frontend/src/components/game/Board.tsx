@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Piece } from './Piece';
 
 // Types for board state
 export type PieceState = { color: 'WHITE' | 'BLACK', isKing?: boolean };
 export type BoardState = Record<number, PieceState>;
+type AnimatedPiece = PieceState & { id: string; displayIndex: number };
 
 interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     pieces?: BoardState;
@@ -32,6 +33,8 @@ export const Board: React.FC<BoardProps> = ({
     // Temporary state for demonstration/MVP
     const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
     const [isShaking, setIsShaking] = useState(false);
+    const pieceIdCounterRef = useRef(0);
+    const [animatedPieces, setAnimatedPieces] = useState<AnimatedPiece[]>([]);
 
     // Helper to determine square color
     const isDarkSquare = (index: number) => {
@@ -43,12 +46,75 @@ export const Board: React.FC<BoardProps> = ({
     const toBoardIndex = (displayIndex: number) =>
         flipped ? 63 - displayIndex : displayIndex;
 
+    const toDisplayIndex = (boardIndex: number) =>
+        flipped ? 63 - boardIndex : boardIndex;
+
     const fileFor = (displayCol: number) => {
         const base = "a".charCodeAt(0);
         return String.fromCharCode(base + (flipped ? 7 - displayCol : displayCol));
     };
 
     const rankFor = (displayRow: number) => (flipped ? displayRow + 1 : 8 - displayRow);
+
+    useEffect(() => {
+        if (!externalPieces) {
+            setAnimatedPieces([]);
+            return;
+        }
+
+        const nextTargets = Object.entries(externalPieces).map(([key, piece]) => ({
+            color: piece.color,
+            isKing: piece.isKing,
+            displayIndex: toDisplayIndex(Number(key)),
+        }));
+
+        setAnimatedPieces((prev) => {
+            const usedPrevIds = new Set<string>();
+            const next: AnimatedPiece[] = [];
+
+            for (const target of nextTargets) {
+                let bestMatch: AnimatedPiece | null = null;
+                let bestDistance = Number.POSITIVE_INFINITY;
+
+                for (const candidate of prev) {
+                    if (usedPrevIds.has(candidate.id)) continue;
+                    if (candidate.color !== target.color) continue;
+                    if (Boolean(candidate.isKing) !== Boolean(target.isKing)) continue;
+
+                    const fromRow = Math.floor(candidate.displayIndex / 8);
+                    const fromCol = candidate.displayIndex % 8;
+                    const toRow = Math.floor(target.displayIndex / 8);
+                    const toCol = target.displayIndex % 8;
+                    const distance = Math.abs(fromRow - toRow) + Math.abs(fromCol - toCol);
+
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        bestMatch = candidate;
+                    }
+                }
+
+                if (bestMatch) {
+                    usedPrevIds.add(bestMatch.id);
+                    next.push({
+                        id: bestMatch.id,
+                        color: target.color,
+                        isKing: target.isKing,
+                        displayIndex: target.displayIndex,
+                    });
+                } else {
+                    const id = `p-${pieceIdCounterRef.current++}`;
+                    next.push({
+                        id,
+                        color: target.color,
+                        isKing: target.isKing,
+                        displayIndex: target.displayIndex,
+                    });
+                }
+            }
+
+            return next;
+        });
+    }, [externalPieces, flipped]);
 
     // Internal initial setup (fallback if no pieces prop provided)
     const getPiece = (displayIndex: number): PieceState | null => {
@@ -193,15 +259,14 @@ export const Board: React.FC<BoardProps> = ({
                 </div>
                 {externalPieces && (
                     <div className="absolute inset-0 pointer-events-none">
-                        {Object.entries(externalPieces).map(([key, piece]) => {
-                            const boardIndex = Number(key);
-                            const displayIndex = flipped ? 63 - boardIndex : boardIndex;
+                        {animatedPieces.map((piece) => {
+                            const displayIndex = piece.displayIndex;
                             const row = Math.floor(displayIndex / 8);
                             const col = displayIndex % 8;
                             return (
                                 <div
-                                    key={key}
-                                    className="absolute left-0 top-0 flex items-center justify-center transition-transform duration-300 ease-out"
+                                    key={piece.id}
+                                    className="absolute left-0 top-0 flex items-center justify-center transition-transform duration-200 sm:duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                                     style={{
                                         width: "12.5%",
                                         height: "12.5%",
