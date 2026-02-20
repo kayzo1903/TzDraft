@@ -44,6 +44,14 @@ export const friendService = {
     return response.data;
   },
 
+  async getOnlineFriends() {
+    const response = await axiosInstance.get("/friends/online");
+    return response.data as {
+      onlineIds: string[];
+      onlineMap: Record<string, boolean>;
+    };
+  },
+
   // Remove friend
   async removeFriend(friendId: string) {
     const response = await axiosInstance.delete(`/friends/${friendId}`);
@@ -55,6 +63,66 @@ export const friendService = {
     const response = await axiosInstance.delete(
       `/friends/requests/${requesteeId}`,
     );
+    return response.data;
+  },
+
+  async createFriendlyMatchInvite(payload?: {
+    friendId?: string;
+    initialTimeMs?: number;
+    locale?: "en" | "sw";
+  }) {
+    const response = await axiosInstance.post("/friends/matches", payload || {});
+    return response.data as {
+      id: string;
+      inviteToken: string;
+      gameId?: string | null;
+      inviteUrl?: string;
+      waitingUrl?: string;
+    };
+  },
+
+  async getFriendlyInviteByToken(token: string, guestId?: string) {
+    const response = await axiosInstance.get(`/friends/matches/invites/${token}`, {
+      params: guestId ? { guestId } : undefined,
+    });
+    return response.data;
+  },
+
+  async acceptFriendlyInvite(
+    token: string,
+    payload?: { guestId?: string; guestName?: string },
+  ) {
+    const response = await axiosInstance.post(`/friends/matches/invites/${token}/accept`, payload || {});
+    return response.data as {
+      status: string;
+      gameId: string;
+      inviteId: string;
+      playerColor?: "WHITE" | "BLACK" | null;
+    };
+  },
+
+  async getIncomingFriendlyInvites() {
+    const response = await axiosInstance.get("/friends/matches/incoming");
+    return response.data;
+  },
+
+  async getOutgoingFriendlyInvites() {
+    const response = await axiosInstance.get("/friends/matches/outgoing");
+    return response.data;
+  },
+
+  async getFriendlyInviteById(id: string) {
+    const response = await axiosInstance.get(`/friends/matches/${id}`);
+    return response.data;
+  },
+
+  async declineFriendlyInvite(id: string) {
+    const response = await axiosInstance.post(`/friends/matches/${id}/decline`);
+    return response.data;
+  },
+
+  async cancelFriendlyInvite(id: string) {
+    const response = await axiosInstance.post(`/friends/matches/${id}/cancel`);
     return response.data;
   },
 };

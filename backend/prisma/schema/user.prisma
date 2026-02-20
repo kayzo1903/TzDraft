@@ -33,6 +33,9 @@ model User {
     friendRequestsReceived FriendRequest[] @relation("Requestee")
     friendsInitiated       Friendship[]    @relation("Initiator")
     friendsReceived        Friendship[]    @relation("Recipient")
+    friendlyMatchesHosted  FriendlyMatch[] @relation("FriendlyMatchHost")
+    friendlyMatchesInvited FriendlyMatch[] @relation("FriendlyMatchInvitee")
+    friendlyMatchesJoined  FriendlyMatch[] @relation("FriendlyMatchGuest")
 
     @@map("users")
 }

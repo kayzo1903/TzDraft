@@ -41,12 +41,6 @@ export function PendingRequests({ refreshTrigger, onActionComplete }: PendingReq
 
   useEffect(() => {
     loadRequests();
-
-    const intervalId = setInterval(() => {
-      loadRequests();
-    }, 5000);
-
-    return () => clearInterval(intervalId);
   }, [refreshTrigger]);
 
   const handleAccept = async (requesterId: string) => {

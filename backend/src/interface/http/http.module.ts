@@ -8,19 +8,31 @@ import { EngineModule } from '../../application/engines/engine.module';
 import { SidraController } from './controllers/sidra.controller';
 import { FriendController } from './controllers/friend.controller';
 import { SystemController } from './controllers/system.controller';
+import { FriendlyMatchController } from './controllers/friendly-match.controller';
+import { FriendModule } from '../../domain/friend/friend.module';
+import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
+import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
 
 /**
  * HTTP Module
  * Provides REST API controllers
  */
 @Module({
-  imports: [UseCasesModule, EmailModule, EngineModule],
+  imports: [
+    UseCasesModule,
+    EmailModule,
+    EngineModule,
+    FriendModule,
+    MessagingModule,
+    RepositoryModule,
+  ],
   controllers: [
     GameController,
     MoveController,
     SupportController,
     SidraController,
     FriendController,
+    FriendlyMatchController,
     SystemController,
   ],
 })

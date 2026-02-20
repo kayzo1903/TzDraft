@@ -3,13 +3,23 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "@/i18n/routing";
-import { FriendSearch, FriendList, PendingRequests, SentRequests } from "@/components/friend";
-import { Users } from "lucide-react";
+import { useSocket } from "@/hooks/useSocket";
+import {
+  FriendSearch,
+  FriendList,
+  PendingRequests,
+  SentRequests,
+  FriendlyMatchRequests,
+} from "@/components/friend";
+import { Bell, RefreshCw, Users } from "lucide-react";
 
 export default function FriendsPage() {
-  const { isAuthenticated, isHydrated } = useAuth();
+  const { user, isAuthenticated, isHydrated } = useAuth();
   const router = useRouter();
+  const socket = useSocket();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [banner, setBanner] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     // Wait for store to hydrate before checking authentication
@@ -19,6 +29,49 @@ export default function FriendsPage() {
       router.push("/auth/login");
     }
   }, [isHydrated, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onFriendlyMatchInvited = (data: { hostDisplayName?: string }) => {
+      const hostName = data?.hostDisplayName || "A friend";
+      setBanner(`${hostName} sent you a friendly match request.`);
+      setRefreshTrigger((prev) => prev + 1);
+    };
+
+    const onGameStarted = (data: {
+      gameId?: string;
+      playerColor?: "WHITE" | "BLACK";
+      whiteId?: string | null;
+      blackId?: string | null;
+    }) => {
+      if (!data?.gameId) return;
+
+      const inferredColor =
+        data.playerColor ||
+        (user?.id && data.whiteId === user.id
+          ? "WHITE"
+          : user?.id && data.blackId === user.id
+            ? "BLACK"
+            : undefined);
+
+      if (inferredColor && typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          `tzdraft:game:${data.gameId}:color`,
+          inferredColor,
+        );
+      }
+
+      router.push(`/game/${data.gameId}`);
+    };
+
+    socket.on("friendlyMatchInvited", onFriendlyMatchInvited);
+    socket.on("gameStarted", onGameStarted);
+    return () => {
+      socket.off("friendlyMatchInvited", onFriendlyMatchInvited);
+      socket.off("gameStarted", onGameStarted);
+    };
+  }, [router, socket, user?.id]);
 
   // Show loading state while store is hydrating
   if (!isHydrated) {
@@ -43,6 +96,12 @@ export default function FriendsPage() {
     setRefreshTrigger((prev) => prev + 1);
   };
 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setRefreshTrigger((prev) => prev + 1);
+    window.setTimeout(() => setRefreshing(false), 500);
+  };
+
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-4 md:px-8 py-12">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -58,7 +117,28 @@ export default function FriendsPage() {
                 Manage your friendships and connect with other players
               </p>
             </div>
+            <button
+              onClick={handleRefresh}
+              className="ml-auto inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
+            >
+              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+              Refresh
+            </button>
           </div>
+          {banner && (
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+              <div className="inline-flex items-center gap-2">
+                <Bell size={16} />
+                {banner}
+              </div>
+              <button
+                onClick={() => setBanner(null)}
+                className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/20"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </header>
 
         {/* Layout: Search on left, Pending Requests and Friends List on right */}
@@ -70,6 +150,7 @@ export default function FriendsPage() {
 
           {/* Right Column: Pending Requests and Friends List */}
           <div className="lg:col-span-2 space-y-6">
+            <FriendlyMatchRequests refreshTrigger={refreshTrigger} />
             <PendingRequests refreshTrigger={refreshTrigger} onActionComplete={handleFriendAdded} />
             <SentRequests refreshTrigger={refreshTrigger} onActionComplete={handleFriendAdded} />
             <FriendList refreshTrigger={refreshTrigger} />

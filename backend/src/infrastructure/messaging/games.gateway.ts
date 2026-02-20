@@ -662,6 +662,65 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Emitted gameStarted for game: ${gameId}`);
   }
 
+  async isParticipantOnline(participantId: string): Promise<boolean> {
+    return this.hasConnectedSocket(participantId);
+  }
+
+  async getOnlineParticipantIds(participantIds: string[]): Promise<string[]> {
+    const sockets = await this.server.fetchSockets();
+    const onlineSet = new Set(
+      sockets
+        .map((socket) => this.getSocketParticipantId(socket))
+        .filter((id): id is string => Boolean(id)),
+    );
+    return participantIds.filter((id) => onlineSet.has(id));
+  }
+
+  async emitToParticipant(
+    participantId: string,
+    event: string,
+    payload: Record<string, any>,
+  ) {
+    const sockets = await this.getSocketsByParticipant(participantId);
+    for (const socket of sockets) {
+      socket.emit(event, payload);
+    }
+  }
+
+  async notifyFriendlyMatchStarted(
+    gameId: string,
+    whiteId: string,
+    blackId: string,
+    inviteId?: string,
+  ) {
+    const [whiteSockets, blackSockets] = await Promise.all([
+      this.getSocketsByParticipant(whiteId),
+      this.getSocketsByParticipant(blackId),
+    ]);
+
+    for (const socket of whiteSockets) {
+      socket.join(gameId);
+      socket.emit('gameStarted', {
+        gameId,
+        whiteId,
+        blackId,
+        inviteId,
+        playerColor: 'WHITE',
+      });
+    }
+
+    for (const socket of blackSockets) {
+      socket.join(gameId);
+      socket.emit('gameStarted', {
+        gameId,
+        whiteId,
+        blackId,
+        inviteId,
+        playerColor: 'BLACK',
+      });
+    }
+  }
+
   /**
    * Schedule a timeout for a game
    * @param gameId Game ID

@@ -79,6 +79,10 @@ export class MatchmakingService {
   }
 
   private async processQueue() {
+    if (this.queue.length === 0) {
+      return;
+    }
+
     this.logger.debug(`Processing queue. Current size: ${this.queue.length}`);
     this.queue.forEach((p) =>
       this.logger.debug(

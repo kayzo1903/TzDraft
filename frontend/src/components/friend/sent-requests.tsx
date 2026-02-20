@@ -40,12 +40,6 @@ export function SentRequests({ refreshTrigger, onActionComplete }: SentRequestsP
 
     useEffect(() => {
         fetchRequests();
-
-        const intervalId = setInterval(() => {
-            fetchRequests();
-        }, 5000);
-
-        return () => clearInterval(intervalId);
     }, [refreshTrigger]);
 
     const handleCancel = async (requesteeId: string) => {

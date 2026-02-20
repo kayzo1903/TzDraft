@@ -27,6 +27,7 @@ import {
   GetSentFriendRequestsUseCase,
   CancelFriendRequestUseCase,
 } from '../../../application/use-cases';
+import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import {
   SendFriendRequestDto,
   AcceptFriendRequestDto,
@@ -52,6 +53,7 @@ export class FriendController {
     private readonly removeFriendUseCase: RemoveFriendUseCase,
     private readonly getSentFriendRequestsUseCase: GetSentFriendRequestsUseCase,
     private readonly cancelFriendRequestUseCase: CancelFriendRequestUseCase,
+    private readonly gamesGateway: GamesGateway,
   ) {}
 
   /**
@@ -138,6 +140,29 @@ export class FriendController {
   @ApiResponse({ status: 200, description: 'Friends retrieved successfully' })
   async getFriends(@CurrentUser() user: any) {
     return await this.getFriendsUseCase.execute(user.id);
+  }
+
+  /**
+   * Get online statuses for current user's friends
+   */
+  @Get('online')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Get current user's online friends" })
+  @ApiResponse({ status: 200, description: 'Online friend IDs returned' })
+  async getOnlineFriends(@CurrentUser() user: any) {
+    const friends = await this.getFriendsUseCase.execute(user.id);
+    const friendIds = (friends || []).map((f: any) => f.id);
+    const onlineIds = await this.gamesGateway.getOnlineParticipantIds(friendIds);
+    return {
+      onlineIds,
+      onlineMap: friendIds.reduce(
+        (acc: Record<string, boolean>, id: string) => {
+          acc[id] = onlineIds.includes(id);
+          return acc;
+        },
+        {},
+      ),
+    };
   }
 
   /**

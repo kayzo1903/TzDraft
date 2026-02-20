@@ -42,13 +42,13 @@ export default function PlayPage() {
             title: t('modes.friend.title'),
             description: t('modes.friend.description'),
             icon: <Users className="w-8 h-8 text-purple-400" />,
-            href: '#',
-            enabled: false,
-            comingSoon: true,
-            comingSoonLabel: t('modes.friend.comingSoon'),
-            action: t('modes.friend.unavailable'),
-            color: 'bg-purple-500/10 border-purple-500/20',
-            buttonColor: 'bg-neutral-700'
+            href: '/friends',
+            enabled: true,
+            comingSoon: false,
+            comingSoonLabel: '',
+            action: t('modes.friend.action'),
+            color: 'bg-purple-500/10 border-purple-500/20 hover:border-purple-500/50',
+            buttonColor: 'bg-purple-600 hover:bg-purple-500'
         },
         {
             id: 'tournament',
