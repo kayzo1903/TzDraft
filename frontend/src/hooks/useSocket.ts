@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuthStore } from "@/lib/auth/auth-store";
+import { getOrCreateGuestId } from "@/lib/auth/guest-id";
 
 export function useSocket() {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -11,11 +12,19 @@ export function useSocket() {
     const storedToken =
       typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const token = isAuthenticated ? accessToken || storedToken : null;
+    const guestId = typeof window !== "undefined" ? getOrCreateGuestId() : null;
+    const authPayload =
+      token || guestId
+        ? {
+            ...(token ? { token } : {}),
+            ...(guestId ? { guestId } : {}),
+          }
+        : undefined;
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
     const socketUrl = `${baseUrl.replace(/\/$/, "")}/games`;
 
     const newSocket = io(socketUrl, {
-      auth: token ? { token } : undefined,
+      auth: authPayload,
       withCredentials: true,
       transports: ["websocket", "polling"],
     });

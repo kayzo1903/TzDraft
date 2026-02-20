@@ -18,12 +18,19 @@ export default function OnlineGamePage() {
     const { user } = useAuthStore();
     const [isSearching, setIsSearching] = useState(false);
     const [searchStatus, setSearchStatus] = useState('');
+    const [searchMode, setSearchMode] = useState<'RANKED' | 'CASUAL' | null>(null);
     const [queueError, setQueueError] = useState<string | null>(null);
     const [autoJoin, setAutoJoin] = useState(true);
     const [searchDeadlineMs, setSearchDeadlineMs] = useState<number | null>(null);
+    const [socketConnected, setSocketConnected] = useState(false);
 
     useEffect(() => {
         if (!socket) return;
+        const onConnect = () => setSocketConnected(true);
+        const onDisconnect = () => setSocketConnected(false);
+        setSocketConnected(socket.connected);
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
 
         // Listen for game started event
         socket.on('gameStarted', (data: {
@@ -55,6 +62,8 @@ export default function OnlineGamePage() {
 
         return () => {
             socket.off('gameStarted');
+            socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
         };
     }, [socket, router, user?.id]);
 
@@ -70,32 +79,34 @@ export default function OnlineGamePage() {
         let intervalId: NodeJS.Timeout;
 
         if (isSearching) {
-            const deadline = searchDeadlineMs ?? nowFromServer() + 60_000;
-            if (!searchDeadlineMs) {
+            const shouldTimeout = searchMode === 'RANKED';
+            const deadline = shouldTimeout
+                ? (searchDeadlineMs ?? nowFromServer() + 60_000)
+                : null;
+            if (shouldTimeout && !searchDeadlineMs && deadline) {
                 setSearchDeadlineMs(deadline);
             }
             intervalId = setInterval(() => {
-                const remaining = Math.max(
-                    0,
-                    Math.ceil((deadline - nowFromServer()) / 1000),
-                );
-                setTimeLeft(remaining);
-                if (remaining <= 0) {
-                    handleCancel(true);
+                if (!deadline) {
+                    return;
                 }
+                const remaining = Math.max(0, Math.ceil((deadline - nowFromServer()) / 1000));
+                setTimeLeft(remaining);
+                if (remaining <= 0) handleCancel(true);
             }, 1000);
         } else {
             setSearchDeadlineMs(null);
+            setSearchMode(null);
             setTimeLeft(60);
         }
 
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [isSearching, searchDeadlineMs]);
+    }, [isSearching, searchDeadlineMs, searchMode]);
 
     const handleSelectMode = async (mode: 'RANKED' | 'CASUAL', guestName?: string) => {
-        if (!socket) {
+        if (!socket || !socket.connected) {
             console.error("Socket not connected");
             setQueueError("Socket not connected. Please try again.");
             setIsSearching(false);
@@ -113,8 +124,9 @@ export default function OnlineGamePage() {
 
         setQueueError(null);
         setIsSearching(true);
+        setSearchMode(mode);
         setSearchStatus(mode === 'RANKED' ? 'Searching for ranked match...' : 'Searching for opponent...');
-        setSearchDeadlineMs(now + 60_000);
+        setSearchDeadlineMs(mode === 'RANKED' ? now + 60_000 : null);
         setTimeLeft(60);
 
         // Emit join event and handle server-side validation response.
@@ -135,6 +147,7 @@ export default function OnlineGamePage() {
             socket.emit('cancelMatch');
         }
         setIsSearching(false);
+        setSearchMode(null);
         setSearchDeadlineMs(null);
         setTimeLeft(60);
         if (isTimeout) {
@@ -154,9 +167,11 @@ export default function OnlineGamePage() {
                 </div>
                 <p className="text-xl font-medium text-white tracking-wide mt-6">{searchStatus}</p>
                 <div className="flex flex-col items-center gap-2">
-                    <span className="text-xs text-neutral-400 font-mono">
-                        Timeout in {timeLeft}s
-                    </span>
+                    {searchMode === 'RANKED' && (
+                        <span className="text-xs text-neutral-400 font-mono">
+                            Timeout in {timeLeft}s
+                        </span>
+                    )}
                     <div className="mt-4">
                         <button
                             onClick={() => handleCancel()}
@@ -212,7 +227,7 @@ export default function OnlineGamePage() {
                     {queueError}
                 </div>
             )}
-            <PlayModeSelection onSelectMode={handleSelectMode} socketReady={!!socket} autoJoin={autoJoin} />
+            <PlayModeSelection onSelectMode={handleSelectMode} socketReady={socketConnected} autoJoin={autoJoin} />
         </div>
     );
 

@@ -63,24 +63,24 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   handleConnection(client: Socket) {
-    const userId = client.data.user?.id;
+    const participantId = this.getSocketParticipantId(client);
     this.logger.log(
-      `Client connected: ${client.id} (User: ${userId || 'unknown'})`,
+      `Client connected: ${client.id} (Participant: ${participantId || 'unknown'})`,
     );
-    if (userId) {
-      this.clearDisconnectForfeit(userId);
+    if (participantId) {
+      this.clearDisconnectForfeit(participantId);
     }
   }
 
   handleDisconnect(client: Socket) {
-    const userId = client.data.user?.id;
+    const participantId = this.getSocketParticipantId(client);
     this.logger.log(
-      `Client disconnected: ${client.id} (User: ${userId || 'unknown'})`,
+      `Client disconnected: ${client.id} (Participant: ${participantId || 'unknown'})`,
     );
     this.matchmakingService.leaveQueue(client.id);
 
-    if (userId) {
-      this.scheduleDisconnectForfeit(userId);
+    if (participantId) {
+      this.scheduleDisconnectForfeit(participantId);
     }
   }
 
@@ -96,9 +96,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { gameId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const userId = client.data.user?.id;
-    if (!userId) {
-      return { status: 'error', message: 'User not authenticated' };
+    const participantId = this.getSocketParticipantId(client);
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
     }
     const gameId = data?.gameId;
     if (!gameId) {
@@ -108,7 +108,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const game = await this.gameRepository.findById(gameId);
       if (!game) return { status: 'error', message: 'Game not found' };
-      if (game.whitePlayerId !== userId && game.blackPlayerId !== userId) {
+      if (
+        game.whitePlayerId !== participantId &&
+        game.blackPlayerId !== participantId
+      ) {
         return { status: 'error', message: 'Player not in this game' };
       }
       if (game.status !== 'ACTIVE') {
@@ -118,7 +121,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Article 7.2 timing: draw offers are valid after your move
       // (i.e., when it is the opponent's turn).
       const offeringColor =
-        game.whitePlayerId === userId ? PlayerColor.WHITE : PlayerColor.BLACK;
+        game.whitePlayerId === participantId
+          ? PlayerColor.WHITE
+          : PlayerColor.BLACK;
       if (game.currentTurn === offeringColor) {
         return {
           status: 'error',
@@ -128,7 +133,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const existing = this.drawOffers.get(gameId);
       if (existing) {
-        if (existing.offeredBy === userId) {
+        if (existing.offeredBy === participantId) {
           return { status: 'success', message: 'Draw already offered' };
         }
         // Opponent had already offered; accepting ends immediately.
@@ -143,15 +148,22 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(gameId).emit('drawOfferExpired', { gameId });
       }, this.DRAW_OFFER_TTL_MS);
 
-      this.drawOffers.set(gameId, { offeredBy: userId, expiresAt, timer });
+      this.drawOffers.set(gameId, {
+        offeredBy: participantId,
+        expiresAt,
+        timer,
+      });
       this.server.to(gameId).emit('drawOffered', {
         gameId,
-        offeredBy: userId,
+        offeredBy: participantId,
         expiresAt,
       });
       return { status: 'success' };
     } catch (error: any) {
-      this.logger.warn(`requestDraw failed game=${gameId} user=${userId}`, error);
+      this.logger.warn(
+        `requestDraw failed game=${gameId} player=${participantId}`,
+        error,
+      );
       return { status: 'error', message: 'Failed to request draw' };
     }
   }
@@ -161,9 +173,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { gameId: string; accept: boolean },
     @ConnectedSocket() client: Socket,
   ) {
-    const userId = client.data.user?.id;
-    if (!userId) {
-      return { status: 'error', message: 'User not authenticated' };
+    const participantId = this.getSocketParticipantId(client);
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
     }
     const gameId = data?.gameId;
     if (!gameId) {
@@ -174,7 +186,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!offer) {
       return { status: 'error', message: 'No active draw offer' };
     }
-    if (offer.offeredBy === userId) {
+    if (offer.offeredBy === participantId) {
       return { status: 'error', message: 'Cannot respond to your own draw offer' };
     }
 
@@ -185,7 +197,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return { status: 'success' };
       } catch (error: any) {
         this.logger.warn(
-          `respondDraw accept failed game=${gameId} user=${userId}`,
+          `respondDraw accept failed game=${gameId} player=${participantId}`,
           error,
         );
         return { status: 'error', message: 'Failed to accept draw' };
@@ -195,7 +207,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.clearDrawOffer(gameId);
     this.server.to(gameId).emit('drawDeclined', {
       gameId,
-      declinedBy: userId,
+      declinedBy: participantId,
     });
     return { status: 'success' };
   }
@@ -205,9 +217,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { gameId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const userId = client.data.user?.id;
-    if (!userId) {
-      return { status: 'error', message: 'User not authenticated' };
+    const participantId = this.getSocketParticipantId(client);
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
     }
     const gameId = data?.gameId;
     if (!gameId) {
@@ -216,12 +228,15 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const offer = this.drawOffers.get(gameId);
     if (!offer) return { status: 'success' };
-    if (offer.offeredBy !== userId) {
+    if (offer.offeredBy !== participantId) {
       return { status: 'error', message: 'Only offerer can cancel' };
     }
 
     this.clearDrawOffer(gameId);
-    this.server.to(gameId).emit('drawCancelled', { gameId, cancelledBy: userId });
+    this.server.to(gameId).emit('drawCancelled', {
+      gameId,
+      cancelledBy: participantId,
+    });
     return { status: 'success' };
   }
 
@@ -235,24 +250,24 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'error', message: 'Game ID required' };
     }
 
-    const userId = client.data.user?.id;
-    if (userId) {
-      this.clearDisconnectForfeit(userId);
+    const participantId = this.getSocketParticipantId(client);
+    if (participantId) {
+      this.clearDisconnectForfeit(participantId);
     }
     client.join(gameId);
     this.logger.log(
-      `Client ${client.id} (User: ${userId}) joined game room: ${gameId}`,
+      `Client ${client.id} (Participant: ${participantId}) joined game room: ${gameId}`,
     );
 
     // Tell the joining client which perspective to render from.
     // This avoids relying on fragile client-side sessionStorage when refreshing.
-    if (userId) {
+    if (participantId) {
       try {
         const game = await this.gameRepository.findById(gameId);
         const playerColor =
-          game?.whitePlayerId === userId
+          game?.whitePlayerId === participantId
             ? 'WHITE'
-            : game?.blackPlayerId === userId
+            : game?.blackPlayerId === participantId
               ? 'BLACK'
               : null;
 
@@ -264,7 +279,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
           (entry) =>
             entry.gameId === gameId &&
             Date.now() < entry.deadlineMs &&
-            entry.playerId !== userId,
+            entry.playerId !== participantId,
         );
         for (const entry of disconnectEntries) {
           client.emit('playerDisconnected', {
@@ -279,7 +294,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       } catch (error) {
         this.logger.warn(
-          `Failed to resolve playerColor for joinGame game=${gameId} user=${userId}`,
+          `Failed to resolve playerColor for joinGame game=${gameId} player=${participantId}`,
           error as any,
         );
       }
@@ -292,19 +307,19 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { gameId: string; from: number; to: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const userId = client.data.user?.id;
-    if (!userId) {
-      return { status: 'error', message: 'User not authenticated' };
+    const participantId = this.getSocketParticipantId(client);
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
     }
 
     this.logger.log(
-      `Make move request from ${userId} in game ${data.gameId}: ${data.from} -> ${data.to}`,
+      `Make move request from ${participantId} in game ${data.gameId}: ${data.from} -> ${data.to}`,
     );
 
     try {
       const result = await this.makeMoveUseCase.execute(
         data.gameId,
-        userId,
+        participantId,
         data.from,
         data.to,
       );
@@ -345,8 +360,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     const userId = client.data.user?.id;
-    if (userId) {
-      this.clearDisconnectForfeit(userId);
+    const participantId = this.getSocketParticipantId(client);
+    if (participantId) {
+      this.clearDisconnectForfeit(participantId);
     }
 
     // Validate inputs
@@ -362,8 +378,70 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'error', message: 'Matchmaking unavailable' };
     }
 
-    this.matchmakingService.joinQueue(client, gameMode, data.guestName);
+    const joined = this.matchmakingService.joinQueue(
+      client,
+      gameMode,
+      data.guestName,
+    );
+    if (!joined) {
+      return {
+        status: 'error',
+        message: 'Unable to join queue: missing participant identity',
+      };
+    }
     return { status: 'success', message: 'Joined matchmaking queue' };
+  }
+
+  @SubscribeMessage('resignGame')
+  async handleResignGame(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const participantId = this.getSocketParticipantId(client);
+    const gameId = data?.gameId;
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
+    }
+    if (!gameId) {
+      return { status: 'error', message: 'Game ID required' };
+    }
+
+    try {
+      await this.endGameUseCase.resign(gameId, participantId);
+      return { status: 'success' };
+    } catch (error: any) {
+      this.logger.warn(
+        `resignGame failed game=${gameId} player=${participantId}`,
+        error,
+      );
+      return { status: 'error', message: error?.message || 'Failed to resign' };
+    }
+  }
+
+  @SubscribeMessage('abortGame')
+  async handleAbortGame(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const participantId = this.getSocketParticipantId(client);
+    const gameId = data?.gameId;
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
+    }
+    if (!gameId) {
+      return { status: 'error', message: 'Game ID required' };
+    }
+
+    try {
+      await this.endGameUseCase.abort(gameId, participantId);
+      return { status: 'success' };
+    } catch (error: any) {
+      this.logger.warn(
+        `abortGame failed game=${gameId} player=${participantId}`,
+        error,
+      );
+      return { status: 'error', message: error?.message || 'Failed to abort' };
+    }
   }
 
   @SubscribeMessage('cancelMatch')
@@ -447,7 +525,13 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const sockets = roomId
       ? await this.server.in(roomId).fetchSockets()
       : await this.server.fetchSockets();
-    return sockets.some((socket) => socket.data.user?.id === userId);
+    return sockets.some(
+      (socket) => this.getSocketParticipantId(socket) === userId,
+    );
+  }
+
+  private getSocketParticipantId(client: { data: any }): string | null {
+    return client.data.user?.id || client.data.guestId || null;
   }
 
   private async scheduleDisconnectForfeit(userId: string) {

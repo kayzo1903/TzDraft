@@ -7,8 +7,9 @@ import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 
 interface QueuedPlayer {
   socketId: string;
-  userId?: string; // Optional for guests
-  rating?: number; // Optional for guests
+  participantId: string;
+  rating: number;
+  isGuest: boolean;
   guestName?: string; // For guests
   mode: GameType;
   joinedAt: number;
@@ -28,27 +29,39 @@ export class MatchmakingService {
     this.startMatchmakingLoop();
   }
 
-  joinQueue(client: Socket, mode: GameType, guestName?: string) {
+  joinQueue(client: Socket, mode: GameType, guestName?: string): boolean {
     const userId = client.data.user?.id;
-    const rating = client.data.user?.rating?.rating || 1200;
+    const participantId = userId || client.data.guestId;
+    const isGuest = !userId;
+    const rating =
+      mode === GameType.RANKED
+        ? (client.data.user?.rating?.rating ?? 1200)
+        : 500;
+
+    if (!participantId) {
+      this.logger.warn(`Queue join rejected: missing participant identity (${client.id})`);
+      return false;
+    }
 
     // Remove if already in queue to avoid duplicates
     this.leaveQueue(client.id);
 
     const player: QueuedPlayer = {
       socketId: client.id,
-      userId,
-      rating: userId ? rating : undefined,
+      participantId,
+      rating,
+      isGuest,
       guestName,
       mode,
       joinedAt: Date.now(),
     };
 
     this.queue.push(player);
-    this.logger.log(`Player joined queue: ${guestName || userId} (${mode})`);
+    this.logger.log(`Player joined queue: ${guestName || participantId} (${mode})`);
 
     // Try to match immediately
     this.processQueue();
+    return true;
   }
 
   leaveQueue(socketId: string) {
@@ -67,7 +80,7 @@ export class MatchmakingService {
     this.logger.debug(`Processing queue. Current size: ${this.queue.length}`);
     this.queue.forEach((p) =>
       this.logger.debug(
-        `In queue: ${p.socketId} (${p.mode}) - User: ${p.userId}`,
+        `In queue: ${p.socketId} (${p.mode}) - Participant: ${p.participantId}`,
       ),
     );
 
@@ -75,14 +88,20 @@ export class MatchmakingService {
 
     // Separate queues by mode
     const rankedQueue = this.queue.filter((p) => p.mode === GameType.RANKED);
-    const casualQueue = this.queue.filter((p) => p.mode === GameType.CASUAL);
+    const casualRegisteredQueue = this.queue.filter(
+      (p) => p.mode === GameType.CASUAL && !p.isGuest,
+    );
+    const casualGuestQueue = this.queue.filter(
+      (p) => p.mode === GameType.CASUAL && p.isGuest,
+    );
 
     this.logger.debug(
-      `Ranked: ${rankedQueue.length}, Casual: ${casualQueue.length}`,
+      `Ranked: ${rankedQueue.length}, Casual(registered): ${casualRegisteredQueue.length}, Casual(guest): ${casualGuestQueue.length}`,
     );
 
     await this.processSubQueue(rankedQueue);
-    await this.processSubQueue(casualQueue);
+    await this.processSubQueue(casualRegisteredQueue);
+    await this.processSubQueue(casualGuestQueue);
   }
 
   private async processSubQueue(subQueue: QueuedPlayer[]) {
@@ -113,7 +132,6 @@ export class MatchmakingService {
     try {
       let game;
       const isRanked = p1.mode === GameType.RANKED;
-
       // Ensure both players want the same mode
       if (p1.mode !== p2.mode) {
         this.logger.error(
@@ -123,10 +141,10 @@ export class MatchmakingService {
       }
 
       game = await this.createGameUseCase.createPvPGame(
-        p1.userId || null,
-        p2.userId || null,
-        p1.rating || 1200,
-        p2.rating || 1200,
+        p1.participantId,
+        p2.participantId,
+        isRanked ? p1.rating : 500,
+        isRanked ? p2.rating : 500,
         p1.guestName,
         p2.guestName,
         p1.mode,

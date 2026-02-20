@@ -11,6 +11,7 @@ import { getBotByLevel } from '@/lib/game/bots';
 import { User } from 'lucide-react';
 import Image from 'next/image';
 import { useAuthStore } from '@/lib/auth/auth-store';
+import { getOrCreateGuestId } from '@/lib/auth/guest-id';
 import { useRouter } from '@/i18n/routing';
 import { GameNotFound } from '@/components/game/GameNotFound';
 import { boardIndexToPosition, displayIndexToBoardIndex, positionToBoardIndex, serverPosToUiPos, uiPosToServerPos } from '@/lib/game/board-coords';
@@ -93,6 +94,8 @@ export default function GamePage() {
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const { user } = useAuthStore();
+    const [guestId, setGuestId] = useState<string | null>(null);
+    const participantId = user?.id ?? guestId;
     const [game, setGame] = useState<GameResponse | null>(null);
     const [players, setPlayers] = useState<PlayersResponse | null>(null);
     const [viewerColor, setViewerColor] = useState<'WHITE' | 'BLACK'>('WHITE');
@@ -112,6 +115,7 @@ export default function GamePage() {
     const [selfDisconnectCountdown, setSelfDisconnectCountdown] = useState<number | null>(null);
     const gameIdRef = useRef(gameId);
     const viewerColorRef = useRef(viewerColor);
+    const participantIdRef = useRef<string | null>(participantId);
     const gamePlayersRef = useRef<{ whitePlayerId: string | null; blackPlayerId: string | null }>({
         whitePlayerId: null,
         blackPlayerId: null,
@@ -130,6 +134,18 @@ export default function GamePage() {
     const lastBoardSignatureRef = useRef<string | null>(null);
 
     useEffect(() => {
+        if (user?.id) {
+            setGuestId(null);
+            return;
+        }
+        setGuestId(getOrCreateGuestId());
+    }, [user?.id]);
+
+    useEffect(() => {
+        participantIdRef.current = participantId;
+    }, [participantId]);
+
+    useEffect(() => {
         piecesRef.current = pieces;
     }, [pieces]);
 
@@ -140,7 +156,7 @@ export default function GamePage() {
             const endedBy = data.endedBy ?? null;
             const noMoves = Boolean(data.noMoves);
             const viewer = viewerColorRef.current;
-            const myUserId = user?.id ?? null;
+            const myParticipantId = participantIdRef.current;
 
             const outcome: ResultCardState['outcome'] =
                 winner === 'DRAW' || reason === 'DRAW' || reason === 'ABORTED'
@@ -152,8 +168,8 @@ export default function GamePage() {
                             : 'DRAW';
 
             const asYouOpponent = (messageForYou: string, messageForOpponent: string) => {
-                if (!endedBy || !myUserId) return outcome === 'WIN' ? messageForOpponent : messageForYou;
-                return endedBy === myUserId ? messageForYou : messageForOpponent;
+                if (!endedBy || !myParticipantId) return outcome === 'WIN' ? messageForOpponent : messageForYou;
+                return endedBy === myParticipantId ? messageForYou : messageForOpponent;
             };
 
             const piecesSnapshot = piecesRef.current;
@@ -237,7 +253,7 @@ export default function GamePage() {
                 detail,
             };
         },
-        [user?.id],
+        [],
     );
 
     const getBoardSignature = useRef(
@@ -302,20 +318,20 @@ export default function GamePage() {
     }, [pieces]);
 
     const canInteract = React.useMemo(() => {
-        if (!user?.id) return false;
+        if (!participantId) return false;
         if (game?.status !== 'ACTIVE') return false;
         const isPlayer =
-            (viewerColor === 'WHITE' && game.whitePlayerId === user.id) ||
-            (viewerColor === 'BLACK' && game.blackPlayerId === user.id);
+            (viewerColor === 'WHITE' && game.whitePlayerId === participantId) ||
+            (viewerColor === 'BLACK' && game.blackPlayerId === participantId);
         if (!isPlayer) return false;
         return (game.currentTurn ?? 'WHITE') === viewerColor;
-    }, [game?.blackPlayerId, game?.currentTurn, game?.status, game?.whitePlayerId, user?.id, viewerColor]);
+    }, [game?.blackPlayerId, game?.currentTurn, game?.status, game?.whitePlayerId, participantId, viewerColor]);
 
     const canRequestDraw = React.useMemo(() => {
-        if (!user?.id) return false;
+        if (!participantId) return false;
         if (game?.status !== 'ACTIVE') return false;
-        return game.whitePlayerId === user.id || game.blackPlayerId === user.id;
-    }, [game?.blackPlayerId, game?.status, game?.whitePlayerId, user?.id]);
+        return game.whitePlayerId === participantId || game.blackPlayerId === participantId;
+    }, [game?.blackPlayerId, game?.status, game?.whitePlayerId, participantId]);
 
     const { legalMoves, forcedPieces } = React.useMemo(
         () =>
@@ -376,10 +392,10 @@ export default function GamePage() {
 
         let resolvedColor: 'WHITE' | 'BLACK' | null = null;
 
-        if (!resolvedColor && user?.id) {
-            if (user.id === game.whitePlayerId) {
+        if (!resolvedColor && participantId) {
+            if (participantId === game.whitePlayerId) {
                 resolvedColor = 'WHITE';
-            } else if (user.id === game.blackPlayerId) {
+            } else if (participantId === game.blackPlayerId) {
                 resolvedColor = 'BLACK';
             }
         }
@@ -395,7 +411,7 @@ export default function GamePage() {
             const next = resolvedColor || 'WHITE';
             return prev === next ? prev : next;
         });
-    }, [game, gameId, user?.id]);
+    }, [game, gameId, participantId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -507,9 +523,18 @@ export default function GamePage() {
                 typeof window !== 'undefined'
                     ? window.localStorage.getItem('accessToken')
                     : null;
+            const resolvedGuestId =
+                typeof window !== 'undefined' ? getOrCreateGuestId() : null;
+            const authPayload =
+                accessToken || resolvedGuestId
+                    ? {
+                        ...(accessToken ? { token: accessToken } : {}),
+                        ...(resolvedGuestId ? { guestId: resolvedGuestId } : {}),
+                    }
+                    : undefined;
             const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002/games', {
                 withCredentials: true,
-                auth: accessToken ? { token: accessToken } : undefined,
+                auth: authPayload,
                 autoConnect: true,
                 transports: ['websocket', 'polling'], // Allow polling fallback
                 reconnection: true,
@@ -636,7 +661,7 @@ export default function GamePage() {
         socket.on('drawOffered', (data: { gameId?: string; offeredBy?: string; expiresAt?: number }) => {
             if (!data?.gameId || data.gameId !== gameIdRef.current) return;
             if (!data.offeredBy || !data.expiresAt) return;
-            const mine = Boolean(user?.id && data.offeredBy === user.id);
+            const mine = Boolean(participantIdRef.current && data.offeredBy === participantIdRef.current);
             setDrawOffer({ offeredBy: data.offeredBy, expiresAt: data.expiresAt, isMine: mine });
         });
 
@@ -667,7 +692,7 @@ export default function GamePage() {
             if (!data?.playerId) return;
 
             const resolvedViewerId =
-                user?.id ??
+                participantIdRef.current ??
                 (viewerColorRef.current === 'WHITE'
                     ? gamePlayersRef.current.whitePlayerId
                     : gamePlayersRef.current.blackPlayerId);
@@ -689,7 +714,7 @@ export default function GamePage() {
             if (!data?.playerId) return;
 
             const resolvedViewerId =
-                user?.id ??
+                participantIdRef.current ??
                 (viewerColorRef.current === 'WHITE'
                     ? gamePlayersRef.current.whitePlayerId
                     : gamePlayersRef.current.blackPlayerId);
@@ -724,7 +749,7 @@ export default function GamePage() {
             socket.off('disconnect');
             socket.off('connect');
         };
-    }, [buildResultCard, getBoardSignature, socket, syncClockSnapshot, user?.id]);
+    }, [buildResultCard, getBoardSignature, socket, syncClockSnapshot]);
 
     useEffect(() => {
         if (selfDisconnectCountdown === null) return;
@@ -810,22 +835,23 @@ export default function GamePage() {
     };
 
     const handleResign = async () => {
-        if (!user) {
-            setActionError('You must be logged in to resign.');
+        if (!socket) {
+            setActionError('Connection not ready.');
+            return;
+        }
+        if (!gameIdRef.current) {
+            setActionError('Game not found.');
             return;
         }
 
-        try {
-            setActionLoading('resign');
-            setActionError(null);
-            await gameService.resignGame(gameId);
-            const winner = viewerColorRef.current === 'WHITE' ? 'BLACK' : 'WHITE';
-            setResultCard(buildResultCard({ winner, reason: 'RESIGN', endedBy: user.id }));
-        } catch (error: any) {
-            setActionError(error?.response?.data?.message || 'Failed to resign game.');
-        } finally {
+        setActionLoading('resign');
+        setActionError(null);
+        socket.emit('resignGame', { gameId: gameIdRef.current }, (response?: { status?: string; message?: string }) => {
+            if (response?.status === 'error') {
+                setActionError(response.message || 'Failed to resign game.');
+            }
             setActionLoading(null);
-        }
+        });
     };
 
     const handleRequestDraw = () => {
@@ -863,21 +889,23 @@ export default function GamePage() {
     };
 
     const handleAbort = async () => {
-        if (!user) {
-            setActionError('You must be logged in to abort.');
+        if (!socket) {
+            setActionError('Connection not ready.');
+            return;
+        }
+        if (!gameIdRef.current) {
+            setActionError('Game not found.');
             return;
         }
 
-        try {
-            setActionLoading('abort');
-            setActionError(null);
-            await gameService.abortGame(gameId);
-            setResultCard(buildResultCard({ winner: null, reason: 'ABORTED', endedBy: user.id }));
-        } catch (error: any) {
-            setActionError(error?.response?.data?.message || 'Failed to abort game.');
-        } finally {
+        setActionLoading('abort');
+        setActionError(null);
+        socket.emit('abortGame', { gameId: gameIdRef.current }, (response?: { status?: string; message?: string }) => {
+            if (response?.status === 'error') {
+                setActionError(response.message || 'Failed to abort game.');
+            }
             setActionLoading(null);
-        }
+        });
     };
 
     if (loading) {
