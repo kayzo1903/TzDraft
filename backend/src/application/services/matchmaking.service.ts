@@ -4,6 +4,7 @@ import { GameType } from '../../shared/constants/game.constants';
 import { Socket } from 'socket.io';
 import { Inject, forwardRef } from '@nestjs/common';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 
 interface QueuedPlayer {
   socketId: string;
@@ -23,6 +24,7 @@ export class MatchmakingService {
 
   constructor(
     private readonly createGameUseCase: CreateGameUseCase,
+    private readonly prisma: PrismaService,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
   ) {
@@ -140,6 +142,11 @@ export class MatchmakingService {
         return;
       }
 
+      await Promise.all([
+        this.ensureGuestParticipantRecord(p1),
+        this.ensureGuestParticipantRecord(p2),
+      ]);
+
       game = await this.createGameUseCase.createPvPGame(
         p1.participantId,
         p2.participantId,
@@ -179,5 +186,27 @@ export class MatchmakingService {
     } catch (error) {
       this.logger.error('Failed to create game match', error);
     }
+  }
+
+  private async ensureGuestParticipantRecord(player: QueuedPlayer): Promise<void> {
+    if (!player.isGuest) {
+      return;
+    }
+
+    const participantToken = player.participantId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fallbackName = `Guest-${participantToken.slice(0, 8)}`;
+    const displayName = player.guestName?.trim() || fallbackName;
+
+    await this.prisma.user.upsert({
+      where: { id: player.participantId },
+      update: {},
+      create: {
+        id: player.participantId,
+        phoneNumber: `guest-${participantToken}`,
+        username: `guest_${participantToken}`,
+        displayName,
+        passwordHash: null,
+      },
+    });
   }
 }
