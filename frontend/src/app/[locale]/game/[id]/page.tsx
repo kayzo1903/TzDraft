@@ -101,6 +101,8 @@ export default function GamePage() {
     const [viewerColor, setViewerColor] = useState<'WHITE' | 'BLACK'>('WHITE');
     const [actionLoading, setActionLoading] = useState<'resign' | 'abort' | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [rematchState, setRematchState] = useState<'idle' | 'waiting' | 'received'>('idle');
+    const [rematchError, setRematchError] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<'resign' | 'abort' | null>(null);
     const [resultCard, setResultCard] = useState<ResultCardState | null>(null);
     const [loading, setLoading] = useState(true);
@@ -609,6 +611,17 @@ export default function GamePage() {
             }
         });
 
+        socket.on('gameStarted', (data: { gameId?: string; playerColor?: 'WHITE' | 'BLACK' }) => {
+            if (!data?.gameId) return;
+            if (data.playerColor && typeof window !== 'undefined') {
+                window.sessionStorage.setItem(`tzdraft:game:${data.gameId}:color`, data.playerColor);
+            }
+            setResultCard(null);
+            setRematchState('idle');
+            setRematchError(null);
+            router.push(`/game/${data.gameId}`);
+        });
+
         socket.on('gameStateUpdated', (data: any) => {
             if (process.env.NODE_ENV === 'development') {
                 console.debug('Game state updated');
@@ -685,7 +698,21 @@ export default function GamePage() {
             setDisconnectCountdown(null);
             setSelfDisconnectCountdown(null);
             setDrawOffer(null);
+            setRematchState('idle');
+            setRematchError(null);
             setResultCard(buildResultCard(data));
+        });
+
+        socket.on('rematchRequested', (data: { gameId?: string }) => {
+            if (!data?.gameId || data.gameId !== gameIdRef.current) return;
+            setRematchState('received');
+            setRematchError(null);
+        });
+
+        socket.on('rematchExpired', (data: { gameId?: string }) => {
+            if (!data?.gameId || data.gameId !== gameIdRef.current) return;
+            setRematchState('idle');
+            setRematchError('Rematch request expired.');
         });
 
         socket.on('playerDisconnected', (data: { playerId?: string; timeoutSec?: number; deadlineMs?: number }) => {
@@ -737,19 +764,22 @@ export default function GamePage() {
 
         return () => {
             socket.off('joinedGame');
+            socket.off('gameStarted');
             socket.off('gameStateUpdated');
             socket.off('gameOver');
             socket.off('drawOffered');
             socket.off('drawDeclined');
             socket.off('drawCancelled');
             socket.off('drawOfferExpired');
+            socket.off('rematchRequested');
+            socket.off('rematchExpired');
             socket.off('moveRejected');
             socket.off('playerDisconnected');
             socket.off('playerReconnected');
             socket.off('disconnect');
             socket.off('connect');
         };
-    }, [buildResultCard, getBoardSignature, socket, syncClockSnapshot]);
+    }, [buildResultCard, getBoardSignature, router, socket, syncClockSnapshot]);
 
     useEffect(() => {
         if (selfDisconnectCountdown === null) return;
@@ -906,6 +936,32 @@ export default function GamePage() {
             }
             setActionLoading(null);
         });
+    };
+
+    const handleRematch = () => {
+        if (!socket) {
+            setRematchError('Connection not ready.');
+            return;
+        }
+        if (!gameIdRef.current) {
+            setRematchError('Game not found.');
+            return;
+        }
+
+        setRematchError(null);
+        socket.emit(
+            'requestRematch',
+            { gameId: gameIdRef.current },
+            (response?: { status?: string; message?: string; state?: 'waiting' | 'matched' }) => {
+                if (response?.status === 'error') {
+                    setRematchError(response.message || 'Failed to request rematch.');
+                    return;
+                }
+                if (response?.state === 'waiting') {
+                    setRematchState('waiting');
+                }
+            },
+        );
     };
 
     if (loading) {
@@ -1267,12 +1323,27 @@ export default function GamePage() {
                             </div>
                         </div>
                         <div className="p-6 flex flex-col gap-3">
+                            {rematchState === 'received' && (
+                                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-center text-sm font-semibold text-emerald-200">
+                                    Opponent requested a rematch with swapped colors.
+                                </div>
+                            )}
                             <button
-                                onClick={() => router.push('/game/online?rematch=1')}
-                                className="rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
+                                onClick={handleRematch}
+                                disabled={rematchState === 'waiting'}
+                                className="rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700 disabled:opacity-60"
                             >
-                                Rematch
+                                {rematchState === 'received'
+                                    ? 'Accept Rematch'
+                                    : rematchState === 'waiting'
+                                        ? 'Waiting for opponent...'
+                                        : 'Rematch'}
                             </button>
+                            {rematchError && (
+                                <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200">
+                                    {rematchError}
+                                </div>
+                            )}
                             <button
                                 onClick={() => router.push('/game/online')}
                                 className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/25"

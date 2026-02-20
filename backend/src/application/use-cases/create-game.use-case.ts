@@ -35,6 +35,7 @@ export class CreateGameUseCase {
     whiteGuestName?: string,
     blackGuestName?: string,
     gameType: GameType = GameType.RANKED,
+    initialTimeMs: number = 600000,
   ): Promise<Game> {
     const game = new Game(
       randomUUID(),
@@ -46,10 +47,10 @@ export class CreateGameUseCase {
       whiteElo,
       blackElo,
       null,
-      600000, // Default 10 mins
+      initialTimeMs,
       {
-        whiteTimeMs: 600000,
-        blackTimeMs: 600000,
+        whiteTimeMs: initialTimeMs,
+        blackTimeMs: initialTimeMs,
         lastMoveAt: new Date(),
       },
     );
@@ -60,7 +61,7 @@ export class CreateGameUseCase {
     if (whitePlayerId) {
       this.gamesGateway.scheduleGameTimeout(
         createdGame.id,
-        600000,
+        initialTimeMs,
         whitePlayerId,
       );
     }

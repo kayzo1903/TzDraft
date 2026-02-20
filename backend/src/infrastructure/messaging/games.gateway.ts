@@ -18,6 +18,8 @@ import { EndGameUseCase } from '../../application/use-cases/end-game.use-case';
 import { MakeMoveUseCase } from '../../application/use-cases/make-move.use-case';
 import { BotMoveUseCase } from '../../application/use-cases/bot-move.use-case';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
+import { CreateGameUseCase } from '../../application/use-cases/create-game.use-case';
+import { PrismaService } from '../database/prisma/prisma.service';
 
 @WebSocketGateway({
   cors: {
@@ -48,6 +50,11 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     { offeredBy: string; expiresAt: number; timer: NodeJS.Timeout }
   >();
   private readonly DRAW_OFFER_TTL_MS = 60_000;
+  private readonly rematchRequests = new Map<
+    string,
+    { offeredBy: string; offeredTo: string; timer: NodeJS.Timeout }
+  >();
+  private readonly REMATCH_TTL_MS = 60_000;
 
   constructor(
     @Inject(forwardRef(() => MatchmakingService))
@@ -58,6 +65,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly makeMoveUseCase: MakeMoveUseCase,
     @Inject(forwardRef(() => BotMoveUseCase))
     private readonly botMoveUseCase: BotMoveUseCase,
+    private readonly createGameUseCase: CreateGameUseCase,
+    private readonly prisma: PrismaService,
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
   ) {}
@@ -89,6 +98,43 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!offer) return;
     clearTimeout(offer.timer);
     this.drawOffers.delete(gameId);
+  }
+
+  private clearRematchRequest(gameId: string) {
+    const pending = this.rematchRequests.get(gameId);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    this.rematchRequests.delete(gameId);
+  }
+
+  private async getSocketsByParticipant(participantId: string): Promise<any[]> {
+    const sockets = await this.server.fetchSockets();
+    return sockets.filter(
+      (socket) => this.getSocketParticipantId(socket) === participantId,
+    );
+  }
+
+  private async ensureParticipantRecord(
+    participantId: string,
+    guestName?: string | null,
+  ) {
+    const existing = await this.prisma.user.findUnique({
+      where: { id: participantId },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    const token = participantId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const displayName = guestName?.trim() || `Guest-${token.slice(0, 8)}`;
+    await this.prisma.user.create({
+      data: {
+        id: participantId,
+        phoneNumber: `guest-${token}`,
+        username: `guest_${token}`,
+        displayName,
+        passwordHash: null,
+      },
+    });
   }
 
   @SubscribeMessage('requestDraw')
@@ -451,6 +497,149 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'success', message: 'Left matchmaking queue' };
     }
     return { status: 'error', message: 'Matchmaking unavailable' };
+  }
+
+  @SubscribeMessage('requestRematch')
+  async handleRequestRematch(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const participantId = this.getSocketParticipantId(client);
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
+    }
+
+    const gameId = data?.gameId;
+    if (!gameId) {
+      return { status: 'error', message: 'Game ID required' };
+    }
+
+    const previousGame = await this.gameRepository.findById(gameId);
+    if (!previousGame) {
+      return { status: 'error', message: 'Game not found' };
+    }
+    if (previousGame.gameType === GameType.AI) {
+      return { status: 'error', message: 'Rematch is only available for PvP games' };
+    }
+    if (previousGame.status !== 'FINISHED' && previousGame.status !== 'ABORTED') {
+      return { status: 'error', message: 'Rematch is available after the game ends' };
+    }
+    if (
+      previousGame.whitePlayerId !== participantId &&
+      previousGame.blackPlayerId !== participantId
+    ) {
+      return { status: 'error', message: 'Player not in this game' };
+    }
+
+    const opponentId =
+      previousGame.whitePlayerId === participantId
+        ? previousGame.blackPlayerId
+        : previousGame.whitePlayerId;
+    if (!opponentId) {
+      return { status: 'error', message: 'Opponent not found for rematch' };
+    }
+
+    const pending = this.rematchRequests.get(gameId);
+    if (!pending) {
+      const timer = setTimeout(() => {
+        const stale = this.rematchRequests.get(gameId);
+        if (!stale) return;
+        this.rematchRequests.delete(gameId);
+        this.server.to(gameId).emit('rematchExpired', { gameId });
+      }, this.REMATCH_TTL_MS);
+
+      this.rematchRequests.set(gameId, {
+        offeredBy: participantId,
+        offeredTo: opponentId,
+        timer,
+      });
+
+      const opponentSockets = await this.getSocketsByParticipant(opponentId);
+      for (const socket of opponentSockets) {
+        socket.emit('rematchRequested', { gameId, offeredBy: participantId });
+      }
+      return { status: 'success', state: 'waiting' };
+    }
+
+    if (pending.offeredBy === participantId) {
+      return { status: 'success', state: 'waiting' };
+    }
+    if (pending.offeredTo !== participantId) {
+      return { status: 'error', message: 'Rematch request belongs to different players' };
+    }
+
+    this.clearRematchRequest(gameId);
+
+    try {
+      await Promise.all([
+        previousGame.whitePlayerId
+          ? this.ensureParticipantRecord(
+              previousGame.whitePlayerId,
+              previousGame.whiteGuestName,
+            )
+          : Promise.resolve(),
+        previousGame.blackPlayerId
+          ? this.ensureParticipantRecord(
+              previousGame.blackPlayerId,
+              previousGame.blackGuestName,
+            )
+          : Promise.resolve(),
+      ]);
+
+      const initialTimeMs = Math.max(
+        1000,
+        previousGame.initialTimeMs || 600000,
+      );
+      const rematchGame = await this.createGameUseCase.createPvPGame(
+        previousGame.blackPlayerId,
+        previousGame.whitePlayerId,
+        previousGame.blackElo,
+        previousGame.whiteElo,
+        previousGame.blackGuestName || undefined,
+        previousGame.whiteGuestName || undefined,
+        previousGame.gameType,
+        initialTimeMs,
+      );
+
+      const whiteId = rematchGame.whitePlayerId;
+      const blackId = rematchGame.blackPlayerId;
+      if (!whiteId || !blackId) {
+        return { status: 'error', message: 'Failed to initialize rematch players' };
+      }
+
+      const [whiteSockets, blackSockets] = await Promise.all([
+        this.getSocketsByParticipant(whiteId),
+        this.getSocketsByParticipant(blackId),
+      ]);
+
+      for (const socket of whiteSockets) {
+        socket.join(rematchGame.id);
+        socket.emit('gameStarted', {
+          gameId: rematchGame.id,
+          whiteId,
+          blackId,
+          playerColor: 'WHITE',
+        });
+      }
+
+      for (const socket of blackSockets) {
+        socket.join(rematchGame.id);
+        socket.emit('gameStarted', {
+          gameId: rematchGame.id,
+          whiteId,
+          blackId,
+          playerColor: 'BLACK',
+        });
+      }
+
+      return { status: 'success', state: 'matched', gameId: rematchGame.id };
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to create rematch for game=${gameId} player=${participantId}`,
+        error,
+      );
+      return { status: 'error', message: 'Failed to create rematch' };
+    }
   }
 
   // Method to be called by the application layer
