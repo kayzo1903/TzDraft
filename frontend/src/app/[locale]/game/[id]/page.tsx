@@ -93,7 +93,7 @@ export default function GamePage() {
     // const socket = useSocket();
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
-    const { user } = useAuthStore();
+    const { user, isHydrated } = useAuthStore();
     const [guestId, setGuestId] = useState<string | null>(null);
     const participantId = user?.id ?? guestId;
     const [game, setGame] = useState<GameResponse | null>(null);
@@ -136,12 +136,13 @@ export default function GamePage() {
     const lastBoardSignatureRef = useRef<string | null>(null);
 
     useEffect(() => {
+        if (!isHydrated) return;
         if (user?.id) {
             setGuestId(null);
             return;
         }
         setGuestId(getOrCreateGuestId());
-    }, [user?.id]);
+    }, [isHydrated, user?.id]);
 
     useEffect(() => {
         participantIdRef.current = participantId;
@@ -409,10 +410,11 @@ export default function GamePage() {
             }
         }
 
-        setViewerColor((prev) => {
-            const next = resolvedColor || 'WHITE';
-            return prev === next ? prev : next;
-        });
+        // Do not force a WHITE fallback while identity/session is still resolving.
+        // This prevents both clients from briefly or permanently locking to WHITE.
+        if (!resolvedColor) return;
+
+        setViewerColor((prev) => (prev === resolvedColor ? prev : resolvedColor));
     }, [game, gameId, participantId]);
 
     useEffect(() => {
@@ -518,6 +520,7 @@ export default function GamePage() {
     }, [game, getBoardSignature]);
 
     useEffect(() => {
+        if (!isHydrated) return;
         if (!socket) {
             console.log('Initializing socket connection...');
             // Ensure we are connecting to the correct namespace
@@ -525,14 +528,18 @@ export default function GamePage() {
                 typeof window !== 'undefined'
                     ? window.localStorage.getItem('accessToken')
                     : null;
+            const persistedParticipantId =
+                typeof window !== 'undefined'
+                    ? window.sessionStorage.getItem(`tzdraft:game:${gameIdRef.current}:participantId`)
+                    : null;
             const resolvedGuestId =
-                typeof window !== 'undefined' ? getOrCreateGuestId() : null;
-            const authPayload =
-                accessToken || resolvedGuestId
-                    ? {
-                        ...(accessToken ? { token: accessToken } : {}),
-                        ...(resolvedGuestId ? { guestId: resolvedGuestId } : {}),
-                    }
+                !user?.id && typeof window !== 'undefined' ? getOrCreateGuestId() : null;
+            const authPayload = accessToken
+                ? { token: accessToken }
+                : persistedParticipantId
+                    ? { guestId: persistedParticipantId }
+                    : resolvedGuestId
+                        ? { guestId: resolvedGuestId }
                     : undefined;
             const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002/games', {
                 withCredentials: true,
@@ -545,6 +552,29 @@ export default function GamePage() {
 
             setSocket(newSocket);
 
+            const joinGameRoom = (targetGameId: string) => {
+                newSocket.emit(
+                    'joinGame',
+                    { gameId: targetGameId },
+                    (ack?: { playerColor?: 'WHITE' | 'BLACK'; gameId?: string; participantId?: string }) => {
+                        if (!ack?.playerColor) return;
+                        setViewerColor(ack.playerColor);
+                        if (typeof window !== 'undefined') {
+                            window.sessionStorage.setItem(
+                                `tzdraft:game:${ack.gameId || targetGameId}:color`,
+                                ack.playerColor,
+                            );
+                            if (ack.participantId) {
+                                window.sessionStorage.setItem(
+                                    `tzdraft:game:${ack.gameId || targetGameId}:participantId`,
+                                    ack.participantId,
+                                );
+                            }
+                        }
+                    },
+                );
+            };
+
             newSocket.on('connect', () => {
                 const transport = (newSocket.io?.engine?.transport as any)?.name;
                 if (process.env.NODE_ENV === 'development') {
@@ -555,7 +585,7 @@ export default function GamePage() {
 
                 if (gameIdRef.current) {
                     console.log('Emitting joinGame for:', gameIdRef.current);
-                    newSocket.emit('joinGame', { gameId: gameIdRef.current });
+                    joinGameRoom(gameIdRef.current);
                 }
             });
 
@@ -587,31 +617,22 @@ export default function GamePage() {
                 newSocket.disconnect();
             }
         }
-    }, []); // Only run once on mount
+    }, [isHydrated, socket, user?.id]);
 
     useEffect(() => {
         if (!socket) return;
-
-        // Re-join if gameId changes or on reconnection
-        const handleRejoin = () => {
-            if (socket.connected && gameId) {
-                console.log('Re-joining game room:', gameId);
-                socket.emit('joinGame', { gameId });
-            }
-        };
-
-        // Only call immediately if already connected; the 'connect' event
-        // will handle the initial join if the socket is still connecting.
-        if (socket.connected) {
-            handleRejoin();
-        }
-        socket.on('connect', handleRejoin);
 
         socket.on('joinedGame', (data: { gameId?: string; playerColor?: 'WHITE' | 'BLACK' }) => {
             if (!data?.playerColor) return;
             setViewerColor(data.playerColor);
             if (typeof window !== 'undefined' && data.gameId) {
                 window.sessionStorage.setItem(`tzdraft:game:${data.gameId}:color`, data.playerColor);
+                if (participantIdRef.current) {
+                    window.sessionStorage.setItem(
+                        `tzdraft:game:${data.gameId}:participantId`,
+                        participantIdRef.current,
+                    );
+                }
             }
         });
 
@@ -799,7 +820,6 @@ export default function GamePage() {
             socket.off('playerDisconnected');
             socket.off('playerReconnected');
             socket.off('disconnect');
-            socket.off('connect');
         };
     }, [buildResultCard, getBoardSignature, router, socket, syncClockSnapshot]);
 

@@ -496,6 +496,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Tell the joining client which perspective to render from.
     // This avoids relying on fragile client-side sessionStorage when refreshing.
+    let resolvedPlayerColor: 'WHITE' | 'BLACK' | null = null;
     if (participantId) {
       try {
         const game = await this.gameRepository.findById(gameId);
@@ -505,6 +506,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
             : game?.blackPlayerId === participantId
               ? 'BLACK'
               : null;
+        resolvedPlayerColor = playerColor;
 
         if (playerColor) {
           client.emit('joinedGame', { gameId, playerColor });
@@ -537,7 +539,12 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
       }
     }
-    return { status: 'success', message: `Joined game ${gameId}` };
+    return {
+      status: 'success',
+      message: `Joined game ${gameId}`,
+      playerColor: resolvedPlayerColor,
+      participantId,
+    };
   }
 
   @SubscribeMessage('makeMove')
