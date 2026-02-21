@@ -34,8 +34,9 @@ export function FriendlyMatchRequests({ refreshTrigger }: FriendlyMatchRequestsP
       setError(null);
       const data = await friendService.getIncomingFriendlyInvites();
       setInvites((data || []).filter((invite: IncomingInvite) => invite.status === "PENDING"));
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load match requests");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load match requests";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -56,8 +57,9 @@ export function FriendlyMatchRequests({ refreshTrigger }: FriendlyMatchRequestsP
         }
         router.push(`/game/${data.gameId}`);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to accept request");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to accept request";
+      setError(message);
     } finally {
       setActingOn(null);
       loadIncoming();
@@ -69,8 +71,9 @@ export function FriendlyMatchRequests({ refreshTrigger }: FriendlyMatchRequestsP
       setActingOn(inviteId);
       await friendService.declineFriendlyInvite(inviteId);
       setInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to decline request");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to decline request";
+      setError(message);
     } finally {
       setActingOn(null);
     }
@@ -85,44 +88,60 @@ export function FriendlyMatchRequests({ refreshTrigger }: FriendlyMatchRequestsP
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6 shadow-2xl">
-      <h2 className="mb-4 text-xl font-bold text-neutral-100">
-        Friendly Match Requests ({invites.length})
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6 shadow-2xl overflow-hidden relative">
+      {/* Accent gradient line */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-50" />
+
+      <h2 className="mb-4 text-xl font-bold text-neutral-100 flex items-center gap-2">
+        Game Challenges
+        {invites.length > 0 && (
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
+            {invites.length}
+          </span>
+        )}
       </h2>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
           {error}
         </div>
       )}
 
       {invites.length === 0 ? (
-        <p className="text-sm text-neutral-400">No incoming challenges right now.</p>
+        <div className="py-2 text-center">
+          <p className="text-sm text-neutral-500 italic">No incoming challenges right now.</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {invites.map((invite) => (
             <div
               key={invite.id}
-              className="flex items-center justify-between rounded-lg border border-neutral-800/60 bg-neutral-800/30 p-3"
+              className="group flex items-center justify-between rounded-xl border border-neutral-800/60 bg-neutral-800/20 p-4 transition hover:bg-neutral-800/40"
             >
-              <div>
-                <p className="font-semibold text-neutral-100">{invite.host.displayName}</p>
-                <p className="text-xs text-neutral-400">@{invite.host.username}</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                  {invite.host.displayName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-bold text-neutral-100">{invite.host.displayName}</p>
+                  <p className="text-xs text-neutral-500">@{invite.host.username}</p>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleAccept(invite)}
-                  disabled={actingOn === invite.id}
-                  className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-60"
-                >
-                  Accept
-                </button>
-                <button
                   onClick={() => handleDecline(invite.id)}
                   disabled={actingOn === invite.id}
-                  className="rounded-md border border-red-500/40 bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/25 disabled:opacity-60"
+                  className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-1.5 text-xs font-semibold text-neutral-400 hover:bg-neutral-800 hover:text-red-400 transition-all disabled:opacity-60"
                 >
                   Decline
+                </button>
+                <button
+                  onClick={() => handleAccept(invite)}
+                  disabled={actingOn === invite.id}
+                  className="rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 flex items-center gap-1"
+                >
+                  {actingOn === invite.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                  Accept
                 </button>
               </div>
             </div>

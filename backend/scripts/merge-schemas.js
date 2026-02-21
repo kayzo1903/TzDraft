@@ -11,18 +11,17 @@ const outputFile = path.join(__dirname, '..', 'prisma', 'schema.prisma');
 
 // Order matters! base.prisma must come first
 const schemaFiles = [
-  'base.prisma',
-  'user.prisma',
-  'game.prisma',
-  'move.prisma',
-  'clock.prisma',
-  'friend.prisma',
+  'base.prisma.part',
+  'user.prisma.part',
+  'game.prisma.part',
+  'move.prisma.part',
+  'clock.prisma.part',
+  'friend.prisma.part',
 ];
 
 console.log('🔄 Merging Prisma schemas...\n');
 
 let mergedContent = '';
-let addedHeader = false;
 
 schemaFiles.forEach((file) => {
   const filePath = path.join(schemaDir, file);
@@ -35,13 +34,12 @@ schemaFiles.forEach((file) => {
   console.log(`   Reading ${file}...`);
   let content = fs.readFileSync(filePath, 'utf8');
 
-  // For base.prisma, keep everything
-  if (file === 'base.prisma') {
+  // For base.prisma.part, keep everything
+  if (file === 'base.prisma.part') {
     mergedContent += content + '\n\n';
-    addedHeader = true;
   } else {
     // For other files, remove generator and datasource blocks
-    // They should only be in base.prisma
+    // They should only be in base.prisma.part
     content = content
       .replace(/generator\s+\w+\s*{[^}]*}/gs, '')
       .replace(/datasource\s+\w+\s*{[^}]*}/gs, '')

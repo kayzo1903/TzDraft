@@ -26,8 +26,6 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyFriendId, setBusyFriendId] = useState<string | null>(null);
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [waitingUrl, setWaitingUrl] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const onlineCount = useMemo(
@@ -35,10 +33,6 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
     [friends, onlineMap],
   );
 
-  const toLocaleRelativePath = (urlOrPath: string) => {
-    const rawPath = urlOrPath.replace(/^https?:\/\/[^/]+/i, "");
-    return rawPath.replace(/^\/(en|sw)(\/|$)/, "/");
-  };
 
   const loadFriends = async () => {
     try {
@@ -55,8 +49,9 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
 
       setFriends(friendData || []);
       setOnlineMap(onlineData.onlineMap || {});
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load friends");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load friends";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -70,8 +65,9 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
     try {
       await friendService.removeFriend(friendId);
       setFriends((prev) => prev.filter((f) => f.id !== friendId));
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to remove friend");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to remove friend";
+      setError(message);
     }
   };
 
@@ -81,44 +77,24 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
       setError(null);
       setActionMessage(null);
 
-      const invite = await friendService.createFriendlyMatchInvite({ friendId, locale });
-      setInviteUrl(invite.inviteUrl || null);
-      setWaitingUrl(invite.waitingUrl || null);
+      const invite = await friendService.createFriendlyInvite({ friendId, locale });
       setActionMessage("Challenge sent. Waiting for your friend to accept.");
+
+      // If the friend accepts immediately or it's already accepted, redirect
       if (invite.gameId) {
         router.push(`/game/${invite.gameId}`);
+      } else if (invite.id) {
+        // Option: automatically go to wait room for challenges too?
+        // router.push(`/game/friendly/wait/${invite.id}`);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to send challenge");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to send challenge";
+      setError(message);
     } finally {
       setBusyFriendId(null);
     }
   };
 
-  const handleCreateInviteLink = async () => {
-    try {
-      setError(null);
-      setActionMessage(null);
-      const invite = await friendService.createFriendlyMatchInvite({ locale });
-      setInviteUrl(invite.inviteUrl || null);
-      setWaitingUrl(invite.waitingUrl || null);
-      setActionMessage("Invite link created. Share it with your friend.");
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create invite link");
-    }
-  };
-
-  const handleShareWhatsApp = () => {
-    if (!inviteUrl) return;
-    const text = `Join my friendly match: ${inviteUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  };
-
-  const handleCopyInvite = async () => {
-    if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setActionMessage("Invite link copied.");
-  };
 
   if (loading) {
     return (
@@ -131,16 +107,12 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6 shadow-2xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-neutral-100">
+        <h2 className="text-xl font-bold text-neutral-100 italic">
           My Friends ({friends.length}){" "}
-          <span className="text-sm font-medium text-emerald-300">Online: {onlineCount}</span>
+          <span className="text-xs font-medium text-emerald-300 not-italic ml-2 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            {onlineCount} Online
+          </span>
         </h2>
-        <button
-          onClick={handleCreateInviteLink}
-          className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
-        >
-          Create Invite Link
-        </button>
       </div>
 
       {error && (
@@ -155,38 +127,6 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
         </div>
       )}
 
-      {inviteUrl && (
-        <div className="mb-4 rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
-          <p className="mb-2 text-xs text-neutral-400">Friendly Invite Link</p>
-          <p className="truncate rounded bg-neutral-900/80 px-2 py-1 text-xs text-neutral-200">
-            {inviteUrl}
-          </p>
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={handleShareWhatsApp}
-              className="inline-flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/25"
-            >
-              <MessageCircle size={14} />
-              WhatsApp
-            </button>
-            <button
-              onClick={handleCopyInvite}
-              className="inline-flex items-center gap-2 rounded-md border border-neutral-600 bg-neutral-800 px-3 py-1.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-700"
-            >
-              <Copy size={14} />
-              Copy
-            </button>
-            {waitingUrl && (
-              <button
-                onClick={() => router.push(toLocaleRelativePath(waitingUrl))}
-                className="inline-flex items-center gap-2 rounded-md border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-sky-200 hover:bg-sky-500/25"
-              >
-                Wait 60s
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {friends.length === 0 ? (
         <div className="py-12 text-center">

@@ -36,7 +36,7 @@ export default function FriendsPage() {
     const onFriendlyMatchInvited = (data: { hostDisplayName?: string }) => {
       const hostName = data?.hostDisplayName || "A friend";
       setBanner(`${hostName} sent you a friendly match request.`);
-      setRefreshTrigger((prev) => prev + 1);
+      setRefreshTrigger((prev: number) => prev + 1);
     };
 
     const onGameStarted = (data: {
@@ -111,19 +111,27 @@ export default function FriendsPage() {
             <div className="h-12 w-12 rounded-full bg-[var(--primary)] flex items-center justify-center">
               <Users size={24} className="text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-black text-neutral-100 tracking-tight">Friends</h1>
               <p className="mt-1 text-neutral-400">
-                Manage your friendships and connect with other players
+                Manage your connections and challenge them to a game
               </p>
             </div>
-            <button
-              onClick={handleRefresh}
-              className="ml-auto inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
-            >
-              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/play/friend")}
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-[var(--primary)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Challenge a Friend
+              </button>
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all"
+                title="Refresh friends list"
+              >
+                <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+              </button>
+            </div>
           </div>
           {banner && (
             <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">

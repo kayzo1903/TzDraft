@@ -1,37 +1,72 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { friendService } from "@/services/friend.service";
 import { useRouter } from "@/i18n/routing";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Copy,
+  CheckCircle2,
+  Share2,
+  X,
+  Settings2,
+  ShieldQuestion,
+  PlayCircle,
+} from "lucide-react";
 import { useSocket } from "@/hooks/useSocket";
+import { useAuth } from "@/hooks/useAuth";
+import { getOrCreateGuestId } from "@/lib/auth/guest-id";
+import { QRCodeSVG } from "qrcode.react";
+import { Button } from "@/components/ui/Button";
+
+type InviteData = {
+  id: string;
+  status: string;
+  gameId?: string | null;
+  inviteToken?: string;
+  initialTimeMs: number;
+  hostColor: string;
+  rated: boolean;
+  allowSpectators: boolean;
+  host: { id: string; displayName: string };
+  guest?: { id: string; displayName: string } | null;
+};
 
 export default function FriendlyWaitPage() {
   const { inviteId } = useParams<{ inviteId: string }>();
   const router = useRouter();
   const socket = useSocket();
+  const { user, isHydrated } = useAuth();
+
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(60);
-  const [status, setStatus] = useState<string>("PENDING");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [linkViews, setLinkViews] = useState(0);
-  const [opponentMessage, setOpponentMessage] = useState<string | null>(null);
-  const timedOut = useMemo(() => secondsLeft <= 0, [secondsLeft]);
+  const [inviteData, setInviteData] = useState<InviteData | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const loadInvite = async (silent = false) => {
+  const [opponentName, setOpponentName] = useState<string | null>(null);
+  const [opponentPresent, setOpponentPresent] = useState(false);
+  const [starting, setStarting] = useState(false);
+
+  const participantId = isHydrated ? (user?.id ?? getOrCreateGuestId()) : null;
+  const isHost = participantId === inviteData?.host?.id;
+
+  const loadInvite = useCallback(async () => {
     if (!inviteId) return;
     try {
-      if (!silent) setLoading(true);
+      setLoading(true);
       setError(null);
-      const invite = await friendService.getFriendlyInviteById(inviteId);
-      setStatus(invite?.status || "PENDING");
-      if (invite?.gameId) {
-        router.push(`/game/${invite.gameId}`);
-        return;
+      const guestId = !user?.id && isHydrated ? getOrCreateGuestId() : undefined;
+      const invite = await friendService.getFriendlyInviteById(inviteId, guestId);
+      setInviteData(invite);
+
+      if (invite?.status === "ACCEPTED") {
+        setOpponentPresent(true);
+        if (invite.guest?.displayName) setOpponentName(invite.guest.displayName);
       }
+
       if (invite?.inviteToken && typeof window !== "undefined") {
         const origin = window.location.origin;
         const locale = window.location.pathname.split("/")[1] || "sw";
@@ -40,144 +75,333 @@ export default function FriendlyWaitPage() {
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to load invite status");
     } finally {
-      if (!silent) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  };
+  }, [inviteId, user?.id, isHydrated]);
 
   useEffect(() => {
     loadInvite();
-  }, [inviteId, router]);
+  }, [loadInvite]);
+
+  const hasJoinedWaitroom = useRef(false);
+  const doJoinWaitingRoom = useCallback(() => {
+    if (!socket || !inviteId || !inviteData || !participantId) return;
+    const displayName =
+      user?.displayName ??
+      (participantId === inviteData.host?.id
+        ? inviteData.host?.displayName
+        : inviteData.guest?.displayName) ??
+      "Player";
+    socket.emit("joinWaitingRoom", { inviteId, displayName });
+    hasJoinedWaitroom.current = true;
+  }, [socket, inviteId, inviteData, participantId, user]);
 
   useEffect(() => {
-    if (timedOut || status !== "PENDING") return;
-    const timer = window.setInterval(() => {
-      setSecondsLeft((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [status, timedOut]);
+    if (!socket) return;
+    const onConnect = () => doJoinWaitingRoom();
+    socket.on("connect", onConnect);
+    return () => {
+      socket.off("connect", onConnect);
+    };
+  }, [socket, doJoinWaitingRoom]);
 
   useEffect(() => {
     if (!socket || !inviteId) return;
 
-    const onGameStarted = (data: { gameId?: string; inviteId?: string }) => {
-      if (!data?.gameId) return;
-      if (data.inviteId && data.inviteId !== inviteId) return;
-      router.push(`/game/${data.gameId}`);
-    };
-    const onLinkViewed = (data: { inviteId?: string; totalViews?: number }) => {
-      if (!data?.inviteId || data.inviteId !== inviteId) return;
-      setLinkViews(Math.max(0, Number(data.totalViews || 0)));
-    };
-    const onOpponentJoined = (data: { inviteId?: string; guestDisplayName?: string }) => {
-      if (!data?.inviteId || data.inviteId !== inviteId) return;
-      if (data.guestDisplayName) {
-        setOpponentMessage(`${data.guestDisplayName} joined. Starting game...`);
+    const onPresence = (data: {
+      inviteId?: string;
+      participantId?: string;
+      displayName?: string;
+    }) => {
+      if (data.inviteId !== inviteId) return;
+      if (data.participantId && data.participantId !== participantId) {
+        setOpponentPresent(true);
+        if (data.displayName) setOpponentName(data.displayName);
       }
     };
 
-    socket.on("gameStarted", onGameStarted);
-    socket.on("friendlyInviteLinkViewed", onLinkViewed);
-    socket.on("friendlyInviteOpponentJoined", onOpponentJoined);
-    return () => {
-      socket.off("gameStarted", onGameStarted);
-      socket.off("friendlyInviteLinkViewed", onLinkViewed);
-      socket.off("friendlyInviteOpponentJoined", onOpponentJoined);
+    const onOpponentJoined = (data: {
+      inviteId?: string;
+      guestDisplayName?: string;
+      gameId?: string;
+    }) => {
+      if (data.inviteId !== inviteId) return;
+      setOpponentPresent(true);
+      if (data.guestDisplayName) setOpponentName(data.guestDisplayName);
+      loadInvite();
     };
-  }, [inviteId, router, socket]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadInvite(true);
-    window.setTimeout(() => setRefreshing(false), 400);
+    const onGameActivated = (data: { gameId?: string }) => {
+      if (!data?.gameId) return;
+      router.push(`/game/${data.gameId}`);
+    };
+
+    socket.on("waitingRoomPresence", onPresence);
+    socket.on("friendlyInviteOpponentJoined", onOpponentJoined);
+    socket.on("gameActivated", onGameActivated);
+
+    if (socket.connected && !hasJoinedWaitroom.current) {
+      doJoinWaitingRoom();
+    }
+
+    return () => {
+      socket.off("waitingRoomPresence", onPresence);
+      socket.off("friendlyInviteOpponentJoined", onOpponentJoined);
+      socket.off("gameActivated", onGameActivated);
+    };
+  }, [socket, inviteId, participantId, router, doJoinWaitingRoom, loadInvite]);
+
+  useEffect(() => {
+    if (!starting) return;
+    const interval = setInterval(async () => {
+      try {
+        const guestId = !user?.id && isHydrated ? getOrCreateGuestId() : undefined;
+        const invite = await friendService.getFriendlyInviteById(inviteId, guestId);
+        if (invite?.gameId && invite?.status !== "PENDING") {
+          router.push(`/game/${invite.gameId}`);
+        }
+      } catch {
+        // Ignore polling errors in fallback path.
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [starting, inviteId, router, user?.id, isHydrated]);
+
+  const handleStartGame = async () => {
+    if (!isHost) return;
+    const gameId = inviteData?.gameId;
+    if (!gameId) return;
+    try {
+      setStarting(true);
+      socket?.emit("joinGame", { gameId });
+      socket?.emit("readyForGame", { gameId, inviteId });
+    } catch {
+      setStarting(false);
+    }
   };
 
   const handleCancelInvite = async () => {
     try {
       await friendService.cancelFriendlyInvite(inviteId);
-      setStatus("CANCELED");
+      router.push("/play/friend");
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to cancel invite");
     }
   };
 
+  const handleCopy = () => {
+    if (!inviteUrl) return;
+    navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!inviteUrl) return;
+    const isSwahili =
+      typeof window !== "undefined" && window.location.pathname.startsWith("/sw");
+    const text = isSwahili
+      ? `Nakuchallenge mchezo wa Tanzania Draughts! Bonyeza hapa ucheze: ${inviteUrl}`
+      : `I challenge you to a game of Tanzania Draughts! Click here to play: ${inviteUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--background)]">
-        <Loader2 className="animate-spin text-[var(--primary)]" size={36} />
+        <Loader2 className="animate-spin text-[var(--primary)]" size={40} />
       </main>
     );
   }
 
+  const timeLabel = inviteData?.initialTimeMs
+    ? `${Math.round(inviteData.initialTimeMs / 60000)} min`
+    : "10 min";
+
+  const hostName = inviteData?.host?.displayName ?? "Host";
+  const guestName = opponentName ?? inviteData?.guest?.displayName;
+
+  const leftPlayer = isHost
+    ? { name: hostName, role: "HOST" }
+    : { name: guestName ?? "You", role: "GUEST" };
+  const rightPlayer = isHost
+    ? { name: guestName, role: "GUEST" }
+    : { name: hostName, role: "HOST" };
+
+  const canStart = Boolean(isHost && opponentPresent && inviteData?.gameId);
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 text-[var(--foreground)]">
-      <div className="w-full max-w-md rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6 shadow-2xl">
-        <h1 className="text-2xl font-black text-neutral-100">Waiting For Friend</h1>
-        <p className="mt-2 text-sm text-neutral-300">
-          Share the invite link and wait up to 60 seconds for a response.
-        </p>
-
-        {inviteUrl && (
-          <div className="mt-4 rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
-            <p className="mb-2 text-xs text-neutral-400">Invite Link</p>
-            <p className="truncate rounded bg-neutral-900/80 px-2 py-1 text-xs text-neutral-200">
-              {inviteUrl}
-            </p>
-            <p className="mt-2 text-xs text-neutral-400">Link opened: {linkViews}</p>
-          </div>
-        )}
-
-        {opponentMessage && (
-          <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {opponentMessage}
-          </div>
-        )}
-
-        <div className="mt-4 rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-center">
-          <div className="text-xs uppercase tracking-wide text-sky-300">Time left</div>
-          <div className="mt-1 text-2xl font-bold text-sky-100">{secondsLeft}s</div>
+    <main className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-8 text-[var(--foreground)]">
+      <div className="w-full max-w-2xl rounded-3xl border border-neutral-800 bg-neutral-900/60 p-6 md:p-10 shadow-2xl backdrop-blur-xl">
+        <div className="mb-8 text-center">
+          <h1 className="mb-1 text-3xl font-black tracking-tight text-white">
+            Match Lobby
+          </h1>
+          <p className="text-sm text-neutral-400">
+            {!opponentPresent
+              ? "Waiting for your opponent to join..."
+              : isHost
+                ? "Opponent joined. Click Start Game to begin."
+                : "Waiting for host to start the match..."}
+          </p>
         </div>
 
-        {timedOut && status === "PENDING" && (
-          <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            No response in 60 seconds. Your friend may be in another match right now.
-          </div>
-        )}
-
-        {status !== "PENDING" && (
-          <div className="mt-4 rounded-lg border border-neutral-700 bg-neutral-800/40 px-4 py-3 text-sm text-neutral-200">
-            Invite status: {status.toLowerCase()}
-          </div>
-        )}
-
         {error && (
-          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-200">
             {error}
           </div>
         )}
 
-        <div className="mt-6 flex flex-col gap-2">
-          <button
-            onClick={handleRefresh}
-            className="rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
-          >
-            {refreshing ? "Refreshing..." : "Refresh Status"}
-          </button>
-          <button
-            onClick={handleCancelInvite}
-            disabled={status !== "PENDING"}
-            className="rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/25 disabled:opacity-60"
-          >
-            Cancel Invite
-          </button>
-          <button
-            onClick={() => router.push("/friends")}
-            className="rounded-lg border border-neutral-700 bg-transparent px-4 py-2 text-sm font-semibold text-neutral-300 hover:bg-neutral-800"
-          >
-            Back to Friends
-          </button>
+        <div className="mb-10 flex flex-col items-center justify-center gap-6 md:flex-row md:gap-10">
+          <div className="flex flex-col items-center">
+            <div
+              className={`relative mb-3 flex h-24 w-24 items-center justify-center rounded-full border-4 ${
+                starting ? "border-emerald-500" : "border-[var(--primary)]/40"
+              } bg-neutral-800 shadow-xl transition-all duration-300`}
+            >
+              <User
+                className={starting ? "text-emerald-400" : "text-[var(--primary)]"}
+                size={40}
+              />
+              {starting && (
+                <div className="absolute -bottom-2 -right-2 rounded-full border-2 border-neutral-900 bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                  STARTING
+                </div>
+              )}
+            </div>
+            <h3 className="mb-0.5 text-lg font-bold text-white">{leftPlayer.name}</h3>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--primary)]">
+              {leftPlayer.role} - You
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <div className="flex h-12 w-12 rotate-12 items-center justify-center rounded-xl bg-neutral-800/80 text-sm font-black text-neutral-500 shadow-inner">
+              VS
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <div
+              className={`relative mb-3 flex h-24 w-24 items-center justify-center rounded-full border-4 ${
+                opponentPresent
+                  ? "border-neutral-500 bg-neutral-800"
+                  : "border-neutral-800 border-dashed bg-neutral-800/30"
+              } shadow-xl transition-all duration-500`}
+            >
+              {opponentPresent ? (
+                <User className="text-neutral-300" size={40} />
+              ) : (
+                <ShieldQuestion className="animate-pulse text-neutral-600" size={40} />
+              )}
+            </div>
+            <h3
+              className={`mb-0.5 text-lg font-bold ${
+                opponentPresent ? "text-white" : "text-neutral-500"
+              }`}
+            >
+              {rightPlayer.name ?? "Waiting..."}
+            </h3>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              {rightPlayer.role}
+            </span>
+          </div>
         </div>
+
+        <div className="mb-8 flex flex-wrap justify-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-full bg-neutral-800/80 px-4 py-1.5 text-xs font-semibold text-neutral-300">
+            <Settings2 size={13} className="text-neutral-400" /> {timeLabel}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-neutral-800/80 px-4 py-1.5 text-xs font-semibold text-neutral-300">
+            {inviteData?.rated ? "Rated" : "Casual"}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-neutral-800/80 px-4 py-1.5 text-xs font-semibold capitalize text-neutral-300">
+            {inviteData?.hostColor?.toLowerCase()} pieces
+          </div>
+        </div>
+
+        {canStart && (
+          <div className="mb-6">
+            <Button
+              size="lg"
+              onClick={handleStartGame}
+              disabled={starting}
+              className={`w-full text-lg font-black transition-all ${
+                starting
+                  ? "cursor-not-allowed bg-emerald-700 text-white"
+                  : "bg-emerald-600 text-white hover:bg-emerald-500"
+              }`}
+            >
+              {starting ? (
+                <>
+                  <CheckCircle2 size={20} className="mr-2" /> Starting match...
+                </>
+              ) : (
+                <>
+                  <PlayCircle size={22} className="mr-2" /> Start Game
+                </>
+              )}
+            </Button>
+            <p className="mt-2 text-center text-xs text-neutral-500">
+              Host starts the match after opponent joins
+            </p>
+          </div>
+        )}
+
+        {!opponentPresent && inviteUrl && isHost && (
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-800/30 p-6">
+            <p className="mb-4 text-sm font-semibold text-neutral-300">
+              Share this link with your opponent:
+            </p>
+            <div className="flex flex-col items-center gap-6 md:flex-row">
+              <div className="pointer-events-none select-none rounded-xl bg-white p-2">
+                <QRCodeSVG value={inviteUrl} size={100} level="H" includeMargin={false} />
+              </div>
+              <div className="w-full flex-1 space-y-3">
+                <div className="flex items-center rounded-xl border border-neutral-700 bg-neutral-900/80 p-1.5">
+                  <div className="flex-1 truncate px-3 py-2 text-sm font-medium text-neutral-300">
+                    {inviteUrl}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={handleCopy}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center p-0"
+                  >
+                    {copied ? (
+                      <CheckCircle2 size={16} className="text-emerald-400" />
+                    ) : (
+                      <Copy size={16} />
+                    )}
+                  </Button>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleWhatsAppShare}
+                    className="flex-1 bg-[#25D366] text-white hover:bg-[#128C7E]"
+                  >
+                    <Share2 size={18} className="mr-2" /> Send via WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelInvite}
+                    className="flex h-12 w-12 shrink-0 items-center justify-center border-red-500/30 p-0 text-red-400 hover:bg-red-500/10"
+                    title="Cancel Invite"
+                  >
+                    <X size={20} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isHost && (
+          <div className="mt-4 text-center text-sm text-neutral-500">
+            {opponentPresent
+              ? "Host can start the match now..."
+              : "Waiting for the host to be ready..."}
+          </div>
+        )}
       </div>
     </main>
   );

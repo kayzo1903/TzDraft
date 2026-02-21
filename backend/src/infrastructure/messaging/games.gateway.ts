@@ -55,6 +55,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     { offeredBy: string; offeredTo: string; timer: NodeJS.Timeout }
   >();
   private readonly REMATCH_TTL_MS = 60_000;
+  // Tracks which players have clicked "Start Game" per gameId
+  private readonly readyStates = new Map<string, Set<string>>();
 
   constructor(
     @Inject(forwardRef(() => MatchmakingService))
@@ -125,7 +127,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (existing) return;
 
     const token = participantId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const displayName = guestName?.trim() || `Guest-${token.slice(0, 8)}`;
+    // Same fix as controller: suffix token so displayName stays unique
+    const baseName = guestName?.trim() || 'Guest';
+    const displayName = `${baseName}-${token.slice(0, 8)}`;
     await this.prisma.user.create({
       data: {
         id: participantId,
@@ -233,7 +237,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'error', message: 'No active draw offer' };
     }
     if (offer.offeredBy === participantId) {
-      return { status: 'error', message: 'Cannot respond to your own draw offer' };
+      return {
+        status: 'error',
+        message: 'Cannot respond to your own draw offer',
+      };
     }
 
     if (data.accept) {
@@ -286,6 +293,188 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { status: 'success' };
   }
 
+  /**
+   * Join the waiting room socket channel for a friendly invite.
+   * Both host and guest call this while on the /wait/[inviteId] page.
+   * The gateway joins them to a room named `waitroom-{inviteId}` so they
+   * can receive real-time events (opponentJoined, gameActivated).
+   */
+  @SubscribeMessage('joinWaitingRoom')
+  async handleJoinWaitingRoom(
+    @MessageBody() data: { inviteId: string; displayName?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const inviteId = data?.inviteId;
+    if (!inviteId) return { status: 'error', message: 'inviteId required' };
+
+    const participantId = this.getSocketParticipantId(client);
+    const room = `waitroom-${inviteId}`;
+    client.join(room);
+    this.logger.log(
+      `Client ${client.id} (${participantId ?? 'unknown'}) joined waiting room ${room}`,
+    );
+
+    // Notify everyone in the waiting room that this participant joined
+    // (the other player will update their UI to show the opponent is present)
+    this.server.to(room).emit('waitingRoomPresence', {
+      inviteId,
+      participantId,
+      displayName: data?.displayName,
+    });
+    return { status: 'success' };
+  }
+
+  /**
+   * Player signals they are ready to start the game.
+   * When BOTH players have sent this, the gateway activates the game.
+   */
+  @SubscribeMessage('readyForGame')
+  async handleReadyForGame(
+    @MessageBody() data: { gameId: string; inviteId?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const participantId = this.getSocketParticipantId(client);
+    if (!participantId) {
+      return { status: 'error', message: 'Participant not identified' };
+    }
+    const gameId = data?.gameId;
+    if (!gameId) return { status: 'error', message: 'gameId required' };
+
+    try {
+      const game = await this.gameRepository.findById(gameId);
+      if (!game) return { status: 'error', message: 'Game not found' };
+      if (game.status !== 'WAITING') {
+        return { status: 'already_active', gameId };
+      }
+      if (
+        game.whitePlayerId !== participantId &&
+        game.blackPlayerId !== participantId
+      ) {
+        return { status: 'error', message: 'Player not in this game' };
+      }
+
+      const waitroom = data?.inviteId ? `waitroom-${data.inviteId}` : null;
+
+      // Preferred flow for friendly invites: host starts after guest joins lobby.
+      if (data?.inviteId) {
+        const invite = await (this.prisma as any).friendlyMatch.findUnique({
+          where: { id: data.inviteId },
+          select: {
+            hostId: true,
+            guestId: true,
+            gameId: true,
+            status: true,
+          },
+        });
+
+        const inviteMatchesGame =
+          invite &&
+          invite.status === 'ACCEPTED' &&
+          invite.gameId === gameId &&
+          invite.guestId;
+
+        if (inviteMatchesGame) {
+          if (participantId !== invite.hostId) {
+            return {
+              status: 'waiting_host',
+              message: 'Only host can start this match',
+            };
+          }
+
+          this.readyStates.delete(gameId);
+          game.start();
+          await this.gameRepository.update(game);
+          this.logger.log(`Friendly game ${gameId} activated by host`);
+          this.scheduleGameTimeout(
+            gameId,
+            game.initialTimeMs,
+            game.whitePlayerId!,
+          );
+
+          const readyPayload = {
+            gameId,
+            readyPlayers: [invite.hostId, invite.guestId],
+          };
+          this.server.to(gameId).emit('readyStateUpdated', readyPayload);
+          if (waitroom) {
+            this.server.to(waitroom).emit('readyStateUpdated', readyPayload);
+          }
+
+          const activatedPayload = {
+            gameId,
+            status: 'ACTIVE',
+            currentTurn: 'WHITE',
+            clockInfo: {
+              whiteTimeMs: game.initialTimeMs,
+              blackTimeMs: game.initialTimeMs,
+            },
+            serverTimeMs: Date.now(),
+          };
+          this.server.to(gameId).emit('gameActivated', activatedPayload);
+          if (waitroom) {
+            this.server.to(waitroom).emit('gameActivated', activatedPayload);
+          }
+
+          return { status: 'success', mode: 'host_start' };
+        }
+      }
+
+      // Backward-compatible flow: activate only after both players ready.
+      if (!this.readyStates.has(gameId)) {
+        this.readyStates.set(gameId, new Set());
+      }
+      this.readyStates.get(gameId)!.add(participantId);
+      const readySet = this.readyStates.get(gameId)!;
+
+      const readyPayload = {
+        gameId,
+        readyPlayers: [...readySet],
+      };
+      this.server.to(gameId).emit('readyStateUpdated', readyPayload);
+      if (waitroom) {
+        this.server.to(waitroom).emit('readyStateUpdated', readyPayload);
+      }
+
+      const bothReady =
+        game.whitePlayerId &&
+        game.blackPlayerId &&
+        readySet.has(game.whitePlayerId) &&
+        readySet.has(game.blackPlayerId);
+
+      if (bothReady) {
+        this.readyStates.delete(gameId);
+        game.start();
+        await this.gameRepository.update(game);
+        this.logger.log(`Friendly game ${gameId} activated via readyForGame`);
+        this.scheduleGameTimeout(
+          gameId,
+          game.initialTimeMs,
+          game.whitePlayerId!,
+        );
+
+        const activatedPayload = {
+          gameId,
+          status: 'ACTIVE',
+          currentTurn: 'WHITE',
+          clockInfo: {
+            whiteTimeMs: game.initialTimeMs,
+            blackTimeMs: game.initialTimeMs,
+          },
+          serverTimeMs: Date.now(),
+        };
+        this.server.to(gameId).emit('gameActivated', activatedPayload);
+        if (waitroom) {
+          this.server.to(waitroom).emit('gameActivated', activatedPayload);
+        }
+      }
+
+      return { status: 'success', readyCount: readySet.size };
+    } catch (err: any) {
+      this.logger.warn(`readyForGame failed game=${gameId}`, err);
+      return { status: 'error', message: 'Failed to process readyForGame' };
+    }
+  }
+
   @SubscribeMessage('joinGame')
   async handleJoinGame(
     @MessageBody() payload: string | { gameId?: string },
@@ -320,6 +509,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
         if (playerColor) {
           client.emit('joinedGame', { gameId, playerColor });
         }
+
+        // Activation of WAITING games is now done via the readyForGame event
+        // (both players click "Start Game" in the waiting room).
 
         const disconnectEntries = [...this.disconnectState.values()].filter(
           (entry) =>
@@ -519,10 +711,19 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'error', message: 'Game not found' };
     }
     if (previousGame.gameType === GameType.AI) {
-      return { status: 'error', message: 'Rematch is only available for PvP games' };
+      return {
+        status: 'error',
+        message: 'Rematch is only available for PvP games',
+      };
     }
-    if (previousGame.status !== 'FINISHED' && previousGame.status !== 'ABORTED') {
-      return { status: 'error', message: 'Rematch is available after the game ends' };
+    if (
+      previousGame.status !== 'FINISHED' &&
+      previousGame.status !== 'ABORTED'
+    ) {
+      return {
+        status: 'error',
+        message: 'Rematch is available after the game ends',
+      };
     }
     if (
       previousGame.whitePlayerId !== participantId &&
@@ -565,7 +766,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { status: 'success', state: 'waiting' };
     }
     if (pending.offeredTo !== participantId) {
-      return { status: 'error', message: 'Rematch request belongs to different players' };
+      return {
+        status: 'error',
+        message: 'Rematch request belongs to different players',
+      };
     }
 
     this.clearRematchRequest(gameId);
@@ -604,7 +808,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const whiteId = rematchGame.whitePlayerId;
       const blackId = rematchGame.blackPlayerId;
       if (!whiteId || !blackId) {
-        return { status: 'error', message: 'Failed to initialize rematch players' };
+        return {
+          status: 'error',
+          message: 'Failed to initialize rematch players',
+        };
       }
 
       const [whiteSockets, blackSockets] = await Promise.all([
@@ -769,7 +976,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return `${gameId}:${userId}`;
   }
 
-  private async hasConnectedSocket(userId: string, roomId?: string): Promise<boolean> {
+  private async hasConnectedSocket(
+    userId: string,
+    roomId?: string,
+  ): Promise<boolean> {
     const sockets = roomId
       ? await this.server.in(roomId).fetchSockets()
       : await this.server.fetchSockets();
@@ -803,7 +1013,10 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     for (const game of activeGames) {
-      const connectedInGameRoom = await this.hasConnectedSocket(userId, game.id);
+      const connectedInGameRoom = await this.hasConnectedSocket(
+        userId,
+        game.id,
+      );
       if (connectedInGameRoom) {
         this.logger.log(
           `Skipping disconnect forfeit game=${game.id} user=${userId} (still connected in room)`,
@@ -895,3 +1108,5 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 }
+
+

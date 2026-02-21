@@ -600,7 +600,11 @@ export default function GamePage() {
             }
         };
 
-        handleRejoin();
+        // Only call immediately if already connected; the 'connect' event
+        // will handle the initial join if the socket is still connecting.
+        if (socket.connected) {
+            handleRejoin();
+        }
         socket.on('connect', handleRejoin);
 
         socket.on('joinedGame', (data: { gameId?: string; playerColor?: 'WHITE' | 'BLACK' }) => {
@@ -620,6 +624,23 @@ export default function GamePage() {
             setRematchState('idle');
             setRematchError(null);
             router.push(`/game/${data.gameId}`);
+        });
+
+        socket.on('gameActivated', (data: { gameId?: string; status?: string; currentTurn?: string; clockInfo?: { whiteTimeMs: number; blackTimeMs: number }; serverTimeMs?: number }) => {
+            if (!data?.gameId || data.gameId !== gameId) return;
+            // Update local game status so the board becomes interactive
+            setGame((prev) => {
+                if (!prev) return prev;
+                return { ...prev, status: 'ACTIVE' };
+            });
+            // Sync the initial clock snapshot from the server
+            if (data.clockInfo && data.currentTurn) {
+                syncClockSnapshot(
+                    data.clockInfo,
+                    data.currentTurn as 'WHITE' | 'BLACK',
+                    Number(data.serverTimeMs || Date.now()),
+                );
+            }
         });
 
         socket.on('gameStateUpdated', (data: any) => {
@@ -765,6 +786,7 @@ export default function GamePage() {
         return () => {
             socket.off('joinedGame');
             socket.off('gameStarted');
+            socket.off('gameActivated');
             socket.off('gameStateUpdated');
             socket.off('gameOver');
             socket.off('drawOffered');

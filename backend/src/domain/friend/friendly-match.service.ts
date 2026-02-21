@@ -1,13 +1,15 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { FriendService } from './friend.service';
 
-const INVITE_TTL_MS = 60 * 1000;
+const INVITE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const FriendlyMatchStatus = {
   PENDING: 'PENDING',
   ACCEPTED: 'ACCEPTED',
@@ -15,10 +17,13 @@ const FriendlyMatchStatus = {
   CANCELED: 'CANCELED',
   EXPIRED: 'EXPIRED',
 } as const;
-type FriendlyMatchStatus = (typeof FriendlyMatchStatus)[keyof typeof FriendlyMatchStatus];
+type FriendlyMatchStatus =
+  (typeof FriendlyMatchStatus)[keyof typeof FriendlyMatchStatus];
 
 @Injectable()
 export class FriendlyMatchService {
+  private readonly logger = new Logger(FriendlyMatchService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly friendService: FriendService,
@@ -26,14 +31,25 @@ export class FriendlyMatchService {
 
   async createInvite(
     hostId: string,
-    dto: { friendId?: string; initialTimeMs?: number; gameId?: string },
+    dto: {
+      friendId?: string;
+      initialTimeMs?: number;
+      gameId?: string;
+      roomType?: string;
+      hostColor?: string;
+      rated?: boolean;
+      allowSpectators?: boolean;
+    },
   ) {
     if (dto.friendId && dto.friendId === hostId) {
       throw new BadRequestException('Cannot invite yourself');
     }
 
     if (dto.friendId) {
-      const areFriends = await this.friendService.areFriends(hostId, dto.friendId);
+      const areFriends = await this.friendService.areFriends(
+        hostId,
+        dto.friendId,
+      );
       if (!areFriends) {
         throw new BadRequestException('You can only challenge your friends');
       }
@@ -41,7 +57,7 @@ export class FriendlyMatchService {
 
     const now = new Date();
     const initialTimeMs = this.normalizeInitialTime(dto.initialTimeMs);
-    return (this.prisma as any).friendlyMatch.create({
+    return this.prisma.friendlyMatch.create({
       data: {
         hostId,
         invitedFriendId: dto.friendId || null,
@@ -49,6 +65,10 @@ export class FriendlyMatchService {
         status: FriendlyMatchStatus.PENDING,
         gameId: dto.gameId || null,
         initialTimeMs,
+        roomType: dto.roomType || 'single',
+        hostColor: dto.hostColor || 'RANDOM',
+        rated: dto.rated || false,
+        allowSpectators: dto.allowSpectators ?? true,
         expiresAt: new Date(now.getTime() + INVITE_TTL_MS),
       },
       include: {
@@ -63,7 +83,7 @@ export class FriendlyMatchService {
   }
 
   async getInviteByToken(token: string) {
-    const invite = await (this.prisma as any).friendlyMatch.findUnique({
+    const invite = await this.prisma.friendlyMatch.findUnique({
       where: { inviteToken: token },
       include: {
         host: {
@@ -85,8 +105,8 @@ export class FriendlyMatchService {
     return this.expireIfNeeded(invite);
   }
 
-  async getInviteById(id: string, userId: string) {
-    const invite = await (this.prisma as any).friendlyMatch.findUnique({
+  async getInviteById(id: string, actorId: string | null) {
+    const invite = await this.prisma.friendlyMatch.findUnique({
       where: { id },
       include: {
         host: {
@@ -105,19 +125,14 @@ export class FriendlyMatchService {
       throw new NotFoundException('Match invite not found');
     }
 
-    if (
-      invite.hostId !== userId &&
-      invite.invitedFriendId !== userId &&
-      invite.guestId !== userId
-    ) {
-      throw new BadRequestException('Not allowed to access this invite');
-    }
-
+    // Invite IDs are non-guessable UUIDs — anyone who holds the ID
+    // (host, accepted guest, or redirected viewer) may read it.
+    // No per-user auth check needed here.
     return this.expireIfNeeded(invite);
   }
 
   async listIncoming(userId: string) {
-    const invites = await (this.prisma as any).friendlyMatch.findMany({
+    const invites = await this.prisma.friendlyMatch.findMany({
       where: {
         invitedFriendId: userId,
         status: FriendlyMatchStatus.PENDING,
@@ -135,7 +150,7 @@ export class FriendlyMatchService {
   }
 
   async listOutgoing(hostId: string) {
-    const invites = await (this.prisma as any).friendlyMatch.findMany({
+    const invites = await this.prisma.friendlyMatch.findMany({
       where: {
         hostId,
         status: {
@@ -166,7 +181,7 @@ export class FriendlyMatchService {
       throw new BadRequestException('Only pending invites can be canceled');
     }
     await this.cleanupLinkedPendingGame(invite.gameId);
-    return (this.prisma as any).friendlyMatch.update({
+    return this.prisma.friendlyMatch.update({
       where: { id: inviteId },
       data: { status: FriendlyMatchStatus.CANCELED },
     });
@@ -203,13 +218,18 @@ export class FriendlyMatchService {
     // Direct friend challenges remain friend-only.
     // Open link invites (no invitedFriendId) are intentionally open to anyone with the link.
     if (invite.invitedFriendId) {
-      const areFriends = await this.friendService.areFriends(invite.hostId, guestId);
+      const areFriends = await this.friendService.areFriends(
+        invite.hostId,
+        guestId,
+      );
       if (!areFriends) {
-        throw new BadRequestException('Only friends can accept this direct challenge');
+        throw new BadRequestException(
+          'Only friends can accept this direct challenge',
+        );
       }
     }
 
-    const updated = await (this.prisma as any).friendlyMatch.updateMany({
+    const updated = await this.prisma.friendlyMatch.updateMany({
       where: {
         id: invite.id,
         status: FriendlyMatchStatus.PENDING,
@@ -226,7 +246,7 @@ export class FriendlyMatchService {
       throw new BadRequestException('Invite already accepted or expired');
     }
 
-    return (this.prisma as any).friendlyMatch.findUniqueOrThrow({
+    return this.prisma.friendlyMatch.findUniqueOrThrow({
       where: { id: invite.id },
       include: {
         host: {
@@ -240,14 +260,14 @@ export class FriendlyMatchService {
   }
 
   async attachGame(inviteId: string, gameId: string) {
-    return (this.prisma as any).friendlyMatch.update({
+    return this.prisma.friendlyMatch.update({
       where: { id: inviteId },
       data: { gameId },
     });
   }
 
   async rollbackAcceptance(inviteId: string) {
-    await (this.prisma as any).friendlyMatch.update({
+    await this.prisma.friendlyMatch.update({
       where: { id: inviteId },
       data: {
         status: FriendlyMatchStatus.PENDING,
@@ -259,16 +279,19 @@ export class FriendlyMatchService {
 
   private normalizeInitialTime(initialTimeMs?: number): number {
     if (!Number.isFinite(initialTimeMs)) return 600000;
-    return Math.min(60 * 60 * 1000, Math.max(60 * 1000, Math.floor(initialTimeMs!)));
+    return Math.min(
+      60 * 60 * 1000,
+      Math.max(60 * 1000, Math.floor(initialTimeMs!)),
+    );
   }
 
-  private async expireIfNeeded<T extends { id: string; status: FriendlyMatchStatus; expiresAt: Date }>(
-    invite: T,
-  ): Promise<T> {
+  private async expireIfNeeded<
+    T extends { id: string; status: FriendlyMatchStatus; expiresAt: Date },
+  >(invite: T): Promise<T> {
     if (invite.status !== FriendlyMatchStatus.PENDING) return invite;
     if (invite.expiresAt.getTime() > Date.now()) return invite;
 
-    await (this.prisma as any).friendlyMatch.update({
+    await this.prisma.friendlyMatch.update({
       where: { id: invite.id },
       data: { status: FriendlyMatchStatus.EXPIRED },
     });

@@ -42,7 +42,7 @@ export default function PlayPage() {
             title: t('modes.friend.title'),
             description: t('modes.friend.description'),
             icon: <Users className="w-8 h-8 text-purple-400" />,
-            href: '/friends',
+            href: '/play/friend',
             enabled: true,
             comingSoon: false,
             comingSoonLabel: '',

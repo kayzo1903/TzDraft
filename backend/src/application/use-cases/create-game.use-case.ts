@@ -25,7 +25,7 @@ export class CreateGameUseCase {
   ) {}
 
   /**
-   * Create a new PvP game
+   * Create a new PvP game (started immediately — used for matchmaking/rematch)
    */
   async createPvPGame(
     whitePlayerId: string | null,
@@ -67,6 +67,44 @@ export class CreateGameUseCase {
     }
 
     return createdGame;
+  }
+
+  /**
+   * Create a friendly (WAITING) PvP game for the invite/link flow.
+   * Does NOT call game.start() and does NOT schedule a clock timeout.
+   * The game will be activated by the gateway once both players have
+   * joined the WebSocket room via the `joinGame` event.
+   */
+  async createFriendlyGame(
+    whitePlayerId: string | null,
+    blackPlayerId: string | null,
+    whiteElo: number | null,
+    blackElo: number | null,
+    whiteGuestName?: string,
+    blackGuestName?: string,
+    gameType: GameType = GameType.CASUAL,
+    initialTimeMs: number = 600000,
+  ): Promise<Game> {
+    const game = new Game(
+      randomUUID(),
+      whitePlayerId,
+      blackPlayerId,
+      whiteGuestName || null,
+      blackGuestName || null,
+      gameType,
+      whiteElo,
+      blackElo,
+      null,
+      initialTimeMs,
+      {
+        whiteTimeMs: initialTimeMs,
+        blackTimeMs: initialTimeMs,
+        lastMoveAt: new Date(),
+      },
+    );
+    // Intentionally NOT calling game.start() here.
+    // Game stays in WAITING until both players join the socket room.
+    return this.gameRepository.create(game);
   }
 
   /**

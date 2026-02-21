@@ -66,12 +66,19 @@ export const friendService = {
     return response.data;
   },
 
-  async createFriendlyMatchInvite(payload?: {
+  async createFriendlyInvite(payload?: {
     friendId?: string;
     initialTimeMs?: number;
     locale?: "en" | "sw";
+    roomType?: string;
+    hostColor?: string;
+    rated?: boolean;
+    allowSpectators?: boolean;
   }) {
-    const response = await axiosInstance.post("/friends/matches", payload || {});
+    const response = await axiosInstance.post(
+      "/friends/matches",
+      payload || {},
+    );
     return response.data as {
       id: string;
       inviteToken: string;
@@ -82,9 +89,12 @@ export const friendService = {
   },
 
   async getFriendlyInviteByToken(token: string, guestId?: string) {
-    const response = await axiosInstance.get(`/friends/matches/invites/${token}`, {
-      params: guestId ? { guestId } : undefined,
-    });
+    const response = await axiosInstance.get(
+      `/friends/matches/invites/${token}`,
+      {
+        params: guestId ? { guestId } : undefined,
+      },
+    );
     return response.data;
   },
 
@@ -92,7 +102,10 @@ export const friendService = {
     token: string,
     payload?: { guestId?: string; guestName?: string },
   ) {
-    const response = await axiosInstance.post(`/friends/matches/invites/${token}/accept`, payload || {});
+    const response = await axiosInstance.post(
+      `/friends/matches/invites/${token}/accept`,
+      payload || {},
+    );
     return response.data as {
       status: string;
       gameId: string;
@@ -111,8 +124,10 @@ export const friendService = {
     return response.data;
   },
 
-  async getFriendlyInviteById(id: string) {
-    const response = await axiosInstance.get(`/friends/matches/${id}`);
+  async getFriendlyInviteById(id: string, guestId?: string) {
+    const response = await axiosInstance.get(`/friends/matches/${id}`, {
+      params: guestId ? { guestId } : undefined,
+    });
     return response.data;
   },
 

@@ -31,9 +31,10 @@ export function PendingRequests({ refreshTrigger, onActionComplete }: PendingReq
       setLoading(true);
       setError(null);
       const data = await friendService.getPendingRequests();
-      setRequests(data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load friend requests");
+      setRequests(data || []);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load friend requests";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -47,10 +48,11 @@ export function PendingRequests({ refreshTrigger, onActionComplete }: PendingReq
     try {
       setResponding(requesterId);
       await friendService.acceptFriendRequest(requesterId);
-      setRequests(requests.filter((r) => r.requester.id !== requesterId));
+      setRequests((prev) => prev.filter((r) => r.requester.id !== requesterId));
       onActionComplete?.();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to accept request");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to accept request";
+      setError(message);
     } finally {
       setResponding(null);
     }
@@ -60,10 +62,11 @@ export function PendingRequests({ refreshTrigger, onActionComplete }: PendingReq
     try {
       setResponding(requesterId);
       await friendService.rejectFriendRequest(requesterId);
-      setRequests(requests.filter((r) => r.requester.id !== requesterId));
+      setRequests((prev) => prev.filter((r) => r.requester.id !== requesterId));
       onActionComplete?.();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to reject request");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to reject request";
+      setError(message);
     } finally {
       setResponding(null);
     }
@@ -82,11 +85,19 @@ export function PendingRequests({ refreshTrigger, onActionComplete }: PendingReq
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6 shadow-2xl">
-      <h2 className="text-xl font-bold text-neutral-100 mb-4">Friend Requests ({requests.length})</h2>
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6 shadow-2xl overflow-hidden relative">
+      {/* Accent gradient line */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-50" />
+
+      <h2 className="text-xl font-bold text-neutral-100 mb-4 flex items-center gap-2">
+        Friend Requests
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
+          {requests.length}
+        </span>
+      </h2>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-lg mb-4">
+        <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl mb-4 text-sm">
           {error}
         </div>
       )}
@@ -95,47 +106,47 @@ export function PendingRequests({ refreshTrigger, onActionComplete }: PendingReq
         {requests.map((request) => (
           <div
             key={request.id}
-            className="flex items-center justify-between p-4 rounded-lg border border-neutral-800/50 bg-blue-500/10"
+            className="flex items-center justify-between p-4 rounded-xl border border-neutral-800/50 bg-blue-500/5 transition hover:bg-blue-500/10"
           >
             <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)] to-amber-300 flex items-center justify-center text-black font-semibold text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">
                 {request.requester.displayName.charAt(0).toUpperCase()}
               </div>
-              <div>
-                <h3 className="font-semibold text-neutral-100">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-neutral-100 truncate">
                   {request.requester.displayName}
                 </h3>
-                <p className="text-sm text-neutral-400">@{request.requester.username}</p>
+                <p className="text-xs text-neutral-500">@{request.requester.username}</p>
                 {request.requester.rating && (
-                  <p className="text-xs text-neutral-500 mt-1">
-                    Rating: <span className="font-semibold text-neutral-300">{request.requester.rating}</span>
+                  <p className="text-[10px] font-bold text-neutral-600 mt-1">
+                    RATING: <span className="text-blue-400/80">{request.requester.rating}</span>
                   </p>
                 )}
               </div>
             </div>
             <div className="flex gap-2 ml-4">
               <button
-                onClick={() => handleAccept(request.requester.id)}
-                disabled={responding === request.requester.id}
-                className="p-2 bg-green-500/20 hover:bg-green-500/30 disabled:bg-neutral-700 text-green-400 rounded-lg transition flex items-center gap-1 border border-green-500/30"
-                title="Accept request"
-              >
-                {responding === request.requester.id ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Check size={18} />
-                )}
-              </button>
-              <button
                 onClick={() => handleReject(request.requester.id)}
                 disabled={responding === request.requester.id}
-                className="p-2 bg-red-500/20 hover:bg-red-500/30 disabled:bg-neutral-700 text-red-400 rounded-lg transition flex items-center gap-1 border border-red-500/30"
+                className="p-2.5 bg-neutral-800 hover:bg-neutral-800 hover:text-red-400 text-neutral-500 rounded-xl transition-all border border-neutral-700 disabled:opacity-50"
                 title="Reject request"
               >
                 {responding === request.requester.id ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <X size={18} />
+                )}
+              </button>
+              <button
+                onClick={() => handleAccept(request.requester.id)}
+                disabled={responding === request.requester.id}
+                className="p-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.05] active:scale-[0.95] disabled:opacity-50"
+                title="Accept request"
+              >
+                {responding === request.requester.id ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Check size={18} />
                 )}
               </button>
             </div>

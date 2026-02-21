@@ -6,13 +6,19 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  NotFoundException,
   Param,
   Post,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { Public } from '../../../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -46,7 +52,16 @@ export class FriendlyMatchController {
   @ApiResponse({ status: 201, description: 'Invite created' })
   async createInvite(
     @CurrentUser() user: any,
-    @Body() dto: { friendId?: string; initialTimeMs?: number; locale?: 'en' | 'sw' },
+    @Body()
+    dto: {
+      friendId?: string;
+      initialTimeMs?: number;
+      locale?: 'en' | 'sw';
+      roomType?: string;
+      hostColor?: string;
+      rated?: boolean;
+      allowSpectators?: boolean;
+    },
   ) {
     const payload = dto || {};
     let gameId: string | undefined;
@@ -87,25 +102,31 @@ export class FriendlyMatchController {
       }
       throw error;
     }
-    const locale = payload.locale === 'en' ? 'en' : payload.locale === 'sw' ? 'sw' : 'en';
-    const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(
-      /\/$/,
-      '',
-    );
+    const locale =
+      payload.locale === 'en' ? 'en' : payload.locale === 'sw' ? 'sw' : 'en';
+    const frontendBase = (
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ).replace(/\/$/, '');
     const inviteUrl = `${frontendBase}/${locale}/game/friendly/${invite.inviteToken}`;
     const waitingUrl = `${frontendBase}/${locale}/game/friendly/wait/${invite.id}`;
 
     if (invite.invitedFriendId) {
-      const isOnline = await this.gamesGateway.isParticipantOnline(invite.invitedFriendId);
+      const isOnline = await this.gamesGateway.isParticipantOnline(
+        invite.invitedFriendId,
+      );
       if (isOnline) {
-        await this.gamesGateway.emitToParticipant(invite.invitedFriendId, 'friendlyMatchInvited', {
-          inviteId: invite.id,
-          inviteToken: invite.inviteToken,
-          hostId: invite.hostId,
-          hostDisplayName: invite.host.displayName,
-          inviteUrl,
-          expiresAt: invite.expiresAt,
-        });
+        await this.gamesGateway.emitToParticipant(
+          invite.invitedFriendId,
+          'friendlyMatchInvited',
+          {
+            inviteId: invite.id,
+            inviteToken: invite.inviteToken,
+            hostId: invite.hostId,
+            hostDisplayName: invite.host.displayName,
+            inviteUrl,
+            expiresAt: invite.expiresAt,
+          },
+        );
       }
     }
 
@@ -114,7 +135,10 @@ export class FriendlyMatchController {
       gameId: invite.gameId || gameId || null,
       inviteUrl,
       waitingUrl,
-      whatsappShareText: `Join my friendly match: ${inviteUrl}`,
+      whatsappShareText:
+        locale === 'sw'
+          ? `🎯 Nakuchallenge mchezo wa Tanzania Draughts! Bonyeza hapa ucheze: ${inviteUrl}`
+          : `🎯 I challenge you to a game of Tanzania Draughts! Click here to play: ${inviteUrl}`,
     };
   }
 
@@ -144,10 +168,14 @@ export class FriendlyMatchController {
         this.inviteViewers.set(invite.id, viewers);
       }
       viewers.add(String(viewerKey));
-      await this.gamesGateway.emitToParticipant(invite.hostId, 'friendlyInviteLinkViewed', {
-        inviteId: invite.id,
-        totalViews: viewers.size,
-      });
+      await this.gamesGateway.emitToParticipant(
+        invite.hostId,
+        'friendlyInviteLinkViewed',
+        {
+          inviteId: invite.id,
+          totalViews: viewers.size,
+        },
+      );
     }
 
     return { ...invite, canAccept };
@@ -168,10 +196,28 @@ export class FriendlyMatchController {
   }
 
   @Get(':id')
+  @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get a specific invite by id' })
-  async getById(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.friendlyMatchService.getInviteById(id, user.id);
+  @ApiOperation({
+    summary: 'Get a specific invite by id (host, guest, or invited friend)',
+  })
+  async getById(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Query('guestId') guestId?: string,
+  ) {
+    // Resolve actor: may be a JWT-authenticated user or a guest with a token
+    const actorId = user?.id || this.resolveGuestId(guestId) || null;
+    try {
+      return await this.friendlyMatchService.getInviteById(id, actorId);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to retrieve invite',
+      );
+    }
   }
 
   @Post('invites/:token/accept')
@@ -191,12 +237,15 @@ export class FriendlyMatchController {
       await this.ensureGuestParticipant(actorId, body?.guestName);
     }
 
-    const invite = await this.friendlyMatchService.reserveInviteForAccept(token, actorId);
+    const invite = await this.friendlyMatchService.reserveInviteForAccept(
+      token,
+      actorId,
+    );
 
     try {
       let gameId = invite.gameId as string | null;
       if (!gameId) {
-        const game = await this.createGameUseCase.createPvPGame(
+        const game = await this.createGameUseCase.createFriendlyGame(
           invite.hostId,
           actorId,
           500,
@@ -215,19 +264,17 @@ export class FriendlyMatchController {
         'friendlyInviteOpponentJoined',
         {
           inviteId: invite.id,
+          gameId,
           guestId: actorId,
-          guestDisplayName: invite.guest?.displayName || body?.guestName || 'Opponent',
+          guestDisplayName:
+            invite.guest?.displayName || body?.guestName || 'Opponent',
         },
       );
 
-      if (invite.hostId && actorId && gameId) {
-        await this.gamesGateway.notifyFriendlyMatchStarted(
-          gameId,
-          invite.hostId,
-          actorId,
-          invite.id,
-        );
-      }
+      // Host is already notified via friendlyInviteOpponentJoined (emitted above).
+      // Both players navigate via their own 3s countdown, then send joinGame from
+      // the game page, at which point the gateway activates the WAITING game.
+
       const persistedGame = await this.gameRepository.findById(gameId);
       const playerColor =
         persistedGame?.whitePlayerId === actorId
@@ -275,7 +322,9 @@ export class FriendlyMatchController {
   private async ensureGuestParticipant(guestId: string, guestName?: string) {
     const id = this.resolveGuestId(guestId);
     const token = id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const displayName = guestName?.trim() || `Guest-${token}`;
+    // Bug 6 fix: always suffix with token to prevent unique displayName collisions
+    const baseName = guestName?.trim() || 'Guest';
+    const displayName = `${baseName}-${token.slice(0, 6)}`;
     await this.prisma.user.upsert({
       where: { id },
       update: { displayName },
@@ -290,7 +339,8 @@ export class FriendlyMatchController {
   }
 
   private async hasBlockingActiveGame(playerId: string): Promise<boolean> {
-    const activeGames = await this.gameRepository.findActiveGamesByPlayer(playerId);
+    const activeGames =
+      await this.gameRepository.findActiveGamesByPlayer(playerId);
     if (activeGames.length === 0) return false;
 
     const activeIds = activeGames.map((g) => g.id);
