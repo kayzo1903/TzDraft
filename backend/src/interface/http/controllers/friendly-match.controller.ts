@@ -29,6 +29,7 @@ import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import type { IGameRepository } from '../../../domain/game/repositories/game.repository.interface';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { randomInt } from 'crypto';
+import { verify } from 'jsonwebtoken';
 
 @ApiTags('friendly-matches')
 @ApiBearerAuth()
@@ -58,7 +59,6 @@ export class FriendlyMatchController {
       initialTimeMs?: number;
       locale?: 'en' | 'sw';
       roomType?: string;
-      hostColor?: string;
       rated?: boolean;
       allowSpectators?: boolean;
     },
@@ -227,9 +227,10 @@ export class FriendlyMatchController {
   async accept(
     @CurrentUser() user: any,
     @Param('token') token: string,
+    @Req() req: any,
     @Body() body?: { guestId?: string; guestName?: string },
   ) {
-    const actorId = user?.id || this.resolveGuestId(body?.guestId);
+    const actorId = this.resolveActorId(user, req, body?.guestId);
     if (!actorId) {
       throw new BadRequestException('Missing player identity');
     }
@@ -317,6 +318,33 @@ export class FriendlyMatchController {
     const normalized = this.normalizeGuestId(input);
     if (normalized) return normalized;
     return randomInt(0, 1_000_000_000).toString().padStart(9, '0');
+  }
+
+  private resolveActorId(
+    user: any,
+    req: any,
+    guestId?: string,
+  ): string | null {
+    if (user?.id) return user.id;
+
+    const authHeader =
+      req?.headers?.authorization || req?.headers?.Authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice('Bearer '.length).trim();
+      const secret = process.env.JWT_SECRET;
+      if (token && secret) {
+        try {
+          const payload = verify(token, secret) as { sub?: unknown };
+          if (typeof payload?.sub === 'string' && payload.sub.length > 0) {
+            return payload.sub;
+          }
+        } catch {
+          // Fall through to guest-id resolution when bearer token is invalid.
+        }
+      }
+    }
+
+    return this.normalizeGuestId(guestId);
   }
 
   private async ensureGuestParticipant(guestId: string, guestName?: string) {

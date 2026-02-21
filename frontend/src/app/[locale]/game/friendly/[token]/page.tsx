@@ -17,7 +17,6 @@ type InviteData = {
   expiresAt: string;
   initialTimeMs: number;
   roomType: string;
-  hostColor: string;
   rated: boolean;
   allowSpectators: boolean;
   host: {
@@ -26,13 +25,6 @@ type InviteData = {
     displayName: string;
   };
 };
-
-// Bug 5 fix: derive the opponent's actual color from the host's preference
-function resolveOpponentColor(hostColor: string): string {
-  if (hostColor === "WHITE") return "Black";
-  if (hostColor === "BLACK") return "White";
-  return "Random";
-}
 
 export default function FriendlyInvitePage() {
   const { token } = useParams<{ token: string }>();
@@ -136,8 +128,8 @@ export default function FriendlyInvitePage() {
     ? `${Math.round(invite.initialTimeMs / 60000)} min`
     : "10 min";
 
-  // Bug 5 fix: show the opponent's actual color, not the host's preference
-  const opponentColorLabel = resolveOpponentColor(invite.hostColor);
+  // Friendly links are fixed: host plays White, guest plays Black.
+  const opponentColorLabel = "Black";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-8 text-[var(--foreground)]">
@@ -172,7 +164,6 @@ export default function FriendlyInvitePage() {
               <div className="text-[10px] uppercase tracking-wider text-neutral-500">Spectators</div>
               <div className="font-bold text-neutral-200">{invite.allowSpectators ? "Allowed" : "Off"}</div>
             </div>
-            {/* Bug 5 fix: show opponent's derived color, not the raw hostColor */}
             <div className="rounded-xl bg-neutral-900/50 p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500">Your Color</div>
               <div className="font-bold capitalize text-neutral-200">{opponentColorLabel}</div>

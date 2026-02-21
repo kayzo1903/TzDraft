@@ -71,7 +71,6 @@ export const friendService = {
     initialTimeMs?: number;
     locale?: "en" | "sw";
     roomType?: string;
-    hostColor?: string;
     rated?: boolean;
     allowSpectators?: boolean;
   }) {

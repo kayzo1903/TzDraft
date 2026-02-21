@@ -36,7 +36,6 @@ export class FriendlyMatchService {
       initialTimeMs?: number;
       gameId?: string;
       roomType?: string;
-      hostColor?: string;
       rated?: boolean;
       allowSpectators?: boolean;
     },
@@ -66,7 +65,7 @@ export class FriendlyMatchService {
         gameId: dto.gameId || null,
         initialTimeMs,
         roomType: dto.roomType || 'single',
-        hostColor: dto.hostColor || 'RANDOM',
+        hostColor: 'WHITE',
         rated: dto.rated || false,
         allowSpectators: dto.allowSpectators ?? true,
         expiresAt: new Date(now.getTime() + INVITE_TTL_MS),

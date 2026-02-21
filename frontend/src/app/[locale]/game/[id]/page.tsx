@@ -367,6 +367,16 @@ export default function GamePage() {
     useEffect(() => {
         const fetchGame = async () => {
             try {
+                setLoading(true);
+                setDisplayClock(null);
+                clockSnapshotRef.current = null;
+                setDisconnectCountdown(null);
+                setSelfDisconnectCountdown(null);
+                setDrawOffer(null);
+                setActionError(null);
+                setResultCard(null);
+                optimisticSnapshotRef.current = null;
+                setIsOptimistic(false);
                 const data = await gameService.getGame(gameId);
                 console.log('Fetched game data:', data);
                 // Check if data is nested or direct
@@ -521,103 +531,104 @@ export default function GamePage() {
 
     useEffect(() => {
         if (!isHydrated) return;
-        if (!socket) {
-            console.log('Initializing socket connection...');
-            // Ensure we are connecting to the correct namespace
-            const accessToken =
-                typeof window !== 'undefined'
-                    ? window.localStorage.getItem('accessToken')
-                    : null;
-            const persistedParticipantId =
-                typeof window !== 'undefined'
-                    ? window.sessionStorage.getItem(`tzdraft:game:${gameIdRef.current}:participantId`)
-                    : null;
-            const resolvedGuestId =
-                !user?.id && typeof window !== 'undefined' ? getOrCreateGuestId() : null;
-            const authPayload = accessToken
-                ? { token: accessToken }
-                : persistedParticipantId
-                    ? { guestId: persistedParticipantId }
-                    : resolvedGuestId
-                        ? { guestId: resolvedGuestId }
+
+        console.log('Initializing socket connection...');
+        const accessToken =
+            typeof window !== 'undefined'
+                ? window.localStorage.getItem('accessToken')
+                : null;
+        const persistedParticipantId =
+            typeof window !== 'undefined'
+                ? window.sessionStorage.getItem(`tzdraft:game:${gameIdRef.current}:participantId`)
+                : null;
+        const resolvedGuestId =
+            !user?.id && typeof window !== 'undefined' ? getOrCreateGuestId() : null;
+        const authPayload = accessToken
+            ? { token: accessToken }
+            : persistedParticipantId
+                ? { guestId: persistedParticipantId }
+                : resolvedGuestId
+                    ? { guestId: resolvedGuestId }
                     : undefined;
-            const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002/games', {
-                withCredentials: true,
-                auth: authPayload,
-                autoConnect: true,
-                transports: ['websocket', 'polling'], // Allow polling fallback
-                reconnection: true,
-                reconnectionAttempts: 5,
-            });
 
-            setSocket(newSocket);
+        const rawSocketBase =
+            process.env.NEXT_PUBLIC_SOCKET_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            'http://localhost:3002';
+        const socketUrl = rawSocketBase.endsWith('/games')
+            ? rawSocketBase
+            : `${rawSocketBase.replace(/\/$/, '')}/games`;
 
-            const joinGameRoom = (targetGameId: string) => {
-                newSocket.emit(
-                    'joinGame',
-                    { gameId: targetGameId },
-                    (ack?: { playerColor?: 'WHITE' | 'BLACK'; gameId?: string; participantId?: string }) => {
-                        if (!ack?.playerColor) return;
-                        setViewerColor(ack.playerColor);
-                        if (typeof window !== 'undefined') {
+        const newSocket = io(socketUrl, {
+            withCredentials: true,
+            auth: authPayload,
+            autoConnect: true,
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 5,
+        });
+
+        setSocket(newSocket);
+
+        const joinGameRoom = (targetGameId: string) => {
+            newSocket.emit(
+                'joinGame',
+                { gameId: targetGameId },
+                (ack?: { playerColor?: 'WHITE' | 'BLACK'; gameId?: string; participantId?: string }) => {
+                    if (!ack?.playerColor) return;
+                    setViewerColor(ack.playerColor);
+                    if (typeof window !== 'undefined') {
+                        window.sessionStorage.setItem(
+                            `tzdraft:game:${ack.gameId || targetGameId}:color`,
+                            ack.playerColor,
+                        );
+                        if (ack.participantId) {
                             window.sessionStorage.setItem(
-                                `tzdraft:game:${ack.gameId || targetGameId}:color`,
-                                ack.playerColor,
+                                `tzdraft:game:${ack.gameId || targetGameId}:participantId`,
+                                ack.participantId,
                             );
-                            if (ack.participantId) {
-                                window.sessionStorage.setItem(
-                                    `tzdraft:game:${ack.gameId || targetGameId}:participantId`,
-                                    ack.participantId,
-                                );
-                            }
                         }
-                    },
-                );
-            };
+                    }
+                },
+            );
+        };
 
-            newSocket.on('connect', () => {
-                const transport = (newSocket.io?.engine?.transport as any)?.name;
-                if (process.env.NODE_ENV === 'development') {
-                    console.debug('Socket connected successfully:', newSocket.id, { transport });
-                }
-                setIsConnected(true);
-                setActionError(null);
-
-                if (gameIdRef.current) {
-                    console.log('Emitting joinGame for:', gameIdRef.current);
-                    joinGameRoom(gameIdRef.current);
-                }
-            });
-
-            newSocket.on('connect_error', (err) => {
-                console.error('Socket connection error:', err.message);
-                // Only show error if persistent
-                if (!newSocket.active) {
-                    setActionError(`Connection failed: ${err.message}`);
-                    setIsConnected(false);
-                }
-            });
-
-            newSocket.on('disconnect', (reason) => {
-                console.warn('Socket disconnected:', reason);
-                setIsConnected(false);
-                if (reason === 'io server disconnect') {
-                    // unexpected disconnect by server
-                    newSocket.connect();
-                }
-            });
-
-            newSocket.on('connect_error', (error) => {
-                console.error('Socket connect_error:', error?.message || error);
-                setIsConnected(false);
-            });
-
-            return () => {
-                console.log('Cleaning up socket...');
-                newSocket.disconnect();
+        newSocket.on('connect', () => {
+            const transport = (newSocket.io?.engine?.transport as any)?.name;
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('Socket connected successfully:', newSocket.id, { transport });
             }
-        }
-    }, [isHydrated, socket, user?.id]);
+            setIsConnected(true);
+            setActionError(null);
+
+            if (gameIdRef.current) {
+                console.log('Emitting joinGame for:', gameIdRef.current);
+                joinGameRoom(gameIdRef.current);
+            }
+        });
+
+        newSocket.on('connect_error', (err) => {
+            console.error('Socket connection error:', err.message);
+            if (!newSocket.active) {
+                setActionError(`Connection failed: ${err.message}`);
+                setIsConnected(false);
+            }
+        });
+
+        newSocket.on('disconnect', (reason) => {
+            console.warn('Socket disconnected:', reason);
+            setIsConnected(false);
+            if (reason === 'io server disconnect') {
+                newSocket.connect();
+            }
+        });
+
+        return () => {
+            console.log('Cleaning up socket...');
+            newSocket.disconnect();
+            setSocket(null);
+        };
+    }, [isHydrated, user?.id]);
 
     useEffect(() => {
         if (!socket) return;

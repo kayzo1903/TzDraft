@@ -27,7 +27,6 @@ type InviteData = {
   gameId?: string | null;
   inviteToken?: string;
   initialTimeMs: number;
-  hostColor: string;
   rated: boolean;
   allowSpectators: boolean;
   host: { id: string; displayName: string };
@@ -315,8 +314,8 @@ export default function FriendlyWaitPage() {
           <div className="flex items-center gap-1.5 rounded-full bg-neutral-800/80 px-4 py-1.5 text-xs font-semibold text-neutral-300">
             {inviteData?.rated ? "Rated" : "Casual"}
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-neutral-800/80 px-4 py-1.5 text-xs font-semibold capitalize text-neutral-300">
-            {inviteData?.hostColor?.toLowerCase()} pieces
+          <div className="flex items-center gap-1.5 rounded-full bg-neutral-800/80 px-4 py-1.5 text-xs font-semibold text-neutral-300">
+            Host: White • Guest: Black
           </div>
         </div>
 

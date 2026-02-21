@@ -5,7 +5,7 @@ import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/hooks/useAuth";
 import { friendService } from "@/services/friend.service";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Copy, CheckCircle2, Share2, Users, Settings2, Clock, Globe } from "lucide-react";
+import { Loader2, Copy, CheckCircle2, Share2, Users, Clock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export default function FriendGameSetupPage() {
@@ -13,7 +13,6 @@ export default function FriendGameSetupPage() {
     const { user } = useAuth();
 
     const [timeControl, setTimeControl] = useState<number>(600000); // 10 mins
-    const [hostColor, setHostColor] = useState<string>("RANDOM");
     const [rated, setRated] = useState<boolean>(false);
     const [allowSpectators, setAllowSpectators] = useState<boolean>(true);
     const [roomType, setRoomType] = useState<string>("single");
@@ -37,7 +36,6 @@ export default function FriendGameSetupPage() {
             const isSwahili = typeof window !== "undefined" && window.location.pathname.startsWith("/sw");
             const resp = await friendService.createFriendlyInvite({
                 initialTimeMs: timeControl,
-                hostColor,
                 rated,
                 allowSpectators,
                 roomType,
@@ -131,48 +129,6 @@ export default function FriendGameSetupPage() {
                                             {label}
                                         </Button>
                                     ))}
-                                </div>
-                            </div>
-
-                            {/* Color Preference */}
-                            <div>
-                                <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-neutral-300">
-                                    <Settings2 size={16} /> Play As
-                                </label>
-                                <div className="flex gap-2 rounded-xl bg-neutral-800/50 p-1">
-                                    <Button
-                                        variant={hostColor === "WHITE" ? "primary" : "ghost"}
-                                        onClick={() => setHostColor("WHITE")}
-                                        className={`flex-1 flex-col gap-2 rounded-lg py-3 text-sm font-bold transition-all ${hostColor === "WHITE"
-                                            ? "bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20"
-                                            : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                                            }`}
-                                    >
-                                        <div className="h-6 w-6 rounded-full border border-neutral-400 bg-white" />
-                                        <span>White</span>
-                                    </Button>
-                                    <Button
-                                        variant={hostColor === "RANDOM" ? "primary" : "ghost"}
-                                        onClick={() => setHostColor("RANDOM")}
-                                        className={`flex-1 flex-col gap-2 rounded-lg py-3 text-sm font-bold transition-all ${hostColor === "RANDOM"
-                                            ? "bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20"
-                                            : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                                            }`}
-                                    >
-                                        <div className="h-6 w-6 rounded-full border border-neutral-400 bg-gradient-to-r from-white from-50% to-black to-50%" />
-                                        <span>Random</span>
-                                    </Button>
-                                    <Button
-                                        variant={hostColor === "BLACK" ? "primary" : "ghost"}
-                                        onClick={() => setHostColor("BLACK")}
-                                        className={`flex-1 flex-col gap-2 rounded-lg py-3 text-sm font-bold transition-all ${hostColor === "BLACK"
-                                            ? "bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20"
-                                            : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                                            }`}
-                                    >
-                                        <div className="h-6 w-6 rounded-full border border-neutral-600 bg-black" />
-                                        <span>Black</span>
-                                    </Button>
                                 </div>
                             </div>
 
