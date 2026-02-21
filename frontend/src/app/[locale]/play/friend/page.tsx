@@ -79,7 +79,7 @@ export default function FriendGameSetupPage() {
                     <h1 className="mb-2 text-2xl font-bold text-neutral-100">Sign in to Challenge</h1>
                     <p className="mb-6 text-neutral-400">You need an account to create custom invite links.</p>
                     <Button
-                        onClick={() => router.push("/auth/signin")}
+                        onClick={() => router.push("/auth/login")}
                         className="w-full"
                     >
                         Sign In Now

@@ -797,9 +797,18 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
           : Promise.resolve(),
       ]);
 
+      // `previousGame.initialTimeMs` is reconstructed from persisted clock and can
+      // reflect remaining time. For rematch, prefer the original invite time control.
+      const linkedFriendlyMatch = await (this.prisma as any).friendlyMatch.findFirst(
+        {
+          where: { gameId },
+          select: { initialTimeMs: true },
+          orderBy: { createdAt: 'desc' },
+        },
+      );
       const initialTimeMs = Math.max(
-        1000,
-        previousGame.initialTimeMs || 600000,
+        60_000,
+        Number(linkedFriendlyMatch?.initialTimeMs || 600_000),
       );
       const rematchGame = await this.createGameUseCase.createPvPGame(
         previousGame.blackPlayerId,
