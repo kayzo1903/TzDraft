@@ -48,6 +48,12 @@ export default function FriendlyWaitPage() {
   const [opponentName, setOpponentName] = useState<string | null>(null);
   const [opponentPresent, setOpponentPresent] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(
+    null,
+  );
+  const [selfDisconnectCountdown, setSelfDisconnectCountdown] = useState<
+    number | null
+  >(null);
 
   const participantId = isHydrated ? (user?.id ?? getOrCreateGuestId()) : null;
   const isHost = participantId === inviteData?.host?.id;
@@ -142,10 +148,51 @@ export default function FriendlyWaitPage() {
       loadInvite();
     };
 
+    const onPlayerDisconnected = (data: {
+      gameId?: string;
+      playerId?: string;
+      timeoutSec?: number;
+      deadlineMs?: number;
+    }) => {
+      if (!data?.playerId) return;
+      if (inviteData?.gameId && data.gameId && data.gameId !== inviteData.gameId) {
+        return;
+      }
+      const total = Number(data.timeoutSec) || 60;
+      const remainingFromDeadline = Number.isFinite(data.deadlineMs)
+        ? Math.max(1, Math.ceil((Number(data.deadlineMs) - Date.now()) / 1000))
+        : total;
+      const remaining = Math.max(1, remainingFromDeadline);
+      if (participantId && data.playerId === participantId) {
+        setSelfDisconnectCountdown(remaining);
+        return;
+      }
+      setDisconnectCountdown(remaining);
+    };
+
+    const onPlayerReconnected = (data: { gameId?: string; playerId?: string }) => {
+      if (!data?.playerId) return;
+      if (inviteData?.gameId && data.gameId && data.gameId !== inviteData.gameId) {
+        return;
+      }
+      if (participantId && data.playerId === participantId) {
+        setSelfDisconnectCountdown(null);
+        return;
+      }
+      setDisconnectCountdown(null);
+    };
+
+    const onSocketDisconnect = () => setSelfDisconnectCountdown(60);
+    const onSocketConnect = () => setSelfDisconnectCountdown(null);
+
     socket.on("waitingRoomPresence", onPresence);
     socket.on("friendlyInviteOpponentJoined", onOpponentJoined);
     socket.on("gameActivated", onGameActivated);
     socket.on("friendlyInviteDeclined", onInviteDeclined);
+    socket.on("playerDisconnected", onPlayerDisconnected);
+    socket.on("playerReconnected", onPlayerReconnected);
+    socket.on("disconnect", onSocketDisconnect);
+    socket.on("connect", onSocketConnect);
 
     if (socket.connected && !hasJoinedWaitroom.current) {
       doJoinWaitingRoom();
@@ -156,8 +203,44 @@ export default function FriendlyWaitPage() {
       socket.off("friendlyInviteOpponentJoined", onOpponentJoined);
       socket.off("gameActivated", onGameActivated);
       socket.off("friendlyInviteDeclined", onInviteDeclined);
+      socket.off("playerDisconnected", onPlayerDisconnected);
+      socket.off("playerReconnected", onPlayerReconnected);
+      socket.off("disconnect", onSocketDisconnect);
+      socket.off("connect", onSocketConnect);
     };
-  }, [socket, inviteId, participantId, router, doJoinWaitingRoom, loadInvite]);
+  }, [
+    socket,
+    inviteId,
+    inviteData?.gameId,
+    participantId,
+    router,
+    doJoinWaitingRoom,
+    loadInvite,
+  ]);
+
+  useEffect(() => {
+    if (disconnectCountdown === null) return;
+    const timer = window.setInterval(() => {
+      setDisconnectCountdown((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) return null;
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [disconnectCountdown]);
+
+  useEffect(() => {
+    if (selfDisconnectCountdown === null) return;
+    const timer = window.setInterval(() => {
+      setSelfDisconnectCountdown((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [selfDisconnectCountdown]);
 
   useEffect(() => {
     if (!starting) return;
@@ -257,6 +340,17 @@ export default function FriendlyWaitPage() {
         {error && (
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-200">
             {error}
+          </div>
+        )}
+        {disconnectCountdown !== null && (
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-sm text-amber-200">
+            Opponent disconnected. Auto-forfeit in {disconnectCountdown}s.
+          </div>
+        )}
+        {selfDisconnectCountdown !== null && (
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-200">
+            You are disconnected. Reconnect within {selfDisconnectCountdown}s to
+            avoid forfeit.
           </div>
         )}
 
