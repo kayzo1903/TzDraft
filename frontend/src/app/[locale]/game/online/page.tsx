@@ -6,7 +6,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { PlayModeSelection } from '@/components/game/PlayModeSelection';
 import { LoadingBoard } from '@/components/game/LoadingBoard';
 import { Board } from '@/components/game/Board';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2, Clock, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { nowFromServer, syncServerTime } from '@/lib/server-time';
@@ -150,11 +150,7 @@ export default function OnlineGamePage() {
         setSearchMode(null);
         setSearchDeadlineMs(null);
         setTimeLeft(60);
-        if (isTimeout) {
-            setQueueError('__MATCHMAKING_TIMEOUT__');
-        } else {
-            setQueueError(null);
-        }
+        setQueueError(isTimeout ? '__MATCHMAKING_TIMEOUT__' : '__MANUALLY_CANCELLED__');
         setAutoJoin(false); // Disable auto-join so user isn't immediately re-queued
     };
 
@@ -183,17 +179,32 @@ export default function OnlineGamePage() {
                 </div>
             </div>
         </div>
-    ) : queueError === '__MATCHMAKING_TIMEOUT__' ? (
+    ) : (queueError === '__MATCHMAKING_TIMEOUT__' || queueError === '__MANUALLY_CANCELLED__') ? (
         <div className="flex flex-col items-center justify-center gap-8 animate-in fade-in zoom-in duration-300">
             <div className="bg-black/60 backdrop-blur-sm p-8 rounded-2xl flex flex-col items-center shadow-2xl border border-white/10 w-full max-w-sm text-center">
-                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
-                    <Clock className="w-8 h-8 text-red-500 relative z-10" />
-                </div>
-                <h2 className="text-xl font-bold text-white mb-2 tracking-wide">No Opponent Found</h2>
-                <p className="text-neutral-400 text-sm mb-8 leading-relaxed">
-                    We couldn't find a match within the time limit. <br />
-                    Try again or play against the AI.
-                </p>
+                {queueError === '__MATCHMAKING_TIMEOUT__' ? (
+                    <>
+                        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
+                            <Clock className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white mb-2 tracking-wide">No Opponent Found</h2>
+                        <p className="text-neutral-400 text-sm mb-8 leading-relaxed">
+                            We couldn&apos;t find a match within the time limit.<br />
+                            Try searching again or choose another mode.
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <div className="w-16 h-16 rounded-full bg-neutral-500/10 flex items-center justify-center mb-6 border border-neutral-500/20">
+                            <XCircle className="w-8 h-8 text-neutral-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white mb-2 tracking-wide">Search Cancelled</h2>
+                        <p className="text-neutral-400 text-sm mb-8 leading-relaxed">
+                            You stopped searching for an opponent.<br />
+                            What would you like to do next?
+                        </p>
+                    </>
+                )}
 
                 <div className="flex flex-col gap-3 w-full">
                     <button
@@ -204,6 +215,12 @@ export default function OnlineGamePage() {
                         className="w-full px-4 py-3 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 active:scale-[0.98]"
                     >
                         Try Again
+                    </button>
+                    <button
+                        onClick={() => router.push('/play/friend')}
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 text-white font-medium hover:bg-white/10 transition-all border border-white/10 active:scale-[0.98]"
+                    >
+                        Play with Friend
                     </button>
                     <button
                         onClick={() => router.push('/game/setup-ai')}

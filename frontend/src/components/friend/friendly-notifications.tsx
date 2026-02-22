@@ -10,17 +10,17 @@ import { useAuth } from "@/hooks/useAuth";
 
 type Notification =
   | {
-      id: string;
-      type: "invite";
-      message: string;
-      inviteToken: string;
-    }
+    id: string;
+    type: "invite";
+    message: string;
+    inviteToken: string;
+  }
   | {
-      id: string;
-      type: "opponent-joined";
-      message: string;
-      inviteId: string;
-    };
+    id: string;
+    type: "opponent-joined";
+    message: string;
+    inviteId: string;
+  };
 
 export function FriendlyNotifications() {
   const router = useRouter();
@@ -64,6 +64,10 @@ export function FriendlyNotifications() {
   };
 
   useEffect(() => {
+    // Skip all real-time friend features for guests — they have no friend
+    // invites and polling the endpoint causes 401s that previously triggered
+    // a spurious redirect to the login page.
+    if (!user) return;
     if (!socket) return;
 
     const onFriendlyMatchInvited = (data: {
@@ -80,15 +84,16 @@ export function FriendlyNotifications() {
       inviteId?: string;
       guestDisplayName?: string;
     }) => {
-      if (!data?.inviteId) return;
+      const inviteId = data?.inviteId;
+      if (!inviteId) return;
       const guestName = data.guestDisplayName || "Your friend";
       setItems((prev) => [
         ...prev,
         {
-          id: `${Date.now()}-joined-${data.inviteId}`,
-          type: "opponent-joined",
+          id: `${Date.now()}-joined-${inviteId}`,
+          type: "opponent-joined" as const,
           message: `${guestName} joined your lobby. Start the match when ready.`,
-          inviteId: data.inviteId,
+          inviteId,
         },
       ]);
       window.dispatchEvent(new CustomEvent("tzdraft:friendsRefresh"));
@@ -107,7 +112,7 @@ export function FriendlyNotifications() {
       socket.off("connect", pollIncomingInvites);
       window.clearInterval(pollId);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   if (!nextItem) return null;
 

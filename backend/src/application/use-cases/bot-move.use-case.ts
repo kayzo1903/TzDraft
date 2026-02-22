@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { PlayerColor, GameStatus } from '../../shared/constants/game.constants';
 import { KallistoEngineService } from '../engines/kallisto-engine.service';
+import { EgtbService } from '../engines/egtb.service';
 import { MakeMoveUseCase } from './make-move.use-case';
 import { GameStateCacheService } from '../services/game-state-cache.service';
 
@@ -29,6 +30,7 @@ export class BotMoveUseCase {
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
     private readonly kallistoService: KallistoEngineService,
+    private readonly egtbService: EgtbService,
     @Inject(forwardRef(() => MakeMoveUseCase))
     private readonly makeMoveUseCase: MakeMoveUseCase,
     private readonly gameStateCache: GameStateCacheService,
@@ -78,6 +80,35 @@ export class BotMoveUseCase {
       color: p.color as unknown as 'WHITE' | 'BLACK',
       position: p.position.value,
     }));
+
+    const sideStr = botColor === PlayerColor.WHITE ? 'WHITE' : 'BLACK';
+
+    // ── EGTB lookup (king-only endgames ≤ 6 pieces) ──────────────────────────
+    // Consults the Russian draughts endgame tablebases for perfect endgame play
+    // at zero computation cost. Only engaged when all remaining pieces are kings.
+    const egtbMove = await this.egtbService.getBestMove(
+      pieces,
+      sideStr,
+      game.getMoveCount(),
+    );
+    if (egtbMove) {
+      console.log(
+        `[BotMove] EGTB move for game ${gameId}: ${egtbMove.from} → ${egtbMove.to}`,
+      );
+      try {
+        await this.makeMoveUseCase.execute(
+          gameId,
+          'AI',
+          egtbMove.from,
+          egtbMove.to,
+        );
+        console.log(`[BotMove] EGTB move submitted for game ${gameId}`);
+      } catch (err) {
+        console.error(`[BotMove] EGTB move failed for game ${gameId}:`, err);
+      }
+      return;
+    }
+    // ── Fall through to Kallisto ──────────────────────────────────────────────
 
     const moveRequest = {
       pieces,

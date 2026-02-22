@@ -73,9 +73,14 @@ axiosInstance.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refreshToken");
-        // if (!refreshToken) {
-        //   throw new Error("No refresh token");
-        // }
+
+        // Guest users have no refresh token — don't attempt a refresh and
+        // never redirect them to the login page; just propagate the error.
+        if (!refreshToken) {
+          processQueue(new Error("No refresh token"), null);
+          isRefreshing = false;
+          return Promise.reject(error);
+        }
 
         // Attempt refresh - backend handles cookie fallback if body token is missing
         const { data } = await axios.post(

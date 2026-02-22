@@ -25,6 +25,21 @@ export class MakeMoveUseCase {
   private readonly moveValidationService: MoveValidationService;
   private readonly gameRulesService: GameRulesService;
 
+  /**
+   * Per-game promise chain used to serialize async DB writes.
+   *
+   * Because we broadcast events before persisting (optimistic), two moves
+   * can be dispatched to `persistMoveAsync` concurrently for the same game.
+   * Running two Postgres transactions simultaneously that both UPDATE the same
+   * `game` and `clock` rows causes row-level lock contention / deadlocks,
+   * which triggers the moveRollback error players see as "Move could not be saved".
+   *
+   * The fix: chain each game's persist calls so they run one-after-another
+   * instead of truly in parallel. Since the broadcasts are already out and
+   * clients are not waiting, this adds no visible latency.
+   */
+  private readonly persistQueue = new Map<string, Promise<void>>();
+
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
@@ -187,21 +202,28 @@ export class MakeMoveUseCase {
     }
 
     // 10. Persist asynchronously — DB writes happen in the background.
-    //     If persistence fails, invalidate the cache and emit moveRollback
-    //     so clients can recover.
-    this.persistMoveAsync(game, correctedMove, evaluation).catch((err) => {
-      console.error(`persistMoveAsync failed game=${gameId}:`, err);
-      // Invalidate so the next load gets a fresh DB read.
-      this.gameStateCache.invalidate(gameId);
-      this.gamesGateway.emitMoveRollback(gameId, {
-        from: correctedMove.from.value,
-        to: correctedMove.to.value,
+    //     Chain onto the per-game queue so concurrent moves are serialized
+    //     and don't deadlock on shared game/clock rows in Postgres.
+    //     If persistence fails, invalidate the cache and emit moveRollback.
+    const prior = this.persistQueue.get(gameId) ?? Promise.resolve();
+    const next = prior
+      .then(() => this.persistMoveAsync(game, correctedMove, evaluation))
+      .catch((err) => {
+        console.error(`persistMoveAsync failed game=${gameId}:`, err);
+        this.gameStateCache.invalidate(gameId);
+        this.gamesGateway.emitMoveRollback(gameId, {
+          from: correctedMove.from.value,
+          to: correctedMove.to.value,
+        });
       });
-    });
+    this.persistQueue.set(gameId, next);
 
-    // Evict finished games from the cache — no more moves expected.
+    // Evict finished games from both the state cache and the persist queue.
     if (game.status === 'FINISHED') {
-      this.gameStateCache.invalidate(gameId);
+      next.finally(() => {
+        this.persistQueue.delete(gameId);
+        this.gameStateCache.invalidate(gameId);
+      });
     }
 
     return {
