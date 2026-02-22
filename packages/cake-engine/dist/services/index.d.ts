@@ -1,5 +1,5 @@
-export * from './capture-finding.service.js';
-export * from './move-generator.service.js';
-export * from './move-validation.service.js';
-export * from './game-rules.service.js';
+export * from './capture-finding.service';
+export * from './move-generator.service';
+export * from './move-validation.service';
+export * from './game-rules.service';
 //# sourceMappingURL=index.d.ts.map

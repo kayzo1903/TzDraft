@@ -1,4 +1,4 @@
-import { PieceType, PlayerColor, } from '../constants.js';
+import { PieceType, PlayerColor, } from '../constants';
 /**
  * Piece Value Object
  * Represents a single piece on the board

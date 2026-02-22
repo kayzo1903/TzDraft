@@ -1,7 +1,7 @@
-import { Piece } from "../value-objects/piece.vo.js";
-import { Position } from "../value-objects/position.vo.js";
-import { BoardState } from "../value-objects/board-state.vo.js";
-import { PlayerColor, Winner } from "../constants.js";
+import { Piece } from "../value-objects/piece.vo";
+import { Position } from "../value-objects/position.vo";
+import { BoardState } from "../value-objects/board-state.vo";
+import { PlayerColor, Winner } from "../constants";
 /**
  * Game Rules Service
  * Handles game-level rules like promotion, game end detection, and draw conditions

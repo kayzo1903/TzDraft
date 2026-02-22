@@ -1,4 +1,4 @@
-export * from './position.vo.js';
-export * from './piece.vo.js';
-export * from './board-state.vo.js';
+export * from './position.vo';
+export * from './piece.vo';
+export * from './board-state.vo';
 //# sourceMappingURL=index.d.ts.map

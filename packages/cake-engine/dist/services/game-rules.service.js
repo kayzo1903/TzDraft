@@ -1,6 +1,6 @@
-import { Position } from "../value-objects/position.vo.js";
-import { PlayerColor, Winner } from "../constants.js";
-import { CaptureFindingService } from "./capture-finding.service.js";
+import { Position } from "../value-objects/position.vo";
+import { PlayerColor, Winner } from "../constants";
+import { CaptureFindingService } from "./capture-finding.service";
 /**
  * Game Rules Service
  * Handles game-level rules like promotion, game end detection, and draw conditions

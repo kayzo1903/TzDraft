@@ -1,15 +1,8 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GameType, PlayerColor } from '../../shared/constants/game.constants';
 import { randomUUID } from 'crypto';
-
-import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 
 /**
  * Create Game Use Case
@@ -20,90 +13,30 @@ export class CreateGameUseCase {
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
-    @Inject(forwardRef(() => GamesGateway))
-    private readonly gamesGateway: GamesGateway,
   ) {}
 
   /**
-   * Create a new PvP game (started immediately — used for matchmaking/rematch)
+   * Create a new PvP game
    */
   async createPvPGame(
-    whitePlayerId: string | null,
-    blackPlayerId: string | null,
-    whiteElo: number | null,
-    blackElo: number | null,
-    whiteGuestName?: string,
-    blackGuestName?: string,
-    gameType: GameType = GameType.RANKED,
-    initialTimeMs: number = 600000,
+    whitePlayerId: string,
+    blackPlayerId: string,
+    whiteElo: number,
+    blackElo: number,
   ): Promise<Game> {
     const game = new Game(
       randomUUID(),
       whitePlayerId,
       blackPlayerId,
-      whiteGuestName || null,
-      blackGuestName || null,
-      gameType,
+      GameType.RANKED,
       whiteElo,
       blackElo,
       null,
-      initialTimeMs,
-      {
-        whiteTimeMs: initialTimeMs,
-        blackTimeMs: initialTimeMs,
-        lastMoveAt: new Date(),
-      },
+      600000, // Default 10 mins for PvP for now (TODO: Add time selection for PvP)
+      undefined,
     );
 
     game.start();
-    const createdGame = await this.gameRepository.create(game);
-
-    if (whitePlayerId) {
-      this.gamesGateway.scheduleGameTimeout(
-        createdGame.id,
-        initialTimeMs,
-        whitePlayerId,
-      );
-    }
-
-    return createdGame;
-  }
-
-  /**
-   * Create a friendly (WAITING) PvP game for the invite/link flow.
-   * Does NOT call game.start() and does NOT schedule a clock timeout.
-   * The game will be activated by the gateway once both players have
-   * joined the WebSocket room via the `joinGame` event.
-   */
-  async createFriendlyGame(
-    whitePlayerId: string | null,
-    blackPlayerId: string | null,
-    whiteElo: number | null,
-    blackElo: number | null,
-    whiteGuestName?: string,
-    blackGuestName?: string,
-    gameType: GameType = GameType.CASUAL,
-    initialTimeMs: number = 600000,
-  ): Promise<Game> {
-    const game = new Game(
-      randomUUID(),
-      whitePlayerId,
-      blackPlayerId,
-      whiteGuestName || null,
-      blackGuestName || null,
-      gameType,
-      whiteElo,
-      blackElo,
-      null,
-      initialTimeMs,
-      {
-        whiteTimeMs: initialTimeMs,
-        blackTimeMs: initialTimeMs,
-        lastMoveAt: new Date(),
-      },
-    );
-    // Intentionally NOT calling game.start() here.
-    // Game stays in WAITING until both players join the socket room.
     return this.gameRepository.create(game);
   }
 
@@ -126,8 +59,6 @@ export class CreateGameUseCase {
       randomUUID(),
       whitePlayerId,
       blackPlayerId,
-      null, // Guest names not used for AI
-      null,
       GameType.AI,
       whiteElo,
       blackElo,

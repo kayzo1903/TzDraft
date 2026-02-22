@@ -68,20 +68,10 @@ export class AuthController {
   }
 
   @Public()
-  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.authService.login(dto);
-
-    const opts = this.getCookieOptions();
-    res.cookie('accessToken', tokens.accessToken, opts);
-    res.cookie('refreshToken', tokens.refreshToken, opts);
-
-    return tokens;
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 
   @Public()

@@ -20,8 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@tzdraft/cake-engine": ["../packages/cake-engine/dist"],
-      "@tzdraft/official-engine": ["../packages/official-engine/dist"]
+      "@tzdraft/cake-engine": ["../packages/cake-engine/dist"]
     }
   },
   "include": [

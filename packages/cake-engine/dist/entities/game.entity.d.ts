@@ -1,6 +1,6 @@
-import { BoardState } from '../value-objects/board-state.vo.js';
-import { Move } from './move.entity.js';
-import { GameStatus, GameType, PlayerColor, Winner, EndReason } from '../constants.js';
+import { BoardState } from '../value-objects/board-state.vo';
+import { Move } from './move.entity';
+import { GameStatus, GameType, PlayerColor, Winner, EndReason } from '../constants';
 /**
  * Game Entity (Aggregate Root)
  * Represents a complete game of Tanzania Drafti

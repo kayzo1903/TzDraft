@@ -4,7 +4,6 @@ import { PrismaModule } from './infrastructure/database/prisma/prisma.module';
 import { HttpModule } from './interface/http/http.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './domain/user/user.module';
-import { FriendModule } from './domain/friend/friend.module';
 
 @Module({
   imports: [
@@ -15,7 +14,6 @@ import { FriendModule } from './domain/friend/friend.module';
     PrismaModule,
     AuthModule,
     UserModule,
-    FriendModule,
     HttpModule,
   ],
   controllers: [],

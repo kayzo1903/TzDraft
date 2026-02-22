@@ -1,7 +1,7 @@
-import { Move } from "../entities/move.entity.js";
-import { Position } from "../value-objects/position.vo.js";
-import { CaptureFindingService } from "./capture-finding.service.js";
-import { getValidDirections } from "../types/capture-path.type.js";
+import { Move } from "../entities/move.entity";
+import { Position } from "../value-objects/position.vo";
+import { CaptureFindingService } from "./capture-finding.service";
+import { getValidDirections } from "../types/capture-path.type";
 /**
  * Move Generator Service
  * Generates all possible legal moves for a player

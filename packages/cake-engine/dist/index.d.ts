@@ -1,7 +1,7 @@
-export * from './constants.js';
-export * from './value-objects/index.js';
-export * from './entities/index.js';
-export * from './services/index.js';
-export * from './types/index.js';
-export * from './engine.js';
+export * from './constants';
+export * from './value-objects';
+export * from './entities';
+export * from './services';
+export * from './types';
+export * from './engine';
 //# sourceMappingURL=index.d.ts.map

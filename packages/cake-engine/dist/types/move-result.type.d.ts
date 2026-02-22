@@ -1,6 +1,6 @@
-import { Move } from '../entities/move.entity.js';
-import { BoardState } from '../value-objects/board-state.vo.js';
-import { ValidationError } from './validation-error.type.js';
+import { Move } from '../entities/move.entity';
+import { BoardState } from '../value-objects/board-state.vo';
+import { ValidationError } from './validation-error.type';
 /**
  * Move Result
  * Result of move validation

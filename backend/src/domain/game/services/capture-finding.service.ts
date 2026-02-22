@@ -1,4 +1,4 @@
-﻿import { BoardState } from '../value-objects/board-state.vo';
+import { BoardState } from '../value-objects/board-state.vo';
 import { Piece } from '../value-objects/piece.vo';
 import { Position } from '../value-objects/position.vo';
 import { PlayerColor } from '../../../shared/constants/game.constants';
@@ -36,9 +36,13 @@ export class CaptureFindingService {
     const directions = getValidDirections(piece);
 
     for (const direction of directions) {
-      const capturePaths = piece.isKing()
-        ? this.findKingCaptureInDirection(board, piece, direction, [], [])
-        : this.findManCaptureInDirection(board, piece, direction, [], []);
+      const capturePaths = this.findCaptureInDirection(
+        board,
+        piece,
+        direction,
+        [],
+        [],
+      );
       captures.push(...capturePaths);
     }
 
@@ -49,14 +53,12 @@ export class CaptureFindingService {
    * Recursively find capture sequences in a direction
    * Handles multi-capture by exploring all possible paths
    */
-  private findManCaptureInDirection(
+  private findCaptureInDirection(
     board: BoardState,
     piece: Piece,
     direction: Direction,
     currentPath: Position[],
     capturedSoFar: Position[],
-    originFrom: Position = piece.position,
-    originPiece: Piece = piece,
   ): CapturePath[] {
     const { row, col } = piece.position.toRowCol();
     const opponentColor =
@@ -120,43 +122,29 @@ export class CaptureFindingService {
     const newCaptured = [...capturedSoFar, adjacentPos];
 
     // Create a temporary board with this capture applied
-    let tempBoard = board;
+    let tempBoard = board.removePiece(adjacentPos);
     const movedPiece = piece.moveTo(landingPos);
 
-    // Check for promotion (promotion ends the capture sequence immediately)
+    // Check for promotion
     const shouldPromote = movedPiece.shouldPromote();
     const finalPiece = shouldPromote ? movedPiece.promote() : movedPiece;
 
     tempBoard = tempBoard.removePiece(piece.position);
     tempBoard = tempBoard.placePiece(finalPiece);
 
-    if (shouldPromote) {
-      return [
-        {
-          piece: originPiece,
-          from: originFrom,
-          path: newPath,
-          capturedSquares: newCaptured,
-          to: landingPos,
-          isPromotion: true,
-        },
-      ];
-    }
-
     // Try to find more captures from the landing position
     const furtherCaptures: CapturePath[] = [];
 
+    // Kings can continue in all directions, men only forward
     const nextDirections = getValidDirections(finalPiece);
 
     for (const nextDir of nextDirections) {
-      const morePaths = this.findManCaptureInDirection(
+      const morePaths = this.findCaptureInDirection(
         tempBoard,
         finalPiece,
         nextDir,
         newPath,
         newCaptured,
-        originFrom,
-        originPiece,
       );
       furtherCaptures.push(...morePaths);
     }
@@ -165,111 +153,18 @@ export class CaptureFindingService {
     if (furtherCaptures.length === 0) {
       return [
         {
-          piece: originPiece,
-          from: originFrom,
+          piece,
+          from: piece.position,
           path: newPath,
           capturedSquares: newCaptured,
           to: landingPos,
-          isPromotion: false,
+          isPromotion: shouldPromote,
         },
       ];
     }
 
     // Return all extended paths
     return furtherCaptures;
-  }
-
-  /**
-   * Recursively find capture sequences for a flying king in a direction.
-   * Kings can capture over distance and land on any empty square beyond.
-   */
-  private findKingCaptureInDirection(
-    board: BoardState,
-    piece: Piece,
-    direction: Direction,
-    currentPath: Position[],
-    capturedSoFar: Position[],
-    originFrom: Position = piece.position,
-    originPiece: Piece = piece,
-  ): CapturePath[] {
-    const { row, col } = piece.position.toRowCol();
-    const opponentColor =
-      piece.color === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
-
-    let r = row + direction.row;
-    let c = col + direction.col;
-    let opponentPos: Position | null = null;
-
-    const terminalCaptures: CapturePath[] = [];
-    const extendedCaptures: CapturePath[] = [];
-
-    while (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
-      const pos = Position.fromRowCol(r, c);
-      const occupant = board.getPieceAt(pos);
-
-      if (occupant) {
-        if (opponentPos) {
-          break;
-        }
-
-        if (occupant.color !== opponentColor) {
-          break;
-        }
-
-        if (capturedSoFar.some((p) => p.equals(pos))) {
-          break;
-        }
-
-        opponentPos = pos;
-      } else if (opponentPos) {
-        const landingPos = pos;
-        const newPath = [...currentPath, landingPos];
-        const newCaptured = [...capturedSoFar, opponentPos];
-
-        let tempBoard = board;
-        const movedPiece = piece.moveTo(landingPos);
-
-        tempBoard = tempBoard.removePiece(piece.position);
-        tempBoard = tempBoard.placePiece(movedPiece);
-
-        const furtherCaptures: CapturePath[] = [];
-        const nextDirections = getValidDirections(movedPiece);
-
-        for (const nextDir of nextDirections) {
-          const morePaths = this.findKingCaptureInDirection(
-            tempBoard,
-            movedPiece,
-            nextDir,
-            newPath,
-            newCaptured,
-            originFrom,
-            originPiece,
-          );
-          furtherCaptures.push(...morePaths);
-        }
-
-        if (furtherCaptures.length === 0) {
-          terminalCaptures.push({
-            piece: originPiece,
-            from: originFrom,
-            path: newPath,
-            capturedSquares: newCaptured,
-            to: landingPos,
-            isPromotion: false,
-          });
-        } else {
-          extendedCaptures.push(...furtherCaptures);
-        }
-      }
-
-      r += direction.row;
-      c += direction.col;
-    }
-
-    if (extendedCaptures.length > 0) {
-      return extendedCaptures;
-    }
-    return terminalCaptures;
   }
 
   /**
@@ -298,4 +193,3 @@ export class CaptureFindingService {
     return this.findAllCaptures(board, player).length > 0;
   }
 }
-

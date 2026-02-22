@@ -25,16 +25,14 @@ export class Game {
 
   constructor(
     public readonly id: string,
-    public readonly whitePlayerId: string | null,
+    public readonly whitePlayerId: string,
     public readonly blackPlayerId: string | null,
-    public readonly whiteGuestName: string | null,
-    public readonly blackGuestName: string | null,
     public readonly gameType: GameType,
     public readonly whiteElo: number | null = null,
     public readonly blackElo: number | null = null,
     public readonly aiLevel: number | null = null,
     public readonly initialTimeMs: number = 600000, // Default 10 mins
-    public clockInfo?: {
+    public readonly clockInfo?: {
       whiteTimeMs: number;
       blackTimeMs: number;
       lastMoveAt: Date;
@@ -136,30 +134,6 @@ export class Game {
   }
 
   /**
-   * Rebuild board + move list from persisted move history.
-   * Used by repositories when hydrating a Game from the database.
-   */
-  rehydrateMoves(moves: Move[]): void {
-    this._board = BoardState.createInitialBoard();
-    this._moves = [];
-    this._currentTurn = PlayerColor.WHITE;
-
-    const sorted = [...moves].sort((a, b) => a.moveNumber - b.moveNumber);
-    for (const move of sorted) {
-      // Remove captures first, then move (promotion handled in BoardState.movePiece).
-      move.capturedSquares.forEach((capturedPos) => {
-        this._board = this._board.removePiece(capturedPos);
-      });
-      this._board = this._board.movePiece(move.from, move.to);
-      this._moves.push(move);
-      this._currentTurn =
-        this._currentTurn === PlayerColor.WHITE
-          ? PlayerColor.BLACK
-          : PlayerColor.WHITE;
-    }
-  }
-
-  /**
    * End the game with a winner and reason
    */
   endGame(winner: Winner, reason: EndReason): void {
@@ -241,59 +215,7 @@ export class Game {
     );
   }
 
-  /**
-   * Update clock based on elapsed time
-   */
-  updateClock(elapsedMs: number): void {
-    if (!this.clockInfo) {
-      // Initialize clock if not present (shouldn't happen in active games ideally)
-      this.clockInfo = {
-        whiteTimeMs: this.initialTimeMs,
-        blackTimeMs: this.initialTimeMs,
-        lastMoveAt: new Date(),
-      };
-    }
-
-    if (this._currentTurn === PlayerColor.WHITE) {
-      this.clockInfo.whiteTimeMs = Math.max(
-        0,
-        this.clockInfo.whiteTimeMs - elapsedMs,
-      );
-    } else {
-      this.clockInfo.blackTimeMs = Math.max(
-        0,
-        this.clockInfo.blackTimeMs - elapsedMs,
-      );
-    }
-    this.clockInfo.lastMoveAt = new Date();
-  }
-
   toString(): string {
     return `Game ${this.id}: ${this._status} - ${this._currentTurn} to move`;
-  }
-
-  toJSON() {
-    return {
-      id: this.id,
-      whitePlayerId: this.whitePlayerId,
-      blackPlayerId: this.blackPlayerId,
-      whiteGuestName: this.whiteGuestName,
-      blackGuestName: this.blackGuestName,
-      gameType: this.gameType,
-      whiteElo: this.whiteElo,
-      blackElo: this.blackElo,
-      aiLevel: this.aiLevel,
-      initialTimeMs: this.initialTimeMs,
-      clockInfo: this.clockInfo,
-      createdAt: this.createdAt,
-      startedAt: this._startedAt,
-      endedAt: this._endedAt,
-      status: this._status,
-      winner: this._winner,
-      endReason: this._endReason,
-      currentTurn: this._currentTurn,
-      board: this._board.toJSON(),
-      moves: this._moves,
-    };
   }
 }

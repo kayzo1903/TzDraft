@@ -1,6 +1,6 @@
-import { Piece } from './piece.vo.js';
-import { Position } from './position.vo.js';
-import { PlayerColor } from '../constants.js';
+import { Piece } from './piece.vo';
+import { Position } from './position.vo';
+import { PlayerColor } from '../constants';
 /**
  * BoardState Value Object
  * Represents the complete state of the game board
