@@ -1,16 +1,16 @@
-import { BoardState } from "./value-objects/board-state.vo";
-import { Game } from "./entities/game.entity";
-import { Move } from "./entities/move.entity";
-import { Position } from "./value-objects/position.vo";
+import { BoardState } from "./value-objects/board-state.vo.js";
+import { Game } from "./entities/game.entity.js";
+import { Move } from "./entities/move.entity.js";
+import { Position } from "./value-objects/position.vo.js";
 import {
   PlayerColor,
   Winner,
   GameType,
   GameStatus,
   EndReason,
-} from "./constants";
-import { MoveGeneratorService } from "./services/move-generator.service";
-import { GameRulesService } from "./services/game-rules.service";
+} from "./constants.js";
+import { MoveGeneratorService } from "./services/move-generator.service.js";
+import { GameRulesService } from "./services/game-rules.service.js";
 
 /**
  * Game Result

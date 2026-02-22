@@ -54,9 +54,10 @@ export class Piece {
 
     const { row } = this.position.toRowCol();
 
-    // White pieces promote on row 0, Black pieces promote on row 7
-    if (this.color === PlayerColor.WHITE && row === 0) return true;
-    if (this.color === PlayerColor.BLACK && row === 7) return true;
+    // White moves "down" (toward row 7); Black moves "up" (toward row 0).
+    // Promotion happens on the opponent's back row.
+    if (this.color === PlayerColor.WHITE && row === 7) return true;
+    if (this.color === PlayerColor.BLACK && row === 0) return true;
 
     return false;
   }
@@ -73,5 +74,14 @@ export class Piece {
     const symbol = this.isKing() ? 'K' : 'M';
     const colorSymbol = this.color === PlayerColor.WHITE ? 'W' : 'B';
     return `${colorSymbol}${symbol}@${this.position.value}`;
+  }
+
+  toJSON() {
+    return {
+      type: this.type,
+      color: this.color,
+      position: this.position.value,
+      isKing: this.isKing(),
+    };
   }
 }

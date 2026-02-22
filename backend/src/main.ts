@@ -14,6 +14,7 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+  const isDevelopment = (configService.get<string>('NODE_ENV') || 'development') !== 'production';
 
   // 1. Trust Proxy - Crucial for Render/Load Balancers
   app.set('trust proxy', 1);
@@ -50,47 +51,38 @@ async function bootstrap() {
       return [`https://${origin}`, `http://${origin}`];
     });
 
+  const explicitOrigins = Array.from(
+    new Set(
+      [
+        ...allowedOrigins,
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'https://tzdraft.com',
+        'https://www.tzdraft.com',
+      ].filter(Boolean),
+    ),
+  );
+
   app.enableCors({
     origin: (origin, callback) => {
+      // Non-browser requests may omit origin.
       if (!origin) return callback(null, true);
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      if (allowedOrigins.includes('*')) return callback(null, true);
-      if (allowedOrigins.includes(normalizedOrigin))
-        return callback(null, true);
 
-      for (const allowedOrigin of allowedOrigins) {
-        if (!allowedOrigin.includes('*')) continue;
-        try {
-          const allowed = new URL(allowedOrigin.replace('*.', ''));
-          const incoming = new URL(normalizedOrigin);
-          if (incoming.protocol !== allowed.protocol) continue;
-          if (incoming.port !== allowed.port) continue;
-          const allowedHost = allowed.hostname;
-          const incomingHost = incoming.hostname;
-          if (incomingHost === allowedHost) continue;
-          if (incomingHost.endsWith(`.${allowedHost}`))
-            return callback(null, true);
-        } catch {}
+      if (isDevelopment) {
+        return callback(null, true);
       }
 
-      try {
-        const incoming = new URL(normalizedOrigin);
-        const incomingHost = incoming.hostname;
-        const wwwToggledHost = incomingHost.startsWith('www.')
-          ? incomingHost.slice(4)
-          : `www.${incomingHost}`;
-        const toggledOrigin = `${incoming.protocol}//${wwwToggledHost}${
-          incoming.port ? `:${incoming.port}` : ''
-        }`;
-        if (allowedOrigins.includes(toggledOrigin)) return callback(null, true);
-      } catch {}
+      if (explicitOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-      return callback(null, false);
+      return callback(new Error(`CORS blocked origin: ${origin}`), false);
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   // 3. Custom Body Parser (Render Fix)

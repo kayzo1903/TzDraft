@@ -1,14 +1,20 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  forwardRef,
+} from '@nestjs/common';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
-import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
 import { MoveValidationService } from '../../domain/game/services/move-validation.service';
 import { GameRulesService } from '../../domain/game/services/game-rules.service';
 import { Position } from '../../domain/game/value-objects/position.vo';
 import { Move } from '../../domain/game/entities/move.entity';
-import { PlayerColor, EndReason } from '../../shared/constants/game.constants';
-import { ValidationError } from '../../domain/game/types/validation-error.type';
+import { PlayerColor } from '../../shared/constants/game.constants';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { RatingService } from '../../domain/game/services/rating.service';
+import { GameStateCacheService } from '../services/game-state-cache.service';
 
 /**
  * Make Move Use Case
@@ -19,12 +25,29 @@ export class MakeMoveUseCase {
   private readonly moveValidationService: MoveValidationService;
   private readonly gameRulesService: GameRulesService;
 
+  /**
+   * Per-game promise chain used to serialize async DB writes.
+   *
+   * Because we broadcast events before persisting (optimistic), two moves
+   * can be dispatched to `persistMoveAsync` concurrently for the same game.
+   * Running two Postgres transactions simultaneously that both UPDATE the same
+   * `game` and `clock` rows causes row-level lock contention / deadlocks,
+   * which triggers the moveRollback error players see as "Move could not be saved".
+   *
+   * The fix: chain each game's persist calls so they run one-after-another
+   * instead of truly in parallel. Since the broadcasts are already out and
+   * clients are not waiting, this adds no visible latency.
+   */
+  private readonly persistQueue = new Map<string, Promise<void>>();
+
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
-    @Inject('IMoveRepository')
-    private readonly moveRepository: IMoveRepository,
+    @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
+    private readonly prisma: PrismaService,
+    private readonly ratingService: RatingService,
+    private readonly gameStateCache: GameStateCacheService,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -43,8 +66,11 @@ export class MakeMoveUseCase {
     game: Game;
     move: Move;
   }> {
-    // 1. Load game
-    const game = await this.gameRepository.findById(gameId);
+    // 1. Load game — check the in-memory cache first to avoid stale DB reads
+    //    during the async write window from the previous move.
+    const game =
+      this.gameStateCache.get(gameId) ??
+      (await this.gameRepository.findById(gameId));
     if (!game) {
       throw new BadRequestException('Game not found');
     }
@@ -53,10 +79,9 @@ export class MakeMoveUseCase {
     const playerColor = this.getPlayerColor(game, playerId);
 
     // 3. Get actual move count from database
-    const existingMoves = await this.moveRepository.findByGameId(gameId);
-    const moveNumber = existingMoves.length + 1;
+    const moveNumber = game.getMoveCount() + 1;
 
-    // 4. Validate and execute move
+    // 4. Validate move (in-memory, ~0 ms)
     const fromPos = new Position(from);
     const toPos = new Position(to);
     const pathPos = path?.map((p) => new Position(p));
@@ -89,36 +114,199 @@ export class MakeMoveUseCase {
       moveResult.move.createdAt,
     );
 
-    // 5. Apply move to game
+    // 5. Update Clock
+    if (game.status === 'ACTIVE' && game.clockInfo) {
+      const now = Date.now();
+      const lastMoveTime =
+        game.clockInfo.lastMoveAt instanceof Date
+          ? game.clockInfo.lastMoveAt.getTime()
+          : new Date(game.clockInfo.lastMoveAt).getTime();
+      const elapsed = Math.max(0, now - lastMoveTime);
+      game.updateClock(elapsed);
+    } else if (game.status === 'ACTIVE' && !game.clockInfo) {
+      game.updateClock(0);
+    }
+
+    // 6. Apply move to game entity (in-memory)
     game.applyMove(correctedMove);
 
-    // 5. Check for game end
-    // TODO: Re-enable after implementing board state persistence
-    // The board state is not being persisted/reconstructed, so game-over detection
-    // incorrectly thinks there are no pieces on the board
-    /*
-    if (this.gameRulesService.isGameOver(game)) {
-      const winner = this.gameRulesService.detectWinner(game);
-      if (winner) {
-        game.endGame(winner, EndReason.CHECKMATE);
+    // 🔑 Immediately update the in-memory cache so the next makeMove call
+    //    (which may arrive before the DB write completes) reads correct state.
+    this.gameStateCache.set(game);
+
+    // 7. Evaluate game result
+    const evaluation = this.gameRulesService.evaluatePostMove(game);
+    if (evaluation.outcome) {
+      game.endGame(evaluation.outcome.winner, evaluation.outcome.reason);
+    }
+
+    // 8. ✅ OPTIMISTIC BROADCAST — emit to both players immediately,
+    //    before any database writes. This eliminates the 150–400 ms DB
+    //    write delay that players felt on every move.
+    const broadcastPayload = {
+      id: game.id,
+      status: game.status,
+      gameType: game.gameType,
+      whitePlayerId: game.whitePlayerId,
+      blackPlayerId: game.blackPlayerId,
+      whiteGuestName: game.whiteGuestName,
+      blackGuestName: game.blackGuestName,
+      winner: game.winner,
+      endReason: game.endReason,
+      currentTurn: game.currentTurn,
+      clockInfo: game.clockInfo,
+      serverTimeMs: Date.now(),
+      board: game.board?.toJSON ? game.board.toJSON() : (game as any).board,
+      lastMove: {
+        id: correctedMove.id,
+        player: correctedMove.player,
+        from: correctedMove.from.value,
+        to: correctedMove.to.value,
+        notation: correctedMove.notation,
+        isPromotion: correctedMove.isPromotion,
+        capturedSquares: correctedMove.capturedSquares.map((p) => p.value),
+        moveNumber: correctedMove.moveNumber,
+        createdAt: correctedMove.createdAt,
+      },
+      drawClaimAvailable: evaluation.drawClaimAvailable,
+    };
+    this.gamesGateway.emitGameStateUpdate(gameId, broadcastPayload);
+
+    if (game.status === 'FINISHED') {
+      this.gamesGateway.emitGameOver(gameId, {
+        winner: game.winner,
+        reason: game.endReason,
+        noMoves: evaluation.outcome?.noMoves === true,
+      });
+    }
+
+    // 9. Schedule timeout for next player (before DB write so clocks stay
+    //    accurate regardless of persistence latency)
+    if (game.clockInfo && game.status === 'ACTIVE') {
+      const nextPlayer = game.currentTurn;
+      const timeForNextPlayer =
+        nextPlayer === PlayerColor.WHITE
+          ? game.clockInfo.whiteTimeMs
+          : game.clockInfo.blackTimeMs;
+      const nextPlayerId =
+        nextPlayer === PlayerColor.WHITE
+          ? game.whitePlayerId
+          : game.blackPlayerId;
+      if (nextPlayerId) {
+        this.gamesGateway.scheduleGameTimeout(
+          game.id,
+          timeForNextPlayer,
+          nextPlayerId,
+        );
       }
     }
-    */
 
-    // 6. Save game and move
-    await this.gameRepository.update(game);
-    await this.moveRepository.create(correctedMove);
+    // 10. Persist asynchronously — DB writes happen in the background.
+    //     Chain onto the per-game queue so concurrent moves are serialized
+    //     and don't deadlock on shared game/clock rows in Postgres.
+    //     If persistence fails, invalidate the cache and emit moveRollback.
+    const prior = this.persistQueue.get(gameId) ?? Promise.resolve();
+    const next = prior
+      .then(() => this.persistMoveAsync(game, correctedMove, evaluation))
+      .catch((err) => {
+        console.error(`persistMoveAsync failed game=${gameId}:`, err);
+        this.gameStateCache.invalidate(gameId);
+        this.gamesGateway.emitMoveRollback(gameId, {
+          from: correctedMove.from.value,
+          to: correctedMove.to.value,
+        });
+      });
+    this.persistQueue.set(gameId, next);
 
-    // 7. Emit game state update
-    this.gamesGateway.emitGameStateUpdate(gameId, {
-      ...game,
-      lastMove: correctedMove,
-    });
+    // Evict finished games from both the state cache and the persist queue.
+    if (game.status === 'FINISHED') {
+      next.finally(() => {
+        this.persistQueue.delete(gameId);
+        this.gameStateCache.invalidate(gameId);
+      });
+    }
 
     return {
       game,
       move: correctedMove,
     };
+  }
+
+  /**
+   * Persist move and updated game state to the database.
+   * Called asynchronously after the optimistic broadcast so players
+   * never wait for DB writes to see the updated board.
+   */
+  private async persistMoveAsync(
+    game: Game,
+    correctedMove: Move,
+    evaluation: ReturnType<GameRulesService['evaluatePostMove']>,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.game.update({
+        where: { id: game.id },
+        data: {
+          status: game.status,
+          winner: game.winner,
+          endReason: game.endReason,
+          startedAt: game.startedAt,
+          endedAt: game.endedAt,
+        },
+      });
+
+      if (game.clockInfo) {
+        const whiteTimeMs = BigInt(
+          Math.max(0, Math.floor(game.clockInfo.whiteTimeMs)),
+        );
+        const blackTimeMs = BigInt(
+          Math.max(0, Math.floor(game.clockInfo.blackTimeMs)),
+        );
+        const lastMoveAt =
+          game.clockInfo.lastMoveAt instanceof Date
+            ? game.clockInfo.lastMoveAt
+            : new Date(game.clockInfo.lastMoveAt);
+
+        await tx.clock.upsert({
+          where: { gameId: game.id },
+          create: {
+            gameId: game.id,
+            whiteTimeMs,
+            blackTimeMs,
+            lastMoveAt,
+          },
+          update: {
+            whiteTimeMs,
+            blackTimeMs,
+            lastMoveAt,
+          },
+        });
+      }
+
+      await tx.move.create({
+        data: {
+          id: correctedMove.id,
+          gameId: correctedMove.gameId,
+          moveNumber: correctedMove.moveNumber,
+          player: correctedMove.player,
+          fromSquare: correctedMove.from.value,
+          toSquare: correctedMove.to.value,
+          capturedSquares: correctedMove.capturedSquares.map((p) => p.value),
+          isPromotion: correctedMove.isPromotion,
+          isMultiCapture: correctedMove.isMultiCapture(),
+          notation: correctedMove.notation,
+          createdAt: correctedMove.createdAt,
+        },
+      });
+    });
+
+    // Update ratings after a finished game
+    if (game.status === 'FINISHED' && game.winner) {
+      try {
+        await this.ratingService.updateRatings(game, game.winner);
+      } catch (error) {
+        console.error('Failed to update ratings:', error);
+      }
+    }
   }
 
   /**

@@ -40,6 +40,15 @@ model User {
     verificationTokens  VerificationToken[]
     passwordResetTokens PasswordResetToken[]
     otpCodes            OtpCode[]
+    
+    // Friend relations
+    friendRequestsSent     FriendRequest[] @relation("Requester")
+    friendRequestsReceived FriendRequest[] @relation("Requestee")
+    friendsInitiated       Friendship[]    @relation("Initiator")
+    friendsReceived        Friendship[]    @relation("Recipient")
+    friendlyMatchesHosted  FriendlyMatch[] @relation("FriendlyMatchHost")
+    friendlyMatchesInvited FriendlyMatch[] @relation("FriendlyMatchInvitee")
+    friendlyMatchesJoined  FriendlyMatch[] @relation("FriendlyMatchGuest")
 
     @@map("users")
 }
@@ -131,10 +140,13 @@ model Game {
     gameType    GameType   @map("game_type")
     ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
 
-    whitePlayerId String  @map("white_player_id")
+    whitePlayerId String? @map("white_player_id")
     blackPlayerId String? @map("black_player_id")
-    whitePlayer   User    @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
+    whitePlayer   User?   @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
     blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
+
+    whiteGuestName String? @map("white_guest_name")
+    blackGuestName String? @map("black_guest_name")
 
     whiteElo Int? @map("white_elo")
     blackElo Int? @map("black_elo")
@@ -230,4 +242,83 @@ model Clock {
     lastMoveAt  DateTime @map("last_move_at")
 
     @@map("clocks")
+}
+
+// ============================================
+// FRIEND DOMAIN
+// ============================================
+
+model FriendRequest {
+    id          String              @id @default(uuid())
+    requesterId String              @map("requester_id")
+    requesteeId String              @map("requestee_id")
+    status      FriendRequestStatus @default(PENDING)
+    createdAt   DateTime            @default(now()) @map("created_at")
+    respondedAt DateTime?           @map("responded_at")
+
+    requester User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+    requestee User @relation("Requestee", fields: [requesteeId], references: [id], onDelete: Cascade)
+
+    @@unique([requesterId, requesteeId])
+    @@index([requesterId])
+    @@index([requesteeId])
+    @@index([status])
+    @@map("friend_requests")
+}
+
+model Friendship {
+    id          String   @id @default(uuid())
+    initiatorId String   @map("initiator_id")
+    recipientId String   @map("recipient_id")
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    initiator User @relation("Initiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+    recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+    @@unique([initiatorId, recipientId])
+    @@index([initiatorId])
+    @@index([recipientId])
+    @@map("friendships")
+}
+
+enum FriendRequestStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+}
+
+model FriendlyMatch {
+    id              String              @id @default(uuid())
+    hostId          String              @map("host_id")
+    invitedFriendId String?             @map("invited_friend_id")
+    guestId         String?             @map("guest_id")
+    status          FriendlyMatchStatus @default(PENDING)
+    inviteToken     String              @unique @map("invite_token")
+    gameId          String?             @map("game_id")
+    initialTimeMs   Int                 @default(600000) @map("initial_time_ms")
+    roomType        String              @default("single") @map("room_type")
+    hostColor       String              @default("RANDOM") @map("host_color")
+    rated           Boolean             @default(false)
+    allowSpectators Boolean             @default(true) @map("allow_spectators")
+    expiresAt       DateTime            @map("expires_at")
+    acceptedAt      DateTime?           @map("accepted_at")
+    createdAt       DateTime            @default(now()) @map("created_at")
+    updatedAt       DateTime            @updatedAt @map("updated_at")
+
+    host          User  @relation("FriendlyMatchHost", fields: [hostId], references: [id], onDelete: Cascade)
+    invitedFriend User? @relation("FriendlyMatchInvitee", fields: [invitedFriendId], references: [id], onDelete: SetNull)
+    guest         User? @relation("FriendlyMatchGuest", fields: [guestId], references: [id], onDelete: SetNull)
+
+    @@index([hostId, status])
+    @@index([invitedFriendId, status])
+    @@index([inviteToken])
+    @@map("friendly_matches")
+}
+
+enum FriendlyMatchStatus {
+    PENDING
+    ACCEPTED
+    DECLINED
+    CANCELED
+    EXPIRED
 }

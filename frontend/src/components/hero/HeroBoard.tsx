@@ -119,11 +119,13 @@ export const HeroBoard: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <Board 
         pieces={pieces}
         className="transition-opacity duration-300"
         style={{
+          width: "min(100%, 420px)",
+          maxWidth: "100%",
           opacity: isAnimating ? 0.95 : 1,
         }}
       />

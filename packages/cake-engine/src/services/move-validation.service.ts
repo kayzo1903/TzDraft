@@ -1,15 +1,15 @@
-import { Move } from "../entities/move.entity";
-import { BoardState } from "../value-objects/board-state.vo";
-import { Piece } from "../value-objects/piece.vo";
-import { Position } from "../value-objects/position.vo";
-import { PlayerColor, GameStatus } from "../constants";
-import { CaptureFindingService } from "./capture-finding.service";
+import { Move } from "../entities/move.entity.js";
+import { BoardState } from "../value-objects/board-state.vo.js";
+import { Piece } from "../value-objects/piece.vo.js";
+import { Position } from "../value-objects/position.vo.js";
+import { PlayerColor, GameStatus } from "../constants.js";
+import { CaptureFindingService } from "./capture-finding.service.js";
 import {
   ValidationError,
   ValidationErrorCode,
-} from "../types/validation-error.type";
-import { MoveResult } from "../types/move-result.type";
-import { getValidDirections } from "../types/capture-path.type";
+} from "../types/validation-error.type.js";
+import { MoveResult } from "../types/move-result.type.js";
+import { getValidDirections } from "../types/capture-path.type.js";
 
 /**
  * Move Validation Service

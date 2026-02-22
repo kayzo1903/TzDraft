@@ -143,4 +143,12 @@ export class BoardState {
 
     return board.map((row) => row.join(' ')).join('\n');
   }
+
+  toJSON() {
+    const piecesRecord: Record<number, any> = {};
+    this.getAllPieces().forEach((piece) => {
+      piecesRecord[piece.position.value] = piece.toJSON();
+    });
+    return piecesRecord;
+  }
 }
