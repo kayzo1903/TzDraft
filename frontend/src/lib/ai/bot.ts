@@ -131,7 +131,9 @@ const getDepthForLevel = (level: number): number => {
   if (level === 4) return 6;
   if (level === 5) return 7;
   if (level === 6) return 8;
-  if (level >= 7) return 9;
+  if (level === 7) return 9;
+  if (level === 8) return 11;
+  if (level >= 9) return 14;
   return 5;
 };
 

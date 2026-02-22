@@ -207,6 +207,98 @@ describe("CAKE Engine - Tanzania Drafti 8x8", () => {
       expect(match?.capturedSquares[1].equals(black2.position)).toBe(true);
       expect(match?.capturedSquares[2].equals(black3.position)).toBe(true);
     });
+
+    test("king cannot chain through an already-captured piece that remains on board", () => {
+      // Position:
+      // BK @ d4, WM @ f6 and WM @ b2
+      // With deferred piece removal, each route is only a single capture.
+      const blackKing = new Piece(
+        PieceType.KING,
+        PlayerColor.BLACK,
+        Position.fromRowCol(4, 3),
+      );
+      const whiteF6 = new Piece(
+        PieceType.MAN,
+        PlayerColor.WHITE,
+        Position.fromRowCol(2, 5),
+      );
+      const whiteB2 = new Piece(
+        PieceType.MAN,
+        PlayerColor.WHITE,
+        Position.fromRowCol(6, 1),
+      );
+
+      const board = new BoardState([blackKing, whiteF6, whiteB2]);
+      const captureService = new CaptureFindingService();
+      const captures = captureService.findCapturesForPiece(board, blackKing);
+
+      expect(captures.length).toBeGreaterThan(0);
+      expect(captures.every((c) => c.capturedSquares.length === 1)).toBe(true);
+      expect(
+        captures.some(
+          (c) =>
+            c.capturedSquares.length === 2 &&
+            c.capturedSquares[0].equals(whiteF6.position) &&
+            c.capturedSquares[1].equals(whiteB2.position),
+        ),
+      ).toBe(false);
+      expect(
+        captures.some(
+          (c) =>
+            c.capturedSquares.length === 2 &&
+            c.capturedSquares[0].equals(whiteB2.position) &&
+            c.capturedSquares[1].equals(whiteF6.position),
+        ),
+      ).toBe(false);
+    });
+
+    test("BK g1 with WM e3/f6/b2 allows only one continuation branch", () => {
+      const blackKing = new Piece(
+        PieceType.KING,
+        PlayerColor.BLACK,
+        Position.fromRowCol(7, 6), // g1
+      );
+      const whiteE3 = new Piece(
+        PieceType.MAN,
+        PlayerColor.WHITE,
+        Position.fromRowCol(5, 4), // e3
+      );
+      const whiteF6 = new Piece(
+        PieceType.MAN,
+        PlayerColor.WHITE,
+        Position.fromRowCol(2, 5), // f6
+      );
+      const whiteB2 = new Piece(
+        PieceType.MAN,
+        PlayerColor.WHITE,
+        Position.fromRowCol(6, 1), // b2
+      );
+
+      const board = new BoardState([blackKing, whiteE3, whiteF6, whiteB2]);
+      const captureService = new CaptureFindingService();
+      const captures = captureService.findCapturesForPiece(board, blackKing);
+
+      // No route should capture all three in one move.
+      expect(captures.some((c) => c.capturedSquares.length > 2)).toBe(false);
+
+      // Must include one-branch continuations after e3:
+      // e3 -> f6 branch and e3 -> b2 branch.
+      const hasE3ThenF6 = captures.some(
+        (c) =>
+          c.capturedSquares.length === 2 &&
+          c.capturedSquares[0].equals(whiteE3.position) &&
+          c.capturedSquares[1].equals(whiteF6.position),
+      );
+      const hasE3ThenB2 = captures.some(
+        (c) =>
+          c.capturedSquares.length === 2 &&
+          c.capturedSquares[0].equals(whiteE3.position) &&
+          c.capturedSquares[1].equals(whiteB2.position),
+      );
+
+      expect(hasE3ThenF6).toBe(true);
+      expect(hasE3ThenB2).toBe(true);
+    });
   });
 
   describe("Board State Management", () => {

@@ -144,7 +144,7 @@ export default function SetupAiPage() {
                 {t("progress.title")}
               </span>{" "}
               <span className="text-neutral-400">
-                {t("progress.unlocked", { level: maxUnlockedLevel, total: 7 })}
+                {t("progress.unlocked", { level: maxUnlockedLevel, total: 9 })}
               </span>
             </div>
             <div className="text-neutral-500">{t("progress.rule")}</div>
@@ -176,7 +176,7 @@ export default function SetupAiPage() {
             </div>
 
             <div className="p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-1 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {BOTS.map((bot) => {
                   const locked = bot.level > maxUnlockedLevel;
                   const selected = selectedBot.level === bot.level;

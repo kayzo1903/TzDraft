@@ -6,7 +6,7 @@ export const getMaxUnlockedBotLevel = (): number => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     const parsed = Number(raw);
     if (!raw || Number.isNaN(parsed)) return 1;
-    return Math.min(Math.max(parsed, 1), 7);
+    return Math.min(Math.max(parsed, 1), 9);
   } catch {
     return 1;
   }
@@ -14,16 +14,15 @@ export const getMaxUnlockedBotLevel = (): number => {
 
 export const setMaxUnlockedBotLevel = (level: number) => {
   if (typeof window === "undefined") return;
-  const normalized = Math.min(Math.max(level, 1), 7);
+  const normalized = Math.min(Math.max(level, 1), 9);
   window.localStorage.setItem(STORAGE_KEY, String(normalized));
 };
 
 export const unlockNextBotLevel = (currentBotLevel: number) => {
   if (typeof window === "undefined") return;
-  const next = Math.min(Math.max(currentBotLevel + 1, 1), 7);
+  const next = Math.min(Math.max(currentBotLevel + 1, 1), 9);
   const existing = getMaxUnlockedBotLevel();
   if (next > existing) {
     setMaxUnlockedBotLevel(next);
   }
 };
-

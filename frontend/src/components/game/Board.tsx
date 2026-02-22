@@ -1,12 +1,19 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Piece } from './Piece';
 
 // Types for board state
 export type PieceState = { color: 'WHITE' | 'BLACK', isKing?: boolean };
 export type BoardState = Record<number, PieceState>;
+type AnimatedPiece = PieceState & {
+    id: string;
+    displayIndex: number;
+    isExiting?: boolean;
+};
+
+const PIECE_MOVE_DURATION_MS = 240;
 
 interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     pieces?: BoardState;
@@ -15,6 +22,7 @@ interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
     legalMoves?: Record<number, number[]>;
     forcedPieces?: number[];
     onInvalidSelect?: () => void;
+    flipped?: boolean;
 }
 
 export const Board: React.FC<BoardProps> = ({
@@ -24,12 +32,15 @@ export const Board: React.FC<BoardProps> = ({
     legalMoves,
     forcedPieces = [],
     onInvalidSelect,
+    flipped = false,
     className,
     ...props
 }) => {
     // Temporary state for demonstration/MVP
     const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
     const [isShaking, setIsShaking] = useState(false);
+    const pieceIdCounterRef = useRef(0);
+    const [animatedPieces, setAnimatedPieces] = useState<AnimatedPiece[]>([]);
 
     // Helper to determine square color
     const isDarkSquare = (index: number) => {
@@ -38,16 +49,153 @@ export const Board: React.FC<BoardProps> = ({
         return (row + col) % 2 !== 0;
     };
 
+    const toBoardIndex = (displayIndex: number) =>
+        flipped ? 63 - displayIndex : displayIndex;
+
+    const fileFor = (displayCol: number) => {
+        const base = "a".charCodeAt(0);
+        return String.fromCharCode(base + (flipped ? 7 - displayCol : displayCol));
+    };
+
+    const rankFor = (displayRow: number) => (flipped ? displayRow + 1 : 8 - displayRow);
+
+    useEffect(() => {
+        if (!externalPieces) {
+            setAnimatedPieces([]);
+            return;
+        }
+
+        const nextTargets = Object.entries(externalPieces)
+            .map(([key, piece]) => ({
+                color: piece.color,
+                isKing: piece.isKing,
+                displayIndex: flipped ? 63 - Number(key) : Number(key),
+            }))
+            // Sort targets in display-space so greedy matching is deterministic for both
+            // orientations and doesn't accidentally "swap identities" (which looks like
+            // a snap/teleport instead of a smooth transition).
+            .sort((a, b) => a.displayIndex - b.displayIndex);
+
+        setAnimatedPieces((prev) => {
+            const prevActive = prev.filter((piece) => !piece.isExiting);
+            const prevSorted = [...prevActive].sort((a, b) => {
+                const pos = a.displayIndex - b.displayIndex;
+                if (pos !== 0) return pos;
+                return a.id.localeCompare(b.id);
+            });
+
+            const usedPrevIds = new Set<string>();
+            const next = new Array<AnimatedPiece>(nextTargets.length);
+            const unmatchedTargetIndexes: number[] = [];
+            const prevByExactSquare = new Map<string, AnimatedPiece>();
+
+            for (const candidate of prevSorted) {
+                prevByExactSquare.set(
+                    `${candidate.displayIndex}|${candidate.color}|${Boolean(candidate.isKing)}`,
+                    candidate,
+                );
+            }
+
+            // Pass 1: preserve identity for pieces that did not move.
+            for (let i = 0; i < nextTargets.length; i += 1) {
+                const target = nextTargets[i];
+                const exactKey = `${target.displayIndex}|${target.color}|${Boolean(target.isKing)}`;
+                const exactMatch = prevByExactSquare.get(exactKey);
+                if (exactMatch && !usedPrevIds.has(exactMatch.id)) {
+                    usedPrevIds.add(exactMatch.id);
+                    next[i] = {
+                        id: exactMatch.id,
+                        color: target.color,
+                        isKing: target.isKing,
+                        displayIndex: target.displayIndex,
+                    };
+                } else {
+                    unmatchedTargetIndexes.push(i);
+                }
+            }
+
+            // Pass 2: match moved/promoted pieces by nearest compatible candidate.
+            for (const targetIndex of unmatchedTargetIndexes) {
+                const target = nextTargets[targetIndex];
+                let bestMatch: AnimatedPiece | null = null;
+                let bestScore = Number.POSITIVE_INFINITY;
+
+                for (const candidate of prevSorted) {
+                    if (usedPrevIds.has(candidate.id)) continue;
+                    if (candidate.color !== target.color) continue;
+
+                    const fromRow = Math.floor(candidate.displayIndex / 8);
+                    const fromCol = candidate.displayIndex % 8;
+                    const toRow = Math.floor(target.displayIndex / 8);
+                    const toCol = target.displayIndex % 8;
+                    const distance =
+                        Math.abs(fromRow - toRow) + Math.abs(fromCol - toCol);
+                    const kingMismatchPenalty =
+                        Boolean(candidate.isKing) === Boolean(target.isKing) ? 0 : 100;
+                    const score = distance + kingMismatchPenalty;
+
+                    if (
+                        score < bestScore ||
+                        (score === bestScore &&
+                            bestMatch !== null &&
+                            candidate.id.localeCompare(bestMatch.id) < 0)
+                    ) {
+                        bestScore = score;
+                        bestMatch = candidate;
+                    }
+                }
+
+                if (bestMatch) {
+                    usedPrevIds.add(bestMatch.id);
+                    next[targetIndex] = {
+                        id: bestMatch.id,
+                        color: target.color,
+                        isKing: target.isKing,
+                        displayIndex: target.displayIndex,
+                    };
+                } else {
+                    const id = `p-${pieceIdCounterRef.current++}`;
+                    next[targetIndex] = {
+                        id,
+                        color: target.color,
+                        isKing: target.isKing,
+                        displayIndex: target.displayIndex,
+                    };
+                }
+            }
+
+            const exiting = prevSorted
+                .filter((piece) => !usedPrevIds.has(piece.id))
+                .map((piece) => ({
+                    ...piece,
+                    isExiting: true,
+                }));
+
+            return [...next, ...exiting];
+        });
+    }, [externalPieces, flipped]);
+
+    useEffect(() => {
+        if (!animatedPieces.some((piece) => piece.isExiting)) return;
+
+        const cleanupId = window.setTimeout(() => {
+            setAnimatedPieces((prev) => prev.filter((piece) => !piece.isExiting));
+        }, PIECE_MOVE_DURATION_MS);
+
+        return () => window.clearTimeout(cleanupId);
+    }, [animatedPieces]);
+
     // Internal initial setup (fallback if no pieces prop provided)
-    const getPiece = (index: number): PieceState | null => {
+    const getPiece = (displayIndex: number): PieceState | null => {
+        const boardIndex = toBoardIndex(displayIndex);
         // If external pieces are provided, use them
         if (externalPieces) {
-            return externalPieces[index] || null;
+            return externalPieces[boardIndex] || null;
         }
 
         // Fallback to initial setup
-        if (!isDarkSquare(index)) return null;
-        const row = Math.floor(index / 8);
+        if (!isDarkSquare(displayIndex)) return null;
+        const row = Math.floor(boardIndex / 8);
         if (row < 3) return { color: 'BLACK' };
         if (row > 4) return { color: 'WHITE' };
         return null;
@@ -104,6 +252,11 @@ export const Board: React.FC<BoardProps> = ({
             selectedSquare !== null &&
             isDark &&
             (legalMoves?.[selectedSquare]?.includes(i) ?? false);
+        const displayRow = Math.floor(i / 8);
+        const displayCol = i % 8;
+        const showRank = displayCol === 0;
+        const showFile = displayRow === 7;
+        const coordTextClass = isDark ? "text-neutral-200/70" : "text-neutral-900/40";
 
         return (
             <div
@@ -122,6 +275,22 @@ export const Board: React.FC<BoardProps> = ({
                 {/* Highlight legal target squares */}
                 {isLegalTarget && (
                     <div className="absolute inset-0 bg-emerald-400/40 ring-2 ring-emerald-300 pointer-events-none" />
+                )}
+
+                {/* Chess.com-style coordinates (a1-h8), rotate with perspective */}
+                {(showRank || showFile) && (
+                    <div className="absolute inset-0 pointer-events-none">
+                        {showRank && (
+                            <div className={clsx("absolute left-1 top-1 text-[10px] font-semibold", coordTextClass)}>
+                                {rankFor(displayRow)}
+                            </div>
+                        )}
+                        {showFile && (
+                            <div className={clsx("absolute left-1 bottom-1 text-[10px] font-semibold lowercase", coordTextClass)}>
+                                {fileFor(displayCol)}
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {/* Mandatory capture highlight */}
@@ -143,73 +312,50 @@ export const Board: React.FC<BoardProps> = ({
         );
     };
 
-    const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
-
     return (
         <div
             className={clsx(
-                "w-full max-w-[min(94vw,600px)] mx-auto bg-[#2B2B2B] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-xl ring-1 ring-white/10 touch-manipulation",
+                "w-[600px] mx-auto bg-[#2B2B2B] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-xl ring-1 ring-white/10 touch-manipulation",
                 isShaking && "board-shake",
                 className
             )}
             onAnimationEnd={() => setIsShaking(false)}
             {...props}
         >
-            <div className="grid grid-cols-1 grid-rows-1 gap-1 sm:grid-cols-[20px_1fr] sm:grid-rows-[1fr_20px]">
-                <div className="hidden sm:grid sm:grid-rows-8">
-                    {ranks.map((rank) => (
-                        <div
-                            key={rank}
-                            className="flex items-center justify-center text-[10px] text-neutral-300 font-semibold"
-                        >
-                            {rank}
-                        </div>
-                    ))}
+            <div className="w-full aspect-square relative border-2 border-[#B58863]">
+                <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
+                    {Array.from({ length: 64 }).map((_, i) => renderSquare(i))}
                 </div>
-                <div className="w-full aspect-square relative border-2 border-[#B58863]">
-                    <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
-                        {Array.from({ length: 64 }).map((_, i) => renderSquare(i))}
+                {externalPieces && (
+                    <div className="absolute inset-0 pointer-events-none">
+                        {animatedPieces.map((piece) => {
+                            const displayIndex = piece.displayIndex;
+                            const row = Math.floor(displayIndex / 8);
+                            const col = displayIndex % 8;
+                            return (
+                                <div
+                                    key={piece.id}
+                                    className={clsx(
+                                        "absolute left-0 top-0 flex items-center justify-center transition-all duration-200 sm:duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+                                        piece.isExiting ? "opacity-0 scale-75" : "opacity-100 scale-100",
+                                    )}
+                                    style={{
+                                        width: "12.5%",
+                                        height: "12.5%",
+                                        transform: `translate3d(${col * 100}%, ${row * 100}%, 0)`,
+                                        willChange: "transform",
+                                    }}
+                                >
+                                    <Piece
+                                        color={piece.color}
+                                        isKing={piece.isKing}
+                                        isSelected={selectedSquare === displayIndex}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
-                    {externalPieces && (
-                        <div className="absolute inset-0 pointer-events-none">
-                            {Object.entries(externalPieces).map(([key, piece]) => {
-                                const index = Number(key);
-                                const row = Math.floor(index / 8);
-                                const col = index % 8;
-                                return (
-                                    <div
-                                        key={key}
-                                        className="absolute flex items-center justify-center transition-all duration-300 ease-out"
-                                        style={{
-                                            left: `${col * 12.5}%`,
-                                            top: `${row * 12.5}%`,
-                                            width: "12.5%",
-                                            height: "12.5%",
-                                        }}
-                                    >
-                                        <Piece
-                                            color={piece.color}
-                                            isKing={piece.isKing}
-                                            isSelected={selectedSquare === index}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-                <div className="hidden sm:block" />
-                <div className="hidden sm:grid sm:grid-cols-8">
-                    {files.map((file) => (
-                        <div
-                            key={file}
-                            className="flex items-center justify-center text-[10px] text-neutral-300 font-semibold"
-                        >
-                            {file}
-                        </div>
-                    ))}
-                </div>
+                )}
             </div>
         </div>
     );
