@@ -13,7 +13,6 @@ export default function FriendGameSetupPage() {
     const { user } = useAuth();
 
     const [timeControl, setTimeControl] = useState<number>(600000); // 10 mins
-    const [rated, setRated] = useState<boolean>(false);
     const [allowSpectators, setAllowSpectators] = useState<boolean>(true);
     const [roomType, setRoomType] = useState<string>("single");
 
@@ -36,7 +35,6 @@ export default function FriendGameSetupPage() {
             const isSwahili = typeof window !== "undefined" && window.location.pathname.startsWith("/sw");
             const resp = await friendService.createFriendlyInvite({
                 initialTimeMs: timeControl,
-                rated,
                 allowSpectators,
                 roomType,
                 locale: isSwahili ? "sw" : "en",
@@ -134,14 +132,6 @@ export default function FriendGameSetupPage() {
 
                             {/* Toggles */}
                             <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-800/30 p-4">
-                                <label className="flex items-center justify-between cursor-pointer group">
-                                    <span className="text-sm font-medium text-neutral-300 group-hover:text-white transition-colors">Rated Game</span>
-                                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${rated ? 'bg-[var(--primary)]' : 'bg-neutral-600'}`}>
-                                        <input type="checkbox" className="sr-only" checked={rated} onChange={() => setRated(!rated)} />
-                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${rated ? 'translate-x-6' : 'translate-x-1'}`} />
-                                    </div>
-                                </label>
-
                                 <label className="flex items-center justify-between cursor-pointer group">
                                     <span className="text-sm font-medium text-neutral-300 group-hover:text-white transition-colors">Allow Spectators</span>
                                     <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${allowSpectators ? 'bg-[var(--primary)]' : 'bg-neutral-600'}`}>

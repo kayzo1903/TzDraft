@@ -77,7 +77,7 @@ export class FriendlyMatchController {
         throw new BadRequestException('You are already in another match');
       }
 
-      const preGame = await this.createGameUseCase.createPvPGame(
+      const preGame = await this.createGameUseCase.createFriendlyGame(
         user.id,
         payload.friendId,
         500,
@@ -295,7 +295,17 @@ export class FriendlyMatchController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Decline a direct friend challenge' })
   async decline(@CurrentUser() user: any, @Param('id') id: string) {
-    await this.friendlyMatchService.declineInvite(id, user.id);
+    const invite = await this.friendlyMatchService.declineInvite(id, user.id);
+    if (invite?.hostId) {
+      await this.gamesGateway.emitToParticipant(
+        invite.hostId,
+        'friendlyInviteDeclined',
+        {
+          inviteId: invite.id,
+          declinedBy: user.id,
+        },
+      );
+    }
     return { status: 'success' };
   }
 

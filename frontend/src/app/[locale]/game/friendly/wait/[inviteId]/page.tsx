@@ -135,9 +135,17 @@ export default function FriendlyWaitPage() {
       router.push(`/game/${data.gameId}`);
     };
 
+    const onInviteDeclined = (data: { inviteId?: string }) => {
+      if (data?.inviteId !== inviteId) return;
+      setOpponentPresent(false);
+      setError("Your friend declined the challenge.");
+      loadInvite();
+    };
+
     socket.on("waitingRoomPresence", onPresence);
     socket.on("friendlyInviteOpponentJoined", onOpponentJoined);
     socket.on("gameActivated", onGameActivated);
+    socket.on("friendlyInviteDeclined", onInviteDeclined);
 
     if (socket.connected && !hasJoinedWaitroom.current) {
       doJoinWaitingRoom();
@@ -147,6 +155,7 @@ export default function FriendlyWaitPage() {
       socket.off("waitingRoomPresence", onPresence);
       socket.off("friendlyInviteOpponentJoined", onOpponentJoined);
       socket.off("gameActivated", onGameActivated);
+      socket.off("friendlyInviteDeclined", onInviteDeclined);
     };
   }, [socket, inviteId, participantId, router, doJoinWaitingRoom, loadInvite]);
 

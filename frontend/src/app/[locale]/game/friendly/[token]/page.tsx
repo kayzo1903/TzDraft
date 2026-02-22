@@ -56,8 +56,8 @@ export default function FriendlyInvitePage() {
           isGuest ? getOrCreateGuestId() : undefined,
         );
         setInvite(data);
-        if (data?.gameId) {
-          router.push(`/game/${data.gameId}`);
+        if (data?.status === "ACCEPTED" && data?.id) {
+          router.push(`/game/friendly/wait/${data.id}`);
         }
       } catch (err: any) {
         setError(err.response?.data?.message || "Invite not available or expired.");

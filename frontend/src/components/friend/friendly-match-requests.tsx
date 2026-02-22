@@ -47,14 +47,22 @@ export function FriendlyMatchRequests({ refreshTrigger }: FriendlyMatchRequestsP
     loadIncoming();
   }, [refreshTrigger]);
 
+  useEffect(() => {
+    const onRefresh = () => {
+      setLoading(true);
+      loadIncoming();
+    };
+    window.addEventListener("tzdraft:friendsRefresh", onRefresh);
+    return () => window.removeEventListener("tzdraft:friendsRefresh", onRefresh);
+  }, []);
+
   const handleAccept = async (invite: IncomingInvite) => {
     try {
       setActingOn(invite.id);
       const data = await friendService.acceptFriendlyInvite(invite.inviteToken);
-      if (data?.gameId) {
-        if (data.playerColor && typeof window !== "undefined") {
-          window.sessionStorage.setItem(`tzdraft:game:${data.gameId}:color`, data.playerColor);
-        }
+      if (data?.inviteId) {
+        router.push(`/game/friendly/wait/${data.inviteId}`);
+      } else if (data?.gameId) {
         router.push(`/game/${data.gameId}`);
       }
     } catch (err: unknown) {

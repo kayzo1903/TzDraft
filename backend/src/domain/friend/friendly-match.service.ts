@@ -195,10 +195,11 @@ export class FriendlyMatchService {
       throw new BadRequestException('Only pending invites can be declined');
     }
     await this.cleanupLinkedPendingGame(invite.gameId);
-    return (this.prisma as any).friendlyMatch.update({
+    await (this.prisma as any).friendlyMatch.update({
       where: { id: inviteId },
       data: { status: FriendlyMatchStatus.DECLINED },
     });
+    return invite;
   }
 
   async reserveInviteForAccept(token: string, guestId: string) {

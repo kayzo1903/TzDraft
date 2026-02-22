@@ -5,6 +5,7 @@ import { friendService } from "@/services/friend.service";
 import { Copy, Loader2, MessageCircle, Swords, Trash2 } from "lucide-react";
 import { useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { useSocket } from "@/hooks/useSocket";
 
 interface Friend {
   id: string;
@@ -21,6 +22,7 @@ interface FriendListProps {
 export function FriendList({ refreshTrigger }: FriendListProps) {
   const router = useRouter();
   const locale = useLocale() as "en" | "sw";
+  const socket = useSocket();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -57,9 +59,43 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
     }
   };
 
+  const refreshOnline = async () => {
+    try {
+      const onlineData = await friendService.getOnlineFriends();
+      setOnlineMap(onlineData.onlineMap || {});
+    } catch {
+      // Ignore transient errors to avoid flicker.
+    }
+  };
+
   useEffect(() => {
     loadFriends();
   }, [refreshTrigger]);
+
+  useEffect(() => {
+    const onRefresh = () => loadFriends();
+    window.addEventListener("tzdraft:friendsRefresh", onRefresh);
+    return () => window.removeEventListener("tzdraft:friendsRefresh", onRefresh);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onConnect = () => refreshOnline();
+    const onDisconnect = () => refreshOnline();
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (friends.length === 0) return;
+    refreshOnline();
+    const intervalId = window.setInterval(refreshOnline, 10000);
+    return () => window.clearInterval(intervalId);
+  }, [friends.length]);
 
   const handleRemoveFriend = async (friendId: string) => {
     try {
@@ -80,12 +116,8 @@ export function FriendList({ refreshTrigger }: FriendListProps) {
       const invite = await friendService.createFriendlyInvite({ friendId, locale });
       setActionMessage("Challenge sent. Waiting for your friend to accept.");
 
-      // If the friend accepts immediately or it's already accepted, redirect
-      if (invite.gameId) {
-        router.push(`/game/${invite.gameId}`);
-      } else if (invite.id) {
-        // Option: automatically go to wait room for challenges too?
-        // router.push(`/game/friendly/wait/${invite.id}`);
+      if (invite.id) {
+        router.push(`/game/friendly/wait/${invite.id}`);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to send challenge";
