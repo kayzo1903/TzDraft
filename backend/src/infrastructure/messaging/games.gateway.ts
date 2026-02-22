@@ -799,13 +799,13 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // `previousGame.initialTimeMs` is reconstructed from persisted clock and can
       // reflect remaining time. For rematch, prefer the original invite time control.
-      const linkedFriendlyMatch = await (this.prisma as any).friendlyMatch.findFirst(
-        {
-          where: { gameId },
-          select: { initialTimeMs: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      );
+      const linkedFriendlyMatch = await (
+        this.prisma as any
+      ).friendlyMatch.findFirst({
+        where: { gameId },
+        select: { initialTimeMs: true },
+        orderBy: { createdAt: 'desc' },
+      });
       const initialTimeMs = Math.max(
         60_000,
         Number(linkedFriendlyMatch?.initialTimeMs || 600_000),
@@ -869,6 +869,17 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   emitGameStateUpdate(gameId: string, gameState: any) {
     this.server.to(gameId).emit('gameStateUpdated', gameState);
     this.logger.log(`Emitted gameStateUpdated for game: ${gameId}`);
+  }
+
+  /**
+   * Emit a rollback event when the async DB persist fails after an optimistic
+   * broadcast. Both players receive this and revert to their previous state.
+   */
+  emitMoveRollback(gameId: string, move: { from: number; to: number }) {
+    this.server.to(gameId).emit('moveRollback', { gameId, move });
+    this.logger.warn(
+      `Emitted moveRollback for game: ${gameId} move=${move.from}->${move.to}`,
+    );
   }
 
   emitGameOver(gameId: string, result: any) {
@@ -1124,5 +1135,3 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 }
-
-

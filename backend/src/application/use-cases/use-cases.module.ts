@@ -17,6 +17,7 @@ import { RemoveFriendUseCase } from './remove-friend.use-case';
 import { GetSentFriendRequestsUseCase } from './get-sent-friend-requests.use-case';
 import { CancelFriendRequestUseCase } from './cancel-friend-request.use-case';
 import { RatingService } from '../../domain/game/services/rating.service';
+import { GameStateCacheService } from '../services/game-state-cache.service';
 
 /**
  * Use Cases Module
@@ -34,6 +35,7 @@ import { FriendModule } from '../../domain/friend/friend.module';
     FriendModule,
   ],
   providers: [
+    GameStateCacheService,
     CreateGameUseCase,
     MakeMoveUseCase,
     GetGameStateUseCase,
@@ -52,6 +54,7 @@ import { FriendModule } from '../../domain/friend/friend.module';
     RatingService,
   ],
   exports: [
+    GameStateCacheService,
     CreateGameUseCase,
     MakeMoveUseCase,
     GetGameStateUseCase,

@@ -563,7 +563,10 @@ export default function GamePage() {
             withCredentials: true,
             auth: authPayload,
             autoConnect: true,
-            transports: ['websocket', 'polling'],
+            // Prefer a direct WebSocket connection — avoids the ~200-500 ms
+            // overhead of HTTP long-polling that kick in when polling is listed
+            // first or used as a fallback.
+            transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: 5,
         });
@@ -724,6 +727,21 @@ export default function GamePage() {
             setActionError(data?.message || 'Move rejected by server.');
         });
 
+        // moveRollback: fired when the backend DB write fails after an
+        // optimistic broadcast. Roll back the board to the last known state.
+        socket.on('moveRollback', () => {
+            const snapshot = optimisticSnapshotRef.current;
+            if (snapshot) {
+                setPieces(snapshot.pieces);
+                setGame(snapshot.game);
+                const signature = getBoardSignature(snapshot.pieces as Record<number, unknown>);
+                lastBoardSignatureRef.current = signature;
+            }
+            optimisticSnapshotRef.current = null;
+            setIsOptimistic(false);
+            setActionError('Move could not be saved. Please try again.');
+        });
+
         socket.on('drawOffered', (data: { gameId?: string; offeredBy?: string; expiresAt?: number }) => {
             if (!data?.gameId || data.gameId !== gameIdRef.current) return;
             if (!data.offeredBy || !data.expiresAt) return;
@@ -828,6 +846,7 @@ export default function GamePage() {
             socket.off('rematchRequested');
             socket.off('rematchExpired');
             socket.off('moveRejected');
+            socket.off('moveRollback');
             socket.off('playerDisconnected');
             socket.off('playerReconnected');
             socket.off('disconnect');

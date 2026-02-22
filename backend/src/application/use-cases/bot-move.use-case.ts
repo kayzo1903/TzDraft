@@ -3,6 +3,7 @@ import type { IGameRepository } from '../../domain/game/repositories/game.reposi
 import { PlayerColor, GameStatus } from '../../shared/constants/game.constants';
 import { KallistoEngineService } from '../engines/kallisto-engine.service';
 import { MakeMoveUseCase } from './make-move.use-case';
+import { GameStateCacheService } from '../services/game-state-cache.service';
 
 /**
  * BotMoveUseCase
@@ -30,11 +31,16 @@ export class BotMoveUseCase {
     private readonly kallistoService: KallistoEngineService,
     @Inject(forwardRef(() => MakeMoveUseCase))
     private readonly makeMoveUseCase: MakeMoveUseCase,
+    private readonly gameStateCache: GameStateCacheService,
   ) {}
 
   async execute(gameId: string): Promise<void> {
-    // Load the game
-    const game = await this.gameRepository.findById(gameId);
+    // Load the game — check the in-memory cache first so we always see the
+    // latest board state even if the DB write from the human's move is still
+    // in-flight (avoids "not bot's turn" false rejections).
+    const game =
+      this.gameStateCache.get(gameId) ??
+      (await this.gameRepository.findById(gameId));
     if (!game) {
       console.warn(`[BotMove] Game ${gameId} not found`);
       return;
@@ -84,7 +90,9 @@ export class BotMoveUseCase {
     const engineMove = await this.kallistoService.getMove(moveRequest);
 
     if (!engineMove || engineMove.from < 1 || engineMove.to < 1) {
-      console.warn(`[BotMove] Kallisto returned no valid move for game ${gameId}`);
+      console.warn(
+        `[BotMove] Kallisto returned no valid move for game ${gameId}`,
+      );
       return;
     }
 
@@ -134,7 +142,7 @@ export class BotMoveUseCase {
     if (level === 5) return 1000;
     if (level === 6) return 1500;
     if (level === 7) return 3000;
-    if (level === 8) return 5000;  // Zombie
-    return 12000;                  // Dragon (level 9+)
+    if (level === 8) return 5000; // Zombie
+    return 12000; // Dragon (level 9+)
   }
 }

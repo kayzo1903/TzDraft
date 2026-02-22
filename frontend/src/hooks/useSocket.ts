@@ -10,7 +10,9 @@ export function useSocket() {
   useEffect(() => {
     // If authenticated, prefer store token but fall back to localStorage on reload.
     const storedToken =
-      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
     const token = isAuthenticated ? accessToken || storedToken : null;
     const guestId = typeof window !== "undefined" ? getOrCreateGuestId() : null;
     const authPayload =
@@ -26,7 +28,9 @@ export function useSocket() {
     const newSocket = io(socketUrl, {
       auth: authPayload,
       withCredentials: true,
-      transports: ["websocket", "polling"],
+      // Force WebSocket — avoids 200-500 ms polling overhead when the
+      // connection falls back to HTTP long-polling.
+      transports: ["websocket"],
     });
 
     newSocket.on("connect", () => {

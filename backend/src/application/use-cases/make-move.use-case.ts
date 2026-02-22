@@ -14,6 +14,7 @@ import { Move } from '../../domain/game/entities/move.entity';
 import { PlayerColor } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { RatingService } from '../../domain/game/services/rating.service';
+import { GameStateCacheService } from '../services/game-state-cache.service';
 
 /**
  * Make Move Use Case
@@ -31,6 +32,7 @@ export class MakeMoveUseCase {
     private readonly gamesGateway: GamesGateway,
     private readonly prisma: PrismaService,
     private readonly ratingService: RatingService,
+    private readonly gameStateCache: GameStateCacheService,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -49,8 +51,11 @@ export class MakeMoveUseCase {
     game: Game;
     move: Move;
   }> {
-    // 1. Load game
-    const game = await this.gameRepository.findById(gameId);
+    // 1. Load game — check the in-memory cache first to avoid stale DB reads
+    //    during the async write window from the previous move.
+    const game =
+      this.gameStateCache.get(gameId) ??
+      (await this.gameRepository.findById(gameId));
     if (!game) {
       throw new BadRequestException('Game not found');
     }
@@ -61,7 +66,7 @@ export class MakeMoveUseCase {
     // 3. Get actual move count from database
     const moveNumber = game.getMoveCount() + 1;
 
-    // 4. Validate and execute move
+    // 4. Validate move (in-memory, ~0 ms)
     const fromPos = new Position(from);
     const toPos = new Position(to);
     const pathPos = path?.map((p) => new Position(p));
@@ -94,52 +99,127 @@ export class MakeMoveUseCase {
       moveResult.move.createdAt,
     );
 
-    // 5. Update Clock & Check Timeout
+    // 5. Update Clock
     if (game.status === 'ACTIVE' && game.clockInfo) {
       const now = Date.now();
       const lastMoveTime =
         game.clockInfo.lastMoveAt instanceof Date
           ? game.clockInfo.lastMoveAt.getTime()
           : new Date(game.clockInfo.lastMoveAt).getTime();
-
       const elapsed = Math.max(0, now - lastMoveTime);
-
-      // Check if player ran out of time BEFORE making the move
-      const timeRemaining =
-        game.currentTurn === PlayerColor.WHITE
-          ? game.clockInfo.whiteTimeMs
-          : game.clockInfo.blackTimeMs;
-
-      if (elapsed > timeRemaining) {
-        // Trigger timeout
-        const winner =
-          game.currentTurn === PlayerColor.WHITE
-            ? PlayerColor.BLACK
-            : PlayerColor.WHITE;
-        // We need to use EndGameUseCase here, but we can't easily inject it due to circular dependency.
-        // Instead, we'll throw a specific error or handle it by ending the game directly on the entity
-        // verifying if this is the best approach.
-        // Actually, let's allow the move if it arrived "just in time" considering lag,
-        // but strictly, if server says time is up, it's up.
-        // For now, let's update the clock. If it goes below zero, we flag it.
-      }
-
       game.updateClock(elapsed);
     } else if (game.status === 'ACTIVE' && !game.clockInfo) {
-      // First move or clock not initialized
       game.updateClock(0);
     }
 
-    // 6. Apply move to game
+    // 6. Apply move to game entity (in-memory)
     game.applyMove(correctedMove);
 
-    // 7. Check for game end + draw claim eligibility after move
+    // 🔑 Immediately update the in-memory cache so the next makeMove call
+    //    (which may arrive before the DB write completes) reads correct state.
+    this.gameStateCache.set(game);
+
+    // 7. Evaluate game result
     const evaluation = this.gameRulesService.evaluatePostMove(game);
     if (evaluation.outcome) {
       game.endGame(evaluation.outcome.winner, evaluation.outcome.reason);
     }
 
-    // 8. Save game and move
+    // 8. ✅ OPTIMISTIC BROADCAST — emit to both players immediately,
+    //    before any database writes. This eliminates the 150–400 ms DB
+    //    write delay that players felt on every move.
+    const broadcastPayload = {
+      id: game.id,
+      status: game.status,
+      gameType: game.gameType,
+      whitePlayerId: game.whitePlayerId,
+      blackPlayerId: game.blackPlayerId,
+      whiteGuestName: game.whiteGuestName,
+      blackGuestName: game.blackGuestName,
+      winner: game.winner,
+      endReason: game.endReason,
+      currentTurn: game.currentTurn,
+      clockInfo: game.clockInfo,
+      serverTimeMs: Date.now(),
+      board: game.board?.toJSON ? game.board.toJSON() : (game as any).board,
+      lastMove: {
+        id: correctedMove.id,
+        player: correctedMove.player,
+        from: correctedMove.from.value,
+        to: correctedMove.to.value,
+        notation: correctedMove.notation,
+        isPromotion: correctedMove.isPromotion,
+        capturedSquares: correctedMove.capturedSquares.map((p) => p.value),
+        moveNumber: correctedMove.moveNumber,
+        createdAt: correctedMove.createdAt,
+      },
+      drawClaimAvailable: evaluation.drawClaimAvailable,
+    };
+    this.gamesGateway.emitGameStateUpdate(gameId, broadcastPayload);
+
+    if (game.status === 'FINISHED') {
+      this.gamesGateway.emitGameOver(gameId, {
+        winner: game.winner,
+        reason: game.endReason,
+        noMoves: evaluation.outcome?.noMoves === true,
+      });
+    }
+
+    // 9. Schedule timeout for next player (before DB write so clocks stay
+    //    accurate regardless of persistence latency)
+    if (game.clockInfo && game.status === 'ACTIVE') {
+      const nextPlayer = game.currentTurn;
+      const timeForNextPlayer =
+        nextPlayer === PlayerColor.WHITE
+          ? game.clockInfo.whiteTimeMs
+          : game.clockInfo.blackTimeMs;
+      const nextPlayerId =
+        nextPlayer === PlayerColor.WHITE
+          ? game.whitePlayerId
+          : game.blackPlayerId;
+      if (nextPlayerId) {
+        this.gamesGateway.scheduleGameTimeout(
+          game.id,
+          timeForNextPlayer,
+          nextPlayerId,
+        );
+      }
+    }
+
+    // 10. Persist asynchronously — DB writes happen in the background.
+    //     If persistence fails, invalidate the cache and emit moveRollback
+    //     so clients can recover.
+    this.persistMoveAsync(game, correctedMove, evaluation).catch((err) => {
+      console.error(`persistMoveAsync failed game=${gameId}:`, err);
+      // Invalidate so the next load gets a fresh DB read.
+      this.gameStateCache.invalidate(gameId);
+      this.gamesGateway.emitMoveRollback(gameId, {
+        from: correctedMove.from.value,
+        to: correctedMove.to.value,
+      });
+    });
+
+    // Evict finished games from the cache — no more moves expected.
+    if (game.status === 'FINISHED') {
+      this.gameStateCache.invalidate(gameId);
+    }
+
+    return {
+      game,
+      move: correctedMove,
+    };
+  }
+
+  /**
+   * Persist move and updated game state to the database.
+   * Called asynchronously after the optimistic broadcast so players
+   * never wait for DB writes to see the updated board.
+   */
+  private async persistMoveAsync(
+    game: Game,
+    correctedMove: Move,
+    evaluation: ReturnType<GameRulesService['evaluatePostMove']>,
+  ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await tx.game.update({
         where: { id: game.id },
@@ -153,8 +233,12 @@ export class MakeMoveUseCase {
       });
 
       if (game.clockInfo) {
-        const whiteTimeMs = BigInt(Math.max(0, Math.floor(game.clockInfo.whiteTimeMs)));
-        const blackTimeMs = BigInt(Math.max(0, Math.floor(game.clockInfo.blackTimeMs)));
+        const whiteTimeMs = BigInt(
+          Math.max(0, Math.floor(game.clockInfo.whiteTimeMs)),
+        );
+        const blackTimeMs = BigInt(
+          Math.max(0, Math.floor(game.clockInfo.blackTimeMs)),
+        );
         const lastMoveAt =
           game.clockInfo.lastMoveAt instanceof Date
             ? game.clockInfo.lastMoveAt
@@ -193,81 +277,14 @@ export class MakeMoveUseCase {
       });
     });
 
-    // 7. Emit game state update
-    this.gamesGateway.emitGameStateUpdate(gameId, {
-      id: game.id,
-      status: game.status,
-      gameType: game.gameType,
-      whitePlayerId: game.whitePlayerId,
-      blackPlayerId: game.blackPlayerId,
-      whiteGuestName: game.whiteGuestName,
-      blackGuestName: game.blackGuestName,
-      winner: game.winner,
-      endReason: game.endReason,
-      currentTurn: game.currentTurn,
-      clockInfo: game.clockInfo,
-      serverTimeMs: Date.now(),
-      board: game.board?.toJSON ? game.board.toJSON() : (game as any).board,
-      lastMove: {
-        id: correctedMove.id,
-        player: correctedMove.player,
-        from: correctedMove.from.value,
-        to: correctedMove.to.value,
-        notation: correctedMove.notation,
-        isPromotion: correctedMove.isPromotion,
-        capturedSquares: correctedMove.capturedSquares.map((p) => p.value),
-        moveNumber: correctedMove.moveNumber,
-        createdAt: correctedMove.createdAt,
-      },
-      drawClaimAvailable: evaluation.drawClaimAvailable,
-    });
-
-    if (game.status === 'FINISHED') {
-      this.gamesGateway.emitGameOver(gameId, {
-        winner: game.winner,
-        reason: game.endReason,
-        noMoves: evaluation.outcome?.noMoves === true,
-      });
-      if (game.winner) {
-        try {
-          await this.ratingService.updateRatings(game, game.winner);
-        } catch (error) {
-          // Avoid failing move flow when rating update fails.
-          console.error('Failed to update ratings:', error);
-        }
-      }
-      return {
-        game,
-        move: correctedMove,
-      };
-    }
-
-    // 9. Schedule timeout for next player
-    if (game.clockInfo && game.status === 'ACTIVE') {
-      const nextPlayer = game.currentTurn;
-      const timeForNextPlayer =
-        nextPlayer === PlayerColor.WHITE
-          ? game.clockInfo.whiteTimeMs
-          : game.clockInfo.blackTimeMs;
-
-      const nextPlayerId =
-        nextPlayer === PlayerColor.WHITE
-          ? game.whitePlayerId
-          : game.blackPlayerId;
-
-      if (nextPlayerId) {
-        this.gamesGateway.scheduleGameTimeout(
-          game.id,
-          timeForNextPlayer,
-          nextPlayerId,
-        );
+    // Update ratings after a finished game
+    if (game.status === 'FINISHED' && game.winner) {
+      try {
+        await this.ratingService.updateRatings(game, game.winner);
+      } catch (error) {
+        console.error('Failed to update ratings:', error);
       }
     }
-
-    return {
-      game,
-      move: correctedMove,
-    };
   }
 
   /**
