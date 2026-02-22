@@ -80,9 +80,7 @@ export class GetGameStateUseCase {
     game: Game,
   ): Promise<{ white: User | null; black: User | null }> {
     const [white, black] = await Promise.all([
-      game.whitePlayerId
-        ? this.userService.findById(game.whitePlayerId)
-        : Promise.resolve(null),
+      this.userService.findById(game.whitePlayerId),
       game.blackPlayerId
         ? this.userService.findById(game.blackPlayerId)
         : Promise.resolve(null),

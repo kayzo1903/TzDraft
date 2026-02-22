@@ -1,8 +1,8 @@
-import { Move } from "../entities/move.entity.js";
-import { GameStatus } from "../constants.js";
-import { CaptureFindingService } from "./capture-finding.service.js";
-import { ValidationError, ValidationErrorCode, } from "../types/validation-error.type.js";
-import { getValidDirections } from "../types/capture-path.type.js";
+import { Move } from "../entities/move.entity";
+import { GameStatus } from "../constants";
+import { CaptureFindingService } from "./capture-finding.service";
+import { ValidationError, ValidationErrorCode, } from "../types/validation-error.type";
+import { getValidDirections } from "../types/capture-path.type";
 /**
  * Move Validation Service
  * Validates moves according to Tanzania Drafti rules

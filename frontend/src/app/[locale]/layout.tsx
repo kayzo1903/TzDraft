@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { FriendlyNotifications } from '@/components/friend/friendly-notifications';
 import type { Metadata } from "next";
 
 const getSiteUrl = () => {
@@ -87,7 +86,6 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <Navbar />
-      <FriendlyNotifications />
       {children}
       <Footer />
     </NextIntlClientProvider>

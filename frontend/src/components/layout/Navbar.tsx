@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
-import { usePendingFriendsCount } from '@/hooks/usePendingFriendsCount';
 import { User, LogOut, Settings, ChevronDown, Globe, Menu, X } from 'lucide-react';
 import Image from 'next/image';
 
@@ -17,7 +16,6 @@ export const Navbar: React.FC = () => {
     const router = useRouter();
     const locale = useLocale();
     const { user, logout } = useAuth();
-    const { count: pendingCount } = usePendingFriendsCount();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -205,19 +203,6 @@ export const Navbar: React.FC = () => {
                                                 Profile
                                             </Link>
                                             <Link
-                                                href="/friends"
-                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200/90 hover:bg-white/10 hover:text-white transition-colors relative"
-                                                onClick={() => setIsUserMenuOpen(false)}
-                                            >
-                                                <User className="w-4 h-4" />
-                                                Friends
-                                                {pendingCount > 0 && (
-                                                    <span className="ml-auto inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
-                                                        {pendingCount > 9 ? '9+' : pendingCount}
-                                                    </span>
-                                                )}
-                                            </Link>
-                                            <Link
                                                 href="/settings"
                                                 className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200/90 hover:bg-white/10 hover:text-white transition-colors"
                                                 onClick={() => setIsUserMenuOpen(false)}
@@ -371,17 +356,6 @@ export const Navbar: React.FC = () => {
                                         <Button variant="secondary" className="w-full justify-start gap-2">
                                             <User className="w-4 h-4" />
                                             Profile
-                                        </Button>
-                                    </Link>
-                                    <Link href="/friends" onClick={() => setIsMenuOpen(false)}>
-                                        <Button variant="secondary" className="w-full justify-start gap-2 relative">
-                                            <User className="w-4 h-4" />
-                                            Friends
-                                            {pendingCount > 0 && (
-                                                <span className="ml-auto inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
-                                                    {pendingCount > 9 ? '9+' : pendingCount}
-                                                </span>
-                                            )}
                                         </Button>
                                     </Link>
                                     <Link href="/settings" onClick={() => setIsMenuOpen(false)}>

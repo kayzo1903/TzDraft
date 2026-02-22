@@ -55,16 +55,6 @@ export class UserService {
   }
 
   /**
-   * Get all users (for search functionality)
-   */
-  async findAll() {
-    return this.prisma.user.findMany({
-      include: { rating: true },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  /**
    * Create a new user with automatic Rating initialization
    */
   async create(data: {
@@ -100,26 +90,5 @@ export class UserService {
     });
 
     return user;
-  }
-
-  /**
-   * Update player's rating after a ranked game.
-   * Uses upsert to recover gracefully if a rating row is missing.
-   */
-  async updateRating(userId: string, newRating: number): Promise<void> {
-    await this.prisma.rating.upsert({
-      where: { userId },
-      create: {
-        userId,
-        rating: newRating,
-        gamesPlayed: 1,
-      },
-      update: {
-        rating: newRating,
-        gamesPlayed: {
-          increment: 1,
-        },
-      },
-    });
   }
 }

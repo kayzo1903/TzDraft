@@ -1,5 +1,5 @@
-import { PieceType, PlayerColor } from '../constants.js';
-import { Position } from './position.vo.js';
+import { PieceType, PlayerColor } from '../constants';
+import { Position } from './position.vo';
 /**
  * Piece Value Object
  * Represents a single piece on the board

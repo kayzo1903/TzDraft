@@ -1,5 +1,5 @@
-import { Position } from '../value-objects/position.vo.js';
-import { PlayerColor } from '../constants.js';
+import { Position } from '../value-objects/position.vo';
+import { PlayerColor } from '../constants';
 /**
  * Move Entity
  * Represents a single move in the game

@@ -22,41 +22,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: { sub: string }) {
-    let user: {
-      id: string;
-      phoneNumber: string;
-      email: string | null;
-      username: string;
-      displayName: string;
-      isVerified: boolean;
-      rating: { rating: number } | null;
-    } | null = null;
-
-    try {
-      user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: {
-          id: true,
-          phoneNumber: true,
-          email: true,
-          username: true,
-          displayName: true,
-          isVerified: true,
-          rating: {
-            select: {
-              rating: true,
-            },
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        phoneNumber: true,
+        email: true,
+        username: true,
+        displayName: true,
+        isVerified: true,
+        rating: {
+          select: {
+            rating: true,
           },
         },
-      });
-    } catch (error: any) {
-      // If the DB is temporarily unreachable, treat as unauthorized rather than crashing the request pipeline.
-      // PrismaService already retries transient failures; this is a final safety net.
-      if (error?.code === 'P1001' || error?.code === 'P1002' || error?.code === 'P1017') {
-        throw new UnauthorizedException('Authentication temporarily unavailable');
-      }
-      throw error;
-    }
+      },
+    });
 
     if (!user) {
       throw new UnauthorizedException();
@@ -65,14 +46,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
 
     if (hasRealPhoneNumber && !user.isVerified) {
-      try {
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: { isVerified: true },
-        });
-      } catch {
-        // Non-critical: don't block authentication if the verification flag can't be updated right now.
-      }
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true },
+      });
     }
 
     return {

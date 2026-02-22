@@ -140,8 +140,8 @@ export class MoveController {
   @ApiOperation({ summary: 'Abort the game' })
   @ApiResponse({ status: 200, description: 'Game aborted' })
   @ApiResponse({ status: 400, description: 'Cannot abort game after moves' })
-  async abort(@CurrentUser() user: any, @Param('gameId') gameId: string) {
-    await this.endGameUseCase.abort(gameId, user.id);
+  async abort(@Param('gameId') gameId: string) {
+    await this.endGameUseCase.abort(gameId);
 
     return {
       success: true,

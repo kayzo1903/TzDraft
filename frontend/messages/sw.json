@@ -16,57 +16,6 @@
       "online": "Wachezaji Wengi",
       "blitz": "Michezo ya Haraka",
       "tournaments": "Mashindano"
-    },
-    "landing": {
-      "cta": {
-        "playBadge": "Cheza",
-        "aiBadge": "AI",
-        "aiSubtitle": "Modi ya Mazoezi"
-      },
-      "stats": {
-        "playersOnline": "Wachezaji 124 Mtandaoni",
-        "gamesToday": "Michezo 542 Leo"
-      },
-      "featured": {
-        "title": "Modi Zilizoangaziwa",
-        "explore": "Angalia modi zote",
-        "cards": {
-          "ranked": {
-            "tag": "Ushindani",
-            "title": "Mapambano ya Daraja Mubashara",
-            "description": "Ulinganishaji wa haraka, hatua zinazodhibitiwa na seva, na usimamizi wa saa ulio wa haki."
-          },
-          "ai": {
-            "tag": "Mazoezi",
-            "title": "Cheza dhidi ya Kompyuta",
-            "description": "Fanya mazoezi kwa viwango vya AI na uimarishe uwezo wako wa mbinu."
-          },
-          "friends": {
-            "tag": "Kijamii",
-            "title": "Marafiki na Mechi Maalum",
-            "description": "Alika marafiki, cheza mechi za faragha, na jaribu ufunguzi mpya kwa usalama."
-          }
-        }
-      },
-      "coreFeatures": {
-        "title": "Vipengele Muhimu",
-        "items": {
-          "sync": "Mchezo wa wakati halisi ulio sawazishwa",
-          "capture": "Uthibitishaji wa ulaji wa lazima",
-          "reconnect": "Urejeshaji wa muunganisho na usimamizi wa kukatika",
-          "mobile": "Mwingiliano wa ubao ulioboreshwa kwa simu"
-        }
-      },
-      "productIdeas": {
-        "title": "Mawazo ya Bidhaa",
-        "shareIdea": "Shiriki wazo lako",
-        "items": {
-          "tournaments": "Wikiendi za mashindano zenye zawadi za msimu",
-          "replay": "Marudio ya mchezo kwa uchambuzi wa hatua kwa hatua",
-          "profiles": "Wasifu wa wachezaji wenye grafu za utendaji",
-          "spectator": "Modi ya watazamaji kwa mechi maalum"
-        }
-      }
     }
   },
   "auth": {
@@ -264,7 +213,7 @@
       },
       "ai": {
         "title": "Cheza na AI",
-        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya AI.",
+        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish.",
         "action": "Cheza Sasa"
       },
       "friend": {
@@ -285,15 +234,7 @@
     "stats": {
       "activePlayers": "Wachezaji Hai",
       "matchesNow": "Mechi Zinaendelea"
-    },
-    "play_online": "Cheza Mtandaoni",
-    "select_mode": "Chagua mtindo unayopendelea",
-    "play_ranked": "Cheza kwa Daraja",
-    "login_required": "Ingia kwanza",
-    "or": "AU",
-    "play_as_guest": "Cheza kama Mgeni",
-    "joining_ranked_queue": "Inajiunga na Foleni ya Daraja...",
-    "login_to_play_ranked": "Ingia Kucheza kwa Daraja"
+    }
   },
   "footer": {
     "rules": "Sheria",

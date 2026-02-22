@@ -27,7 +27,7 @@ const parseColor = (value: string | null): PlayerColor => {
 const parseLevel = (value: string | null): number => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return 1;
-  return Math.min(Math.max(parsed, 1), 9);
+  return Math.min(Math.max(parsed, 1), 7);
 };
 
 const parseTime = (value: string | null): number => {
@@ -115,7 +115,7 @@ export default function LocalGamePage() {
     playerColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
   const locale = paramsRoute?.locale ?? "en";
   const setupAiPath = `/${locale}/game/setup-ai`;
-  const nextBotLevel = Math.min(level + 1, 9);
+  const nextBotLevel = Math.min(level + 1, 7);
   const didHumanWin =
     state.result?.winner ===
     (playerColor === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK);
@@ -123,25 +123,8 @@ export default function LocalGamePage() {
     Boolean(state.result) &&
     didHumanWin &&
     !state.undoUsed &&
-    level < 9 &&
+    level < 7 &&
     maxUnlockedAtStart < nextBotLevel;
-  const resultCard = state.result
-    ? (() => {
-      const humanWinner =
-        playerColor === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK;
-      const isDraw = state.result.winner === Winner.DRAW;
-      const isWin = state.result.winner === humanWinner;
-
-      return {
-        title: isDraw ? "Draw" : isWin ? "Win" : "Loss",
-        detail: isDraw
-          ? "The game ended in a draw."
-          : isWin
-            ? `You defeated ${bot.name}.`
-            : `${bot.name} won this game.`,
-      };
-    })()
-    : null;
 
   const timeFor = (color: PlayerColor) =>
     formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
@@ -328,59 +311,49 @@ export default function LocalGamePage() {
         </div>
       )}
 
-      {resultCard && (
+      {state.result && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md mx-4 rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl">
-            <div className="p-6 border-b border-neutral-800">
-              <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">
-                Game Result
+          <div className="p-6 border-b border-neutral-800">
+            <div className="text-sm uppercase tracking-[0.2em] text-neutral-500">
+              {t("gameOver.title")}
+            </div>
+            <div className="mt-2 text-3xl font-black text-neutral-100">
+              {user?.username
+                ? t("gameOver.congratsNamed", { name: user.username })
+                : t("gameOver.congrats")}
+            </div>
+            <div className="mt-2 text-neutral-400">
+              {t("gameOver.winnerLabel")}{" "}
+              <span className="inline-flex items-center gap-2 font-semibold text-orange-300">
+                {winnerIcon}
+                <span>{state.result.winner}</span>
+              </span>
+            </div>
+            {canOfferNextBot && (
+              <div className="mt-3 text-sm text-neutral-400">
+                {t("gameOver.unlockedNext", { level: nextBotLevel })}
               </div>
-              <div className="mt-2 text-2xl font-bold text-neutral-100">
-                {resultCard.title}
-              </div>
-              <div className="mt-2 text-sm text-neutral-400">
-                {resultCard.detail}
-              </div>
-              {canOfferNextBot && (
-                <div className="mt-3 text-sm text-neutral-400">
-                  {t("gameOver.unlockedNext", { level: nextBotLevel })}
-                </div>
               )}
             </div>
             <div className="p-6 flex flex-col gap-3">
-              <button
-                onClick={reset}
-                className="rounded-lg border border-neutral-600 bg-neutral-800 px-4 py-2 text-sm font-semibold text-neutral-100 hover:bg-neutral-700"
-              >
-                Rematch
-              </button>
+              <Button onClick={reset}>{t("gameOver.playAgain")}</Button>
               {canOfferNextBot && (
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     reset();
                     router.push(
                       `/${locale}/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`,
                     );
                   }}
-                  className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/25"
                 >
                   {t("gameOver.nextBot")}
-                </button>
+                </Button>
               )}
-              {!canOfferNextBot && (
-                <button
-                  onClick={() => router.push(setupAiPath)}
-                  className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/25"
-                >
-                  {t("gameOver.endGame")}
-                </button>
-              )}
-              <button
-                onClick={() => router.push('/')}
-                className="rounded-lg border border-neutral-700 bg-transparent px-4 py-2 text-sm font-semibold text-neutral-300 hover:bg-neutral-800"
-              >
-                Home
-              </button>
+              <Button variant="secondary" onClick={() => router.push(setupAiPath)}>
+                {t("gameOver.endGame")}
+              </Button>
             </div>
           </div>
         </div>
