@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "@/lib/auth/auth-store";
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002",
@@ -39,6 +40,12 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+const clearClientAuthState = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  useAuthStore.getState().clearAuth();
+};
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -77,6 +84,8 @@ axiosInstance.interceptors.response.use(
         // Guest users have no refresh token — don't attempt a refresh and
         // never redirect them to the login page; just propagate the error.
         if (!refreshToken) {
+          // If app state still thinks user is authenticated, clear stale state.
+          clearClientAuthState();
           processQueue(new Error("No refresh token"), null);
           isRefreshing = false;
           return Promise.reject(error);
@@ -100,8 +109,7 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        clearClientAuthState();
 
         // Avoid infinite reload loops - check if we are already on auth page
         if (!window.location.pathname.includes("/auth/")) {
