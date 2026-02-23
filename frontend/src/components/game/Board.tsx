@@ -315,7 +315,7 @@ export const Board: React.FC<BoardProps> = ({
     return (
         <div
             className={clsx(
-                "w-[600px] mx-auto bg-[#2B2B2B] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-xl ring-1 ring-white/10 touch-manipulation",
+                "w-full max-w-[600px] mx-auto bg-[#2B2B2B] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-xl ring-1 ring-white/10 touch-manipulation",
                 isShaking && "board-shake",
                 className
             )}
