@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -20,7 +25,9 @@ export class PrismaService
 
   async onModuleInit() {
     if (!this.shouldConnectOnStartup()) {
-      this.logger.warn('Skipping database connect on startup (DB_CONNECT_ON_STARTUP=false)');
+      this.logger.warn(
+        'Skipping database connect on startup (DB_CONNECT_ON_STARTUP=false)',
+      );
       return;
     }
 
@@ -29,7 +36,9 @@ export class PrismaService
       const message = 'DATABASE_URL is not set';
       if (this.allowStartWithoutDb()) {
         this.logger.error(message);
-        this.logger.warn('Continuing without a database connection (ALLOW_START_WITHOUT_DB=true)');
+        this.logger.warn(
+          'Continuing without a database connection (ALLOW_START_WITHOUT_DB=true)',
+        );
         return;
       }
       throw new Error(message);
@@ -39,7 +48,9 @@ export class PrismaService
       const parsed = new URL(databaseUrl);
       const dbName = (parsed.pathname || '').replace(/^\//, '') || '(default)';
       const user = parsed.username || '(unknown)';
-      this.logger.log(`Connecting to database host=${parsed.host} db=${dbName} user=${user}`);
+      this.logger.log(
+        `Connecting to database host=${parsed.host} db=${dbName} user=${user}`,
+      );
     } catch {
       // Ignore invalid URLs here; Prisma will surface a concrete error on connect.
     }
@@ -52,7 +63,9 @@ export class PrismaService
       this.logger.error(`Database connection failed: ${message}`);
 
       if (this.allowStartWithoutDb()) {
-        this.logger.warn('Continuing without a database connection (ALLOW_START_WITHOUT_DB=true)');
+        this.logger.warn(
+          'Continuing without a database connection (ALLOW_START_WITHOUT_DB=true)',
+        );
         return;
       }
 
