@@ -38,11 +38,18 @@ export class OtpService {
     });
 
     if (purpose === 'signup' && existingUser) {
-      throw new BadRequestException('User with this phone number already exists');
+      throw new BadRequestException(
+        'User with this phone number already exists',
+      );
     }
 
-    if ((purpose === 'password_reset' || purpose === 'verify_phone') && !existingUser) {
-      throw new BadRequestException('User with this phone number does not exist');
+    if (
+      (purpose === 'password_reset' || purpose === 'verify_phone') &&
+      !existingUser
+    ) {
+      throw new BadRequestException(
+        'User with this phone number does not exist',
+      );
     }
 
     // Generate OTP code
