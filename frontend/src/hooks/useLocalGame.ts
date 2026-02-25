@@ -67,6 +67,9 @@ type SavedGame = {
 const getOpponent = (player: PlayerColor): PlayerColor =>
   player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
 
+const toUiColor = (color: PlayerColor): "WHITE" | "BLACK" =>
+  color === PlayerColor.WHITE ? "WHITE" : "BLACK";
+
 const didHumanWin = (winner: Winner, humanColor: PlayerColor): boolean => {
   if (winner === Winner.DRAW) return false;
   if (humanColor === PlayerColor.WHITE) return winner === Winner.WHITE;
@@ -350,20 +353,22 @@ export const useLocalGame = (
       const toIndex = positionToIndex(move.to, flipForPlayer);
       setLastMove({ from: fromIndex, to: toIndex });
 
-      const moveCaptures = move.capturedSquares
-        .map((capturedPosition) => {
+      const moveCaptures = move.capturedSquares.reduce<CaptureGhost[]>(
+        (accumulator, capturedPosition) => {
           const capturedPiece = board.getPieceAt(capturedPosition);
-          if (!capturedPiece) return null;
-          return {
+          if (!capturedPiece) return accumulator;
+          accumulator.push({
             id: ++captureGhostIdRef.current,
             index: positionToIndex(capturedPosition, flipForPlayer),
             piece: {
-              color: capturedPiece.color,
-              isKing: capturedPiece.isKing(),
+              color: toUiColor(capturedPiece.color),
+              isKing: capturedPiece.isKing() ? true : undefined,
             },
-          } satisfies CaptureGhost;
-        })
-        .filter((ghost): ghost is CaptureGhost => ghost !== null);
+          });
+          return accumulator;
+        },
+        [],
+      );
       if (moveCaptures.length > 0) {
         setCapturedGhosts((prev) => [...prev, ...moveCaptures].slice(-24));
         const cleanupTimeout = window.setTimeout(() => {
