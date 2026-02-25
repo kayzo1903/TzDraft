@@ -32,7 +32,8 @@ let OtpService = class OtpService {
         if (purpose === 'signup' && existingUser) {
             throw new common_1.BadRequestException('User with this phone number already exists');
         }
-        if ((purpose === 'password_reset' || purpose === 'verify_phone') && !existingUser) {
+        if ((purpose === 'password_reset' || purpose === 'verify_phone') &&
+            !existingUser) {
             throw new common_1.BadRequestException('User with this phone number does not exist');
         }
         const code = this.generateCode();

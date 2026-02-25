@@ -11,14 +11,22 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected }) => {
     return (
         <div
             className={clsx(
-                'w-[80%] h-[80%] rounded-full shadow-md transition-transform duration-200',
+                'w-[80%] h-[80%] rounded-full shadow-lg transition-transform duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]',
                 color === 'WHITE'
                     ? 'bg-neutral-100 border-2 border-neutral-300'
                     : 'bg-neutral-800 border-2 border-neutral-600',
-                isSelected && 'ring-4 ring-yellow-400 scale-110',
+                isSelected && 'ring-4 ring-yellow-400 scale-105',
                 'flex items-center justify-center relative'
             )}
         >
+            <div
+                className={clsx(
+                    'absolute inset-[8%] rounded-full pointer-events-none',
+                    color === 'WHITE'
+                        ? 'bg-gradient-to-b from-white/70 to-transparent'
+                        : 'bg-gradient-to-b from-white/20 to-transparent',
+                )}
+            />
             <div
                 className={clsx(
                     'w-[70%] h-[70%] rounded-full border',
