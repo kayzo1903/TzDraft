@@ -36,6 +36,10 @@ let BeamAfricaService = BeamAfricaService_1 = class BeamAfricaService {
     }
     async sendOTP(phoneNumber, code) {
         try {
+            this.logger.log(`[BEAM_AFRICA] Attempting to send OTP to ${phoneNumber}`);
+            this.logger.log(`[BEAM_AFRICA] API Key configured: ${!!this.apiKey}`);
+            this.logger.log(`[BEAM_AFRICA] Secret Key configured: ${!!this.secretKey}`);
+            this.logger.log(`[BEAM_AFRICA] Sender ID: ${this.senderId}`);
             const message = `Your TzDraft verification code is: ${code}. Valid for 5 minutes.`;
             const response = await axios_1.default.post(`${this.baseUrl}/v1/send`, {
                 source_addr: this.senderId,
@@ -54,6 +58,7 @@ let BeamAfricaService = BeamAfricaService_1 = class BeamAfricaService {
                     Authorization: `Basic ${Buffer.from(`${this.apiKey}:${this.secretKey}`).toString('base64')}`,
                 },
             });
+            this.logger.log(`[BEAM_AFRICA] Response: ${JSON.stringify(response.data)}`);
             if (response.data.message?.includes('Successfully') ||
                 response.data.code === 100) {
                 this.logger.log(`OTP sent successfully to ${phoneNumber}`);
