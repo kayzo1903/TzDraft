@@ -59,7 +59,7 @@ export default function LocalGamePage() {
   const { user } = useAuthStore();
   const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(1);
 
-  const { state, pieces, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } = useLocalGame(
+  const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } = useLocalGame(
     level,
     playerColor,
     timeSeconds,
@@ -189,6 +189,8 @@ export default function LocalGamePage() {
           <Board
             onMove={makeMove}
             pieces={pieces}
+            lastMove={lastMove}
+            capturedGhosts={capturedGhosts}
             legalMoves={legalMoves}
             forcedPieces={forcedPieces}
             onInvalidSelect={playWarning}

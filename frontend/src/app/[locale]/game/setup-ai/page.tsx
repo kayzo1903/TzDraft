@@ -117,7 +117,7 @@ export default function SetupAiPage() {
 
   return (
     <div className="min-h-[100svh] bg-[var(--background)] text-foreground">
-      <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-44 sm:pt-10 sm:pb-10 lg:py-10">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-44 sm:pt-10 sm:pb-44 lg:pt-10 lg:pb-44">
         <header className="mb-6 sm:mb-10">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
@@ -176,7 +176,7 @@ export default function SetupAiPage() {
             </div>
 
             <div className="p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-1 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 {BOTS.map((bot) => {
                   const locked = bot.level > maxUnlockedLevel;
                   const selected = selectedBot.level === bot.level;
@@ -192,7 +192,7 @@ export default function SetupAiPage() {
                       disabled={locked}
                       aria-pressed={selected}
                       className={[
-                        "w-full rounded-2xl border p-3 transition text-center",
+                        "w-full rounded-2xl border p-2 transition text-center",
                         "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
                         locked
                           ? "opacity-60 cursor-not-allowed border-neutral-800 bg-neutral-900/40"
@@ -202,18 +202,18 @@ export default function SetupAiPage() {
                       ].join(" ")}
                     >
                       <div className="flex flex-col items-center gap-2">
-                        <div className="relative w-14 h-14 rounded-full bg-neutral-950/40 border border-neutral-700 overflow-hidden shrink-0">
+                        <div className="relative w-12 h-12 rounded-full bg-neutral-950/40 border border-neutral-700 overflow-hidden shrink-0">
                           <Image
                             src={bot.avatarSrc}
                             alt={bot.name}
                             fill
-                            sizes="56px"
+                            sizes="48px"
                             className="object-cover object-[50%_60%]"
                           />
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="font-semibold text-neutral-100 truncate max-w-[12rem]">
+                          <div className="text-sm font-semibold text-neutral-100 truncate max-w-full">
                             {bot.name}
                           </div>
                           {selected && (
@@ -312,115 +312,11 @@ export default function SetupAiPage() {
                 </div>
               </div>
             </Card>
-
-            <Card className="rounded-2xl border border-neutral-800 bg-neutral-950/20 p-4">
-              <div className="text-sm uppercase tracking-[0.22em] text-neutral-500">
-                {t("selectTime")}
-              </div>
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {TIME_OPTIONS.map((time) => {
-                  const selected = selectedTime === time;
-                  return (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setSelectedTime(time)}
-                      aria-pressed={selected}
-                      className={[
-                        "rounded-xl border px-3 py-2 text-center transition",
-                        "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                        selected
-                          ? "border-orange-500/70 bg-orange-500/15 text-orange-200"
-                          : "border-neutral-800 bg-neutral-900/30 text-neutral-300 hover:bg-neutral-900/60",
-                      ].join(" ")}
-                    >
-                      <div className="text-base font-bold">
-                        {time === 0 ? t("time.noTime") : t("time.minutes", { minutes: time })}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-
-            <Card className="rounded-2xl border border-neutral-800 bg-neutral-950/20 p-4">
-              <div className="text-sm uppercase tracking-[0.22em] text-neutral-500">
-                {t("selectColor")}
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor("WHITE")}
-                  aria-pressed={selectedColor === "WHITE"}
-                  aria-label={t("colors.white")}
-                  className={[
-                    "rounded-xl border px-3 py-2 transition flex flex-col items-center gap-2",
-                    "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                    selectedColor === "WHITE"
-                      ? "border-orange-500/70 bg-orange-500/15"
-                      : "border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60",
-                  ].join(" ")}
-                >
-                  <div className="w-7 h-7 rounded-full bg-white border border-neutral-300" />
-                  <span className="sr-only">{t("colors.white")}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor("RANDOM")}
-                  aria-pressed={selectedColor === "RANDOM"}
-                  aria-label={t("colors.random")}
-                  className={[
-                    "rounded-xl border px-3 py-2 transition flex flex-col items-center gap-2",
-                    "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                    selectedColor === "RANDOM"
-                      ? "border-orange-500/70 bg-orange-500/15"
-                      : "border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60",
-                  ].join(" ")}
-                >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-white to-black border border-neutral-600" />
-                  <span className="sr-only">{t("colors.random")}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor("BLACK")}
-                  aria-pressed={selectedColor === "BLACK"}
-                  aria-label={t("colors.black")}
-                  className={[
-                    "rounded-xl border px-3 py-2 transition flex flex-col items-center gap-2",
-                    "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                    selectedColor === "BLACK"
-                      ? "border-orange-500/70 bg-orange-500/15"
-                      : "border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60",
-                  ].join(" ")}
-                >
-                  <div className="w-7 h-7 rounded-full bg-black border border-neutral-600" />
-                  <span className="sr-only">{t("colors.black")}</span>
-                </button>
-              </div>
-            </Card>
-
-            <Button
-              size="lg"
-              className="w-full text-lg font-bold py-5"
-              onClick={handleStartGame}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {t("start.loading")}
-                </>
-              ) : (
-                t("start.cta")
-              )}
-            </Button>
           </aside>
         </div>
       </div>
 
-      <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur">
         <div className="mx-auto w-full max-w-6xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
           <div className="mb-3 flex items-center gap-2">
             <div ref={timeMenuRef} className="relative flex-1">
