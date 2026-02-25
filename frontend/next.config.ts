@@ -8,6 +8,9 @@ const nextConfig = {
   experimental: {
     externalDir: true,
   },
+  turbopack: {
+    root: path.resolve(__dirname, ".."),
+  },
   webpack: (config: any) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = {
