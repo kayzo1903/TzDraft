@@ -10,7 +10,7 @@ import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { getMaxUnlockedBotLevel } from "@/lib/game/bot-progression";
+import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS } from "@/lib/game/bot-progression";
 import { Trophy } from "lucide-react";
 
 const parseColor = (value: string | null): PlayerColor => {
@@ -27,7 +27,7 @@ const parseColor = (value: string | null): PlayerColor => {
 const parseLevel = (value: string | null): number => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return 1;
-  return Math.min(Math.max(parsed, 1), 7);
+  return Math.min(Math.max(parsed, 1), TOTAL_BOT_LEVELS);
 };
 
 const parseTime = (value: string | null): number => {
@@ -50,6 +50,8 @@ export default function LocalGamePage() {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const paramsRoute = useParams<{ locale: string }>();
+  const locale = paramsRoute?.locale ?? "en";
+  const setupAiPath = `/${locale}/game/setup-ai`;
   const params = useSearchParams();
   const level = useMemo(() => parseLevel(params.get("level")), [params]);
   const playerColorParam = useMemo(() => params.get("color"), [params]);
@@ -58,6 +60,7 @@ export default function LocalGamePage() {
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const { user } = useAuthStore();
   const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(1);
+  const [maxUnlockedNow, setMaxUnlockedNow] = useState(1);
 
   const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } = useLocalGame(
     level,
@@ -89,7 +92,16 @@ export default function LocalGamePage() {
   useEffect(() => {
     const max = getMaxUnlockedBotLevel();
     setMaxUnlockedAtStart(max);
-  }, [level]);
+    setMaxUnlockedNow(max);
+    if (level > max) {
+      router.replace(setupAiPath);
+    }
+  }, [level, router, setupAiPath]);
+
+  useEffect(() => {
+    if (!state.result) return;
+    setMaxUnlockedNow(getMaxUnlockedBotLevel());
+  }, [state.result]);
 
   if (!mounted) {
     return (
@@ -113,9 +125,7 @@ export default function LocalGamePage() {
   const bottomPlayer = { name: userLabel, rating: userRating };
   const botColor =
     playerColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
-  const locale = paramsRoute?.locale ?? "en";
-  const setupAiPath = `/${locale}/game/setup-ai`;
-  const nextBotLevel = Math.min(level + 1, 7);
+  const nextBotLevel = Math.min(level + 1, TOTAL_BOT_LEVELS);
   const didHumanWin =
     state.result?.winner ===
     (playerColor === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK);
@@ -123,8 +133,9 @@ export default function LocalGamePage() {
     Boolean(state.result) &&
     didHumanWin &&
     !state.undoUsed &&
-    level < 7 &&
-    maxUnlockedAtStart < nextBotLevel;
+    level < TOTAL_BOT_LEVELS &&
+    nextBotLevel <= maxUnlockedNow &&
+    (maxUnlockedNow > maxUnlockedAtStart || nextBotLevel <= maxUnlockedAtStart);
 
   const timeFor = (color: PlayerColor) =>
     formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
