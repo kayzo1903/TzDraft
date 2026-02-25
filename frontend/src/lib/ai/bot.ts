@@ -125,25 +125,25 @@ const evaluateBoard = (board: BoardState, player: PlayerColor): number => {
 };
 
 const getDepthForLevel = (level: number): number => {
-  if (level <= 1) return 2;
-  if (level === 2) return 3;
-  if (level === 3) return 5;
-  if (level === 4) return 6;
-  if (level === 5) return 7;
-  if (level === 6) return 8;
-  if (level >= 7) return 9;
-  return 5;
+  if (level <= 2) return 2;
+  if (level <= 4) return 3;
+  if (level <= 6) return 4;
+  if (level <= 9) return 5;
+  if (level <= 12) return 6;
+  if (level <= 15) return 7;
+  if (level <= 17) return 8;
+  return 9;
 };
 
 const getRandomnessForLevel = (level: number): number => {
-  if (level <= 1) return 0.18;
-  if (level === 2) return 0.12;
-  if (level === 3) return 0.08;
-  if (level === 4) return 0.06;
-  if (level === 5) return 0.04;
-  if (level === 6) return 0.02;
-  if (level >= 7) return 0;
-  return 0.08;
+  if (level <= 2) return 0.2;
+  if (level <= 4) return 0.15;
+  if (level <= 6) return 0.11;
+  if (level <= 9) return 0.08;
+  if (level <= 12) return 0.05;
+  if (level <= 15) return 0.03;
+  if (level <= 17) return 0.015;
+  return 0;
 };
 
 const scoreMove = (move: Move): number => {
