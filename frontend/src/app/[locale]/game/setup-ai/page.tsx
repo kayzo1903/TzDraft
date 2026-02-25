@@ -144,7 +144,7 @@ export default function SetupAiPage() {
                 {t("progress.title")}
               </span>{" "}
               <span className="text-neutral-400">
-                {t("progress.unlocked", { level: maxUnlockedLevel, total: 7 })}
+                {t("progress.unlocked", { level: maxUnlockedLevel, total: BOTS.length })}
               </span>
             </div>
             <div className="text-neutral-500">{t("progress.rule")}</div>
