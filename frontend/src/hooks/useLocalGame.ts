@@ -17,8 +17,9 @@ import type {
   CaptureGhost,
   LastMoveState,
 } from "@/components/game/Board";
-import { getBestMove } from "@/lib/ai/bot";
+import axiosInstance from "@/lib/axios";
 import { unlockNextBotLevel } from "@/lib/game/bot-progression";
+import { getBestMove } from "@/lib/ai/bot";
 
 export interface LocalGameState {
   board: BoardState;
@@ -237,9 +238,7 @@ export const useLocalGame = (
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>(
     loaded ? loaded.currentPlayer : PlayerColor.WHITE,
   );
-  const [moveCount, setMoveCount] = useState(
-    loaded ? loaded.moveCount : 0,
-  );
+  const [moveCount, setMoveCount] = useState(loaded ? loaded.moveCount : 0);
   const [moves, setMoves] = useState<Move[]>(loaded ? loaded.moves : []);
   const [result, setResult] = useState<{ winner: Winner } | null>(
     loaded ? loaded.result : null,
@@ -275,11 +274,14 @@ export const useLocalGame = (
   );
   const legalMoves = useMemo(() => {
     const map: Record<number, number[]> = {};
-    const moves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
-    const filteredMoves =
-      mustContinueFrom
-        ? moves.filter((m) => m.from.equals(mustContinueFrom))
-        : moves;
+    const moves = CakeEngine.generateLegalMoves(
+      board,
+      currentPlayer,
+      moveCount,
+    );
+    const filteredMoves = mustContinueFrom
+      ? moves.filter((m) => m.from.equals(mustContinueFrom))
+      : moves;
     for (const move of filteredMoves) {
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
@@ -292,7 +294,11 @@ export const useLocalGame = (
     if (mustContinueFrom) {
       return [positionToIndex(mustContinueFrom, flipForPlayer)];
     }
-    const moves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
+    const moves = CakeEngine.generateLegalMoves(
+      board,
+      currentPlayer,
+      moveCount,
+    );
     const captureMoves = moves.filter((m) => m.capturedSquares.length > 0);
     if (captureMoves.length === 0) return [];
     const set = new Set<number>();
@@ -373,11 +379,15 @@ export const useLocalGame = (
         setCapturedGhosts((prev) => [...prev, ...moveCaptures].slice(-24));
         const cleanupTimeout = window.setTimeout(() => {
           setCapturedGhosts((prev) =>
-            prev.filter((ghost) => !moveCaptures.some((captured) => captured.id === ghost.id)),
+            prev.filter(
+              (ghost) =>
+                !moveCaptures.some((captured) => captured.id === ghost.id),
+            ),
           );
-          captureCleanupTimeoutsRef.current = captureCleanupTimeoutsRef.current.filter(
-            (timeoutId) => timeoutId !== cleanupTimeout,
-          );
+          captureCleanupTimeoutsRef.current =
+            captureCleanupTimeoutsRef.current.filter(
+              (timeoutId) => timeoutId !== cleanupTimeout,
+            );
         }, 240);
         captureCleanupTimeoutsRef.current.push(cleanupTimeout);
       }
@@ -389,10 +399,8 @@ export const useLocalGame = (
         move.capturedSquares.length > 0 &&
         !move.isPromotion &&
         movedPiece &&
-        new CaptureFindingService().findCapturesForPiece(
-          nextBoard,
-          movedPiece,
-        ).length > 0;
+        new CaptureFindingService().findCapturesForPiece(nextBoard, movedPiece)
+          .length > 0;
 
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
@@ -407,10 +415,7 @@ export const useLocalGame = (
       evaluateEndgameCountdown(nextBoard, move.player);
 
       if (!canContinueCapture) {
-        const gameResult = CakeEngine.evaluateGameResult(
-          nextBoard,
-          nextPlayer,
-        );
+        const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
         if (gameResult) {
           setResult({ winner: gameResult.winner });
         }
@@ -509,7 +514,16 @@ export const useLocalGame = (
       }
       applyMove(match);
     },
-    [applyMove, board, currentPlayer, moveCount, playerColor, result, mustContinueFrom, flipForPlayer],
+    [
+      applyMove,
+      board,
+      currentPlayer,
+      moveCount,
+      playerColor,
+      result,
+      mustContinueFrom,
+      flipForPlayer,
+    ],
   );
 
   const reset = useCallback(() => {
@@ -662,17 +676,112 @@ export const useLocalGame = (
 
     const thinkDelayMs = 320 + Math.floor(Math.random() * 260);
     setIsAiThinking(true);
-    aiTimeoutRef.current = window.setTimeout(() => {
-      const aiMove = getBestMove(board, currentPlayer, aiLevel);
-      if (aiMove) {
-        applyMove(aiMove);
-      } else {
+
+    // ── Local CAKE engine for levels 1-9 ─────────────────────────────────
+    // Runs synchronously in a setTimeout to avoid blocking React render.
+    if (aiLevel < 10) {
+      aiTimeoutRef.current = window.setTimeout(() => {
+        aiTimeoutRef.current = null;
+        try {
+          const move = getBestMove(board, currentPlayer, aiLevel);
+          if (move) {
+            applyMove(move);
+          } else {
+            const gameResult = CakeEngine.evaluateGameResult(
+              board,
+              currentPlayer,
+            );
+            if (gameResult) setResult({ winner: gameResult.winner });
+          }
+        } finally {
+          setIsAiThinking(false);
+        }
+      }, thinkDelayMs);
+
+      return () => {
+        if (aiTimeoutRef.current !== null) {
+          window.clearTimeout(aiTimeoutRef.current);
+          aiTimeoutRef.current = null;
+        }
+      };
+    }
+
+    // ── Backend engine for levels 10+ (SiDra / Kallisto) ─────────────────
+    const fetchMove = async () => {
+      try {
+        const payloadPieces = board.getAllPieces().map((p) => ({
+          type: p.isKing() ? "KING" : "MAN",
+          color: p.color === PlayerColor.WHITE ? "WHITE" : "BLACK",
+          position: p.position.value,
+        }));
+
+        const currentPlayerStr =
+          currentPlayer === PlayerColor.WHITE ? "WHITE" : "BLACK";
+
+        const { data } = await axiosInstance.post("/ai/move", {
+          boardStatePieces: payloadPieces,
+          currentPlayer: currentPlayerStr,
+          aiLevel,
+          timeLimitMs: 2500,
+          mustContinueFrom: mustContinueFrom?.value ?? null,
+        });
+
+        const aiMoveData = data.data;
+        if (aiMoveData) {
+          const legal = CakeEngine.generateLegalMoves(
+            board,
+            currentPlayer,
+            moveCount,
+          );
+          // Filter to continuation moves if we're in a multi-jump chain
+          const candidates = mustContinueFrom
+            ? legal.filter((m) => m.from.equals(mustContinueFrom))
+            : legal;
+
+          let match = candidates.find(
+            (m) =>
+              m.from.value === aiMoveData.from && m.to.value === aiMoveData.to,
+          );
+          // Best-effort fallback: same starting square
+          if (!match && candidates.length > 0) {
+            match = candidates.find((m) => m.from.value === aiMoveData.from);
+          }
+
+          if (match) {
+            applyMove(match);
+            return;
+          }
+        }
+
+        // Backend returned null or no match — check for game over
         const gameResult = CakeEngine.evaluateGameResult(board, currentPlayer);
         if (gameResult) {
           setResult({ winner: gameResult.winner });
         }
+      } catch (e) {
+        // Network / engine failure → fall back to local engine at depth 5
+        console.warn("AI backend unreachable, using local fallback:", e);
+        try {
+          const fallbackMove = getBestMove(board, currentPlayer, 9);
+          if (fallbackMove) {
+            applyMove(fallbackMove);
+          } else {
+            const gameResult = CakeEngine.evaluateGameResult(
+              board,
+              currentPlayer,
+            );
+            if (gameResult) setResult({ winner: gameResult.winner });
+          }
+        } catch (fallbackErr) {
+          console.error("Local fallback also failed:", fallbackErr);
+        }
+      } finally {
+        setIsAiThinking(false);
       }
-      setIsAiThinking(false);
+    };
+
+    aiTimeoutRef.current = window.setTimeout(() => {
+      fetchMove();
       aiTimeoutRef.current = null;
     }, thinkDelayMs);
 
@@ -682,7 +791,16 @@ export const useLocalGame = (
         aiTimeoutRef.current = null;
       }
     };
-  }, [aiLevel, applyMove, board, currentPlayer, playerColor, result]);
+  }, [
+    aiLevel,
+    applyMove,
+    board,
+    currentPlayer,
+    playerColor,
+    result,
+    moveCount,
+    mustContinueFrom,
+  ]);
 
   useEffect(() => {
     if (result || timeSeconds === 0) return;
