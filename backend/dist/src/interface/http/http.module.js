@@ -12,14 +12,22 @@ const use_cases_module_1 = require("../../application/use-cases/use-cases.module
 const game_controller_1 = require("./controllers/game.controller");
 const move_controller_1 = require("./controllers/move.controller");
 const support_controller_1 = require("./controllers/support.controller");
+const ai_controller_1 = require("./controllers/ai.controller");
 const email_module_1 = require("../../infrastructure/email/email.module");
+const get_ai_move_use_case_1 = require("../../application/use-cases/get-ai-move.use-case");
 let HttpModule = class HttpModule {
 };
 exports.HttpModule = HttpModule;
 exports.HttpModule = HttpModule = __decorate([
     (0, common_1.Module)({
         imports: [use_cases_module_1.UseCasesModule, email_module_1.EmailModule],
-        controllers: [game_controller_1.GameController, move_controller_1.MoveController, support_controller_1.SupportController],
+        controllers: [
+            game_controller_1.GameController,
+            move_controller_1.MoveController,
+            support_controller_1.SupportController,
+            ai_controller_1.AiController,
+        ],
+        providers: [get_ai_move_use_case_1.GetAiMoveUseCase],
     })
 ], HttpModule);
 //# sourceMappingURL=http.module.js.map
