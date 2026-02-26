@@ -10,7 +10,7 @@ import {
 const getOpponent = (player: PlayerColor): PlayerColor =>
   player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
 
-const MATE_SCORE = 100000;
+const MATE_SCORE = 100_000;
 const PIECE_VALUES = {
   [PieceType.MAN]: 100,
   [PieceType.KING]: 350,
@@ -38,7 +38,14 @@ const KING_PST = [
   [4, 0, 6, 0, 0, 6, 0, 4],
 ];
 
-const captureService = new CaptureFindingService();
+// Transposition-table flag types
+type TTFlag = "EXACT" | "LOWER" | "UPPER";
+
+type TTEntry = {
+  depth: number;
+  score: number;
+  flag: TTFlag;
+};
 
 const boardKey = (
   board: BoardState,
@@ -49,68 +56,64 @@ const boardKey = (
     .getAllPieces()
     .sort((a, b) => a.position.value - b.position.value)
     .map(
-      (p) => `${p.position.value}${p.color[0]}${p.type === PieceType.KING ? "K" : "M"}`,
+      (p) =>
+        `${p.position.value}${p.color[0]}${p.type === PieceType.KING ? "K" : "M"}`,
     )
     .join("");
   return `${currentPlayer}|${maximizingPlayer}|${pieces}`;
 };
+
+const captureService = new CaptureFindingService();
 
 const evaluateBoard = (board: BoardState, player: PlayerColor): number => {
   const pieces = board.getAllPieces();
   const opponent = getOpponent(player);
   let score = 0;
 
-  // Material + king weight
+  let myCount = 0;
+  let oppCount = 0;
+
   for (const piece of pieces) {
     const value = PIECE_VALUES[piece.type];
-    score += piece.color === player ? value : -value;
+    const isPlayer = piece.color === player;
+    score += isPlayer ? value : -value;
 
-    // Center control bonus
+    if (isPlayer) myCount++;
+    else oppCount++;
+
+    // Piece-square table
     const { row, col } = piece.position.toRowCol();
-    const centerDist = Math.abs(3.5 - row) + Math.abs(3.5 - col);
-    const centerBonus = (3.5 - centerDist) * 2;
-    score += piece.color === player ? centerBonus : -centerBonus;
-
-    // Man advancement bonus
-    if (piece.type === PieceType.MAN) {
-      const advance = piece.color === PlayerColor.WHITE ? row : 7 - row;
-      const advanceBonus = advance * 3;
-      score += piece.color === player ? advanceBonus : -advanceBonus;
-    }
-
-    const rowForPst =
-      piece.color === PlayerColor.WHITE ? row : 7 - row;
+    const rowForPst = piece.color === PlayerColor.WHITE ? row : 7 - row;
     const pstValue =
       piece.type === PieceType.KING
         ? KING_PST[rowForPst][col]
         : MAN_PST[rowForPst][col];
-    score += piece.color === player ? pstValue : -pstValue;
+    score += isPlayer ? pstValue : -pstValue;
 
-    // Back-row guard bonus for men
+    // Man advancement bonus
     if (piece.type === PieceType.MAN) {
+      const advance = piece.color === PlayerColor.WHITE ? row : 7 - row;
+      score += isPlayer ? advance * 3 : -(advance * 3);
+
+      // Back-row guard bonus
       const isBackRow =
         (piece.color === PlayerColor.WHITE && row === 0) ||
         (piece.color === PlayerColor.BLACK && row === 7);
-      if (isBackRow) {
-        score += piece.color === player ? 10 : -10;
-      }
+      if (isBackRow) score += isPlayer ? 10 : -10;
     }
   }
 
-  // Mobility (legal moves)
+  // Material advantage amplifier (being up material is worth more when up)
+  score += (myCount - oppCount) * 5;
+
+  // Mobility: call generateLegalMoves once per side
   const myMoves = CakeEngine.generateLegalMoves(board, player).length;
-  const oppMoves = CakeEngine.generateLegalMoves(
-    board,
-    opponent,
-  ).length;
+  const oppMoves = CakeEngine.generateLegalMoves(board, opponent).length;
   score += (myMoves - oppMoves) * 3;
 
-  // Capture pressure
-  const myCaptures = captureService.findAllCaptures(board, player).length;
+  // Threat penalty: opponent can capture our pieces
+  // Use findAllCaptures only once (for the opponent) to mark threatened squares
   const oppCaptures = captureService.findAllCaptures(board, opponent);
-  score += (myCaptures - oppCaptures.length) * 6;
-
-  // Penalize vulnerable pieces (can be captured)
   if (oppCaptures.length > 0) {
     const threatened = new Set<number>();
     for (const capture of oppCaptures) {
@@ -120,6 +123,10 @@ const evaluateBoard = (board: BoardState, player: PlayerColor): number => {
     }
     score -= threatened.size * 8;
   }
+
+  // Capture pressure delta (opponent - us, already partial via oppCaptures above)
+  const myCaptures = captureService.findAllCaptures(board, player).length;
+  score += (myCaptures - oppCaptures.length) * 6;
 
   return score;
 };
@@ -133,6 +140,15 @@ const getDepthForLevel = (level: number): number => {
   if (level <= 15) return 7;
   if (level <= 17) return 8;
   return 9;
+};
+
+/** Time budget in ms given a level. Higher levels get more think time. */
+const getTimeBudgetForLevel = (level: number): number => {
+  if (level <= 2) return 200;
+  if (level <= 4) return 400;
+  if (level <= 6) return 700;
+  if (level <= 9) return 1200;
+  return 2000; // levels 10+ are handled by the backend, but keep a sane ceiling
 };
 
 const getRandomnessForLevel = (level: number): number => {
@@ -154,11 +170,12 @@ const scoreMove = (move: Move): number => {
   return captures * 100 + (move.isPromotion ? 60 : 0) + centerScore;
 };
 
-const orderMoves = (moves: Move[]): Move[] => {
-  return [...moves].sort((a, b) => scoreMove(b) - scoreMove(a));
-};
+const orderMoves = (moves: Move[]): Move[] =>
+  [...moves].sort((a, b) => scoreMove(b) - scoreMove(a));
 
-type TTEntry = { depth: number; score: number };
+// ─────────────────────────────────────────────────────────────────────────────
+// Alpha-beta minimax with proper TT bound semantics
+// ─────────────────────────────────────────────────────────────────────────────
 
 const minimax = (
   board: BoardState,
@@ -168,16 +185,26 @@ const minimax = (
   alpha: number,
   beta: number,
   table: Map<string, TTEntry>,
+  deadline: number,
 ): number => {
+  // Time check — abort early if we've exceeded the budget
+  if (Date.now() >= deadline) {
+    return evaluateBoard(board, maximizingPlayer);
+  }
+
   const key = boardKey(board, currentPlayer, maximizingPlayer);
   const cached = table.get(key);
+
   if (cached && cached.depth >= depth) {
-    return cached.score;
+    if (cached.flag === "EXACT") return cached.score;
+    if (cached.flag === "LOWER") alpha = Math.max(alpha, cached.score);
+    else if (cached.flag === "UPPER") beta = Math.min(beta, cached.score);
+    if (alpha >= beta) return cached.score;
   }
 
   if (depth === 0) {
     const score = evaluateBoard(board, maximizingPlayer);
-    table.set(key, { depth, score });
+    table.set(key, { depth: 0, score, flag: "EXACT" });
     return score;
   }
 
@@ -187,45 +214,66 @@ const minimax = (
       currentPlayer === maximizingPlayer
         ? -MATE_SCORE + depth
         : MATE_SCORE - depth;
-    table.set(key, { depth, score });
+    table.set(key, { depth, score, flag: "EXACT" });
     return score;
   }
 
   const isMaximizing = currentPlayer === maximizingPlayer;
   let bestScore = isMaximizing ? -Infinity : Infinity;
-  let nextAlpha = alpha;
-  let nextBeta = beta;
+  let flag: TTFlag = "UPPER"; // assume we won't beat alpha (for maximizer)
+  if (!isMaximizing) flag = "LOWER"; // assume we won't beat beta (for minimizer)
 
   const orderedMoves = orderMoves(moves);
+
   for (const move of orderedMoves) {
+    if (Date.now() >= deadline) break;
+
     const nextBoard = CakeEngine.applyMove(board, move);
     const score = minimax(
       nextBoard,
       getOpponent(currentPlayer),
       maximizingPlayer,
       depth - 1,
-      nextAlpha,
-      nextBeta,
+      alpha,
+      beta,
       table,
+      deadline,
     );
 
     if (isMaximizing) {
-      bestScore = Math.max(bestScore, score);
-      nextAlpha = Math.max(nextAlpha, bestScore);
+      if (score > bestScore) {
+        bestScore = score;
+        if (score > alpha) {
+          alpha = score;
+          flag = score >= beta ? "LOWER" : "EXACT";
+        }
+      }
+      if (alpha >= beta) break;
     } else {
-      bestScore = Math.min(bestScore, score);
-      nextBeta = Math.min(nextBeta, bestScore);
-    }
-
-    if (nextBeta <= nextAlpha) {
-      break;
+      if (score < bestScore) {
+        bestScore = score;
+        if (score < beta) {
+          beta = score;
+          flag = score <= alpha ? "UPPER" : "EXACT";
+        }
+      }
+      if (alpha >= beta) break;
     }
   }
 
-  table.set(key, { depth, score: bestScore });
+  table.set(key, { depth, score: bestScore, flag });
   return bestScore;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Iterative deepening driver
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @deprecated AI logic for levels ≥ 10 is routed through the backend NestJS
+ * `/api/ai/move` endpoint. This local implementation handles levels 1-9 and
+ * acts as an emergency fallback for higher levels when the backend is offline.
+ */
 export const getBestMove = (
   board: BoardState,
   player: PlayerColor,
@@ -233,43 +281,62 @@ export const getBestMove = (
 ): Move | null => {
   const moves = CakeEngine.generateLegalMoves(board, player);
   if (moves.length === 0) return null;
+  if (moves.length === 1) return moves[0];
 
-  const depth = getDepthForLevel(level);
+  const maxDepth = getDepthForLevel(level);
   const randomness = getRandomnessForLevel(level);
+
   if (Math.random() < randomness) {
     return moves[Math.floor(Math.random() * moves.length)];
   }
-  if (depth === 0) {
-    return moves[Math.floor(Math.random() * moves.length)];
-  }
 
-  let bestMoves: Move[] = [];
-  let bestScore = -Infinity;
+  const budget = getTimeBudgetForLevel(level);
+  const deadline = Date.now() + budget;
   const table = new Map<string, TTEntry>();
-  const orderedMoves = orderMoves(moves);
 
-  for (const move of orderedMoves) {
-    const nextBoard = CakeEngine.applyMove(board, move);
-    const score = minimax(
-      nextBoard,
-      getOpponent(player),
-      player,
-      depth - 1,
-      -Infinity,
-      Infinity,
-      table,
-    );
+  let bestMove: Move = orderMoves(moves)[0]; // safe default: best-ordered move
+  let bestScore = -Infinity;
 
-    if (score > bestScore) {
-      bestScore = score;
-      bestMoves = [move];
-    } else if (score === bestScore) {
-      bestMoves.push(move);
+  // Iterative deepening: start at depth 1, increase until maxDepth or time runs out
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    if (Date.now() >= deadline) break;
+
+    let iterBestMoves: Move[] = [];
+    let iterBestScore = -Infinity;
+
+    const orderedMoves = orderMoves(moves);
+
+    for (const move of orderedMoves) {
+      if (Date.now() >= deadline) break;
+
+      const nextBoard = CakeEngine.applyMove(board, move);
+      const score = minimax(
+        nextBoard,
+        getOpponent(player),
+        player,
+        depth - 1,
+        -Infinity,
+        Infinity,
+        table,
+        deadline,
+      );
+
+      if (score > iterBestScore) {
+        iterBestScore = score;
+        iterBestMoves = [move];
+      } else if (score === iterBestScore) {
+        iterBestMoves.push(move);
+      }
+    }
+
+    // Only commit results from a fully searched iteration
+    if (iterBestMoves.length > 0 && Date.now() < deadline) {
+      bestScore = iterBestScore;
+      bestMove =
+        iterBestMoves[Math.floor(Math.random() * iterBestMoves.length)];
     }
   }
 
-  if (randomness === 0) {
-    return bestMoves[0];
-  }
-  return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+  void bestScore; // used for future logging
+  return bestMove;
 };
