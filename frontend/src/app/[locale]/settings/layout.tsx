@@ -1,13 +1,10 @@
-import type { Metadata } from 'next';
-
-const getSiteUrl = () => {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  try {
-    return new URL(raw);
-  } catch {
-    return new URL('http://localhost:3000');
-  }
-};
+import type { Metadata } from "next";
+import {
+  getCanonicalUrl,
+  getLanguageAlternates,
+  getSiteUrl,
+  isAppLocale,
+} from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -16,26 +13,27 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const locale = resolvedParams.locale;
-  const siteUrl = getSiteUrl();
 
-  const canonical = new URL(`/${locale}/settings`, siteUrl);
+  if (!isAppLocale(locale)) {
+    return {};
+  }
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/settings", siteUrl);
 
   return {
-    title: 'Settings',
-    description: 'Manage your TzDraft preferences and account shortcuts.',
+    title: "Settings",
+    description: "Manage your TzDraft preferences and account shortcuts.",
     alternates: {
       canonical,
-      languages: {
-        sw: new URL('/sw/settings', siteUrl),
-        en: new URL('/en/settings', siteUrl),
-      },
+      languages: getLanguageAlternates("/settings", siteUrl),
     },
     openGraph: {
-      title: 'Settings - TzDraft',
-      description: 'Manage your TzDraft preferences and account shortcuts.',
+      title: "Settings - TzDraft",
+      description: "Manage your TzDraft preferences and account shortcuts.",
       url: canonical,
       locale,
-      type: 'website',
+      type: "website",
     },
     robots: {
       index: false,
@@ -48,4 +46,3 @@ export async function generateMetadata({
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return children;
 }
-

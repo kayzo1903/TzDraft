@@ -1,13 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const getSiteUrl = () => {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  try {
-    return new URL(raw);
-  } catch {
-    return new URL("http://localhost:3000");
-  }
-};
+import { getSiteUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   const siteUrl = getSiteUrl();
@@ -21,7 +13,5 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: new URL("/sitemap.xml", siteUrl).toString(),
-    host: siteUrl.toString(),
   };
 }
-
