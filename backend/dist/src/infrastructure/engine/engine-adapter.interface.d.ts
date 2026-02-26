@@ -13,6 +13,8 @@ export interface EngineThinkRequest {
     currentPlayer: 'WHITE' | 'BLACK';
     pieces: EnginePiece[];
     timeLimitMs: number;
+    aiLevel?: number;
+    mustContinueFrom?: number | null;
 }
 export interface IEngineAdapter {
     readonly name: string;

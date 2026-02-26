@@ -1,19 +1,15 @@
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
-import { notFound } from 'next/navigation';
-import { routing } from '@/i18n/routing';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 import type { Metadata } from "next";
-
-const getSiteUrl = () => {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  try {
-    return new URL(raw);
-  } catch {
-    return new URL("http://localhost:3000");
-  }
-};
+import {
+  getCanonicalUrl,
+  getLanguageAlternates,
+  getSiteUrl,
+  isAppLocale,
+} from "@/lib/seo";
 
 const SITE_NAME = "TzDraft";
 const DEFAULT_DESCRIPTION =
@@ -27,36 +23,39 @@ export async function generateMetadata({
   const resolvedParams = params instanceof Promise ? await params : params;
   const locale = resolvedParams.locale;
 
+  if (!isAppLocale(locale)) {
+    return {};
+  }
+
   const siteUrl = getSiteUrl();
-  const canonical = new URL(`/${locale}`, siteUrl);
+  const canonical = getCanonicalUrl(locale, "", siteUrl);
 
   return {
     metadataBase: siteUrl,
     applicationName: SITE_NAME,
     title: {
-      default: `${SITE_NAME} — Tanzania Drafti`,
-      template: `%s — ${SITE_NAME}`,
+      default: `${SITE_NAME} - Tanzania Drafti`,
+      template: `%s - ${SITE_NAME}`,
     },
     description: DEFAULT_DESCRIPTION,
     alternates: {
       canonical,
-      languages: {
-        sw: new URL("/sw", siteUrl),
-        en: new URL("/en", siteUrl),
-      },
+      languages: getLanguageAlternates("", siteUrl),
     },
     openGraph: {
       type: "website",
       siteName: SITE_NAME,
-      title: `${SITE_NAME} — Tanzania Drafti`,
+      title: `${SITE_NAME} - Tanzania Drafti`,
       description: DEFAULT_DESCRIPTION,
       url: canonical,
       locale,
+      images: ["/logo/logo.png"],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${SITE_NAME} — Tanzania Drafti`,
+      title: `${SITE_NAME} - Tanzania Drafti`,
       description: DEFAULT_DESCRIPTION,
+      images: ["/logo/logo.png"],
     },
     icons: {
       icon: "/logo/logo.png",
@@ -66,21 +65,17 @@ export async function generateMetadata({
 
 export default async function LocaleLayout({
   children,
-  params
+  params,
 }: {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
 
-  // Ensure that the incoming `locale` is valid
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!routing.locales.includes(locale as any)) {
+  if (!isAppLocale(locale)) {
     notFound();
   }
 
-  // Providing all messages to the client
-  // side is the easiest way to get started
   const messages = await getMessages();
 
   return (

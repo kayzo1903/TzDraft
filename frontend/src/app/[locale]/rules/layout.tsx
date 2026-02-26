@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-
-const getSiteUrl = () => {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  try {
-    return new URL(raw);
-  } catch {
-    return new URL("http://localhost:3000");
-  }
-};
+import {
+  getCanonicalUrl,
+  getLanguageAlternates,
+  getSiteUrl,
+  isAppLocale,
+} from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -16,9 +13,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const locale = resolvedParams.locale;
-  const siteUrl = getSiteUrl();
 
-  const canonical = new URL(`/${locale}/rules`, siteUrl);
+  if (!isAppLocale(locale)) {
+    return {};
+  }
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/rules", siteUrl);
 
   return {
     title: "Rules",
@@ -26,18 +27,16 @@ export async function generateMetadata({
       "Official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and endgame conditions.",
     alternates: {
       canonical,
-      languages: {
-        sw: new URL("/sw/rules", siteUrl),
-        en: new URL("/en/rules", siteUrl),
-      },
+      languages: getLanguageAlternates("/rules", siteUrl),
     },
     openGraph: {
-      title: "Rules — TzDraft",
+      title: "Rules - TzDraft",
       description:
         "Official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and endgame conditions.",
       url: canonical,
       locale,
       type: "article",
+      images: ["/logo/logo.png"],
     },
   };
 }
@@ -49,4 +48,3 @@ export default function RulesLayout({
 }) {
   return children;
 }
-
