@@ -49,12 +49,24 @@ body {
 }
 
 @keyframes board-shake {
-  0% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
-  100% { transform: translateX(0); }
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 
 .board-shake {
@@ -76,4 +88,19 @@ body {
 
 .piece-capture-ghost {
   animation: piece-capture-fade 240ms ease-out forwards;
+}
+
+@keyframes result-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-result-enter {
+  animation: result-enter 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
