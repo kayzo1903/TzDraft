@@ -18,6 +18,10 @@ export interface EngineThinkRequest {
   currentPlayer: 'WHITE' | 'BLACK';
   pieces: EnginePiece[];
   timeLimitMs: number;
+  /** Optional AI level (1-20) so adapters can tune internal search depth. */
+  aiLevel?: number;
+  /** If set, the engine must restrict candidate moves to continuations from this square (multi-jump). */
+  mustContinueFrom?: number | null;
 }
 
 export interface IEngineAdapter {

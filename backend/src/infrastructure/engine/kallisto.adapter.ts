@@ -93,13 +93,15 @@ export class KallistoAdapter
       currentPlayer: request.currentPlayer,
       timeLimitMs,
       pieces: request.pieces,
+      aiLevel: request.aiLevel ?? null,
+      mustContinueFrom: request.mustContinueFrom ?? null,
     });
 
     return new Promise((resolve, reject) => {
       const child = execFile(
         this.cliPath,
         [],
-        { timeout: timeLimitMs + 5000, maxBuffer: 1024 * 64 },
+        { timeout: timeLimitMs + 2000, maxBuffer: 1024 * 64 },
         (error, stdout, stderr) => {
           if (stderr) {
             // Engine diagnostic output — log at debug level only

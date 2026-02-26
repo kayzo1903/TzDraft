@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-
-const getSiteUrl = () => {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  try {
-    return new URL(raw);
-  } catch {
-    return new URL("http://localhost:3000");
-  }
-};
+import {
+  getCanonicalUrl,
+  getLanguageAlternates,
+  getSiteUrl,
+  isAppLocale,
+} from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -16,27 +13,30 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const locale = resolvedParams.locale;
-  const siteUrl = getSiteUrl();
 
-  const canonical = new URL(`/${locale}/play`, siteUrl);
+  if (!isAppLocale(locale)) {
+    return {};
+  }
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/play", siteUrl);
 
   return {
     title: "Play",
-    description: "Choose how you want to play Tanzania Drafti: vs AI, friends, or online modes.",
+    description:
+      "Choose how you want to play Tanzania Drafti: vs AI, friends, or online modes.",
     alternates: {
       canonical,
-      languages: {
-        sw: new URL("/sw/play", siteUrl),
-        en: new URL("/en/play", siteUrl),
-      },
+      languages: getLanguageAlternates("/play", siteUrl),
     },
     openGraph: {
-      title: "Play — TzDraft",
+      title: "Play - TzDraft",
       description:
         "Choose how you want to play Tanzania Drafti: vs AI, friends, or online modes.",
       url: canonical,
       locale,
       type: "website",
+      images: ["/logo/logo.png"],
     },
   };
 }
@@ -44,4 +44,3 @@ export async function generateMetadata({
 export default function PlayLayout({ children }: { children: React.ReactNode }) {
   return children;
 }
-

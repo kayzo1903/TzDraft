@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-
-const getSiteUrl = () => {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  try {
-    return new URL(raw);
-  } catch {
-    return new URL("http://localhost:3000");
-  }
-};
+import {
+  getCanonicalUrl,
+  getLanguageAlternates,
+  getSiteUrl,
+  isAppLocale,
+} from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -16,27 +13,28 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const locale = resolvedParams.locale;
-  const siteUrl = getSiteUrl();
 
-  const canonical = new URL(`/${locale}/policy`, siteUrl);
+  if (!isAppLocale(locale)) {
+    return {};
+  }
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/policy", siteUrl);
 
   return {
     title: "Policy",
-    description:
-      "TzDraft policies: fair play, privacy, and platform guidelines.",
+    description: "TzDraft policies: fair play, privacy, and platform guidelines.",
     alternates: {
       canonical,
-      languages: {
-        sw: new URL("/sw/policy", siteUrl),
-        en: new URL("/en/policy", siteUrl),
-      },
+      languages: getLanguageAlternates("/policy", siteUrl),
     },
     openGraph: {
-      title: "Policy — TzDraft",
+      title: "Policy - TzDraft",
       description: "TzDraft policies: fair play, privacy, and platform guidelines.",
       url: canonical,
       locale,
       type: "article",
+      images: ["/logo/logo.png"],
     },
   };
 }
@@ -48,4 +46,3 @@ export default function PolicyLayout({
 }) {
   return children;
 }
-
