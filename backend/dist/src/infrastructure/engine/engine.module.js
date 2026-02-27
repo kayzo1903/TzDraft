@@ -9,7 +9,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EngineModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
-const kallisto_adapter_1 = require("./kallisto.adapter");
 const sidra_adapter_1 = require("./sidra.adapter");
 let EngineModule = class EngineModule {
 };
@@ -18,8 +17,8 @@ exports.EngineModule = EngineModule = __decorate([
     (0, common_1.Global)(),
     (0, common_1.Module)({
         imports: [config_1.ConfigModule],
-        providers: [kallisto_adapter_1.KallistoAdapter, sidra_adapter_1.SidraAdapter],
-        exports: [kallisto_adapter_1.KallistoAdapter, sidra_adapter_1.SidraAdapter],
+        providers: [sidra_adapter_1.SidraAdapter],
+        exports: [sidra_adapter_1.SidraAdapter],
     })
 ], EngineModule);
 //# sourceMappingURL=engine.module.js.map

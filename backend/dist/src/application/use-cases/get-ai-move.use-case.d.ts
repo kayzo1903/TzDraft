@@ -1,4 +1,3 @@
-import { KallistoAdapter } from '../../infrastructure/engine/kallisto.adapter';
 import { SidraAdapter } from '../../infrastructure/engine/sidra.adapter';
 type BoardPiece = {
     type: 'KING' | 'MAN';
@@ -13,9 +12,8 @@ type SimplifiedMove = {
 };
 export declare class GetAiMoveUseCase {
     private readonly sidraAdapter;
-    private readonly kallistoAdapter;
     private readonly logger;
-    constructor(sidraAdapter: SidraAdapter, kallistoAdapter: KallistoAdapter);
+    constructor(sidraAdapter: SidraAdapter);
     execute(dto: {
         boardStatePieces: BoardPiece[];
         currentPlayer: 'WHITE' | 'BLACK';

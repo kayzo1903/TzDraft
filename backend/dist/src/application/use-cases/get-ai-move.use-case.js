@@ -12,15 +12,12 @@ var GetAiMoveUseCase_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetAiMoveUseCase = void 0;
 const common_1 = require("@nestjs/common");
-const kallisto_adapter_1 = require("../../infrastructure/engine/kallisto.adapter");
 const sidra_adapter_1 = require("../../infrastructure/engine/sidra.adapter");
 let GetAiMoveUseCase = GetAiMoveUseCase_1 = class GetAiMoveUseCase {
     sidraAdapter;
-    kallistoAdapter;
     logger = new common_1.Logger(GetAiMoveUseCase_1.name);
-    constructor(sidraAdapter, kallistoAdapter) {
+    constructor(sidraAdapter) {
         this.sidraAdapter = sidraAdapter;
-        this.kallistoAdapter = kallistoAdapter;
     }
     async execute(dto) {
         const { boardStatePieces, currentPlayer, aiLevel, timeLimitMs, mustContinueFrom, } = dto;
@@ -44,24 +41,13 @@ let GetAiMoveUseCase = GetAiMoveUseCase_1 = class GetAiMoveUseCase {
             aiLevel,
             mustContinueFrom: mustContinueFrom ?? null,
         };
-        if (aiLevel < 16) {
-            this.logger.debug(`Routing to SiDra Engine (Level ${aiLevel})`);
-            try {
-                const move = await this.sidraAdapter.getBestMove(request);
-                return move ?? null;
-            }
-            catch (err) {
-                this.logger.warn(`SiDra adapter failed (level ${aiLevel}): ${err.message}. Returning null.`);
-                return null;
-            }
-        }
-        this.logger.debug(`Routing to Kallisto Engine (Level ${aiLevel})`);
+        this.logger.debug(`Routing to SiDra Engine (Level ${aiLevel})`);
         try {
-            const move = await this.kallistoAdapter.getBestMove(request);
+            const move = await this.sidraAdapter.getBestMove(request);
             return move ?? null;
         }
         catch (err) {
-            this.logger.warn(`Kallisto adapter failed (level ${aiLevel}): ${err.message}. Returning null.`);
+            this.logger.warn(`SiDra adapter failed (level ${aiLevel}): ${err.message}. Returning null.`);
             return null;
         }
     }
@@ -69,7 +55,6 @@ let GetAiMoveUseCase = GetAiMoveUseCase_1 = class GetAiMoveUseCase {
 exports.GetAiMoveUseCase = GetAiMoveUseCase;
 exports.GetAiMoveUseCase = GetAiMoveUseCase = GetAiMoveUseCase_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [sidra_adapter_1.SidraAdapter,
-        kallisto_adapter_1.KallistoAdapter])
+    __metadata("design:paramtypes", [sidra_adapter_1.SidraAdapter])
 ], GetAiMoveUseCase);
 //# sourceMappingURL=get-ai-move.use-case.js.map
