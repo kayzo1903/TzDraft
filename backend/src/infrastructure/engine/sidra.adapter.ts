@@ -74,9 +74,14 @@ export class SidraAdapter
     }
 
     const timeLimitMs = request.timeLimitMs ?? this.defaultTimeLimitMs;
+    // The Sidra engine computes TimeForMove = TimeRemaining / 20, treating
+    // the value as remaining game time. Since the CLI is one-shot (one move
+    // per process), we pass timeLimitMs * 20 so the engine allocates exactly
+    // timeLimitMs for this move instead of timeLimitMs / 20.
+    const engineTimeLimitMs = timeLimitMs * 20;
     const inputJson = JSON.stringify({
       currentPlayer: request.currentPlayer,
-      timeLimitMs,
+      timeLimitMs: engineTimeLimitMs,
       pieces: request.pieces,
       aiLevel: request.aiLevel ?? null,
       mustContinueFrom: request.mustContinueFrom ?? null,
@@ -86,7 +91,7 @@ export class SidraAdapter
       const child = execFile(
         this.cliPath,
         [],
-        { timeout: timeLimitMs + 2000, maxBuffer: 1024 * 64 },
+        { timeout: timeLimitMs + 3000, maxBuffer: 1024 * 64 },
         (error, stdout, stderr) => {
           if (stderr) {
             this.logger.debug(`[sidra-cli stderr] ${stderr.trim()}`);

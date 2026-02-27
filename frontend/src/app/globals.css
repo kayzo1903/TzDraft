@@ -104,3 +104,49 @@ body {
 .animate-result-enter {
   animation: result-enter 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes tier-unlock-enter {
+  0%   { opacity: 0; }
+  30%  { opacity: 0; }
+  60%  { opacity: 0.6; }
+  70%  { opacity: 0.3; }
+  80%  { opacity: 0.9; }
+  85%  { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes tier-unlock-card {
+  0%   { opacity: 0; transform: scale(1.04) translateY(-8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes tier-unlock-flicker {
+  0%   { opacity: 1; }
+  7%   { opacity: 0.4; }
+  8%   { opacity: 1; }
+  15%  { opacity: 1; }
+  16%  { opacity: 0.2; }
+  17%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes tier-unlock-pulse {
+  0%, 100% { box-shadow: 0 0 16px 4px rgba(220,38,38,0.4); }
+  50%       { box-shadow: 0 0 36px 10px rgba(220,38,38,0.8); }
+}
+
+.animate-tier-unlock-enter {
+  animation: tier-unlock-enter 900ms ease forwards;
+}
+
+.animate-tier-unlock-card {
+  animation: tier-unlock-card 500ms 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-tier-unlock-flicker {
+  animation: tier-unlock-flicker 2.5s 1.2s ease infinite;
+}
+
+.animate-tier-unlock-pulse {
+  animation: tier-unlock-pulse 1.8s ease-in-out infinite;
+}
