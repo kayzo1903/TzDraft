@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(file *.docx)",
+      "Read(//c/tmp/**)",
+      "Bash(python3 -c \"from docx import Document; doc = Document\\(''/c/Users/Admin/Desktop/TzDraft/docs/engine\\\\ adaptation/Engine_Adaptation_Decision_Document\\\\\\(4\\\\\\).docx''\\); print\\(''\\\\n''.join\\([p.text for p in doc.paragraphs]\\)\\)\")",
+      "Bash(unzip -p \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\" word/document.xml)",
+      "Bash(python3 -m xml.dom.minidom)",
+      "Bash(strings \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")",
+      "Bash(unzip -l \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\"
+    ]
+  }
+}
