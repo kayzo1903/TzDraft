@@ -111,8 +111,7 @@ const evaluateBoard = (board: BoardState, player: PlayerColor): number => {
   const oppMoves = CakeEngine.generateLegalMoves(board, opponent).length;
   score += (myMoves - oppMoves) * 3;
 
-  // Threat penalty: opponent can capture our pieces
-  // Use findAllCaptures only once (for the opponent) to mark threatened squares
+  // Threat penalty: penalise each threatened piece by 75% of its actual value
   const oppCaptures = captureService.findAllCaptures(board, opponent);
   if (oppCaptures.length > 0) {
     const threatened = new Set<number>();
@@ -121,10 +120,17 @@ const evaluateBoard = (board: BoardState, player: PlayerColor): number => {
         threatened.add(pos.value);
       }
     }
-    score -= threatened.size * 8;
+    for (const pos of threatened) {
+      const threatenedPiece = pieces.find(
+        (p) => p.position.value === pos && p.color === player,
+      );
+      if (threatenedPiece) {
+        score -= PIECE_VALUES[threatenedPiece.type] * 0.75;
+      }
+    }
   }
 
-  // Capture pressure delta (opponent - us, already partial via oppCaptures above)
+  // Capture pressure delta (opponent - us)
   const myCaptures = captureService.findAllCaptures(board, player).length;
   score += (myCaptures - oppCaptures.length) * 6;
 
@@ -287,7 +293,15 @@ export const getBestMove = (
   const randomness = getRandomnessForLevel(level);
 
   if (Math.random() < randomness) {
-    return moves[Math.floor(Math.random() * moves.length)];
+    // Avoid randomly walking into an immediate capture — filter to safe landing squares
+    const safeMoves = moves.filter((m) => {
+      const nextBoard = CakeEngine.applyMove(board, m);
+      const replies = captureService.findAllCaptures(nextBoard, getOpponent(player));
+      const retaken = new Set(replies.flatMap((c) => c.capturedSquares.map((p) => p.value)));
+      return !retaken.has(m.to.value);
+    });
+    const pool = safeMoves.length > 0 ? safeMoves : moves;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   const budget = getTimeBudgetForLevel(level);
