@@ -1,5 +1,5 @@
 // engine-adapter.interface.ts
-// Shared contract for all engine adapters (Kallisto, SiDra, future custom engine).
+// Shared contract for all engine adapters (SiDra, future custom engines).
 
 export interface EngineMove {
   from: number; // 1–32 square number

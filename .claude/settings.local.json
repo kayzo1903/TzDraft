@@ -7,7 +7,10 @@
       "Bash(unzip -p \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\" word/document.xml)",
       "Bash(python3 -m xml.dom.minidom)",
       "Bash(strings \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")",
-      "Bash(unzip -l \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")"
+      "Bash(unzip -l \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")",
+      "Bash(xargs ls -la)",
+      "Bash(find /c/Users/Admin/Desktop/TzDraft/backend/src -type f -name \"*.ts\" -exec grep -l \"readFile\\\\|fs\\\\|database\\\\|load\" {} ;)",
+      "Bash(git ls-tree -r develop)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\"
