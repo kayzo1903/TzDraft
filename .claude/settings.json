@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Admin/**)",
+      "Bash(grep -i \"pvp\\\\|multiplayer\\\\|friend\\\\|match\" docs/README/*.md)"
+    ]
+  }
+}
