@@ -39,7 +39,7 @@ export default function Home() {
           <div className="flex flex-col gap-4 max-w-md mx-auto lg:mx-0 w-full">
             <Link href="/play" className="w-full">
               <Button size="lg" className="w-full gap-3">
-                <span className="text-2xl">♟️</span>
+                <span className="text-2xl">{"\u{1F310}"}</span>
                 <div className="flex flex-col items-start leading-none">
                   <span className="font-bold">{t('playOnline')}</span>
                   <span className="text-xs font-normal opacity-80">{t('features.online')}</span>
@@ -49,10 +49,9 @@ export default function Home() {
 
             <Link href="/game/setup-ai" className="w-full">
               <Button variant="secondary" size="lg" className="w-full gap-3">
-                <span className="text-2xl">🤖</span>
+                <span className="text-2xl">{"\u{1F916}"}</span>
                 <div className="flex flex-col items-start leading-none">
                   <span className="font-bold">{t('playComputer')}</span>
-                  <span className="text-xs font-normal opacity-80">Stockfish (Cake)</span>
                 </div>
               </Button>
             </Link>
