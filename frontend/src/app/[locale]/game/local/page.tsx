@@ -187,7 +187,7 @@ function GameResultCard({
   }[outcome];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
       <div
         className={clsx(
           "w-full max-w-md animate-result-enter rounded-2xl overflow-hidden border",
@@ -197,22 +197,22 @@ function GameResultCard({
         )}
       >
         {/* ── Hero banner with bot portrait ── */}
-        <div className="relative w-full h-44 overflow-hidden">
-          {/* Bot portrait background */}
+        <div className="relative w-full h-48 overflow-hidden">
+          {/* Bot portrait — clean, no color tint */}
           <Image
             src={bot.avatarSrc}
             alt={bot.name}
             fill
             sizes="448px"
-            className="object-cover object-top scale-105"
+            className="object-cover object-top"
             priority
           />
-          {/* Gradient overlay */}
-          <div className={clsx("absolute inset-0 bg-gradient-to-b", cfg.bannerBg)} />
+          {/* Subtle dark scrim at bottom for text legibility only */}
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-neutral-950/85 to-transparent" />
 
-          {/* Outcome icon + label */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-            <div className={clsx("flex items-center justify-center w-16 h-16 rounded-full border-2 backdrop-blur-sm", cfg.iconBg, cfg.iconColor)}>
+          {/* Outcome icon + label — anchored to bottom of banner */}
+          <div className="absolute inset-x-0 bottom-4 flex flex-col items-center gap-1.5">
+            <div className={clsx("flex items-center justify-center w-14 h-14 rounded-full border-2 backdrop-blur-sm", cfg.iconBg, cfg.iconColor)}>
               {cfg.icon}
             </div>
             <div className={clsx("text-3xl font-black tracking-tight drop-shadow-lg", cfg.accentText)}>
