@@ -8,6 +8,9 @@
       "Bash(python3 -m xml.dom.minidom)",
       "Bash(strings \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")",
       "Bash(unzip -l \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\"
     ]
   }
 }
