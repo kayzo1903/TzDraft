@@ -97,6 +97,14 @@ export const isBotLevelUnlocked = (level: number): boolean => {
   return clampLevel(level) <= getMaxUnlockedBotLevel();
 };
 
+export const unlockAllBotLevels = () => {
+  if (typeof window === "undefined") return;
+  setUnlockedTierIndex(BOT_TIERS.length - 1);
+  const completed = new Set<number>();
+  for (let level = 1; level <= TOTAL_BOT_LEVELS; level++) completed.add(level);
+  saveCompletedLevelsSet(completed);
+};
+
 export const unlockNextBotLevel = (currentBotLevel: number) => {
   if (typeof window === "undefined") return;
   const level = clampLevel(currentBotLevel);

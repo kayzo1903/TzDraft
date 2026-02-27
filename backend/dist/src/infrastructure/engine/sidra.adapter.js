@@ -85,15 +85,16 @@ let SidraAdapter = SidraAdapter_1 = class SidraAdapter {
             throw new Error(`SiDra CLI not found. Build it first at: ${this.cliPath}`);
         }
         const timeLimitMs = request.timeLimitMs ?? this.defaultTimeLimitMs;
+        const engineTimeLimitMs = timeLimitMs * 20;
         const inputJson = JSON.stringify({
             currentPlayer: request.currentPlayer,
-            timeLimitMs,
+            timeLimitMs: engineTimeLimitMs,
             pieces: request.pieces,
             aiLevel: request.aiLevel ?? null,
             mustContinueFrom: request.mustContinueFrom ?? null,
         });
         return new Promise((resolve, reject) => {
-            const child = (0, child_process_1.execFile)(this.cliPath, [], { timeout: timeLimitMs + 2000, maxBuffer: 1024 * 64 }, (error, stdout, stderr) => {
+            const child = (0, child_process_1.execFile)(this.cliPath, [], { timeout: timeLimitMs + 3000, maxBuffer: 1024 * 64 }, (error, stdout, stderr) => {
                 if (stderr) {
                     this.logger.debug(`[sidra-cli stderr] ${stderr.trim()}`);
                 }

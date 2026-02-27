@@ -10,7 +10,7 @@ import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS } from "@/lib/game/bot-progression";
+import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS } from "@/lib/game/bot-progression";
 import {
   AlertTriangle,
   ArrowRight,
@@ -53,6 +53,97 @@ const formatTime = (seconds: number) => {
 };
 
 /* ─── Resign Card ─────────────────────────────────────────────────────── */
+
+/* ─── Tier Unlock Overlay ───────────────────────────────────────────────── */
+
+const TIER_UNLOCK_DATA = [
+  null, // tier 0 (Beginner) — never triggers
+  {
+    label: "CASUAL TIER UNLOCKED",
+    title: "The warmup is over.",
+    body: "Your next opponents have been watching. They know your patterns. Don't get comfortable.",
+    cta: "I'm ready.",
+    accentColor: "emerald" as const,
+  },
+  {
+    label: "COMPETITIVE TIER UNLOCKED",
+    title: "Something stronger awakens.",
+    body: "You've stepped into Sidra's territory. These opponents calculate faster than you think. Every mistake will be punished without mercy.",
+    cta: "I understand the risk.",
+    accentColor: "red" as const,
+  },
+  {
+    label: "EXPERT TIER UNLOCKED",
+    title: "They know no mercy.",
+    body: "Few players reach this tier. Fewer survive it. Your opponent sees 12 moves ahead. You've been warned.",
+    cta: "Show me what's waiting.",
+    accentColor: "red" as const,
+  },
+  {
+    label: "MASTER TIER UNLOCKED",
+    title: "This is the end.",
+    body: "You've come further than most dare to try. The final opponents are relentless. There is no undo. There is no coming back from this.",
+    cta: "Face it.",
+    accentColor: "red" as const,
+  },
+] as const;
+
+function TierUnlockOverlay({ newMaxLevel, onContinue }: { newMaxLevel: number; onContinue: () => void }) {
+  const tierIdx = BOT_TIERS.findIndex(([, end]) => end === newMaxLevel);
+  const data = tierIdx >= 0 ? TIER_UNLOCK_DATA[tierIdx] : null;
+  if (!data) return null;
+
+  const isRed = data.accentColor === "red";
+  const accentText = isRed ? "text-red-400" : "text-emerald-400";
+  const accentBorder = isRed ? "border-red-500/40" : "border-emerald-500/40";
+  const accentBg = isRed ? "bg-red-500/10" : "bg-emerald-500/10";
+  const accentGlow = isRed ? "animate-tier-unlock-pulse" : "";
+  const btnClass = isRed
+    ? "bg-red-700/80 hover:bg-red-600 border-red-600 text-white"
+    : "bg-emerald-700/80 hover:bg-emerald-600 border-emerald-600 text-white";
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-tier-unlock-enter"
+      style={{ background: "radial-gradient(ellipse at center, rgba(30,0,0,0.97) 0%, rgba(0,0,0,0.99) 100%)" }}>
+      <div className={`animate-tier-unlock-card w-full max-w-sm rounded-2xl border ${accentBorder} bg-neutral-950 shadow-2xl overflow-hidden`}>
+        {/* Top glow bar */}
+        <div className={`h-0.5 w-full ${isRed ? "bg-gradient-to-r from-transparent via-red-500 to-transparent" : "bg-gradient-to-r from-transparent via-emerald-500 to-transparent"}`} />
+
+        {/* Icon header */}
+        <div className="flex flex-col items-center pt-8 pb-4 px-6 gap-4">
+          <div className={`w-16 h-16 rounded-full ${accentBg} border ${accentBorder} flex items-center justify-center ${accentGlow}`}>
+            <Skull className={`w-8 h-8 ${accentText}`} />
+          </div>
+          <div className={`text-[10px] font-black uppercase tracking-[0.3em] ${accentText} animate-tier-unlock-flicker`}>
+            {data.label}
+          </div>
+          <h2 className="text-xl font-black text-white text-center leading-snug">
+            {data.title}
+          </h2>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 pb-6 text-sm text-neutral-400 text-center leading-relaxed">
+          {data.body}
+        </div>
+
+        {/* CTA */}
+        <div className="px-6 pb-7">
+          <button
+            type="button"
+            onClick={onContinue}
+            className={`w-full rounded-xl border px-4 py-3 text-sm font-bold transition ${btnClass}`}
+          >
+            {data.cta}
+          </button>
+        </div>
+
+        {/* Bottom glow bar */}
+        <div className={`h-0.5 w-full ${isRed ? "bg-gradient-to-r from-transparent via-red-500/50 to-transparent" : "bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"}`} />
+      </div>
+    </div>
+  );
+}
 
 interface ResignCardProps {
   botName: string;
@@ -331,6 +422,7 @@ export default function LocalGamePage() {
   const { user } = useAuthStore();
   const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(1);
   const [maxUnlockedNow, setMaxUnlockedNow] = useState(1);
+  const [tierUnlockLevel, setTierUnlockLevel] = useState<number | null>(null);
 
   const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } =
     useLocalGame(level, playerColor, timeSeconds);
@@ -361,8 +453,13 @@ export default function LocalGamePage() {
 
   useEffect(() => {
     if (!state.result) return;
-    setMaxUnlockedNow(getMaxUnlockedBotLevel());
-  }, [state.result]);
+    const newMax = getMaxUnlockedBotLevel();
+    setMaxUnlockedNow(newMax);
+    // A tier unlock happens when the max unlocked level jumps
+    if (newMax > maxUnlockedAtStart) {
+      setTierUnlockLevel(newMax);
+    }
+  }, [state.result, maxUnlockedAtStart]);
 
   if (!mounted) {
     return (
@@ -524,8 +621,16 @@ export default function LocalGamePage() {
         />
       )}
 
-      {/* Game result */}
-      {state.result && (
+      {/* Tier unlock overlay — shown before the result card when a new tier opens */}
+      {tierUnlockLevel !== null && (
+        <TierUnlockOverlay
+          newMaxLevel={tierUnlockLevel}
+          onContinue={() => setTierUnlockLevel(null)}
+        />
+      )}
+
+      {/* Game result — hidden while the tier overlay is showing */}
+      {state.result && tierUnlockLevel === null && (
         <GameResultCard
           result={state.result.winner}
           bot={bot}
