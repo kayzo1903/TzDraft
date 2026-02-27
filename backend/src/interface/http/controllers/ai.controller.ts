@@ -17,7 +17,7 @@ export class AiMoveRequestDto {
 
 /**
  * AI Controller
- * Exposes stateless engine connections (CAKE, SiDra, Kallisto).
+ * Exposes stateless engine connections (CAKE, SiDra).
  * This endpoint is public for local play.
  */
 @ApiTags('ai')

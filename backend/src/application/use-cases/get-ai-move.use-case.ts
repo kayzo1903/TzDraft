@@ -1,5 +1,4 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { KallistoAdapter } from '../../infrastructure/engine/kallisto.adapter';
 import { SidraAdapter } from '../../infrastructure/engine/sidra.adapter';
 
 type EnginePlayerColor = 'WHITE' | 'BLACK';
@@ -18,22 +17,18 @@ type SimplifiedMove = {
 
 /**
  * Get AI Move Use Case
- * Routes requests to the appropriate engine adapter based on difficulty level.
+ * Routes requests to the SiDra engine adapter based on difficulty level.
  *
  * Level routing:
  *  1-9  → handled on the frontend (CAKE engine via bot.ts). Backend should not
  *          receive these; if it does we return null gracefully.
- *  10-15 → SiDra engine (Tanzania-rule-correct, compiled CLI)
- *  16-20 → Kallisto engine (strongest benchmark engine)
+ *  10+  → SiDra engine (Tanzania-rule-correct, compiled CLI)
  */
 @Injectable()
 export class GetAiMoveUseCase {
   private readonly logger = new Logger(GetAiMoveUseCase.name);
 
-  constructor(
-    private readonly sidraAdapter: SidraAdapter,
-    private readonly kallistoAdapter: KallistoAdapter,
-  ) {}
+  constructor(private readonly sidraAdapter: SidraAdapter) {}
 
   async execute(dto: {
     boardStatePieces: BoardPiece[];
@@ -77,28 +72,13 @@ export class GetAiMoveUseCase {
       mustContinueFrom: mustContinueFrom ?? null,
     };
 
-    // Hard: SiDra (Level 10-15)
-    if (aiLevel < 16) {
-      this.logger.debug(`Routing to SiDra Engine (Level ${aiLevel})`);
-      try {
-        const move = await this.sidraAdapter.getBestMove(request);
-        return move ?? null;
-      } catch (err) {
-        this.logger.warn(
-          `SiDra adapter failed (level ${aiLevel}): ${(err as Error).message}. Returning null.`,
-        );
-        return null;
-      }
-    }
-
-    // Expert/Grandmaster: Kallisto (Level 16-20)
-    this.logger.debug(`Routing to Kallisto Engine (Level ${aiLevel})`);
+    this.logger.debug(`Routing to SiDra Engine (Level ${aiLevel})`);
     try {
-      const move = await this.kallistoAdapter.getBestMove(request);
+      const move = await this.sidraAdapter.getBestMove(request);
       return move ?? null;
     } catch (err) {
       this.logger.warn(
-        `Kallisto adapter failed (level ${aiLevel}): ${(err as Error).message}. Returning null.`,
+        `SiDra adapter failed (level ${aiLevel}): ${(err as Error).message}. Returning null.`,
       );
       return null;
     }

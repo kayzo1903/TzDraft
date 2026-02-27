@@ -16,7 +16,7 @@ import { EngineModule } from './infrastructure/engine/engine.module';
     AuthModule,
     UserModule,
     HttpModule,
-    EngineModule, // Provides KallistoAdapter + SidraAdapter globally
+    EngineModule, // Provides SidraAdapter globally
   ],
   controllers: [],
   providers: [],
