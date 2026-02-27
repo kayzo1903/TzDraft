@@ -1,0 +1,8 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "Local Machine": [
+      "sidra\\out\\build\\x64-Debug",
+      "sidra\\out\\install\\x64-Debug"
+    ]
+  }
+}
