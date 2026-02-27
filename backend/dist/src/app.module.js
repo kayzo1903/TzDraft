@@ -13,6 +13,7 @@ const prisma_module_1 = require("./infrastructure/database/prisma/prisma.module"
 const http_module_1 = require("./interface/http/http.module");
 const auth_module_1 = require("./auth/auth.module");
 const user_module_1 = require("./domain/user/user.module");
+const engine_module_1 = require("./infrastructure/engine/engine.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,6 +28,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             user_module_1.UserModule,
             http_module_1.HttpModule,
+            engine_module_1.EngineModule,
         ],
         controllers: [],
         providers: [],

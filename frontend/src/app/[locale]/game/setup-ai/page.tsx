@@ -5,19 +5,23 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
-  Check,
   ChevronDown,
-  ChevronRight,
   Clock,
+  Flame,
   Loader2,
   Lock,
+  Shield,
   Shuffle,
+  Skull,
+  Swords,
+  Trophy,
   User,
+  Zap,
 } from "lucide-react";
+import clsx from "clsx";
 
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { BOTS } from "@/lib/game/bots";
 import { getMaxUnlockedBotLevel } from "@/lib/game/bot-progression";
 
@@ -26,6 +30,279 @@ type Bot = (typeof BOTS)[number];
 const TIME_OPTIONS = [0, 5, 10, 15] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];
 
+/* ─── Tier definitions ──────────────────────────────────────────────────── */
+type TierDef = {
+  label: string;
+  range: [number, number];
+  icon: React.ReactNode;
+  accent: string;       // tailwind text color class
+  border: string;       // tailwind border color class
+  glow: string;         // tailwind shadow/ring color
+  bg: string;
+};
+
+const TIERS: TierDef[] = [
+  {
+    label: "Beginner",
+    range: [1, 5],
+    icon: <Shield className="w-3.5 h-3.5" />,
+    accent: "text-sky-300",
+    border: "border-sky-500/30",
+    glow: "ring-sky-500/40",
+    bg: "bg-sky-500/5",
+  },
+  {
+    label: "Casual",
+    range: [6, 9],
+    icon: <Zap className="w-3.5 h-3.5" />,
+    accent: "text-emerald-300",
+    border: "border-emerald-500/30",
+    glow: "ring-emerald-500/40",
+    bg: "bg-emerald-500/5",
+  },
+  {
+    label: "Competitive",
+    range: [10, 13],
+    icon: <Swords className="w-3.5 h-3.5" />,
+    accent: "text-amber-300",
+    border: "border-amber-500/30",
+    glow: "ring-amber-500/40",
+    bg: "bg-amber-500/5",
+  },
+  {
+    label: "Expert",
+    range: [14, 16],
+    icon: <Flame className="w-3.5 h-3.5" />,
+    accent: "text-orange-400",
+    border: "border-orange-500/30",
+    glow: "ring-orange-500/40",
+    bg: "bg-orange-500/5",
+  },
+  {
+    label: "Master",
+    range: [17, 19],
+    icon: <Skull className="w-3.5 h-3.5" />,
+    accent: "text-rose-400",
+    border: "border-rose-500/30",
+    glow: "ring-rose-500/40",
+    bg: "bg-rose-500/5",
+  },
+];
+
+const getTierForLevel = (level: number): TierDef =>
+  TIERS.find(({ range: [s, e] }) => level >= s && level <= e) ?? TIERS[0];
+
+/* ─── Difficulty bar ────────────────────────────────────────────────────── */
+function DifficultyBar({ level }: { level: number }) {
+  const pct = Math.round((level / 19) * 100);
+  const tier = getTierForLevel(level);
+  const barColor =
+    level <= 5
+      ? "bg-sky-400"
+      : level <= 9
+        ? "bg-emerald-400"
+        : level <= 13
+          ? "bg-amber-400"
+          : level <= 16
+            ? "bg-orange-400"
+            : "bg-rose-500";
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-1">
+        <span className={clsx("text-[10px] font-semibold uppercase tracking-widest", tier.accent)}>
+          {tier.label}
+        </span>
+        <span className="text-[10px] font-mono text-neutral-400">Lv.{level}</span>
+      </div>
+      <div className="h-1 w-full rounded-full bg-neutral-800 overflow-hidden">
+        <div
+          className={clsx("h-full rounded-full transition-all duration-500", barColor)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Bot card (chess.com style large avatar) ───────────────────────────── */
+interface BotCardProps {
+  bot: Bot;
+  selected: boolean;
+  locked: boolean;
+  onClick: () => void;
+}
+
+function BotCard({ bot, selected, locked, onClick }: BotCardProps) {
+  const tier = getTierForLevel(bot.level);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={locked}
+      aria-pressed={selected}
+      className={clsx(
+        "relative w-full rounded-2xl border transition-all duration-200 overflow-hidden group text-left",
+        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1c1917]",
+        locked
+          ? "opacity-50 cursor-not-allowed border-neutral-800 bg-neutral-900/30"
+          : selected
+            ? clsx("border-[var(--primary)] shadow-lg ring-1", tier.glow, tier.bg)
+            : "border-neutral-800 bg-neutral-900/40 hover:border-neutral-600 hover:bg-neutral-900/70",
+        locked ? "" : `focus:${tier.glow}`
+      )}
+    >
+      {/* Portrait */}
+      <div className="relative w-full aspect-[3/4] overflow-hidden">
+        <Image
+          src={bot.avatarSrc}
+          alt={bot.name}
+          fill
+          sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 16vw"
+          className={clsx(
+            "object-cover object-top transition-transform duration-500",
+            !locked && "group-hover:scale-105"
+          )}
+        />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
+
+        {/* Selected indicator */}
+        {selected && (
+          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center shadow-md">
+            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
+
+        {/* Lock overlay */}
+        {locked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-950/70 backdrop-blur-[2px]">
+            <Lock className="w-6 h-6 text-neutral-400 mb-1" />
+            <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Locked</span>
+          </div>
+        )}
+
+        {/* Tier badge */}
+        <div className={clsx("absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border", tier.accent, tier.border, "bg-neutral-950/80")}>
+          {tier.icon} {tier.label}
+        </div>
+      </div>
+
+      {/* Info strip */}
+      <div className="px-2.5 py-2">
+        <div className="flex items-baseline justify-between gap-1 mb-1.5">
+          <span className="font-bold text-sm text-white truncate">{bot.name}</span>
+          <span className="font-mono text-[10px] text-neutral-400 shrink-0">{bot.elo}</span>
+        </div>
+        <DifficultyBar level={bot.level} />
+      </div>
+    </button>
+  );
+}
+
+/* ─── Selected bot hero panel ───────────────────────────────────────────── */
+function SelectedBotPanel({
+  bot,
+  userRating,
+  userName,
+  timeLabel,
+  colorLabel,
+}: {
+  bot: Bot;
+  userRating: number;
+  userName: string;
+  timeLabel: string;
+  colorLabel: string;
+}) {
+  const tier = getTierForLevel(bot.level);
+  const ratingDiff = bot.elo - userRating;
+  const diffLabel =
+    ratingDiff > 0
+      ? `+${ratingDiff} above you`
+      : ratingDiff < 0
+        ? `${ratingDiff} below you`
+        : "Matched";
+  const diffColor =
+    ratingDiff > 200 ? "text-rose-400" : ratingDiff > 0 ? "text-amber-400" : "text-emerald-400";
+
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 overflow-hidden">
+      {/* Hero portrait */}
+      <div className="relative w-full aspect-[16/10] overflow-hidden">
+        <Image
+          src={bot.avatarSrc}
+          alt={bot.name}
+          fill
+          sizes="480px"
+          className="object-cover object-top scale-110"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/30 to-transparent" />
+
+        {/* Name overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className={clsx("text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-1", tier.accent)}>
+            {tier.icon} {tier.label}
+          </div>
+          <div className="text-2xl font-black text-white">{bot.name}</div>
+          <div className="text-sm text-neutral-300 mt-0.5">{bot.description}</div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="p-4 space-y-4">
+        {/* Matchup row */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-neutral-200" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-white truncate">{userName}</div>
+              <div className="text-xs font-mono text-neutral-400">{userRating}</div>
+            </div>
+          </div>
+          <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest shrink-0">vs</div>
+          <div className="flex-1 flex items-center gap-2 min-w-0 justify-end">
+            <div className="min-w-0 text-right">
+              <div className="text-sm font-semibold text-white truncate">{bot.name}</div>
+              <div className={clsx("text-xs font-mono", diffColor)}>{diffLabel}</div>
+            </div>
+            <div className="relative w-9 h-9 rounded-full overflow-hidden border border-neutral-700 shrink-0">
+              <Image src={bot.avatarSrc} alt={bot.name} fill sizes="36px" className="object-cover object-top" />
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-neutral-800" />
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Rating</div>
+            <div className="text-sm font-bold text-white mt-0.5">{bot.elo}</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Time</div>
+            <div className="text-sm font-bold text-white mt-0.5 flex items-center justify-center gap-1">
+              <Clock className="w-3 h-3 text-neutral-400" />
+              {timeLabel}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Color</div>
+            <div className="text-sm font-bold text-white mt-0.5 flex items-center justify-center gap-1">
+              <Shuffle className="w-3 h-3 text-neutral-400" />
+              {colorLabel}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Page ──────────────────────────────────────────────────────────────── */
 export default function SetupAiPage() {
   const t = useTranslations("setupAi");
   const router = useRouter();
@@ -34,22 +311,16 @@ export default function SetupAiPage() {
   const { user } = useAuthStore();
 
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(1);
-  useEffect(() => {
-    setMaxUnlockedLevel(getMaxUnlockedBotLevel());
-  }, []);
+  useEffect(() => { setMaxUnlockedLevel(getMaxUnlockedBotLevel()); }, []);
 
   const highestUnlockedBot = useMemo((): Bot => {
     let best = BOTS[0];
-    for (const bot of BOTS) {
-      if (bot.level <= maxUnlockedLevel) best = bot;
-    }
+    for (const bot of BOTS) { if (bot.level <= maxUnlockedLevel) best = bot; }
     return best;
   }, [maxUnlockedLevel]);
 
   const [selectedBot, setSelectedBot] = useState<Bot>(BOTS[0]);
-  const [selectedColor, setSelectedColor] = useState<
-    "WHITE" | "BLACK" | "RANDOM"
-  >("RANDOM");
+  const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
   const [selectedTime, setSelectedTime] = useState<TimeOption>(0);
   const [loading, setLoading] = useState(false);
   const [timeMenuOpen, setTimeMenuOpen] = useState(false);
@@ -61,18 +332,16 @@ export default function SetupAiPage() {
 
   useEffect(() => {
     if (!timeMenuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (!timeMenuRef.current?.contains(target)) setTimeMenuOpen(false);
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (e.target instanceof Node && !timeMenuRef.current?.contains(e.target)) {
+        setTimeMenuOpen(false);
+      }
     };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown, { passive: true });
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler, { passive: true });
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
     };
   }, [timeMenuOpen]);
 
@@ -90,14 +359,9 @@ export default function SetupAiPage() {
     setLoading(true);
     try {
       let finalColor = selectedColor;
-      if (finalColor === "RANDOM") {
-        finalColor = Math.random() < 0.5 ? "WHITE" : "BLACK";
-      }
-
+      if (finalColor === "RANDOM") finalColor = Math.random() < 0.5 ? "WHITE" : "BLACK";
       const timeSeconds = selectedTime === 0 ? 0 : selectedTime * 60;
-      router.push(
-        `/${locale}/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`,
-      );
+      router.push(`/${locale}/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`);
     } catch (error) {
       console.error("Failed to create game:", error);
     } finally {
@@ -105,9 +369,7 @@ export default function SetupAiPage() {
     }
   };
 
-  const timeLabel =
-    selectedTime === 0 ? t("time.noTime") : t("time.minutes", { minutes: selectedTime });
-
+  const timeLabel = selectedTime === 0 ? t("time.noTime") : t("time.minutes", { minutes: selectedTime });
   const colorLabel =
     selectedColor === "WHITE"
       ? t("colors.white")
@@ -117,411 +379,205 @@ export default function SetupAiPage() {
 
   return (
     <div className="min-h-[100svh] bg-[var(--background)] text-foreground">
-      <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-44 sm:pt-10 sm:pb-10 lg:py-10">
-        <header className="mb-6 sm:mb-10">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-                {t("title")}
-              </h1>
-              <p className="mt-1 text-sm sm:text-base text-neutral-400">
-                {t("subtitle")}
-              </p>
-            </div>
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/40 px-3 py-1 text-xs text-neutral-300">
-              <Clock className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-              <span className="font-mono">{timeLabel}</span>
-              <span className="text-neutral-600">•</span>
-              <span className="font-medium">{colorLabel}</span>
-            </div>
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-44 sm:pt-10">
+
+        {/* Header */}
+        <header className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center gap-3">
+              <Trophy className="w-8 h-8 text-[var(--primary)]" />
+              {t("title")}
+            </h1>
+            <p className="mt-1 text-sm text-neutral-400">{t("subtitle")}</p>
+          </div>
+
+          {/* Progress badge */}
+          <div className="hidden sm:flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/40 px-4 py-2 text-xs text-neutral-300 shrink-0">
+            <Trophy className="h-3.5 w-3.5 text-[var(--primary)]" />
+            <span className="font-semibold text-white">{maxUnlockedLevel}</span>
+            <span className="text-neutral-500">/ {BOTS.length} unlocked</span>
           </div>
         </header>
 
-        <div className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm text-neutral-300">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <span className="font-semibold text-neutral-100">
-                {t("progress.title")}
-              </span>{" "}
-              <span className="text-neutral-400">
-                {t("progress.unlocked", { level: maxUnlockedLevel, total: 7 })}
-              </span>
-            </div>
-            <div className="text-neutral-500">{t("progress.rule")}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+
+          {/* ── Left: Bot roster ─────────────────────────────── */}
+          <div className="space-y-8">
+            {TIERS.map((tier) => {
+              const tierBots = BOTS.filter(
+                (b) => b.level >= tier.range[0] && b.level <= tier.range[1]
+              );
+              return (
+                <section key={tier.label}>
+                  {/* Tier header */}
+                  <div className={clsx("flex items-center gap-2 mb-3 pb-2 border-b", tier.border)}>
+                    <span className={clsx("flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest", tier.accent)}>
+                      {tier.icon} {tier.label}
+                    </span>
+                    <div className="flex-1" />
+                    <span className="text-[10px] text-neutral-600 font-mono">
+                      {tier.range[0]}–{tier.range[1]}
+                    </span>
+                  </div>
+
+                  {/* Bot grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    {tierBots.map((bot) => (
+                      <BotCard
+                        key={bot.level}
+                        bot={bot}
+                        selected={selectedBot.level === bot.level}
+                        locked={bot.level > maxUnlockedLevel}
+                        onClick={() => { if (bot.level <= maxUnlockedLevel) setSelectedBot(bot); }}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-6 items-start">
-          <section className="rounded-2xl border border-neutral-800 bg-neutral-950/20">
-            <div className="flex items-center justify-between gap-3 border-b border-neutral-800 px-4 py-4">
-              <div>
-                <div className="text-sm uppercase tracking-[0.22em] text-neutral-500">
-                  {t("selectOpponent")}
-                </div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {selectedBot.name}
-                </div>
-                <div className="mt-1 text-sm text-neutral-400">
-                  {selectedBot.description}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-mono text-emerald-200">
-                  ELO {selectedBot.elo}
+          {/* ── Right: Config sidebar ────────────────────────── */}
+          <aside className="hidden lg:block space-y-4 sticky top-6">
+            <SelectedBotPanel
+              bot={selectedBot}
+              userRating={userRating}
+              userName={user?.username ?? t("preview.you")}
+              timeLabel={timeLabel}
+              colorLabel={colorLabel}
+            />
+
+            {/* Time picker */}
+            <div ref={timeMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setTimeMenuOpen((o) => !o)}
+                aria-expanded={timeMenuOpen}
+                className="w-full rounded-xl border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm font-semibold text-neutral-100 flex items-center justify-between gap-2 hover:bg-neutral-900/70 transition focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/50"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-neutral-400" />
+                  {timeLabel}
                 </span>
-                <span className="rounded-full border border-neutral-800 bg-neutral-900/40 px-2.5 py-1 text-xs font-mono text-neutral-300">
-                  L{selectedBot.level}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-1 gap-3">
-                {BOTS.map((bot) => {
-                  const locked = bot.level > maxUnlockedLevel;
-                  const selected = selectedBot.level === bot.level;
-
-                  return (
-                    <button
-                      key={bot.level}
-                      type="button"
-                      onClick={() => {
-                        if (locked) return;
-                        setSelectedBot(bot);
-                      }}
-                      disabled={locked}
-                      aria-pressed={selected}
-                      className={[
-                        "w-full rounded-2xl border p-3 transition text-center",
-                        "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                        locked
-                          ? "opacity-60 cursor-not-allowed border-neutral-800 bg-neutral-900/40"
-                          : selected
-                            ? "border-emerald-500/70 bg-emerald-500/10"
-                            : "border-neutral-800 bg-neutral-950/20 hover:bg-neutral-900/60 hover:border-emerald-500/40",
-                      ].join(" ")}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="relative w-14 h-14 rounded-full bg-neutral-950/40 border border-neutral-700 overflow-hidden shrink-0">
-                          <Image
-                            src={bot.avatarSrc}
-                            alt={bot.name}
-                            fill
-                            sizes="56px"
-                            className="object-cover object-[50%_60%]"
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="font-semibold text-neutral-100 truncate max-w-[12rem]">
-                            {bot.name}
-                          </div>
-                          {selected && (
-                            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-200 border border-emerald-500/30">
-                              <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                            </span>
-                          )}
-                        </div>
-
-                        {locked && (
-                          <div className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-950/30 px-2.5 py-1 text-xs text-neutral-400">
-                            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span className="truncate">{t("locked")}</span>
-                          </div>
+                <ChevronDown className={clsx("h-4 w-4 text-neutral-400 transition-transform duration-200", timeMenuOpen && "rotate-180")} />
+              </button>
+              {timeMenuOpen && (
+                <div className="absolute bottom-full mb-2 left-0 right-0 rounded-2xl border border-neutral-800 bg-neutral-950/98 p-2 shadow-2xl z-20">
+                  <div className="grid grid-cols-2 gap-2">
+                    {TIME_OPTIONS.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => { setSelectedTime(time); setTimeMenuOpen(false); }}
+                        aria-pressed={selectedTime === time}
+                        className={clsx(
+                          "rounded-xl border px-3 py-2.5 text-sm font-semibold transition text-center",
+                          selectedTime === time
+                            ? "border-[var(--primary)]/60 bg-[var(--primary)]/10 text-orange-100"
+                            : "border-neutral-800 bg-neutral-900/40 text-neutral-200 hover:bg-neutral-900/70"
                         )}
-                      </div>
-                    </button>
-                  );
-                })}
+                      >
+                        {time === 0 ? t("time.noTime") : t("time.minutes", { minutes: time })}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Color picker */}
+            <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-3">
+              <div className="text-xs text-neutral-500 mb-2 uppercase tracking-wider">{t("selectColor")}</div>
+              <div className="flex gap-2" role="group" aria-label={t("selectColor")}>
+                {(["WHITE", "RANDOM", "BLACK"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setSelectedColor(c)}
+                    aria-pressed={selectedColor === c}
+                    aria-label={c === "WHITE" ? t("colors.white") : c === "BLACK" ? t("colors.black") : t("colors.random")}
+                    className={clsx(
+                      "flex-1 flex flex-col items-center gap-1.5 rounded-xl border py-2.5 text-xs font-semibold transition",
+                      selectedColor === c
+                        ? "border-[var(--primary)]/60 bg-[var(--primary)]/10 text-orange-100"
+                        : "border-neutral-800 text-neutral-400 hover:bg-neutral-900/70"
+                    )}
+                  >
+                    <div className={clsx(
+                      "w-5 h-5 rounded-full border",
+                      c === "WHITE"
+                        ? "bg-white border-neutral-300"
+                        : c === "BLACK"
+                          ? "bg-neutral-900 border-neutral-600"
+                          : "bg-gradient-to-r from-white to-black border-neutral-600"
+                    )} />
+                    {c === "WHITE" ? t("colors.white") : c === "BLACK" ? t("colors.black") : t("colors.random")}
+                  </button>
+                ))}
               </div>
             </div>
-          </section>
-
-          <aside className="hidden lg:block space-y-4 lg:sticky lg:top-6">
-            <Card className="rounded-2xl border border-neutral-800 bg-neutral-950/20 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm uppercase tracking-[0.22em] text-neutral-500">
-                  {t("preview.title")}
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/40 px-3 py-1 text-xs text-neutral-200">
-                  <Clock className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-                  <span className="font-mono">{timeLabel}</span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center shrink-0">
-                    {user?.username ? (
-                      <span className="text-sm font-bold text-neutral-100">
-                        {user.username.slice(0, 1).toUpperCase()}
-                      </span>
-                    ) : (
-                      <User className="h-5 w-5 text-neutral-200" aria-hidden="true" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-neutral-100 truncate">
-                      {user?.username || t("preview.you")}
-                    </div>
-                    <div className="text-xs text-neutral-400 font-mono">
-                      {userRating}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="shrink-0 text-neutral-600">
-                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                </div>
-
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative w-11 h-11 rounded-full bg-neutral-950/40 border border-neutral-700 overflow-hidden shrink-0">
-                    <Image
-                      src={selectedBot.avatarSrc}
-                      alt={selectedBot.name}
-                      fill
-                      sizes="44px"
-                      className="object-cover object-[50%_60%]"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-neutral-100 truncate">
-                      {selectedBot.name}
-                    </div>
-                    <div className="text-xs text-neutral-400 font-mono">
-                      {selectedBot.elo}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 px-3 py-2">
-                  <div className="text-xs text-neutral-500">{t("selectTime")}</div>
-                  <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-neutral-100">
-                    <Clock className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-                    <span>{timeLabel}</span>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 px-3 py-2">
-                  <div className="text-xs text-neutral-500">{t("selectColor")}</div>
-                  <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-neutral-100">
-                    <Shuffle className="h-4 w-4 text-neutral-400" aria-hidden="true" />
-                    <span>{colorLabel}</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="rounded-2xl border border-neutral-800 bg-neutral-950/20 p-4">
-              <div className="text-sm uppercase tracking-[0.22em] text-neutral-500">
-                {t("selectTime")}
-              </div>
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {TIME_OPTIONS.map((time) => {
-                  const selected = selectedTime === time;
-                  return (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setSelectedTime(time)}
-                      aria-pressed={selected}
-                      className={[
-                        "rounded-xl border px-3 py-2 text-center transition",
-                        "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                        selected
-                          ? "border-orange-500/70 bg-orange-500/15 text-orange-200"
-                          : "border-neutral-800 bg-neutral-900/30 text-neutral-300 hover:bg-neutral-900/60",
-                      ].join(" ")}
-                    >
-                      <div className="text-base font-bold">
-                        {time === 0 ? t("time.noTime") : t("time.minutes", { minutes: time })}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-
-            <Card className="rounded-2xl border border-neutral-800 bg-neutral-950/20 p-4">
-              <div className="text-sm uppercase tracking-[0.22em] text-neutral-500">
-                {t("selectColor")}
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor("WHITE")}
-                  aria-pressed={selectedColor === "WHITE"}
-                  aria-label={t("colors.white")}
-                  className={[
-                    "rounded-xl border px-3 py-2 transition flex flex-col items-center gap-2",
-                    "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                    selectedColor === "WHITE"
-                      ? "border-orange-500/70 bg-orange-500/15"
-                      : "border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60",
-                  ].join(" ")}
-                >
-                  <div className="w-7 h-7 rounded-full bg-white border border-neutral-300" />
-                  <span className="sr-only">{t("colors.white")}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor("RANDOM")}
-                  aria-pressed={selectedColor === "RANDOM"}
-                  aria-label={t("colors.random")}
-                  className={[
-                    "rounded-xl border px-3 py-2 transition flex flex-col items-center gap-2",
-                    "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                    selectedColor === "RANDOM"
-                      ? "border-orange-500/70 bg-orange-500/15"
-                      : "border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60",
-                  ].join(" ")}
-                >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-white to-black border border-neutral-600" />
-                  <span className="sr-only">{t("colors.random")}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor("BLACK")}
-                  aria-pressed={selectedColor === "BLACK"}
-                  aria-label={t("colors.black")}
-                  className={[
-                    "rounded-xl border px-3 py-2 transition flex flex-col items-center gap-2",
-                    "focus:outline-none focus:ring-2 focus:ring-orange-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                    selectedColor === "BLACK"
-                      ? "border-orange-500/70 bg-orange-500/15"
-                      : "border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60",
-                  ].join(" ")}
-                >
-                  <div className="w-7 h-7 rounded-full bg-black border border-neutral-600" />
-                  <span className="sr-only">{t("colors.black")}</span>
-                </button>
-              </div>
-            </Card>
-
-            <Button
-              size="lg"
-              className="w-full text-lg font-bold py-5"
-              onClick={handleStartGame}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {t("start.loading")}
-                </>
-              ) : (
-                t("start.cta")
-              )}
-            </Button>
           </aside>
         </div>
       </div>
 
-      <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur">
-        <div className="mx-auto w-full max-w-6xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-          <div className="mb-3 flex items-center gap-2">
+      {/* ── Sticky bottom bar ──────────────────────────────────────── */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur-md">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+
+          {/* Mobile only: compact controls */}
+          <div className="flex lg:hidden items-center gap-2 mb-3">
             <div ref={timeMenuRef} className="relative flex-1">
               <button
                 type="button"
-                onClick={() => setTimeMenuOpen((open) => !open)}
-                aria-expanded={timeMenuOpen}
-                className={[
-                  "w-full rounded-xl border px-3 py-2.5 text-sm font-semibold transition flex items-center justify-between gap-2",
-                  "border-neutral-800 bg-neutral-900/40 text-neutral-100",
-                  "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                ].join(" ")}
+                onClick={() => setTimeMenuOpen((o) => !o)}
+                className="w-full rounded-xl border border-neutral-800 bg-neutral-900/40 px-3 py-2.5 text-sm font-semibold text-neutral-100 flex items-center justify-between gap-2 focus:outline-none"
               >
-                <span className="inline-flex items-center gap-2 min-w-0">
-                  <Clock className="h-4 w-4 text-neutral-300" aria-hidden="true" />
-                  <span className="truncate">{timeLabel}</span>
+                <span className="inline-flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-neutral-400" />
+                  {timeLabel}
                 </span>
-                <ChevronDown className="h-4 w-4 text-neutral-400" aria-hidden="true" />
+                <ChevronDown className="h-4 w-4 text-neutral-400" />
               </button>
-
               {timeMenuOpen && (
-                <div className="absolute bottom-full mb-2 left-0 right-0 rounded-2xl border border-neutral-800 bg-neutral-950/95 p-2 shadow-xl">
+                <div className="absolute bottom-full mb-2 left-0 right-0 rounded-2xl border border-neutral-800 bg-neutral-950/98 p-2 shadow-2xl z-20">
                   <div className="grid grid-cols-2 gap-2">
-                    {TIME_OPTIONS.map((time) => {
-                      const selected = selectedTime === time;
-                      return (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTime(time);
-                            setTimeMenuOpen(false);
-                          }}
-                          aria-pressed={selected}
-                          className={[
-                            "rounded-xl border px-3 py-2 text-sm font-semibold transition text-center",
-                            "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                            selected
-                              ? "border-emerald-500/70 bg-emerald-500/10 text-emerald-100"
-                              : "border-neutral-800 bg-neutral-900/40 text-neutral-200 hover:bg-neutral-900/70",
-                          ].join(" ")}
-                        >
-                          {time === 0 ? t("time.noTime") : t("time.minutes", { minutes: time })}
-                        </button>
-                      );
-                    })}
+                    {TIME_OPTIONS.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => { setSelectedTime(time); setTimeMenuOpen(false); }}
+                        aria-pressed={selectedTime === time}
+                        className={clsx(
+                          "rounded-xl border px-3 py-2.5 text-sm font-semibold transition text-center",
+                          selectedTime === time
+                            ? "border-[var(--primary)]/60 bg-[var(--primary)]/10 text-orange-100"
+                            : "border-neutral-800 bg-neutral-900/40 text-neutral-200"
+                        )}
+                      >
+                        {time === 0 ? t("time.noTime") : t("time.minutes", { minutes: time })}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
-
-            <div
-              className="inline-flex items-center rounded-xl border border-neutral-800 bg-neutral-900/40 p-1"
-              role="group"
-              aria-label={t("selectColor")}
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedColor("WHITE")}
-                aria-pressed={selectedColor === "WHITE"}
-                aria-label={t("colors.white")}
-                className={[
-                  "rounded-lg p-2 transition",
-                  "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                  selectedColor === "WHITE"
-                    ? "bg-emerald-500/15"
-                    : "hover:bg-neutral-900/70",
-                ].join(" ")}
-              >
-                <div className="w-5 h-5 rounded-full bg-white border border-neutral-300" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedColor("RANDOM")}
-                aria-pressed={selectedColor === "RANDOM"}
-                aria-label={t("colors.random")}
-                className={[
-                  "rounded-lg p-2 transition",
-                  "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                  selectedColor === "RANDOM"
-                    ? "bg-emerald-500/15"
-                    : "hover:bg-neutral-900/70",
-                ].join(" ")}
-              >
-                <div className="w-5 h-5 rounded-full bg-gradient-to-r from-white to-black border border-neutral-600" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedColor("BLACK")}
-                aria-pressed={selectedColor === "BLACK"}
-                aria-label={t("colors.black")}
-                className={[
-                  "rounded-lg p-2 transition",
-                  "focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:ring-offset-2 focus:ring-offset-[var(--background)]",
-                  selectedColor === "BLACK"
-                    ? "bg-emerald-500/15"
-                    : "hover:bg-neutral-900/70",
-                ].join(" ")}
-              >
-                <div className="w-5 h-5 rounded-full bg-black border border-neutral-600" />
-              </button>
+            <div className="inline-flex items-center rounded-xl border border-neutral-800 bg-neutral-900/40 p-1" role="group">
+              {(["WHITE", "RANDOM", "BLACK"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setSelectedColor(c)}
+                  aria-pressed={selectedColor === c}
+                  className={clsx("rounded-lg p-2 transition", selectedColor === c ? "bg-[var(--primary)]/15" : "hover:bg-neutral-900/70")}
+                >
+                  <div className={clsx(
+                    "w-5 h-5 rounded-full border",
+                    c === "WHITE" ? "bg-white border-neutral-300" :
+                      c === "BLACK" ? "bg-neutral-900 border-neutral-600" :
+                        "bg-gradient-to-r from-white to-black border-neutral-600"
+                  )} />
+                </button>
+              ))}
             </div>
           </div>
 
@@ -532,12 +588,9 @@ export default function SetupAiPage() {
             disabled={loading}
           >
             {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {t("start.loading")}
-              </>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{t("start.loading")}</>
             ) : (
-              t("start.cta")
+              <>{t("start.cta")} — {selectedBot.name}</>
             )}
           </Button>
         </div>
