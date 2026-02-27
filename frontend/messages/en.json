@@ -16,6 +16,40 @@
       "online": "Multiplayer",
       "blitz": "Blitz Games",
       "tournaments": "Tournaments"
+    },
+    "featureGrid": {
+      "title": "Everything in One Place",
+      "subtitle": "Your complete TzDraft experience — from casual games to serious competition.",
+      "comingSoon": "Coming Soon",
+      "limited": "Limited",
+      "playOnline": {
+        "title": "Play Online",
+        "desc": "Challenge real players in ranked or casual matches."
+      },
+      "playFriend": {
+        "title": "Play with Friend",
+        "desc": "Invite a friend to a private match via link."
+      },
+      "playComputer": {
+        "title": "Play vs Computer",
+        "desc": "Train against AI engines from beginner to advanced."
+      },
+      "tournaments": {
+        "title": "Tournaments",
+        "desc": "Compete in scheduled events and climb the standings."
+      },
+      "leaderboard": {
+        "title": "Leaderboard",
+        "desc": "See the top ranked players in the community."
+      },
+      "learn": {
+        "title": "Learn",
+        "desc": "Study openings, tactics, and key endgame strategies."
+      },
+      "analysis": {
+        "title": "Analysis",
+        "desc": "Review your games move by move with engine assistance."
+      }
     }
   },
   "auth": {

@@ -16,6 +16,40 @@
       "online": "Wachezaji Wengi",
       "blitz": "Michezo ya Haraka",
       "tournaments": "Mashindano"
+    },
+    "featureGrid": {
+      "title": "Kila Kitu Mahali Pamoja",
+      "subtitle": "Uzoefu wako kamili wa TzDraft — kutoka michezo ya starehe hadi mashindano ya kweli.",
+      "comingSoon": "Inakuja Hivi Karibuni",
+      "limited": "Imepunguzwa",
+      "playOnline": {
+        "title": "Cheza Mtandaoni",
+        "desc": "Pinga wachezaji wa kweli katika mechi za daraja au za kawaida."
+      },
+      "playFriend": {
+        "title": "Cheza na Rafiki",
+        "desc": "Mwalike rafiki kwa mechi ya faragha kupitia kiungo."
+      },
+      "playComputer": {
+        "title": "Cheza na Kompyuta",
+        "desc": "Jifunze dhidi ya injini za AI kutoka rahisi hadi ngumu."
+      },
+      "tournaments": {
+        "title": "Mashindano",
+        "desc": "Shindana katika matukio yaliyopangwa na panda chati."
+      },
+      "leaderboard": {
+        "title": "Orodha ya Bora",
+        "desc": "Angalia wachezaji waliofaulu zaidi katika jumuiya."
+      },
+      "learn": {
+        "title": "Jifunza",
+        "desc": "Soma mianzo, mbinu, na mkakati wa mwisho wa mchezo."
+      },
+      "analysis": {
+        "title": "Uchambuzi",
+        "desc": "Kagua michezo yako hatua kwa hatua kwa msaada wa injini."
+      }
     }
   },
   "auth": {
