@@ -108,6 +108,9 @@ export const Board: React.FC<BoardProps> = ({
     setSelectedSquare(index);
   };
 
+  const files = ["A", "B", "C", "D", "E", "F", "G", "H"];
+  const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"];
+
   const renderSquare = (index: number) => {
     const isDark = isDarkSquare(index);
     const piece = getPiece(index);
@@ -122,6 +125,12 @@ export const Board: React.FC<BoardProps> = ({
     );
     const isLastMoveToSquare = Boolean(lastMove && lastMove.to === index);
 
+    const row = Math.floor(index / 8);
+    const col = index % 8;
+    const showRank = col === 0;
+    const showFile = row === 7;
+    const labelColor = isDark ? "var(--board-light)" : "var(--board-dark)";
+
     return (
       <div
         key={index}
@@ -133,6 +142,26 @@ export const Board: React.FC<BoardProps> = ({
             : "bg-[var(--board-light)]",
         )}
       >
+        {/* Rank label — top-left corner of left-edge squares */}
+        {showRank && (
+          <span
+            className="absolute top-[2px] left-[2px] text-[9px] font-bold leading-none pointer-events-none z-[5] select-none"
+            style={{ color: labelColor }}
+          >
+            {ranks[row]}
+          </span>
+        )}
+
+        {/* File label — bottom-right corner of bottom-edge squares */}
+        {showFile && (
+          <span
+            className="absolute bottom-[2px] right-[2px] text-[9px] font-bold leading-none pointer-events-none z-[5] select-none"
+            style={{ color: labelColor }}
+          >
+            {files[col]}
+          </span>
+        )}
+
         {/* Selected highlight */}
         {isSelected && isDark && (
           <div className="absolute inset-0 bg-yellow-400/40 pointer-events-none" />
@@ -176,9 +205,6 @@ export const Board: React.FC<BoardProps> = ({
     );
   };
 
-  const files = ["A", "B", "C", "D", "E", "F", "G", "H"];
-  const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"];
-
   return (
     <div
       className={clsx(
@@ -189,95 +215,68 @@ export const Board: React.FC<BoardProps> = ({
       onAnimationEnd={() => setIsShaking(false)}
       {...props}
     >
-      <div className="grid grid-cols-1 grid-rows-1 gap-1 sm:grid-cols-[20px_1fr] sm:grid-rows-[1fr_20px]">
-        {/* Rank labels */}
-        <div className="hidden sm:grid sm:grid-rows-8">
-          {ranks.map((rank) => (
-            <div
-              key={rank}
-              className="flex items-center justify-center text-[10px] text-neutral-500 font-semibold"
-            >
-              {rank}
-            </div>
-          ))}
+      {/* Board squares */}
+      <div className="w-full aspect-square relative border border-[#8B6914]/60 rounded-sm overflow-hidden">
+        {/* Subtle inner vignette for depth */}
+        <div className="absolute inset-0 z-10 pointer-events-none rounded-sm shadow-[inset_0_0_24px_rgba(0,0,0,0.45)]" />
+
+        {/* Static square grid (backgrounds & overlays) */}
+        <div className="absolute inset-0 grid grid-cols-8 grid-rows-8 z-0">
+          {Array.from({ length: 64 }).map((_, index) => renderSquare(index))}
         </div>
 
-        {/* Board squares */}
-        <div className="w-full aspect-square relative border border-[#8B6914]/60 rounded-sm overflow-hidden">
-          {/* Subtle inner vignette for depth */}
-          <div className="absolute inset-0 z-10 pointer-events-none rounded-sm shadow-[inset_0_0_24px_rgba(0,0,0,0.45)]" />
+        {/* Animated piece layer (only when externalPieces provided) */}
+        {externalPieces && (
+          <div className="absolute inset-0 pointer-events-none z-20">
+            {/* Capture ghosts */}
+            {capturedGhosts.map((ghost) => {
+              const row = Math.floor(ghost.index / 8);
+              const col = ghost.index % 8;
+              return (
+                <div
+                  key={ghost.id}
+                  className="absolute flex items-center justify-center piece-capture-ghost"
+                  style={{
+                    left: `${col * 12.5}%`,
+                    top: `${row * 12.5}%`,
+                    width: "12.5%",
+                    height: "12.5%",
+                  }}
+                >
+                  <Piece color={ghost.piece.color} isKing={ghost.piece.isKing} />
+                </div>
+              );
+            })}
 
-          {/* Static square grid (backgrounds & overlays) */}
-          <div className="absolute inset-0 grid grid-cols-8 grid-rows-8 z-0">
-            {Array.from({ length: 64 }).map((_, index) => renderSquare(index))}
+            {/* Live pieces with arc-movement animation */}
+            {Object.entries(externalPieces).map(([key, piece]) => {
+              const index = Number(key);
+              const row = Math.floor(index / 8);
+              const col = index % 8;
+              const isLanding = landingIndex === index;
+              const isSelected = selectedSquare === index;
+              return (
+                <div
+                  key={key}
+                  className="absolute flex items-center justify-center piece-move"
+                  style={{
+                    left: `${col * 12.5}%`,
+                    top: `${row * 12.5}%`,
+                    width: "12.5%",
+                    height: "12.5%",
+                  }}
+                >
+                  <Piece
+                    color={piece.color}
+                    isKing={piece.isKing}
+                    isSelected={isSelected}
+                    isMoving={isLanding}
+                  />
+                </div>
+              );
+            })}
           </div>
-
-          {/* Animated piece layer (only when externalPieces provided) */}
-          {externalPieces && (
-            <div className="absolute inset-0 pointer-events-none z-20">
-              {/* Capture ghosts */}
-              {capturedGhosts.map((ghost) => {
-                const row = Math.floor(ghost.index / 8);
-                const col = ghost.index % 8;
-                return (
-                  <div
-                    key={ghost.id}
-                    className="absolute flex items-center justify-center piece-capture-ghost"
-                    style={{
-                      left: `${col * 12.5}%`,
-                      top: `${row * 12.5}%`,
-                      width: "12.5%",
-                      height: "12.5%",
-                    }}
-                  >
-                    <Piece color={ghost.piece.color} isKing={ghost.piece.isKing} />
-                  </div>
-                );
-              })}
-
-              {/* Live pieces with arc-movement animation */}
-              {Object.entries(externalPieces).map(([key, piece]) => {
-                const index = Number(key);
-                const row = Math.floor(index / 8);
-                const col = index % 8;
-                const isLanding = landingIndex === index;
-                const isSelected = selectedSquare === index;
-                return (
-                  <div
-                    key={key}
-                    className="absolute flex items-center justify-center piece-move"
-                    style={{
-                      left: `${col * 12.5}%`,
-                      top: `${row * 12.5}%`,
-                      width: "12.5%",
-                      height: "12.5%",
-                    }}
-                  >
-                    <Piece
-                      color={piece.color}
-                      isKing={piece.isKing}
-                      isSelected={isSelected}
-                      isMoving={isLanding}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* File labels */}
-        <div className="hidden sm:block" />
-        <div className="hidden sm:grid sm:grid-cols-8">
-          {files.map((file) => (
-            <div
-              key={file}
-              className="flex items-center justify-center text-[10px] text-neutral-500 font-semibold"
-            >
-              {file}
-            </div>
-          ))}
-        </div>
+        )}
       </div>
     </div>
   );
