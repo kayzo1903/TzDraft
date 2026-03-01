@@ -320,6 +320,53 @@
       "loading": "Inaandaa mchezo..."
     }
   },
+  "setupFriend": {
+    "title": "Cheza na Rafiki",
+    "subtitle": "Mpe changamoto rafiki wako ana kwa ana au mtandaoni",
+    "tabs": {
+      "online": "Mtandaoni",
+      "local": "Ana kwa ana"
+    },
+    "colors": {
+      "white": "Nyeupe",
+      "random": "Bila mpangilio",
+      "black": "Nyeusi"
+    },
+    "timeControl": "Muda wa mchezo",
+    "minutes": "{minutes}dk",
+    "local": {
+      "bannerTitle": "Pass-and-play",
+      "bannerDesc": "wachezaji wawili hutumia kifaa kimoja na kucheza kwa zamu kwenye ubao mmoja.",
+      "playerOneColor": "Mchezaji wa 1 acheze rangi",
+      "passDeviceTitle": "Skrini ya kupokezana kifaa",
+      "passDeviceDesc": "Onyesha skrini ya kupokezana kati ya zamu",
+      "playNow": "Cheza Sasa"
+    },
+    "online": {
+      "authRequiredTitle": "Inahitaji kuingia",
+      "authRequiredDesc": "Fungua akaunti ili kucheza mtandaoni na marafiki.",
+      "signIn": "Ingia",
+      "guestCreateFailed": "Imeshindikana kuanzisha hali ya mgeni. Tafadhali jaribu tena.",
+      "createFailed": "Imeshindikana kuunda mchezo. Tafadhali jaribu tena.",
+      "invalidCodeInput": "Tafadhali ingiza msimbo sahihi wa mwaliko.",
+      "invalidOrExpiredCode": "Msimbo wa mwaliko si sahihi au umeisha muda.",
+      "bannerTitle": "PvP Mtandaoni",
+      "bannerDesc": "unda mchezo na mshirikishe rafiki wako kiungo cha mwaliko.",
+      "yourColor": "Rangi yako",
+      "createGame": "Unda Mchezo",
+      "joinWithCode": "Jiunge kwa msimbo",
+      "creatingGame": "Inaandaa mchezo wako...",
+      "gameCreated": "Mchezo umeundwa! Mshirikishe rafiki wako mwaliko.",
+      "inviteCode": "Msimbo wa mwaliko",
+      "scanToJoin": "Skani kujiunga",
+      "orCopyLink": "Au nakili kiungo",
+      "goToBoard": "Nenda kwenye Ubao",
+      "startOver": "Anza upya",
+      "back": "Rudi",
+      "enterInviteCode": "Weka msimbo wa mwaliko",
+      "joinGame": "Jiunge na Mchezo"
+    }
+  },
   "gameArena": {
     "loading": "Inapakia mchezo...",
     "you": "Wewe",
