@@ -45,6 +45,7 @@ let CreateGameUseCase = class CreateGameUseCase {
         return this.gameRepository.create(game);
     }
     async createInviteGame(creatorId, creatorColor, creatorElo, initialTimeMs) {
+        await this.gameRepository.expireStaleInvitesByPlayer(creatorId);
         const inviteCode = generateInviteCode();
         const whitePlayerId = creatorColor === game_constants_1.PlayerColor.WHITE ? creatorId : null;
         const blackPlayerId = creatorColor === game_constants_1.PlayerColor.BLACK ? creatorId : null;

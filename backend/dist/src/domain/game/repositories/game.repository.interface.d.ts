@@ -13,4 +13,5 @@ export interface IGameRepository {
     findByInviteCode(code: string): Promise<Game | null>;
     joinInvite(gameId: string, joinerId: string): Promise<Game>;
     updateClock(gameId: string, whiteTimeMs: number, blackTimeMs: number, lastMoveAt: Date): Promise<void>;
+    expireStaleInvitesByPlayer(creatorId: string): Promise<void>;
 }

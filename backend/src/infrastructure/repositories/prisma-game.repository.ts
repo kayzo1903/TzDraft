@@ -189,6 +189,20 @@ export class PrismaGameRepository implements IGameRepository {
       include: { clock: true },
     });
     if (!game) return null;
+
+    // Auto-expire WAITING invites that are older than 30 minutes
+    if (game.status === GameStatus.WAITING) {
+      const ageMs = Date.now() - game.createdAt.getTime();
+      const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+      if (ageMs > THIRTY_MINUTES_MS) {
+        await this.prisma.game.update({
+          where: { id: game.id },
+          data: { status: GameStatus.ABORTED },
+        });
+        return null; // Treat as expired / not found
+      }
+    }
+
     return this.toDomain(game);
   }
 
@@ -217,6 +231,21 @@ export class PrismaGameRepository implements IGameRepository {
       include: { clock: true },
     });
     return this.toDomain(updated);
+  }
+
+  async expireStaleInvitesByPlayer(creatorId: string): Promise<void> {
+    // Abort all WAITING invite games where this player is the only player
+    await this.prisma.game.updateMany({
+      where: {
+        status: GameStatus.WAITING,
+        inviteCode: { not: null },
+        OR: [
+          { whitePlayerId: creatorId, blackPlayerId: null },
+          { blackPlayerId: creatorId, whitePlayerId: null },
+        ],
+      },
+      data: { status: GameStatus.ABORTED },
+    });
   }
 
   async updateClock(
