@@ -75,7 +75,12 @@ export class CaptureFindingService {
     const adjacentRow = row + direction.row;
     const adjacentCol = col + direction.col;
 
-    if (adjacentRow < 0 || adjacentRow > 7 || adjacentCol < 0 || adjacentCol > 7)
+    if (
+      adjacentRow < 0 ||
+      adjacentRow > 7 ||
+      adjacentCol < 0 ||
+      adjacentCol > 7
+    )
       return [];
     if ((adjacentRow + adjacentCol) % 2 === 0) return [];
 

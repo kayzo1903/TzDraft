@@ -1,6 +1,6 @@
 import { PlayerColor } from '../../../shared/constants/game.constants';
 export declare class CreateInviteGameDto {
-    color: PlayerColor;
+    color: PlayerColor | 'RANDOM';
     timeMs?: number;
 }
 export declare class JoinInviteGameDto {
