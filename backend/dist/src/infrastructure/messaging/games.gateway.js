@@ -266,6 +266,30 @@ let GamesGateway = class GamesGateway {
         this.server.to(data.gameId).emit('rematchCancelled', {});
         return {};
     }
+    isInRoom(client, gameId) {
+        const userId = client.data.user?.id;
+        return !!userId && this.userGameMap.get(userId) === gameId;
+    }
+    handleVoiceOffer(data, client) {
+        if (!this.isInRoom(client, data.gameId))
+            return;
+        client.to(data.gameId).emit('voice:offer', { sdp: data.sdp });
+    }
+    handleVoiceAnswer(data, client) {
+        if (!this.isInRoom(client, data.gameId))
+            return;
+        client.to(data.gameId).emit('voice:answer', { sdp: data.sdp });
+    }
+    handleVoiceIceCandidate(data, client) {
+        if (!this.isInRoom(client, data.gameId))
+            return;
+        client.to(data.gameId).emit('voice:ice-candidate', { candidate: data.candidate });
+    }
+    handleVoiceHangup(data, client) {
+        if (!this.isInRoom(client, data.gameId))
+            return;
+        client.to(data.gameId).emit('voice:hangup', {});
+    }
     emitGameStateUpdate(gameId, gameState) {
         this.server.to(gameId).emit('gameStateUpdated', gameState);
         this.logger.log(`Emitted gameStateUpdated for game: ${gameId}`);
@@ -372,6 +396,38 @@ __decorate([
     __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", Object)
 ], GamesGateway.prototype, "handleCancelRematch", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('voice:offer'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], GamesGateway.prototype, "handleVoiceOffer", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('voice:answer'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], GamesGateway.prototype, "handleVoiceAnswer", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('voice:ice-candidate'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], GamesGateway.prototype, "handleVoiceIceCandidate", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('voice:hangup'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], GamesGateway.prototype, "handleVoiceHangup", null);
 exports.GamesGateway = GamesGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {

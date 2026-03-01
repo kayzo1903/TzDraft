@@ -63,6 +63,22 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     }, client: Socket): {
         error?: string;
     };
+    private isInRoom;
+    handleVoiceOffer(data: {
+        gameId: string;
+        sdp: any;
+    }, client: Socket): void;
+    handleVoiceAnswer(data: {
+        gameId: string;
+        sdp: any;
+    }, client: Socket): void;
+    handleVoiceIceCandidate(data: {
+        gameId: string;
+        candidate: any;
+    }, client: Socket): void;
+    handleVoiceHangup(data: {
+        gameId: string;
+    }, client: Socket): void;
     emitGameStateUpdate(gameId: string, gameState: any): void;
     emitGameOver(gameId: string, result: any): void;
 }
