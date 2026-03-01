@@ -396,6 +396,58 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return {};
   }
 
+  /* ── Voice chat signaling (WebRTC P2P relay) ─────────────────────────── */
+
+  /**
+   * Guard used by all voice signaling handlers.
+   * Returns true only when the authenticated user has joined the specified game room.
+   * Prevents relay-abuse from users outside the room.
+   */
+  private isInRoom(client: Socket, gameId: string): boolean {
+    const userId = client.data.user?.id;
+    return !!userId && this.userGameMap.get(userId) === gameId;
+  }
+
+  /** Forward SDP offer to the opponent in the same game room. */
+  @SubscribeMessage('voice:offer')
+  handleVoiceOffer(
+    @MessageBody() data: { gameId: string; sdp: any },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:offer', { sdp: data.sdp });
+  }
+
+  /** Forward SDP answer back to the caller. */
+  @SubscribeMessage('voice:answer')
+  handleVoiceAnswer(
+    @MessageBody() data: { gameId: string; sdp: any },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:answer', { sdp: data.sdp });
+  }
+
+  /** Forward ICE candidate to the opponent. */
+  @SubscribeMessage('voice:ice-candidate')
+  handleVoiceIceCandidate(
+    @MessageBody() data: { gameId: string; candidate: any },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:ice-candidate', { candidate: data.candidate });
+  }
+
+  /** Notify opponent that the call has ended. */
+  @SubscribeMessage('voice:hangup')
+  handleVoiceHangup(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:hangup', {});
+  }
+
   /* ── Emit helpers (called by application layer) ─────────────────────── */
 
   emitGameStateUpdate(gameId: string, gameState: any) {

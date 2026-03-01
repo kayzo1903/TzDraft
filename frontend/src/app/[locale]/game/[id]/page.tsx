@@ -28,6 +28,7 @@ import QRCode from "react-qr-code";
 import { gameService } from "@/services/game.service";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { authClient } from "@/lib/auth/auth-client";
+import { VoiceChatControls } from "@/components/game/VoiceChatControls";
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
 
@@ -115,6 +116,7 @@ function WaitingBanner({
 
 function OnlineResultCard({
   winner,
+  reason,
   myColor,
   moveCount,
   myUserId,
@@ -126,6 +128,7 @@ function OnlineResultCard({
   onSetupFriend,
 }: {
   winner: Winner;
+  reason?: string;
   myColor: PlayerColor | null;
   moveCount: number;
   myUserId: string | null;
@@ -136,14 +139,24 @@ function OnlineResultCard({
   onCancelRematch: () => void;
   onSetupFriend: () => void;
 }) {
-  const isDraw = winner === Winner.DRAW;
+  const isAborted = reason === "aborted";
+  const isDraw = !isAborted && winner === Winner.DRAW;
   const iWon =
     !isDraw &&
+    !isAborted &&
     myColor !== null &&
     ((winner === Winner.WHITE && myColor === PlayerColor.WHITE) ||
       (winner === Winner.BLACK && myColor === PlayerColor.BLACK));
 
-  const outcome = isDraw ? "draw" : myColor === null ? "draw" : iWon ? "win" : "loss";
+  const outcome = isAborted
+    ? "aborted"
+    : isDraw
+    ? "draw"
+    : myColor === null
+    ? "draw"
+    : iWon
+    ? "win"
+    : "loss";
 
   const cfg = {
     win: {
@@ -179,6 +192,17 @@ function OnlineResultCard({
       headerBg: "bg-gradient-to-br from-sky-950/80 via-neutral-900 to-neutral-900",
       sub: "The game ended in a draw",
     },
+    aborted: {
+      label: "Game Aborted",
+      icon: <X className="w-8 h-8" />,
+      borderColor: "border-neutral-600/60",
+      iconBg: "bg-neutral-700/40 border-neutral-600/60",
+      iconColor: "text-neutral-400",
+      accentText: "text-neutral-300",
+      glow: "",
+      headerBg: "bg-gradient-to-br from-neutral-800/80 via-neutral-900 to-neutral-900",
+      sub: "The game was cancelled before it started",
+    },
   }[outcome];
 
   return (
@@ -207,21 +231,23 @@ function OnlineResultCard({
           <div className="text-sm text-white/70">{cfg.sub}</div>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-neutral-800 border-b border-neutral-800">
-          {[
-            { label: "Moves", value: moveCount },
-            { label: "Mode", value: "Online PvP" },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex flex-col items-center py-3 px-2">
-              <div className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</div>
-              <div className="text-base font-bold text-white mt-0.5">{value}</div>
-            </div>
-          ))}
-        </div>
+        {!isAborted && (
+          <div className="grid grid-cols-2 divide-x divide-neutral-800 border-b border-neutral-800">
+            {[
+              { label: "Moves", value: moveCount },
+              { label: "Mode", value: "Online PvP" },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex flex-col items-center py-3 px-2">
+                <div className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</div>
+                <div className="text-base font-bold text-white mt-0.5">{value}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="p-4 flex flex-col gap-2.5">
-          {/* Rematch section — only for actual players (myColor !== null) */}
-          {myColor !== null && (() => {
+          {/* Rematch section — only for finished (non-aborted) games with actual players */}
+          {!isAborted && myColor !== null && (() => {
             const iOffered = rematchOffer.offeredByUserId === myUserId ||
               rematchOffer.offeredByUserId === "self";
             const theyOffered = rematchOffer.offeredByUserId !== null && !iOffered;
@@ -667,6 +693,12 @@ export default function OnlineGamePage() {
 
   const setupFriendPath = `/${locale}/game/setup-friend`;
 
+  // Voice chat: registered users only, both players present, PvP game, in-game
+  const isGuest = user?.phoneNumber?.startsWith("GUEST_") ?? true;
+  const isPvP = !topInfo.isAi && !bottomInfo.isAi;
+  const showVoiceChat =
+    !isGuest && isPvP && state.myColor !== null && !state.isWaiting;
+
   if (!mounted) {
     return (
       <main className="min-h-screen flex items-center justify-center p-4 text-neutral-300">
@@ -781,6 +813,8 @@ export default function OnlineGamePage() {
               onDone={refetch}
             />
           )}
+          {/* Voice chat — registered PvP players only */}
+          {showVoiceChat && <VoiceChatControls gameId={gameId} />}
         </div>
       </div>
 
@@ -793,7 +827,7 @@ export default function OnlineGamePage() {
 
       {/* Mobile action buttons */}
       {!state.result && state.myColor !== null && (
-        <div className="md:hidden w-full max-w-[650px]">
+        <div className="md:hidden w-full max-w-[650px] flex flex-col gap-2">
           <GameActions
             gameId={gameId}
             moveCount={state.moveCount}
@@ -805,6 +839,8 @@ export default function OnlineGamePage() {
             onDeclineDraw={declineDraw}
             onDone={refetch}
           />
+          {/* Voice chat — registered PvP players only */}
+          {showVoiceChat && <VoiceChatControls gameId={gameId} />}
         </div>
       )}
 
@@ -821,6 +857,7 @@ export default function OnlineGamePage() {
       {state.result && !state.isWaiting && (
         <OnlineResultCard
           winner={state.result.winner}
+          reason={state.result.reason}
           myColor={state.myColor}
           moveCount={state.moveCount}
           myUserId={user?.id ?? null}
