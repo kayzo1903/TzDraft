@@ -320,6 +320,53 @@
       "loading": "Starting Game..."
     }
   },
+  "setupFriend": {
+    "title": "Play with a Friend",
+    "subtitle": "Challenge a friend locally or online",
+    "tabs": {
+      "online": "Online",
+      "local": "Local"
+    },
+    "colors": {
+      "white": "White",
+      "random": "Random",
+      "black": "Black"
+    },
+    "timeControl": "Time control",
+    "minutes": "{minutes}m",
+    "local": {
+      "bannerTitle": "Pass-and-play",
+      "bannerDesc": "two players share the same device, taking turns on the same board.",
+      "playerOneColor": "Player 1 plays as",
+      "passDeviceTitle": "Pass-device screen",
+      "passDeviceDesc": "Show a handoff screen between turns",
+      "playNow": "Play Now"
+    },
+    "online": {
+      "authRequiredTitle": "Sign in required",
+      "authRequiredDesc": "Create an account to play online with friends.",
+      "signIn": "Sign In",
+      "guestCreateFailed": "Unable to start guest mode. Please try again.",
+      "createFailed": "Failed to create game. Please try again.",
+      "invalidCodeInput": "Please enter a valid invite code.",
+      "invalidOrExpiredCode": "Invalid or expired invite code.",
+      "bannerTitle": "Online PvP",
+      "bannerDesc": "create a game and share the invite link with your friend.",
+      "yourColor": "Your color",
+      "createGame": "Create Game",
+      "joinWithCode": "Join with code",
+      "creatingGame": "Creating your game...",
+      "gameCreated": "Game created! Share the invite with your friend.",
+      "inviteCode": "Invite code",
+      "scanToJoin": "Scan to join",
+      "orCopyLink": "Or copy link",
+      "goToBoard": "Go to Board",
+      "startOver": "Start over",
+      "back": "Back",
+      "enterInviteCode": "Enter invite code",
+      "joinGame": "Join Game"
+    }
+  },
   "gameArena": {
     "loading": "Loading game...",
     "you": "You",
