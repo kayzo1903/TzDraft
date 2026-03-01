@@ -45,22 +45,40 @@ class MoveGeneratorService {
         const { row, col } = piece.position.toRowCol();
         const directions = (0, capture_path_type_1.getValidDirections)(piece);
         for (const dir of directions) {
-            const newRow = row + dir.row;
-            const newCol = col + dir.col;
-            if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
-                continue;
+            if (piece.isKing()) {
+                let newRow = row + dir.row;
+                let newCol = col + dir.col;
+                while (newRow >= 0 && newRow <= 7 && newCol >= 0 && newCol <= 7) {
+                    const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
+                    if (!game.board.isEmpty(targetPos)) {
+                        break;
+                    }
+                    const moveNumber = game.getMoveCount() + 1;
+                    const notation = move_entity_1.Move.generateNotation(piece.position, targetPos, []);
+                    const move = new move_entity_1.Move(crypto.randomUUID(), game.id, moveNumber, piece.color, piece.position, targetPos, [], false, notation);
+                    moves.push(move);
+                    newRow += dir.row;
+                    newCol += dir.col;
+                }
             }
-            if ((newRow + newCol) % 2 === 0) {
-                continue;
-            }
-            const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
-            if (game.board.isEmpty(targetPos)) {
-                const moveNumber = game.getMoveCount() + 1;
-                const notation = move_entity_1.Move.generateNotation(piece.position, targetPos, []);
-                const movedPiece = piece.moveTo(targetPos);
-                const isPromotion = movedPiece.shouldPromote();
-                const move = new move_entity_1.Move(crypto.randomUUID(), game.id, moveNumber, piece.color, piece.position, targetPos, [], isPromotion, notation);
-                moves.push(move);
+            else {
+                const newRow = row + dir.row;
+                const newCol = col + dir.col;
+                if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
+                    continue;
+                }
+                if ((newRow + newCol) % 2 === 0) {
+                    continue;
+                }
+                const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
+                if (game.board.isEmpty(targetPos)) {
+                    const moveNumber = game.getMoveCount() + 1;
+                    const notation = move_entity_1.Move.generateNotation(piece.position, targetPos, []);
+                    const movedPiece = piece.moveTo(targetPos);
+                    const isPromotion = movedPiece.shouldPromote();
+                    const move = new move_entity_1.Move(crypto.randomUUID(), game.id, moveNumber, piece.color, piece.position, targetPos, [], isPromotion, notation);
+                    moves.push(move);
+                }
             }
         }
         return moves;

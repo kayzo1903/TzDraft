@@ -26,11 +26,11 @@ export declare class MoveController {
         success: boolean;
         message: string;
     }>;
-    draw(gameId: string): Promise<{
+    draw(user: any, gameId: string): Promise<{
         success: boolean;
         message: string;
     }>;
-    abort(gameId: string): Promise<{
+    abort(user: any, gameId: string): Promise<{
         success: boolean;
         message: string;
     }>;

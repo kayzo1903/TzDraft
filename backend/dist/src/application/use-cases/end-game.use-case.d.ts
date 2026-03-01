@@ -7,6 +7,7 @@ export declare class EndGameUseCase {
         winner: Winner;
     }>;
     timeout(gameId: string, playerId: string): Promise<void>;
-    drawByAgreement(gameId: string): Promise<void>;
-    abort(gameId: string): Promise<void>;
+    drawByAgreement(gameId: string, playerId: string): Promise<void>;
+    abort(gameId: string, playerId: string): Promise<void>;
+    private ensureParticipant;
 }

@@ -1,4 +1,5 @@
 import { Move } from "../entities/move.entity.js";
+import { Position } from "../value-objects/position.vo.js";
 import { GameStatus } from "../constants.js";
 import { CaptureFindingService } from "./capture-finding.service.js";
 import { ValidationError, ValidationErrorCode, } from "../types/validation-error.type.js";
@@ -119,7 +120,7 @@ export class MoveValidationService {
             throw new ValidationError(ValidationErrorCode.DESTINATION_OCCUPIED, `Destination square ${to.value} is occupied`);
         }
         // Check if move is valid for this piece type
-        if (!this.isValidSimpleMove(piece, from, to)) {
+        if (!this.isValidSimpleMove(piece, board, from, to)) {
             throw ValidationError.invalidMove(`Piece cannot move from ${from.value} to ${to.value}`);
         }
         // Create the move
@@ -139,19 +140,47 @@ export class MoveValidationService {
     /**
      * Check if a simple move is valid (one diagonal square)
      */
-    isValidSimpleMove(piece, from, to) {
+    isValidSimpleMove(piece, board, from, to) {
         const fromCoords = from.toRowCol();
         const toCoords = to.toRowCol();
         const rowDiff = toCoords.row - fromCoords.row;
-        const colDiff = Math.abs(toCoords.col - fromCoords.col);
-        // Must move exactly one square diagonally
-        if (Math.abs(rowDiff) !== 1 || colDiff !== 1) {
+        const colDiffSigned = toCoords.col - fromCoords.col;
+        const colDiffAbs = Math.abs(colDiffSigned);
+        const rowDiffAbs = Math.abs(rowDiff);
+        // Must be diagonal
+        if (rowDiffAbs !== colDiffAbs || rowDiffAbs === 0) {
             return false;
         }
-        // Check direction is valid for piece type
+        // Kings are flying: any diagonal distance, path must be clear.
+        if (piece.isKing()) {
+            return this.isDiagonalPathClear(board, from, to);
+        }
+        // Men: exactly one forward diagonal square.
+        if (rowDiffAbs !== 1 || colDiffAbs !== 1) {
+            return false;
+        }
         const validDirections = getValidDirections(piece);
-        return validDirections.some((dir) => dir.row === rowDiff &&
-            dir.col === Math.sign(toCoords.col - fromCoords.col));
+        return validDirections.some((dir) => dir.row === rowDiff && dir.col === Math.sign(colDiffSigned));
+    }
+    /**
+     * Check that every intermediate square between from and to is empty.
+     */
+    isDiagonalPathClear(board, from, to) {
+        const fromCoords = from.toRowCol();
+        const toCoords = to.toRowCol();
+        const rowStep = Math.sign(toCoords.row - fromCoords.row);
+        const colStep = Math.sign(toCoords.col - fromCoords.col);
+        let row = fromCoords.row + rowStep;
+        let col = fromCoords.col + colStep;
+        while (row !== toCoords.row && col !== toCoords.col) {
+            const pos = Position.fromRowCol(row, col);
+            if (!board.isEmpty(pos)) {
+                return false;
+            }
+            row += rowStep;
+            col += colStep;
+        }
+        return true;
     }
     /**
      * Generate a unique move ID

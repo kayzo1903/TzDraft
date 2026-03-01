@@ -25,6 +25,9 @@ export declare class Game {
     private _endReason;
     private _startedAt;
     private _endedAt;
+    private _reversibleMoveCount;
+    private _threeKingsMoveCount;
+    private _endgameMoveCount;
     constructor(id: string, whitePlayerId: string, blackPlayerId: string | null, gameType: GameType, whiteElo?: number | null, blackElo?: number | null, aiLevel?: number | null, initialTimeMs?: number, clockInfo?: {
         whiteTimeMs: number;
         blackTimeMs: number;
@@ -48,11 +51,21 @@ export declare class Game {
     isPlayerTurn(player: PlayerColor): boolean;
     getMoveCount(): number;
     getLastMove(): Move | null;
+    get reversibleMoveCount(): number;
+    get threeKingsMoveCount(): number;
+    get endgameMoveCount(): number;
+    private updateDrawCounters;
     replayMovesFromHistory(rawMoves: {
+        id?: string;
+        gameId?: string;
+        moveNumber?: number;
+        player?: PlayerColor;
         fromSquare: number;
         toSquare: number;
         capturedSquares: number[];
         isPromotion?: boolean;
+        notation?: string;
+        createdAt?: Date;
     }[]): void;
     get clock(): any;
     isPvE(): boolean;

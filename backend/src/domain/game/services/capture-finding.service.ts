@@ -12,9 +12,14 @@ import {
  * Capture Finding Service
  * Finds all possible captures for a player, including multi-capture sequences.
  *
- * TZD free-choice rule: there is NO maximum-capture requirement. The player
- * may stop at any point in a capture sequence; shorter paths are as legal as
- * longer ones. All complete paths are therefore included in the results.
+ * TZD capture rules (Articles 4.5 & 4.9):
+ * - Men MUST continue capturing when further forward captures are available
+ *   (Article 4.5). Only complete paths are returned for men.
+ * - Kings choose their landing square freely; the choice of where to land
+ *   determines whether continuation is possible.
+ * - "Free choice" (Article 4.9) means choosing among complete sequences,
+ *   not the ability to stop mid-sequence. It ensures players are NOT forced
+ *   to pick the longest chain (unlike the Brazilian maximum-capture rule).
  */
 export class CaptureFindingService {
   /**
@@ -136,8 +141,10 @@ export class CaptureFindingService {
       return [currentEndpoint];
     }
 
-    // TZD free-choice: both stopping here (shorter) and continuing (longer) are legal
-    return [currentEndpoint, ...furtherCaptures];
+    // TZD Article 4.5: men MUST continue capturing when further captures are
+    // available. "Free choice" (Article 4.9) means choosing among complete
+    // sequences — not stopping mid-sequence. Only return complete paths.
+    return furtherCaptures;
   }
 
   /**
