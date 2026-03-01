@@ -183,13 +183,18 @@ export class CaptureFindingService {
                 }
                 else {
                     extendedCaptures.push(...furtherCaptures);
+                    // TZD Art 4.6: the king cannot fly past a square from which further
+                    // captures are mandatory. Any landing square further along this
+                    // diagonal would bypass that obligation, making it illegal.
+                    break;
                 }
             }
             r += direction.row;
             c += direction.col;
         }
-        // TZD free-choice: terminal captures (shorter paths) and extended captures
-        // (longer paths) are both valid. Return all of them so the player can choose.
+        // TZD Art 4.9 free-choice: return all terminal landings (before any
+        // mandatory-continuation square) plus all extended chains from the first
+        // mandatory-continuation square. Landings beyond that point are excluded.
         return [...terminalCaptures, ...extendedCaptures];
     }
     /**

@@ -125,6 +125,7 @@ class CaptureFindingService {
                 }
                 else {
                     extendedCaptures.push(...furtherCaptures);
+                    break;
                 }
             }
             r += direction.row;
