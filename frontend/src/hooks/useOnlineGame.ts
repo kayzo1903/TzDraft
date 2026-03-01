@@ -34,7 +34,7 @@ export interface OnlineGameState {
   currentPlayer: PlayerColor;
   myColor: PlayerColor | null;
   moveCount: number;
-  result: { winner: Winner } | null;
+  result: { winner: Winner; reason?: string } | null;
   timeLeft: { WHITE: number; BLACK: number } | null;
   isWaiting: boolean;
   isSubmitting: boolean;
@@ -142,7 +142,7 @@ export const useOnlineGame = (gameId: string) => {
     CakeEngine.createInitialState(),
   );
   const [moveCount, setMoveCount] = useState(0);
-  const [result, setResult] = useState<{ winner: Winner } | null>(null);
+  const [result, setResult] = useState<{ winner: Winner; reason?: string } | null>(null);
   const [timeLeft, setTimeLeft] = useState<{
     WHITE: number;
     BLACK: number;
@@ -326,8 +326,10 @@ export const useOnlineGame = (gameId: string) => {
           DRAW: Winner.DRAW,
         };
         setResult({ winner: winnerMap[game.winner as string] ?? Winner.DRAW });
+      } else if (game.status === 'ABORTED') {
+        setResult({ winner: Winner.DRAW, reason: 'aborted' });
       }
-      // If game.winner is null we leave the existing result in place;
+      // If game.winner is null and not aborted we leave the existing result in place;
       // this prevents a race-condition fetch from dismissing the result card.
 
       // Update clock
@@ -504,7 +506,10 @@ export const useOnlineGame = (gameId: string) => {
         DRAW: Winner.DRAW,
       };
       if (d?.winner) {
-        setResult({ winner: winnerMap[d.winner as string] ?? Winner.DRAW });
+        setResult({
+          winner: winnerMap[d.winner as string] ?? Winner.DRAW,
+          reason: d.reason as string | undefined,
+        });
       }
     };
 

@@ -20,7 +20,11 @@
       "Bash(xargs cat)",
       "Bash(npx prisma migrate deploy)",
       "Bash(npm run build)",
-      "Bash(ls -la \"c:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\backend\\\\src\\\\application\\\\use-cases\"\" 2>/dev/null || echo \"Directory not found, searching for use-case files \")"
+      "Bash(ls -la \"c:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\backend\\\\src\\\\application\\\\use-cases\"\" 2>/dev/null || echo \"Directory not found, searching for use-case files \")",
+      "Bash(unzip -p docs/chat/Voice_Chat_Analysis.docx word/document.xml)",
+      "Bash(sed 's/<[^>]*>//g')",
+      "Bash(xargs grep -l \"socket\\\\|Socket\\\\|WebSocket\\\\|gateway\")",
+      "Bash(xargs grep -l \"Gateway\\\\|gateway\\\\|socket\\\\|WebSocket\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",
