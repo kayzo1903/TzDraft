@@ -1,8 +1,8 @@
-import { Move } from "../entities/move.entity";
-import { Piece } from "../value-objects/piece.vo";
-import { Position } from "../value-objects/position.vo";
-import { BoardState } from "../value-objects/board-state.vo";
-import { PlayerColor } from "../constants";
+import { Move } from "../entities/move.entity.js";
+import { Piece } from "../value-objects/piece.vo.js";
+import { Position } from "../value-objects/position.vo.js";
+import { BoardState } from "../value-objects/board-state.vo.js";
+import { PlayerColor } from "../constants.js";
 /**
  * Move Generator Service
  * Generates all possible legal moves for a player

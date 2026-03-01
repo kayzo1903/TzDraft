@@ -41,6 +41,9 @@ let WsJwtGuard = class WsJwtGuard {
         }
     }
     extractToken(client) {
+        const authToken = client.handshake.auth?.token;
+        if (authToken)
+            return authToken;
         const authHeader = client.handshake.headers.authorization;
         if (!authHeader)
             return null;

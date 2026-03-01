@@ -1,4 +1,4 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, forwardRef } from '@nestjs/common';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
@@ -24,6 +24,7 @@ export class MakeMoveUseCase {
     private readonly gameRepository: IGameRepository,
     @Inject('IMoveRepository')
     private readonly moveRepository: IMoveRepository,
+    @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
   ) {
     this.moveValidationService = new MoveValidationService();
@@ -109,10 +110,13 @@ export class MakeMoveUseCase {
     await this.gameRepository.update(game);
     await this.moveRepository.create(correctedMove);
 
-    // 7. Emit game state update
+    // 7. Emit game state update — send only the delta, not the full entity
     this.gamesGateway.emitGameStateUpdate(gameId, {
-      ...game,
       lastMove: correctedMove,
+      clockInfo: game.clockInfo ?? null,
+      winner: game.winner,
+      currentTurn: game.currentTurn,
+      status: game.status,
     });
 
     return {

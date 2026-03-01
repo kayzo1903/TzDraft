@@ -1,5 +1,6 @@
 import { BoardState } from '../value-objects/board-state.vo';
 import { Move } from './move.entity';
+import { Position } from '../value-objects/position.vo';
 import {
   GameStatus,
   GameType,
@@ -44,6 +45,7 @@ export class Game {
     winner: Winner | null = null,
     endReason: EndReason | null = null,
     currentTurn: PlayerColor = PlayerColor.WHITE,
+    public readonly inviteCode: string | null = null,
   ) {
     this._status = status;
     this._board = BoardState.createInitialBoard();
@@ -190,6 +192,37 @@ export class Game {
    */
   getLastMove(): Move | null {
     return this._moves.length > 0 ? this._moves[this._moves.length - 1] : null;
+  }
+
+  /**
+   * Replay raw Prisma move records to reconstruct the board state after loading
+   * from the database.  We bypass applyMove's turn-guard because _currentTurn
+   * has already been derived from moveCount and we don't need to re-add moves
+   * to `_moves` (they were already counted for turn calculation).
+   *
+   * Each `rawMove` is a plain Prisma row with:
+   *   fromSquare: number, toSquare: number, capturedSquares: number[]
+   */
+  replayMovesFromHistory(
+    rawMoves: {
+      fromSquare: number;
+      toSquare: number;
+      capturedSquares: number[];
+      isPromotion?: boolean;
+    }[],
+  ): void {
+    for (const raw of rawMoves) {
+      const from = new Position(raw.fromSquare);
+      const to = new Position(raw.toSquare);
+
+      // Remove captured pieces first
+      for (const sq of raw.capturedSquares ?? []) {
+        this._board = this._board.removePiece(new Position(sq));
+      }
+
+      // Move the piece (also handles promotion inside movePiece)
+      this._board = this._board.movePiece(from, to);
+    }
   }
 
   get clock(): any {

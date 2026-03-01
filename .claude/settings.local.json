@@ -10,10 +10,19 @@
       "Bash(unzip -l \"/c/Users/Admin/Desktop/TzDraft/docs/engine adaptation/Engine_Adaptation_Decision_Document\\(4\\).docx\")",
       "Bash(xargs ls -la)",
       "Bash(find /c/Users/Admin/Desktop/TzDraft/backend/src -type f -name \"*.ts\" -exec grep -l \"readFile\\\\|fs\\\\|database\\\\|load\" {} ;)",
-      "Bash(git ls-tree -r develop)"
+      "Bash(git ls-tree -r develop)",
+      "Bash(find /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game -type f -name \"*.tsx\" -o -name \"*.ts\" -o -name \"*.json\")",
+      "Bash(ls -la /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/)",
+      "Bash(xargs head -40)",
+      "Bash(xargs head -50)",
+      "Bash(npx prisma migrate dev --name add_invite_code --schema=prisma/schema.prisma)",
+      "Bash(npx prisma migrate dev --name add_invite_code --schema=prisma/schema.prisma --create-only)",
+      "Bash(xargs cat)",
+      "Bash(npx prisma migrate deploy)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\"
+      "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",
+      "C:\\Users\\Admin\\Desktop\\TzDraft\\frontend\\src\\app\\[locale]\\game"
     ]
   }
 }

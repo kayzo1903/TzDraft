@@ -19,13 +19,19 @@ const jwt_auth_guard_1 = require("../../../auth/guards/jwt-auth.guard");
 const current_user_decorator_1 = require("../../../auth/decorators/current-user.decorator");
 const create_game_use_case_1 = require("../../../application/use-cases/create-game.use-case");
 const get_game_state_use_case_1 = require("../../../application/use-cases/get-game-state.use-case");
+const end_game_use_case_1 = require("../../../application/use-cases/end-game.use-case");
 const create_game_dto_1 = require("../dtos/create-game.dto");
+const games_gateway_1 = require("../../../infrastructure/messaging/games.gateway");
 let GameController = class GameController {
     createGameUseCase;
     getGameStateUseCase;
-    constructor(createGameUseCase, getGameStateUseCase) {
+    endGameUseCase;
+    gamesGateway;
+    constructor(createGameUseCase, getGameStateUseCase, endGameUseCase, gamesGateway) {
         this.createGameUseCase = createGameUseCase;
         this.getGameStateUseCase = getGameStateUseCase;
+        this.endGameUseCase = endGameUseCase;
+        this.gamesGateway = gamesGateway;
     }
     async createPvPGame(user, dto) {
         const game = await this.createGameUseCase.createPvPGame(user.id, dto.blackPlayerId, user.rating?.rating || 1200, dto.blackElo || 1200);
@@ -41,6 +47,21 @@ let GameController = class GameController {
             data: game,
         };
     }
+    async createInviteGame(user, dto) {
+        const { game, inviteCode } = await this.createGameUseCase.createInviteGame(user.id, dto.color, user.rating?.rating || 1200, dto.timeMs ?? 600000);
+        return {
+            success: true,
+            data: { gameId: game.id, inviteCode },
+        };
+    }
+    async joinInviteGame(user, code) {
+        const game = await this.createGameUseCase.joinInviteGame(code.toUpperCase(), user.id);
+        this.gamesGateway.emitGameStateUpdate(game.id, { gameId: game.id });
+        return {
+            success: true,
+            data: { gameId: game.id },
+        };
+    }
     async getGame(id) {
         const { game, moves, players } = await this.getGameStateUseCase.execute(id);
         return {
@@ -51,6 +72,25 @@ let GameController = class GameController {
                 players,
             },
         };
+    }
+    async resignGame(user, id) {
+        const { winner } = await this.endGameUseCase.resign(id, user.id);
+        this.gamesGateway.emitGameOver(id, {
+            gameId: id,
+            winner: winner.toString(),
+            reason: 'resign',
+        });
+        return { success: true };
+    }
+    async drawGame(id) {
+        await this.endGameUseCase.drawByAgreement(id);
+        this.gamesGateway.emitGameOver(id, { gameId: id, winner: 'DRAW', reason: 'draw' });
+        return { success: true };
+    }
+    async abortGame(id) {
+        await this.endGameUseCase.abort(id);
+        this.gamesGateway.emitGameStateUpdate(id, { gameId: id, status: 'ABORTED' });
+        return { success: true };
     }
     async getGameState(id, skip = 0, take = 50) {
         const result = await this.getGameStateUseCase.executeWithPagination(id, skip, take);
@@ -84,6 +124,28 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "createPvEGame", null);
 __decorate([
+    (0, common_1.Post)('invite'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create an invite game and get invite code' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Invite game created' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, create_game_dto_1.CreateInviteGameDto]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "createInviteGame", null);
+__decorate([
+    (0, common_1.Post)('invite/:code/join'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Join an invite game using its code' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Joined game successfully' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('code')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "joinInviteGame", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get game by ID' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Game found' }),
@@ -93,6 +155,34 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "getGame", null);
+__decorate([
+    (0, common_1.Post)(':id/resign'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Resign from a game' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "resignGame", null);
+__decorate([
+    (0, common_1.Post)(':id/draw'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'End game as a draw' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "drawGame", null);
+__decorate([
+    (0, common_1.Post)(':id/abort'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Abort a game before it starts' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "abortGame", null);
 __decorate([
     (0, common_1.Get)(':id/state'),
     (0, swagger_1.ApiOperation)({ summary: 'Get game state with paginated moves' }),
@@ -110,6 +200,8 @@ exports.GameController = GameController = __decorate([
     (0, common_1.Controller)('games'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [create_game_use_case_1.CreateGameUseCase,
-        get_game_state_use_case_1.GetGameStateUseCase])
+        get_game_state_use_case_1.GetGameStateUseCase,
+        end_game_use_case_1.EndGameUseCase,
+        games_gateway_1.GamesGateway])
 ], GameController);
 //# sourceMappingURL=game.controller.js.map

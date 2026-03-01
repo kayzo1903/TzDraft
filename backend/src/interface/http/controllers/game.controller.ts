@@ -18,7 +18,9 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
-import { CreatePvPGameDto, CreatePvEGameDto } from '../dtos/create-game.dto';
+import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
+import { CreatePvPGameDto, CreatePvEGameDto, CreateInviteGameDto } from '../dtos/create-game.dto';
+import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 
 /**
  * Game Controller
@@ -32,6 +34,8 @@ export class GameController {
   constructor(
     private readonly createGameUseCase: CreateGameUseCase,
     private readonly getGameStateUseCase: GetGameStateUseCase,
+    private readonly endGameUseCase: EndGameUseCase,
+    private readonly gamesGateway: GamesGateway,
   ) {}
 
   /**
@@ -77,6 +81,55 @@ export class GameController {
   }
 
   /**
+   * Create an invite game (waiting for second player)
+   */
+  @Post('invite')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create an invite game and get invite code' })
+  @ApiResponse({ status: 201, description: 'Invite game created' })
+  async createInviteGame(
+    @CurrentUser() user: any,
+    @Body() dto: CreateInviteGameDto,
+  ) {
+    const { game, inviteCode } = await this.createGameUseCase.createInviteGame(
+      user.id,
+      dto.color,
+      user.rating?.rating || 1200,
+      dto.timeMs ?? 600000,
+    );
+
+    return {
+      success: true,
+      data: { gameId: game.id, inviteCode },
+    };
+  }
+
+  /**
+   * Join an invite game via code
+   */
+  @Post('invite/:code/join')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Join an invite game using its code' })
+  @ApiResponse({ status: 200, description: 'Joined game successfully' })
+  async joinInviteGame(
+    @CurrentUser() user: any,
+    @Param('code') code: string,
+  ) {
+    const game = await this.createGameUseCase.joinInviteGame(
+      code.toUpperCase(),
+      user.id,
+    );
+
+    // Notify host (and any other clients in the room) that opponent joined
+    this.gamesGateway.emitGameStateUpdate(game.id, { gameId: game.id });
+
+    return {
+      success: true,
+      data: { gameId: game.id },
+    };
+  }
+
+  /**
    * Get game by ID
    */
   @Get(':id')
@@ -94,6 +147,46 @@ export class GameController {
         players,
       },
     };
+  }
+
+  /**
+   * Resign from a game
+   */
+  @Post(':id/resign')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resign from a game' })
+  async resignGame(@CurrentUser() user: any, @Param('id') id: string) {
+    const { winner } = await this.endGameUseCase.resign(id, user.id);
+    this.gamesGateway.emitGameOver(id, {
+      gameId: id,
+      winner: winner.toString(),
+      reason: 'resign',
+    });
+    return { success: true };
+  }
+
+  /**
+   * Offer / accept a draw (immediate mutual draw for friendly games)
+   */
+  @Post(':id/draw')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'End game as a draw' })
+  async drawGame(@Param('id') id: string) {
+    await this.endGameUseCase.drawByAgreement(id);
+    this.gamesGateway.emitGameOver(id, { gameId: id, winner: 'DRAW', reason: 'draw' });
+    return { success: true };
+  }
+
+  /**
+   * Abort a game that has not yet started
+   */
+  @Post(':id/abort')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Abort a game before it starts' })
+  async abortGame(@Param('id') id: string) {
+    await this.endGameUseCase.abort(id);
+    this.gamesGateway.emitGameStateUpdate(id, { gameId: id, status: 'ABORTED' });
+    return { success: true };
   }
 
   /**

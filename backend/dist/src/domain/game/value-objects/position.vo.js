@@ -14,7 +14,7 @@ class Position {
     }
     toRowCol() {
         const row = Math.floor((this._value - 1) / 4);
-        const col = ((this._value - 1) % 4) * 2 + (row % 2);
+        const col = ((this._value - 1) % 4) * 2 + ((row + 1) % 2);
         return { row, col };
     }
     static fromRowCol(row, col) {

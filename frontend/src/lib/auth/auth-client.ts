@@ -49,6 +49,13 @@ export const authClient = {
     return response.data;
   },
 
+  async createGuest(): Promise<AuthResponse> {
+    const response = await axiosInstance.post<AuthResponse>("/auth/guest");
+    const { user, accessToken, refreshToken } = response.data;
+    useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    return response.data;
+  },
+
   async logout(): Promise<void> {
     const refreshToken = localStorage.getItem("refreshToken");
     if (refreshToken) {

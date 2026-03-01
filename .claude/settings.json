@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/Admin/**)",
-      "Bash(grep -i \"pvp\\\\|multiplayer\\\\|friend\\\\|match\" docs/README/*.md)"
+      "Bash(grep -i \"pvp\\\\|multiplayer\\\\|friend\\\\|match\" docs/README/*.md)",
+      "Bash(ls -la /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game/)",
+      "Bash(npx prisma migrate status)",
+      "Bash(pnpm add react-qr-code)",
+      "Bash(grep -rn \"notFound\\\\\\(\\\\\\)\" /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game/)"
     ]
   }
 }

@@ -52,6 +52,9 @@ let AuthController = class AuthController {
             ...(cookieDomain ? { domain: cookieDomain } : {}),
         };
     }
+    async createGuest() {
+        return this.authService.createGuestUser();
+    }
     async register(dto) {
         return this.authService.register(dto);
     }
@@ -120,6 +123,14 @@ let AuthController = class AuthController {
     }
 };
 exports.AuthController = AuthController;
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Post)('guest'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "createGuest", null);
 __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Post)('register'),

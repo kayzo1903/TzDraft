@@ -31,6 +31,7 @@ export class PrismaGameRepository implements IGameRepository {
         whiteElo: game.whiteElo,
         blackElo: game.blackElo,
         aiLevel: game.aiLevel,
+        inviteCode: game.inviteCode,
         winner: game.winner,
         endReason: game.endReason,
         createdAt: game.createdAt,
@@ -181,11 +182,40 @@ export class PrismaGameRepository implements IGameRepository {
     });
   }
 
+  async findByInviteCode(code: string): Promise<Game | null> {
+    const game = await this.prisma.game.findUnique({
+      where: { inviteCode: code },
+      include: { clock: true },
+    });
+    if (!game) return null;
+    return this.toDomain(game);
+  }
+
+  async joinInvite(gameId: string, blackPlayerId: string): Promise<Game> {
+    const updated = await this.prisma.game.update({
+      where: { id: gameId },
+      data: {
+        blackPlayerId,
+        status: GameStatus.ACTIVE,
+        startedAt: new Date(),
+      },
+      include: { clock: true },
+    });
+    return this.toDomain(updated);
+  }
+
   /**
    * Map Prisma model to domain entity
    */
   private toDomain(prismaGame: any): Game {
-    return new Game(
+    // Derive whose turn it is from how many moves have been played.
+    // WHITE moves first (move 0), so even move count → WHITE, odd → BLACK.
+    const moves: any[] = prismaGame.moves ?? [];
+    const moveCount = moves.length;
+    const currentTurn =
+      moveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+
+    const game = new Game(
       prismaGame.id,
       prismaGame.whitePlayerId,
       prismaGame.blackPlayerId,
@@ -209,6 +239,18 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.endedAt,
       prismaGame.status as GameStatus,
       prismaGame.winner as Winner | null,
+      undefined, // endReason not mapped here — already works
+      currentTurn, // derived from move history
+      prismaGame.inviteCode ?? null,
     );
+
+    // Replay all historical moves to reconstruct the correct board state.
+    // Without this, the board always starts from the initial position and
+    // the second move fails with "No piece at position X".
+    if (moves.length > 0) {
+      game.replayMovesFromHistory(moves);
+    }
+
+    return game;
   }
 }

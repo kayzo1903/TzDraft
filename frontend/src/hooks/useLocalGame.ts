@@ -394,31 +394,19 @@ export const useLocalGame = (
 
       const nextBoard = CakeEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
-      const movedPiece = nextBoard.getPieceAt(move.to);
-      const canContinueCapture =
-        move.capturedSquares.length > 0 &&
-        !move.isPromotion &&
-        movedPiece &&
-        new CaptureFindingService().findCapturesForPiece(nextBoard, movedPiece)
-          .length > 0;
 
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
       setMoveCount((prev) => prev + 1);
-      if (canContinueCapture) {
-        setMustContinueFrom(move.to);
-        setCurrentPlayer(currentPlayer);
-      } else {
-        setMustContinueFrom(null);
-        setCurrentPlayer(nextPlayer);
-      }
+      // TZD free-choice: a complete capture path is applied atomically; turn
+      // always passes to the opponent — never force a "continue capturing" chain.
+      setMustContinueFrom(null);
+      setCurrentPlayer(nextPlayer);
       evaluateEndgameCountdown(nextBoard, move.player);
 
-      if (!canContinueCapture) {
-        const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
-        if (gameResult) {
-          setResult({ winner: gameResult.winner });
-        }
+      const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
+      if (gameResult) {
+        setResult({ winner: gameResult.winner });
       }
     },
     [board, currentPlayer, evaluateEndgameCountdown, flipForPlayer],
@@ -877,6 +865,7 @@ export const useLocalGame = (
     capturedGhosts,
     legalMoves,
     forcedPieces,
+    flipBoard: flipForPlayer,
     playWarning,
     undo,
     resign,

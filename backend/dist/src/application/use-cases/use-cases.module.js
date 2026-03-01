@@ -21,7 +21,7 @@ let UseCasesModule = class UseCasesModule {
 exports.UseCasesModule = UseCasesModule;
 exports.UseCasesModule = UseCasesModule = __decorate([
     (0, common_1.Module)({
-        imports: [repository_module_1.RepositoryModule, messaging_module_1.MessagingModule, user_module_1.UserModule],
+        imports: [repository_module_1.RepositoryModule, (0, common_1.forwardRef)(() => messaging_module_1.MessagingModule), user_module_1.UserModule],
         providers: [
             create_game_use_case_1.CreateGameUseCase,
             make_move_use_case_1.MakeMoveUseCase,

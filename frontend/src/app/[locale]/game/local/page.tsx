@@ -424,7 +424,7 @@ export default function LocalGamePage() {
   const [maxUnlockedNow, setMaxUnlockedNow] = useState(1);
   const [tierUnlockLevel, setTierUnlockLevel] = useState<number | null>(null);
 
-  const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, playWarning, undo, resign, makeMove, reset } =
+  const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, playWarning, undo, resign, makeMove, reset } =
     useLocalGame(level, playerColor, timeSeconds);
   const [showResign, setShowResign] = useState(false);
 
@@ -544,6 +544,7 @@ export default function LocalGamePage() {
             capturedGhosts={capturedGhosts}
             legalMoves={legalMoves}
             forcedPieces={forcedPieces}
+            flipped={flipBoard}
             onInvalidSelect={playWarning}
             readOnly={state.isAiThinking}
           />

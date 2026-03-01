@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HttpModule = void 0;
 const common_1 = require("@nestjs/common");
 const use_cases_module_1 = require("../../application/use-cases/use-cases.module");
+const messaging_module_1 = require("../../infrastructure/messaging/messaging.module");
 const game_controller_1 = require("./controllers/game.controller");
 const move_controller_1 = require("./controllers/move.controller");
 const support_controller_1 = require("./controllers/support.controller");
@@ -20,7 +21,7 @@ let HttpModule = class HttpModule {
 exports.HttpModule = HttpModule;
 exports.HttpModule = HttpModule = __decorate([
     (0, common_1.Module)({
-        imports: [use_cases_module_1.UseCasesModule, email_module_1.EmailModule],
+        imports: [use_cases_module_1.UseCasesModule, messaging_module_1.MessagingModule, email_module_1.EmailModule],
         controllers: [
             game_controller_1.GameController,
             move_controller_1.MoveController,
