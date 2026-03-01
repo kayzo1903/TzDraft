@@ -161,9 +161,6 @@ export class CaptureFindingService {
       furtherCaptures.push(...morePaths);
     }
 
-    // TZD free-choice capture: the player may stop here (shorter path) or
-    // continue capturing (longer path). Both are valid — unlike Brazilian/
-    // International draughts there is no maximum-capture requirement.
     const currentEndpoint: CapturePath = {
       piece: originPiece,
       from: originFrom,
@@ -177,8 +174,10 @@ export class CaptureFindingService {
       return [currentEndpoint];
     }
 
-    // Include both the shorter stop-here option and all longer continuation paths
-    return [currentEndpoint, ...furtherCaptures];
+    // TZD Article 4.5: men MUST continue capturing when further captures are
+    // available. "Free choice" (Article 4.9) means choosing among complete
+    // sequences — not stopping mid-sequence. Only return complete paths.
+    return furtherCaptures;
   }
 
   /**

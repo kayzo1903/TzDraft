@@ -14,10 +14,10 @@ class GameRulesService {
             return false;
         }
         const { row } = position.toRowCol();
-        if (piece.color === game_constants_1.PlayerColor.WHITE && row === 0) {
+        if (piece.color === game_constants_1.PlayerColor.WHITE && row === 7) {
             return true;
         }
-        if (piece.color === game_constants_1.PlayerColor.BLACK && row === 7) {
+        if (piece.color === game_constants_1.PlayerColor.BLACK && row === 0) {
             return true;
         }
         return false;
@@ -92,17 +92,30 @@ class GameRulesService {
                     { row: -1, col: -1 },
                 ];
         for (const dir of directions) {
-            const newRow = row + dir.row;
-            const newCol = col + dir.col;
-            if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
-                continue;
+            if (piece.isKing()) {
+                let newRow = row + dir.row;
+                let newCol = col + dir.col;
+                while (newRow >= 0 && newRow <= 7 && newCol >= 0 && newCol <= 7) {
+                    const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
+                    if (board.isEmpty(targetPos)) {
+                        return true;
+                    }
+                    break;
+                }
             }
-            if ((newRow + newCol) % 2 === 0) {
-                continue;
-            }
-            const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
-            if (board.isEmpty(targetPos)) {
-                return true;
+            else {
+                const newRow = row + dir.row;
+                const newCol = col + dir.col;
+                if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
+                    continue;
+                }
+                if ((newRow + newCol) % 2 === 0) {
+                    continue;
+                }
+                const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
+                if (board.isEmpty(targetPos)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -110,13 +123,19 @@ class GameRulesService {
     isDrawByInsufficientMaterial(board) {
         const whitePieces = board.getPiecesByColor(game_constants_1.PlayerColor.WHITE);
         const blackPieces = board.getPiecesByColor(game_constants_1.PlayerColor.BLACK);
-        if (whitePieces.length === 1 &&
+        return (whitePieces.length === 1 &&
             blackPieces.length === 1 &&
             whitePieces[0].isKing() &&
-            blackPieces[0].isKing()) {
-            return true;
-        }
-        return false;
+            blackPieces[0].isKing());
+    }
+    isDrawByThirtyMoveRule(reversibleMoveCount) {
+        return reversibleMoveCount >= 60;
+    }
+    isDrawByThreeKingsRule(threeKingsMoveCount) {
+        return threeKingsMoveCount >= 12;
+    }
+    isDrawByArticle84Endgame(endgameMoveCount) {
+        return endgameMoveCount >= 10;
     }
     endGame(game, winner, reason) {
         game.endGame(winner, reason);

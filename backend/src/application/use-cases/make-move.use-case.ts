@@ -7,7 +7,7 @@ import { MoveValidationService } from '../../domain/game/services/move-validatio
 import { GameRulesService } from '../../domain/game/services/game-rules.service';
 import { Position } from '../../domain/game/value-objects/position.vo';
 import { Move } from '../../domain/game/entities/move.entity';
-import { PlayerColor, EndReason } from '../../shared/constants/game.constants';
+import { PlayerColor, EndReason, Winner } from '../../shared/constants/game.constants';
 import { ValidationError } from '../../domain/game/types/validation-error.type';
 
 /**
@@ -93,24 +93,34 @@ export class MakeMoveUseCase {
     // 5. Apply move to game
     game.applyMove(correctedMove);
 
-    // 5. Check for game end
-    // TODO: Re-enable after implementing board state persistence
-    // The board state is not being persisted/reconstructed, so game-over detection
-    // incorrectly thinks there are no pieces on the board
-    /*
-    if (this.gameRulesService.isGameOver(game)) {
-      const winner = this.gameRulesService.detectWinner(game);
-      if (winner) {
-        game.endGame(winner, EndReason.CHECKMATE);
+    // 6. Check for win (current player after the move has no pieces or no legal moves)
+    if (!game.isGameOver()) {
+      if (this.gameRulesService.isGameOver(game)) {
+        const winner = this.gameRulesService.detectWinner(game);
+        if (winner) {
+          game.endGame(winner, EndReason.STALEMATE);
+        }
       }
     }
-    */
 
-    // 6. Save game and move
+    // 7. Check for draw conditions (in priority order)
+    if (!game.isGameOver()) {
+      if (this.gameRulesService.isDrawByInsufficientMaterial(game.board)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW);
+      } else if (this.gameRulesService.isDrawByThirtyMoveRule(game.reversibleMoveCount)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW);
+      } else if (this.gameRulesService.isDrawByThreeKingsRule(game.threeKingsMoveCount)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW);
+      } else if (this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW);
+      }
+    }
+
+    // 9. Save game and move
     await this.gameRepository.update(game);
     await this.moveRepository.create(correctedMove);
 
-    // 7. Emit game state update — send only the delta, not the full entity
+    // 10. Emit game state update — send only the delta, not the full entity
     this.gamesGateway.emitGameStateUpdate(gameId, {
       lastMove: correctedMove,
       clockInfo: game.clockInfo ?? null,

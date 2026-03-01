@@ -27,6 +27,7 @@ var Winner;
 })(Winner || (exports.Winner = Winner = {}));
 var EndReason;
 (function (EndReason) {
+    EndReason["STALEMATE"] = "STALEMATE";
     EndReason["CHECKMATE"] = "CHECKMATE";
     EndReason["RESIGN"] = "RESIGN";
     EndReason["TIME"] = "TIME";

@@ -31,7 +31,7 @@ export declare const CakeEngine: {
     /**
      * Evaluate game result (detect win/draw conditions)
      */
-    evaluateGameResult(state: BoardState, currentPlayer: PlayerColor): GameResult | null;
+    evaluateGameResult(state: BoardState, currentPlayer: PlayerColor, reversibleMoveCount?: number, threeKingsMoveCount?: number, endgameMoveCount?: number): GameResult | null;
     /**
      * Create a game instance
      */

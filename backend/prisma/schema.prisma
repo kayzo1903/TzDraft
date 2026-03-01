@@ -178,6 +178,7 @@ enum Winner {
 }
 
 enum EndReason {
+    STALEMATE
     CHECKMATE
     RESIGN
     TIME

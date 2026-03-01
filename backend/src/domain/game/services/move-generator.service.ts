@@ -116,42 +116,72 @@ export class MoveGeneratorService {
     const directions = getValidDirections(piece);
 
     for (const dir of directions) {
-      const newRow = row + dir.row;
-      const newCol = col + dir.col;
+      if (piece.isKing()) {
+        let newRow = row + dir.row;
+        let newCol = col + dir.col;
 
-      // Check bounds
-      if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
-        continue;
-      }
+        while (newRow >= 0 && newRow <= 7 && newCol >= 0 && newCol <= 7) {
+          const targetPos = Position.fromRowCol(newRow, newCol);
+          if (!game.board.isEmpty(targetPos)) {
+            break;
+          }
 
-      // Check if it's a dark square
-      if ((newRow + newCol) % 2 === 0) {
-        continue;
-      }
+          const moveNumber = game.getMoveCount() + 1;
+          const notation = Move.generateNotation(piece.position, targetPos, []);
+          const move = new Move(
+            crypto.randomUUID(),
+            game.id,
+            moveNumber,
+            piece.color,
+            piece.position,
+            targetPos,
+            [],
+            false,
+            notation,
+          );
+          moves.push(move);
 
-      const targetPos = Position.fromRowCol(newRow, newCol);
+          newRow += dir.row;
+          newCol += dir.col;
+        }
+      } else {
+        const newRow = row + dir.row;
+        const newCol = col + dir.col;
 
-      // Check if square is empty
-      if (game.board.isEmpty(targetPos)) {
-        const moveNumber = game.getMoveCount() + 1;
-        const notation = Move.generateNotation(piece.position, targetPos, []);
+        // Check bounds
+        if (newRow < 0 || newRow > 7 || newCol < 0 || newCol > 7) {
+          continue;
+        }
 
-        const movedPiece = piece.moveTo(targetPos);
-        const isPromotion = movedPiece.shouldPromote();
+        // Check if it's a dark square
+        if ((newRow + newCol) % 2 === 0) {
+          continue;
+        }
 
-        const move = new Move(
-          crypto.randomUUID(),
-          game.id,
-          moveNumber,
-          piece.color,
-          piece.position,
-          targetPos,
-          [],
-          isPromotion,
-          notation,
-        );
+        const targetPos = Position.fromRowCol(newRow, newCol);
 
-        moves.push(move);
+        // Check if square is empty
+        if (game.board.isEmpty(targetPos)) {
+          const moveNumber = game.getMoveCount() + 1;
+          const notation = Move.generateNotation(piece.position, targetPos, []);
+
+          const movedPiece = piece.moveTo(targetPos);
+          const isPromotion = movedPiece.shouldPromote();
+
+          const move = new Move(
+            crypto.randomUUID(),
+            game.id,
+            moveNumber,
+            piece.color,
+            piece.position,
+            targetPos,
+            [],
+            isPromotion,
+            notation,
+          );
+
+          moves.push(move);
+        }
       }
     }
 

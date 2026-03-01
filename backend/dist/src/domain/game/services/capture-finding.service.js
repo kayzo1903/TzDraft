@@ -77,7 +77,7 @@ class CaptureFindingService {
         if (furtherCaptures.length === 0) {
             return [currentEndpoint];
         }
-        return [currentEndpoint, ...furtherCaptures];
+        return furtherCaptures;
     }
     findKingCaptureInDirection(board, piece, direction, currentPath, capturedSoFar, originFrom = piece.position, originPiece = piece) {
         const { row, col } = piece.position.toRowCol();
