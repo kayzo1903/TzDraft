@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "./useSocket";
 
-export type CallState = "idle" | "calling" | "connected" | "failed";
+/**
+ * Call state machine:
+ *   idle      – no call in progress
+ *   ringing   – I called; waiting for the other player to accept
+ *   incoming  – the other player called me; I can accept or decline
+ *   calling   – both agreed; WebRTC is being negotiated
+ *   connected – audio is flowing P2P
+ *   failed    – negotiation failed
+ */
+export type CallState = "idle" | "ringing" | "incoming" | "calling" | "connected" | "failed";
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -15,7 +24,9 @@ export interface UseVoiceChatResult {
   isLocalMuted: boolean;
   error: string | null;
   remoteAudioRef: React.RefObject<HTMLAudioElement | null>;
-  startCall: () => Promise<void>;
+  startCall: () => void;
+  acceptCall: () => Promise<void>;
+  declineCall: () => void;
   endCall: () => void;
   toggleMute: () => void;
 }
@@ -27,7 +38,6 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
   const [isLocalMuted, setIsLocalMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // WebRTC objects live in refs — they are not reactive
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -36,14 +46,17 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
   const callStateRef = useRef<CallState>("idle");
   const socketRef = useRef(socket);
   const gameIdRef = useRef(gameId);
+  // Set to true by acceptCall() so the onOffer listener knows it should answer
+  const pendingAcceptRef = useRef(false);
 
   useEffect(() => { callStateRef.current = callState; }, [callState]);
   useEffect(() => { socketRef.current = socket; }, [socket]);
   useEffect(() => { gameIdRef.current = gameId; }, [gameId]);
 
-  // ── Teardown ────────────────────────────────────────────────────────────
+  // ── Teardown ─────────────────────────────────────────────────────────────
 
   const cleanup = useCallback(() => {
+    pendingAcceptRef.current = false;
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
       pcRef.current.ontrack = null;
@@ -62,7 +75,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     setIsLocalMuted(false);
   }, []);
 
-  // ── RTCPeerConnection factory ────────────────────────────────────────────
+  // ── RTCPeerConnection factory ─────────────────────────────────────────────
 
   const buildPc = useCallback((): RTCPeerConnection => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
@@ -95,41 +108,39 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     return pc;
   }, [cleanup]);
 
-  // ── Mic helper ──────────────────────────────────────────────────────────
-
   const getMic = (): Promise<MediaStream> =>
     navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 },
     });
 
-  // ── Public API ──────────────────────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────────────────────
 
-  const startCall = useCallback(async () => {
+  /** Caller: ring the opponent. WebRTC starts only after they accept. */
+  const startCall = useCallback(() => {
     if (!socket || callStateRef.current !== "idle") return;
     setError(null);
+    setCallState("ringing");
+    socket.emit("voice:ring", { gameId });
+  }, [socket, gameId]);
+
+  /** Callee: accept the incoming call. Readies the PC to receive the offer. */
+  const acceptCall = useCallback(async () => {
+    if (!socket || callStateRef.current !== "incoming") return;
+    setError(null);
     setCallState("calling");
+    pendingAcceptRef.current = true;
+    socket.emit("voice:accept", { gameId });
+  }, [socket, gameId]);
 
-    try {
-      const stream = await getMic();
-      localStreamRef.current = stream;
+  /** Callee: decline the incoming call. */
+  const declineCall = useCallback(() => {
+    if (!socket) return;
+    socket.emit("voice:decline", { gameId });
+    setCallState("idle");
+    setError(null);
+  }, [socket, gameId]);
 
-      const pc = buildPc();
-      pcRef.current = pc;
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit("voice:offer", { gameId, sdp: pc.localDescription });
-    } catch (err: any) {
-      cleanup();
-      setError(
-        err?.name === "NotAllowedError"
-          ? "Microphone access denied — enable mic in browser settings."
-          : "Could not start call.",
-      );
-    }
-  }, [socket, gameId, buildPc, cleanup]);
-
+  /** End an active call, cancel ringing, or reject — works from any non-idle state. */
   const endCall = useCallback(() => {
     if (socketRef.current && callStateRef.current !== "idle") {
       socketRef.current.emit("voice:hangup", { gameId: gameIdRef.current });
@@ -144,34 +155,74 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     setIsLocalMuted(!track.enabled);
   }, []);
 
-  // ── Socket signaling listeners ──────────────────────────────────────────
+  // ── Socket signaling listeners ────────────────────────────────────────────
 
   useEffect(() => {
     if (!socket) return;
 
-    const onOffer = async ({ sdp }: { sdp: RTCSessionDescriptionInit }) => {
+    // Callee: opponent is calling — show the incoming call UI
+    const onRing = () => {
       if (callStateRef.current !== "idle") return;
       setError(null);
-      setCallState("calling");
+      setCallState("incoming");
+    };
 
+    // Caller: callee accepted — NOW create and send the WebRTC offer
+    const onAccept = async () => {
+      if (callStateRef.current !== "ringing") return;
+      setCallState("calling");
       try {
         const stream = await getMic();
         localStreamRef.current = stream;
-
         const pc = buildPc();
         pcRef.current = pc;
         stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-        await pc.setRemoteDescription(sdp);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit("voice:answer", { gameId: gameIdRef.current, sdp: pc.localDescription });
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketRef.current?.emit("voice:offer", {
+          gameId: gameIdRef.current,
+          sdp: pc.localDescription,
+        });
       } catch (err: any) {
         cleanup();
         setError(
           err?.name === "NotAllowedError"
             ? "Microphone access denied."
-            : "Could not answer call.",
+            : "Could not start call.",
+        );
+      }
+    };
+
+    // Caller: callee declined — show brief message
+    const onDecline = () => {
+      if (callStateRef.current !== "ringing") return;
+      cleanup();
+      setError("Call was declined.");
+    };
+
+    // Callee: receives offer after having accepted — complete the handshake
+    const onOffer = async ({ sdp }: { sdp: RTCSessionDescriptionInit }) => {
+      if (!pendingAcceptRef.current) return; // ignore unsolicited offers
+      pendingAcceptRef.current = false;
+      try {
+        const stream = await getMic();
+        localStreamRef.current = stream;
+        const pc = buildPc();
+        pcRef.current = pc;
+        stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+        await pc.setRemoteDescription(sdp);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socketRef.current?.emit("voice:answer", {
+          gameId: gameIdRef.current,
+          sdp: pc.localDescription,
+        });
+      } catch (err: any) {
+        cleanup();
+        setError(
+          err?.name === "NotAllowedError"
+            ? "Microphone access denied."
+            : "Could not connect call.",
         );
       }
     };
@@ -186,12 +237,18 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
 
     const onHangup = () => cleanup();
 
+    socket.on("voice:ring", onRing);
+    socket.on("voice:accept", onAccept);
+    socket.on("voice:decline", onDecline);
     socket.on("voice:offer", onOffer);
     socket.on("voice:answer", onAnswer);
     socket.on("voice:ice-candidate", onIceCandidate);
     socket.on("voice:hangup", onHangup);
 
     return () => {
+      socket.off("voice:ring", onRing);
+      socket.off("voice:accept", onAccept);
+      socket.off("voice:decline", onDecline);
       socket.off("voice:offer", onOffer);
       socket.off("voice:answer", onAnswer);
       socket.off("voice:ice-candidate", onIceCandidate);
@@ -206,5 +263,15 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     };
   }, [gameId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { callState, isLocalMuted, error, remoteAudioRef, startCall, endCall, toggleMute };
+  return {
+    callState,
+    isLocalMuted,
+    error,
+    remoteAudioRef,
+    startCall,
+    acceptCall,
+    declineCall,
+    endCall,
+    toggleMute,
+  };
 }
