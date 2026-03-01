@@ -1,6 +1,6 @@
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
-import { getValidDirections, } from '../types/capture-path.type';
+import { Position } from '../value-objects/position.vo.js';
+import { PlayerColor } from '../constants.js';
+import { getValidDirections, } from '../types/capture-path.type.js';
 /**
  * Capture Finding Service
  * Finds all possible captures for a player, including multi-capture sequences
@@ -83,7 +83,7 @@ export class CaptureFindingService {
         const newPath = [...currentPath, landingPos];
         const newCaptured = [...capturedSoFar, adjacentPos];
         // Create a temporary board with this capture applied
-        let tempBoard = board.removePiece(adjacentPos);
+        let tempBoard = board;
         const movedPiece = piece.moveTo(landingPos);
         // Check for promotion (promotion ends the capture sequence immediately)
         const shouldPromote = movedPiece.shouldPromote();
@@ -109,21 +109,22 @@ export class CaptureFindingService {
             const morePaths = this.findManCaptureInDirection(tempBoard, finalPiece, nextDir, newPath, newCaptured, originFrom, originPiece);
             furtherCaptures.push(...morePaths);
         }
-        // If no further captures, this is a complete path
+        // TZD free-choice capture: the player may stop here (shorter path) or
+        // continue capturing (longer path). Both are valid — unlike Brazilian/
+        // International draughts there is no maximum-capture requirement.
+        const currentEndpoint = {
+            piece: originPiece,
+            from: originFrom,
+            path: newPath,
+            capturedSquares: newCaptured,
+            to: landingPos,
+            isPromotion: shouldPromote,
+        };
         if (furtherCaptures.length === 0) {
-            return [
-                {
-                    piece: originPiece,
-                    from: originFrom,
-                    path: newPath,
-                    capturedSquares: newCaptured,
-                    to: landingPos,
-                    isPromotion: shouldPromote,
-                },
-            ];
+            return [currentEndpoint];
         }
-        // Return all extended paths
-        return furtherCaptures;
+        // Include both the shorter stop-here option and all longer continuation paths
+        return [currentEndpoint, ...furtherCaptures];
     }
     /**
      * Recursively find capture sequences for a flying king in a direction
@@ -157,9 +158,13 @@ export class CaptureFindingService {
                 const landingPos = pos;
                 const newPath = [...currentPath, landingPos];
                 const newCaptured = [...capturedSoFar, opponentPos];
-                let tempBoard = board.removePiece(opponentPos);
+                let tempBoard = board;
                 const movedPiece = piece.moveTo(landingPos);
                 tempBoard = tempBoard.removePiece(piece.position);
+                // Remove the captured piece so subsequent recursive searches can slide
+                // through that square in the opposite direction (e.g. the king jumps A
+                // and later wants to continue past A's old square to reach piece C).
+                tempBoard = tempBoard.removePiece(opponentPos);
                 tempBoard = tempBoard.placePiece(movedPiece);
                 const furtherCaptures = [];
                 const nextDirections = getValidDirections(movedPiece);
@@ -184,10 +189,9 @@ export class CaptureFindingService {
             r += direction.row;
             c += direction.col;
         }
-        if (extendedCaptures.length > 0) {
-            return extendedCaptures;
-        }
-        return terminalCaptures;
+        // TZD free-choice: terminal captures (shorter paths) and extended captures
+        // (longer paths) are both valid. Return all of them so the player can choose.
+        return [...terminalCaptures, ...extendedCaptures];
     }
     /**
      * Check if a specific capture is valid

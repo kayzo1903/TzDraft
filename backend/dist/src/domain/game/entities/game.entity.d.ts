@@ -16,6 +16,7 @@ export declare class Game {
         lastMoveAt: Date;
     } | undefined;
     readonly createdAt: Date;
+    readonly inviteCode: string | null;
     private _status;
     private _board;
     private _moves;
@@ -28,7 +29,7 @@ export declare class Game {
         whiteTimeMs: number;
         blackTimeMs: number;
         lastMoveAt: Date;
-    } | undefined, createdAt?: Date, startedAt?: Date | null, endedAt?: Date | null, status?: GameStatus, winner?: Winner | null, endReason?: EndReason | null, currentTurn?: PlayerColor);
+    } | undefined, createdAt?: Date, startedAt?: Date | null, endedAt?: Date | null, status?: GameStatus, winner?: Winner | null, endReason?: EndReason | null, currentTurn?: PlayerColor, inviteCode?: string | null);
     get status(): GameStatus;
     get board(): BoardState;
     get moves(): Move[];
@@ -47,6 +48,12 @@ export declare class Game {
     isPlayerTurn(player: PlayerColor): boolean;
     getMoveCount(): number;
     getLastMove(): Move | null;
+    replayMovesFromHistory(rawMoves: {
+        fromSquare: number;
+        toSquare: number;
+        capturedSquares: number[];
+        isPromotion?: boolean;
+    }[]): void;
     get clock(): any;
     isPvE(): boolean;
     isPvP(): boolean;

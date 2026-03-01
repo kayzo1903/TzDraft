@@ -1,10 +1,14 @@
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
-import { CreatePvPGameDto, CreatePvEGameDto } from '../dtos/create-game.dto';
+import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
+import { CreatePvPGameDto, CreatePvEGameDto, CreateInviteGameDto } from '../dtos/create-game.dto';
+import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 export declare class GameController {
     private readonly createGameUseCase;
     private readonly getGameStateUseCase;
-    constructor(createGameUseCase: CreateGameUseCase, getGameStateUseCase: GetGameStateUseCase);
+    private readonly endGameUseCase;
+    private readonly gamesGateway;
+    constructor(createGameUseCase: CreateGameUseCase, getGameStateUseCase: GetGameStateUseCase, endGameUseCase: EndGameUseCase, gamesGateway: GamesGateway);
     createPvPGame(user: any, dto: CreatePvPGameDto): Promise<{
         success: boolean;
         data: import("../../../domain/game/entities/game.entity").Game;
@@ -12,6 +16,19 @@ export declare class GameController {
     createPvEGame(user: any, dto: CreatePvEGameDto): Promise<{
         success: boolean;
         data: import("../../../domain/game/entities/game.entity").Game;
+    }>;
+    createInviteGame(user: any, dto: CreateInviteGameDto): Promise<{
+        success: boolean;
+        data: {
+            gameId: string;
+            inviteCode: string;
+        };
+    }>;
+    joinInviteGame(user: any, code: string): Promise<{
+        success: boolean;
+        data: {
+            gameId: string;
+        };
     }>;
     getGame(id: string): Promise<{
         success: boolean;
@@ -23,6 +40,15 @@ export declare class GameController {
                 black: import("@prisma/client").User | null;
             };
         };
+    }>;
+    resignGame(user: any, id: string): Promise<{
+        success: boolean;
+    }>;
+    drawGame(id: string): Promise<{
+        success: boolean;
+    }>;
+    abortGame(id: string): Promise<{
+        success: boolean;
     }>;
     getGameState(id: string, skip?: number, take?: number): Promise<{
         success: boolean;

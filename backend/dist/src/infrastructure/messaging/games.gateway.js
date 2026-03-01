@@ -16,17 +16,92 @@ exports.GamesGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const common_1 = require("@nestjs/common");
+const core_1 = require("@nestjs/core");
 const ws_jwt_guard_1 = require("../../auth/guards/ws-jwt.guard");
+const make_move_use_case_1 = require("../../application/use-cases/make-move.use-case");
+const end_game_use_case_1 = require("../../application/use-cases/end-game.use-case");
+const create_game_use_case_1 = require("../../application/use-cases/create-game.use-case");
+const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
+const game_constants_1 = require("../../shared/constants/game.constants");
+const ABANDON_TIMEOUT_MS = 60_000;
 let GamesGateway = class GamesGateway {
+    moduleRef;
     server;
     logger = new common_1.Logger('GamesGateway');
+    pendingDrawOffers = new Map();
+    pendingRematchOffers = new Map();
+    userGameMap = new Map();
+    disconnectTimers = new Map();
+    constructor(moduleRef) {
+        this.moduleRef = moduleRef;
+    }
     handleConnection(client) {
-        const userId = client.data.user?.id;
-        this.logger.log(`Client connected: ${client.id} (User: ${userId || 'unknown'})`);
+        try {
+            const jwtService = this.moduleRef.get(jwt_1.JwtService, { strict: false });
+            const configService = this.moduleRef.get(config_1.ConfigService, {
+                strict: false,
+            });
+            const token = client.handshake.auth?.token ??
+                (() => {
+                    const header = client.handshake.headers.authorization ?? '';
+                    const [type, t] = header.split(' ');
+                    return type === 'Bearer' ? t : null;
+                })();
+            if (!token) {
+                this.logger.warn(`Socket ${client.id} rejected: no token`);
+                client.disconnect();
+                return;
+            }
+            const payload = jwtService.verify(token, {
+                secret: configService.get('JWT_SECRET'),
+            });
+            client.data.user = { id: payload.sub };
+            this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
+        }
+        catch {
+            this.logger.warn(`Socket ${client.id} rejected: invalid token`);
+            client.disconnect();
+        }
     }
     handleDisconnect(client) {
         const userId = client.data.user?.id;
         this.logger.log(`Client disconnected: ${client.id} (User: ${userId || 'unknown'})`);
+        if (!userId)
+            return;
+        const gameId = this.userGameMap.get(userId);
+        if (!gameId)
+            return;
+        this.server.to(gameId).emit('opponentDisconnected', { userId });
+        const timer = setTimeout(async () => {
+            this.disconnectTimers.delete(userId);
+            this.userGameMap.delete(userId);
+            try {
+                const repo = this.moduleRef.get('IGameRepository', {
+                    strict: false,
+                });
+                const game = await repo.findById(gameId);
+                if (!game ||
+                    game.status !== game_constants_1.GameStatus.ACTIVE ||
+                    game.gameType === game_constants_1.GameType.AI) {
+                    return;
+                }
+                const endGameUseCase = this.moduleRef.get(end_game_use_case_1.EndGameUseCase, {
+                    strict: false,
+                });
+                const { winner } = await endGameUseCase.resign(gameId, userId);
+                this.emitGameOver(gameId, {
+                    gameId,
+                    winner: winner.toString(),
+                    reason: 'abandon',
+                });
+                this.logger.log(`Auto-resigned user ${userId} from game ${gameId} (abandoned)`);
+            }
+            catch (err) {
+                this.logger.error(`Auto-resign failed for game ${gameId}`, err);
+            }
+        }, ABANDON_TIMEOUT_MS);
+        this.disconnectTimers.set(userId, timer);
     }
     handleJoinGame(gameId, client) {
         if (!gameId) {
@@ -35,13 +110,179 @@ let GamesGateway = class GamesGateway {
         const userId = client.data.user?.id;
         client.join(gameId);
         this.logger.log(`Client ${client.id} (User: ${userId}) joined game room: ${gameId}`);
+        if (userId) {
+            const existing = this.disconnectTimers.get(userId);
+            if (existing) {
+                clearTimeout(existing);
+                this.disconnectTimers.delete(userId);
+                this.server.to(gameId).emit('opponentReconnected', { userId });
+                this.logger.log(`User ${userId} reconnected to game ${gameId}`);
+            }
+            this.userGameMap.set(userId, gameId);
+        }
         return { status: 'success', message: `Joined game ${gameId}` };
+    }
+    async handleMakeMove(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        try {
+            const makeMoveUseCase = this.moduleRef.get(make_move_use_case_1.MakeMoveUseCase, {
+                strict: false,
+            });
+            await makeMoveUseCase.execute(data.gameId, userId, data.from, data.to);
+            return {};
+        }
+        catch (err) {
+            const message = err?.response?.message || err?.message || 'Invalid move';
+            return { error: message };
+        }
+    }
+    async handleOfferDraw(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        const existing = this.pendingDrawOffers.get(data.gameId);
+        if (existing === userId) {
+            return { error: 'You already have a pending draw offer' };
+        }
+        this.pendingDrawOffers.set(data.gameId, userId);
+        this.logger.log(`Draw offered in game ${data.gameId} by ${userId}`);
+        this.server.to(data.gameId).emit('drawOffered', {
+            gameId: data.gameId,
+            offeredByUserId: userId,
+        });
+        return {};
+    }
+    async handleAcceptDraw(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        const offeredBy = this.pendingDrawOffers.get(data.gameId);
+        if (!offeredBy)
+            return { error: 'No pending draw offer' };
+        if (offeredBy === userId)
+            return { error: 'Cannot accept your own draw offer' };
+        this.pendingDrawOffers.delete(data.gameId);
+        try {
+            const endGameUseCase = this.moduleRef.get(end_game_use_case_1.EndGameUseCase, {
+                strict: false,
+            });
+            await endGameUseCase.drawByAgreement(data.gameId);
+            this.emitGameOver(data.gameId, {
+                gameId: data.gameId,
+                winner: 'DRAW',
+                reason: 'draw_agreement',
+            });
+            return {};
+        }
+        catch (err) {
+            return { error: err?.message || 'Failed to end game as draw' };
+        }
+    }
+    handleDeclineDraw(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        const offeredBy = this.pendingDrawOffers.get(data.gameId);
+        if (!offeredBy)
+            return { error: 'No pending draw offer' };
+        if (offeredBy === userId)
+            return { error: 'Cannot decline your own draw offer' };
+        this.pendingDrawOffers.delete(data.gameId);
+        this.logger.log(`Draw declined in game ${data.gameId} by ${userId}`);
+        this.server.to(data.gameId).emit('drawDeclined', {
+            gameId: data.gameId,
+            declinedByUserId: userId,
+        });
+        return {};
+    }
+    handleCancelDraw(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        const offeredBy = this.pendingDrawOffers.get(data.gameId);
+        if (offeredBy !== userId)
+            return { error: 'No draw offer to cancel' };
+        this.pendingDrawOffers.delete(data.gameId);
+        this.server.to(data.gameId).emit('drawCancelled', { gameId: data.gameId });
+        return {};
+    }
+    handleOfferRematch(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        if (this.pendingRematchOffers.get(data.gameId) === userId) {
+            return { error: 'You already offered a rematch' };
+        }
+        this.pendingRematchOffers.set(data.gameId, userId);
+        this.server
+            .to(data.gameId)
+            .emit('rematchOffered', { offeredByUserId: userId });
+        this.logger.log(`Rematch offered in game ${data.gameId} by ${userId}`);
+        return {};
+    }
+    async handleAcceptRematch(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        const offeredBy = this.pendingRematchOffers.get(data.gameId);
+        if (!offeredBy)
+            return { error: 'No pending rematch offer' };
+        if (offeredBy === userId)
+            return { error: 'Cannot accept your own rematch offer' };
+        this.pendingRematchOffers.delete(data.gameId);
+        try {
+            const createGameUseCase = this.moduleRef.get(create_game_use_case_1.CreateGameUseCase, {
+                strict: false,
+            });
+            const newGame = await createGameUseCase.createRematch(data.gameId);
+            this.server
+                .to(data.gameId)
+                .emit('rematchAccepted', { newGameId: newGame.id });
+            this.logger.log(`Rematch accepted for game ${data.gameId} → new game ${newGame.id}`);
+            return {};
+        }
+        catch (err) {
+            return { error: err?.message || 'Failed to create rematch' };
+        }
+    }
+    handleDeclineRematch(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        this.pendingRematchOffers.delete(data.gameId);
+        this.server.to(data.gameId).emit('rematchDeclined', { declinedByUserId: userId });
+        return {};
+    }
+    handleCancelRematch(data, client) {
+        const userId = client.data.user?.id;
+        if (!userId)
+            return { error: 'Not authenticated' };
+        if (this.pendingRematchOffers.get(data.gameId) !== userId) {
+            return { error: 'No rematch offer to cancel' };
+        }
+        this.pendingRematchOffers.delete(data.gameId);
+        this.server.to(data.gameId).emit('rematchCancelled', {});
+        return {};
     }
     emitGameStateUpdate(gameId, gameState) {
         this.server.to(gameId).emit('gameStateUpdated', gameState);
         this.logger.log(`Emitted gameStateUpdated for game: ${gameId}`);
     }
     emitGameOver(gameId, result) {
+        this.pendingDrawOffers.delete(gameId);
+        this.pendingRematchOffers.delete(gameId);
+        for (const [userId, gid] of this.userGameMap.entries()) {
+            if (gid === gameId) {
+                const timer = this.disconnectTimers.get(userId);
+                if (timer) {
+                    clearTimeout(timer);
+                    this.disconnectTimers.delete(userId);
+                }
+                this.userGameMap.delete(userId);
+            }
+        }
         this.server.to(gameId).emit('gameOver', result);
         this.logger.log(`Emitted gameOver for game: ${gameId}`);
     }
@@ -59,6 +300,78 @@ __decorate([
     __metadata("design:paramtypes", [String, socket_io_1.Socket]),
     __metadata("design:returntype", void 0)
 ], GamesGateway.prototype, "handleJoinGame", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('makeMove'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], GamesGateway.prototype, "handleMakeMove", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('offerDraw'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], GamesGateway.prototype, "handleOfferDraw", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('acceptDraw'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], GamesGateway.prototype, "handleAcceptDraw", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('declineDraw'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Object)
+], GamesGateway.prototype, "handleDeclineDraw", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('cancelDraw'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Object)
+], GamesGateway.prototype, "handleCancelDraw", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('offerRematch'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Object)
+], GamesGateway.prototype, "handleOfferRematch", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('acceptRematch'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], GamesGateway.prototype, "handleAcceptRematch", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('declineRematch'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Object)
+], GamesGateway.prototype, "handleDeclineRematch", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('cancelRematch'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Object)
+], GamesGateway.prototype, "handleCancelRematch", null);
 exports.GamesGateway = GamesGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
@@ -67,6 +380,7 @@ exports.GamesGateway = GamesGateway = __decorate([
         },
         namespace: 'games',
     }),
-    (0, common_1.UseGuards)(ws_jwt_guard_1.WsJwtGuard)
+    (0, common_1.UseGuards)(ws_jwt_guard_1.WsJwtGuard),
+    __metadata("design:paramtypes", [core_1.ModuleRef])
 ], GamesGateway);
 //# sourceMappingURL=games.gateway.js.map

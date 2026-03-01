@@ -54,4 +54,14 @@ export interface IGameRepository {
    * Count games by player
    */
   countGamesByPlayer(playerId: string): Promise<number>;
+
+  /**
+   * Find game by invite code
+   */
+  findByInviteCode(code: string): Promise<Game | null>;
+
+  /**
+   * Join an invite game: set blackPlayerId and activate
+   */
+  joinInvite(gameId: string, blackPlayerId: string): Promise<Game>;
 }
