@@ -52,8 +52,11 @@ let MakeMoveUseCase = class MakeMoveUseCase {
         await this.gameRepository.update(game);
         await this.moveRepository.create(correctedMove);
         this.gamesGateway.emitGameStateUpdate(gameId, {
-            ...game,
             lastMove: correctedMove,
+            clockInfo: game.clockInfo ?? null,
+            winner: game.winner,
+            currentTurn: game.currentTurn,
+            status: game.status,
         });
         return {
             game,
@@ -75,6 +78,7 @@ exports.MakeMoveUseCase = MakeMoveUseCase = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('IGameRepository')),
     __param(1, (0, common_1.Inject)('IMoveRepository')),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => games_gateway_1.GamesGateway))),
     __metadata("design:paramtypes", [Object, Object, games_gateway_1.GamesGateway])
 ], MakeMoveUseCase);
 //# sourceMappingURL=make-move.use-case.js.map

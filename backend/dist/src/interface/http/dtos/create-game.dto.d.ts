@@ -1,4 +1,10 @@
 import { PlayerColor } from '../../../shared/constants/game.constants';
+export declare class CreateInviteGameDto {
+    color: PlayerColor;
+    timeMs?: number;
+}
+export declare class JoinInviteGameDto {
+}
 export declare class CreatePvPGameDto {
     whitePlayerId: string;
     blackPlayerId: string;

@@ -53,7 +53,15 @@ class MoveValidationService {
         return piece;
     }
     validateCaptureMove(game, piece, from, to, path, availableCaptures) {
-        const matchingCapture = availableCaptures.find((capture) => capture.from.equals(from) && capture.to.equals(to));
+        const matchingCapture = availableCaptures.find((capture) => {
+            if (!capture.from.equals(from) || !capture.to.equals(to))
+                return false;
+            if (path.length > 0) {
+                return (capture.path.length === path.length &&
+                    capture.path.every((pos, i) => pos.equals(path[i])));
+            }
+            return true;
+        });
         if (!matchingCapture) {
             throw validation_error_type_1.ValidationError.captureRequired();
         }

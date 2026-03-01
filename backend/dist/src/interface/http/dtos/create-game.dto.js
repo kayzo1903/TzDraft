@@ -9,10 +9,30 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreatePvEGameDto = exports.CreatePvPGameDto = void 0;
+exports.CreatePvEGameDto = exports.CreatePvPGameDto = exports.JoinInviteGameDto = exports.CreateInviteGameDto = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 const game_constants_1 = require("../../../shared/constants/game.constants");
+class CreateInviteGameDto {
+    color;
+    timeMs;
+}
+exports.CreateInviteGameDto = CreateInviteGameDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Creator color', enum: game_constants_1.PlayerColor }),
+    (0, class_validator_1.IsEnum)(game_constants_1.PlayerColor),
+    __metadata("design:type", String)
+], CreateInviteGameDto.prototype, "color", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Initial time in milliseconds (minimum 60000 = 1 min)', required: false }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Min)(60000),
+    __metadata("design:type", Number)
+], CreateInviteGameDto.prototype, "timeMs", void 0);
+class JoinInviteGameDto {
+}
+exports.JoinInviteGameDto = JoinInviteGameDto;
 class CreatePvPGameDto {
     whitePlayerId;
     blackPlayerId;

@@ -36,6 +36,7 @@ export declare class AuthService {
     }): Promise<any>;
     private generateUniqueUsername;
     private generateUniqueDisplayName;
+    createGuestUser(): Promise<AuthResponseDto>;
     generateTokens(userId: string): Promise<{
         accessToken: string;
         refreshToken: string;

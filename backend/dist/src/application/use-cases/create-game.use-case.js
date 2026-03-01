@@ -17,6 +17,14 @@ const common_1 = require("@nestjs/common");
 const game_entity_1 = require("../../domain/game/entities/game.entity");
 const game_constants_1 = require("../../shared/constants/game.constants");
 const crypto_1 = require("crypto");
+function generateInviteCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+}
 let CreateGameUseCase = class CreateGameUseCase {
     gameRepository;
     constructor(gameRepository) {
@@ -33,6 +41,38 @@ let CreateGameUseCase = class CreateGameUseCase {
         const whiteElo = playerColor === game_constants_1.PlayerColor.WHITE ? playerElo : null;
         const blackElo = playerColor === game_constants_1.PlayerColor.BLACK ? playerElo : null;
         const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.AI, whiteElo, blackElo, aiLevel, dto.initialTimeMs || 600000, undefined);
+        game.start();
+        return this.gameRepository.create(game);
+    }
+    async createInviteGame(creatorId, _creatorColor, creatorElo, initialTimeMs) {
+        const inviteCode = generateInviteCode();
+        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), creatorId, null, game_constants_1.GameType.CASUAL, creatorElo, null, null, initialTimeMs, undefined, new Date(), null, null, game_constants_1.GameStatus.WAITING, null, null, game_constants_1.PlayerColor.WHITE, inviteCode);
+        const created = await this.gameRepository.create(game);
+        return { game: created, inviteCode };
+    }
+    async joinInviteGame(code, joinerId) {
+        const game = await this.gameRepository.findByInviteCode(code);
+        if (!game) {
+            throw new common_1.NotFoundException('Invite code not found');
+        }
+        if (game.status !== game_constants_1.GameStatus.WAITING) {
+            throw new common_1.BadRequestException('This game is no longer available');
+        }
+        if (game.whitePlayerId === joinerId || game.blackPlayerId === joinerId) {
+            throw new common_1.BadRequestException('You cannot join your own game');
+        }
+        return this.gameRepository.joinInvite(game.id, joinerId);
+    }
+    async createRematch(originalGameId) {
+        const original = await this.gameRepository.findById(originalGameId);
+        if (!original)
+            throw new common_1.NotFoundException('Original game not found');
+        if (!original.blackPlayerId) {
+            throw new common_1.BadRequestException('Cannot rematch a game that never started');
+        }
+        const newWhiteId = original.blackPlayerId;
+        const newBlackId = original.whitePlayerId;
+        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), newWhiteId, newBlackId, game_constants_1.GameType.CASUAL, original.blackElo ?? 1200, original.whiteElo ?? 1200, null, original.initialTimeMs, undefined);
         game.start();
         return this.gameRepository.create(game);
     }

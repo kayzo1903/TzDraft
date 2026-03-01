@@ -8,5 +8,11 @@ export declare class CreateGameUseCase {
     createPvEGame(playerId: string, playerColor: PlayerColor, playerElo: number, aiLevel: number, dto?: {
         initialTimeMs?: number;
     }): Promise<Game>;
+    createInviteGame(creatorId: string, _creatorColor: PlayerColor, creatorElo: number, initialTimeMs: number): Promise<{
+        game: Game;
+        inviteCode: string;
+    }>;
+    joinInviteGame(code: string, joinerId: string): Promise<Game>;
+    createRematch(originalGameId: string): Promise<Game>;
     findGameById(gameId: string): Promise<Game>;
 }

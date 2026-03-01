@@ -13,9 +13,10 @@ model Game {
     whitePlayer   User    @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
     blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
 
-    whiteElo Int? @map("white_elo")
-    blackElo Int? @map("black_elo")
-    aiLevel  Int? @map("ai_level")
+    whiteElo   Int?    @map("white_elo")
+    blackElo   Int?    @map("black_elo")
+    aiLevel    Int?    @map("ai_level")
+    inviteCode String? @unique @map("invite_code")
 
     winner    Winner?    @map("winner")
     endReason EndReason? @map("end_reason")

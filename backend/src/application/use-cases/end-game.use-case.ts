@@ -16,7 +16,10 @@ export class EndGameUseCase {
   /**
    * End game by resignation
    */
-  async resign(gameId: string, playerId: string): Promise<void> {
+  async resign(
+    gameId: string,
+    playerId: string,
+  ): Promise<{ winner: Winner }> {
     const game = await this.gameRepository.findById(gameId);
     if (!game) {
       throw new BadRequestException('Game not found');
@@ -28,6 +31,7 @@ export class EndGameUseCase {
 
     game.endGame(winner, EndReason.RESIGN);
     await this.gameRepository.update(game);
+    return { winner };
   }
 
   /**

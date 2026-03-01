@@ -120,24 +120,21 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Play with Friend — Coming Soon */}
-            <div className="relative flex flex-col gap-3 rounded-xl border border-white/5 bg-[var(--secondary)]/40 p-4 opacity-50 cursor-not-allowed select-none">
-              <div className="flex items-start justify-between gap-2">
-                <div className="w-9 h-9 rounded-lg bg-white/5 text-neutral-600 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4" />
+            {/* Play with Friend — Active */}
+            <Link href="/game/setup-friend">
+              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] hover:border-[var(--primary)]/30 p-4 transition-all duration-200 cursor-pointer">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary)]/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 shrink-0">
-                  <Lock className="w-2.5 h-2.5 text-neutral-500" />
-                  <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide hidden sm:inline">
-                    {t('featureGrid.comingSoon')}
-                  </span>
+                <div>
+                  <h3 className="font-bold text-sm text-white">{t('featureGrid.playFriend.title')}</h3>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{t('featureGrid.playFriend.desc')}</p>
                 </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-neutral-500">{t('featureGrid.playFriend.title')}</h3>
-                <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">{t('featureGrid.playFriend.desc')}</p>
-              </div>
-            </div>
+            </Link>
 
             {/* Remaining locked tiles */}
             {([

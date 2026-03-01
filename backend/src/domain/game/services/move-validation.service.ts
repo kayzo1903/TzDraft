@@ -127,10 +127,20 @@ export class MoveValidationService {
     path: Position[],
     availableCaptures: any[],
   ): MoveResult {
-    // Find if this capture is in the available captures
-    const matchingCapture = availableCaptures.find(
-      (capture) => capture.from.equals(from) && capture.to.equals(to),
-    );
+    // Find the matching capture by from/to, using path as a tiebreaker when
+    // multiple captures reach the same destination via different routes.
+    const matchingCapture = availableCaptures.find((capture) => {
+      if (!capture.from.equals(from) || !capture.to.equals(to)) return false;
+      // If the client supplied a path, verify it matches (prevents wrong
+      // capturedSquares being applied when two routes share the same endpoint).
+      if (path.length > 0) {
+        return (
+          capture.path.length === path.length &&
+          capture.path.every((pos: any, i: number) => pos.equals(path[i]))
+        );
+      }
+      return true;
+    });
 
     if (!matchingCapture) {
       throw ValidationError.captureRequired();
