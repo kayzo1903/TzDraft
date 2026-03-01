@@ -62,7 +62,7 @@ export default function Home() {
           {/* Right: Animated Board */}
           <div className="relative flex justify-center">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-orange-500/10 blur-[100px] rounded-full pointer-events-none" />
-            <div className="relative w-full max-w-[500px] transform lg:rotate-[-2deg] transition-transform hover:scale-[1.02] duration-500">
+            <div className="relative w-full max-w-125 transform lg:-rotate-2 transition-transform hover:scale-[1.02] duration-500">
               <div className="absolute inset-0 bg-black/40 blur-xl rounded-2xl translate-y-8" />
               <HeroBoard />
             </div>
@@ -72,10 +72,10 @@ export default function Home() {
       </section>
 
       {/* ── Feature Grid ── */}
-      <section className="py-16 px-6 border-t border-white/5">
-        <div className="max-w-6xl mx-auto space-y-4">
+      <section className="py-14 sm:py-16 lg:py-20 px-4 sm:px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
 
-          <div className="text-center space-y-2 mb-8">
+          <div className="text-center space-y-3 mb-8 sm:mb-10">
             <h2 className="text-2xl lg:text-3xl font-black text-[#EDEDED]">
               {t('featureGrid.title')}
             </h2>
@@ -86,9 +86,9 @@ export default function Home() {
 
           {/* Row 1 — Single full-width active tile */}
           <Link href="/game/setup-ai">
-            <div className="group relative flex items-center gap-6 rounded-2xl border border-white/10 bg-[var(--secondary)] hover:bg-[var(--secondary-hover)] hover:border-[var(--primary)]/30 p-6 transition-all duration-200 hover:scale-[1.005] overflow-hidden cursor-pointer">
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary)]/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              <div className="w-16 h-16 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0">
+            <div className="group relative flex items-center gap-4 sm:gap-6 rounded-2xl border border-white/10 bg-[var(--secondary)] hover:bg-[var(--secondary-hover)] hover:border-[var(--primary)]/30 p-5 sm:p-6 transition-all duration-200 hover:scale-[1.005] overflow-hidden cursor-pointer">
+              <div className="absolute inset-0 bg-linear-to-r from-(--primary)/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              <div className="w-16 h-16 rounded-2xl bg-(--primary)/10 text-primary flex items-center justify-center shrink-0">
                 <Cpu className="w-8 h-8" />
               </div>
               <div className="flex-1 min-w-0">
@@ -100,10 +100,10 @@ export default function Home() {
           </Link>
 
           {/* Row 2 — 6 compact tiles (2 limited/coming-soon + 4 locked) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
 
             {/* Play Online — Limited (amber badge, no lock) */}
-            <div className="relative flex flex-col gap-3 rounded-xl border border-amber-500/15 bg-[var(--secondary)]/40 p-4 opacity-60 cursor-not-allowed select-none">
+            <div className="relative flex flex-col gap-3 rounded-xl border border-amber-500/15 bg-[var(--secondary)]/40 p-4 sm:p-5 opacity-60 cursor-not-allowed select-none">
               <div className="flex items-start justify-between gap-2">
                 <div className="w-9 h-9 rounded-lg bg-white/5 text-neutral-500 flex items-center justify-center shrink-0">
                   <Globe className="w-4 h-4" />
@@ -122,7 +122,7 @@ export default function Home() {
 
             {/* Play with Friend — Active */}
             <Link href="/game/setup-friend">
-              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] hover:border-[var(--primary)]/30 p-4 transition-all duration-200 cursor-pointer">
+              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] hover:border-[var(--primary)]/30 p-4 sm:p-5 transition-all duration-200 cursor-pointer">
                 <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary)]/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
                 <div className="flex items-start justify-between gap-2">
                   <div className="w-9 h-9 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0">
@@ -145,7 +145,7 @@ export default function Home() {
             ] as const).map(({ key, Icon }) => (
               <div
                 key={key}
-                className="relative flex flex-col gap-3 rounded-xl border border-white/5 bg-[var(--secondary)]/40 p-4 opacity-50 cursor-not-allowed select-none"
+                className="relative flex flex-col gap-3 rounded-xl border border-white/5 bg-[var(--secondary)]/40 p-4 sm:p-5 opacity-50 cursor-not-allowed select-none"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="w-9 h-9 rounded-lg bg-white/5 text-neutral-600 flex items-center justify-center shrink-0">
