@@ -1,7 +1,7 @@
-import { BoardState } from "../value-objects/board-state.vo";
-import { Position } from "../value-objects/position.vo";
-import { PlayerColor, GameStatus } from "../constants";
-import { MoveResult } from "../types/move-result.type";
+import { BoardState } from "../value-objects/board-state.vo.js";
+import { Position } from "../value-objects/position.vo.js";
+import { PlayerColor, GameStatus } from "../constants.js";
+import { MoveResult } from "../types/move-result.type.js";
 /**
  * Move Validation Service
  * Validates moves according to Tanzania Drafti rules

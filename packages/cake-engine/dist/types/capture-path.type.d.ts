@@ -1,5 +1,5 @@
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
+import { Piece } from '../value-objects/piece.vo.js';
+import { Position } from '../value-objects/position.vo.js';
 /**
  * Capture Path
  * Represents a complete capture sequence (single or multi-capture)

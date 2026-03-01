@@ -31,6 +31,7 @@ let PrismaGameRepository = class PrismaGameRepository {
                 whiteElo: game.whiteElo,
                 blackElo: game.blackElo,
                 aiLevel: game.aiLevel,
+                inviteCode: game.inviteCode,
                 winner: game.winner,
                 endReason: game.endReason,
                 createdAt: game.createdAt,
@@ -157,14 +158,42 @@ let PrismaGameRepository = class PrismaGameRepository {
             },
         });
     }
+    async findByInviteCode(code) {
+        const game = await this.prisma.game.findUnique({
+            where: { inviteCode: code },
+            include: { clock: true },
+        });
+        if (!game)
+            return null;
+        return this.toDomain(game);
+    }
+    async joinInvite(gameId, blackPlayerId) {
+        const updated = await this.prisma.game.update({
+            where: { id: gameId },
+            data: {
+                blackPlayerId,
+                status: game_constants_1.GameStatus.ACTIVE,
+                startedAt: new Date(),
+            },
+            include: { clock: true },
+        });
+        return this.toDomain(updated);
+    }
     toDomain(prismaGame) {
-        return new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, Number(prismaGame.clock?.whiteTimeMs || 600000), prismaGame.clock
+        const moves = prismaGame.moves ?? [];
+        const moveCount = moves.length;
+        const currentTurn = moveCount % 2 === 0 ? game_constants_1.PlayerColor.WHITE : game_constants_1.PlayerColor.BLACK;
+        const game = new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, Number(prismaGame.clock?.whiteTimeMs || 600000), prismaGame.clock
             ? {
                 whiteTimeMs: Number(prismaGame.clock.whiteTimeMs),
                 blackTimeMs: Number(prismaGame.clock.blackTimeMs),
                 lastMoveAt: prismaGame.clock.lastMoveAt,
             }
-            : undefined, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner);
+            : undefined, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner, undefined, currentTurn, prismaGame.inviteCode ?? null);
+        if (moves.length > 0) {
+            game.replayMovesFromHistory(moves);
+        }
+        return game;
     }
 };
 exports.PrismaGameRepository = PrismaGameRepository;

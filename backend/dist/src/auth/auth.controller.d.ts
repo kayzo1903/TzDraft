@@ -8,6 +8,7 @@ export declare class AuthController {
     constructor(authService: AuthService, otpService: OtpService);
     private getCookie;
     private getCookieOptions;
+    createGuest(): Promise<import("./dto").AuthResponseDto>;
     register(dto: RegisterDto): Promise<import("./dto").AuthResponseDto>;
     login(dto: LoginDto): Promise<import("./dto").AuthResponseDto>;
     sendOtp(dto: SendOtpDto): Promise<{

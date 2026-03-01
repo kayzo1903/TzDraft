@@ -1,8 +1,8 @@
-import { BoardState } from '../value-objects/board-state.vo';
-import { Piece } from '../value-objects/piece.vo';
-import { Position } from '../value-objects/position.vo';
-import { PlayerColor } from '../constants';
-import { CapturePath } from '../types/capture-path.type';
+import { BoardState } from '../value-objects/board-state.vo.js';
+import { Piece } from '../value-objects/piece.vo.js';
+import { Position } from '../value-objects/position.vo.js';
+import { PlayerColor } from '../constants.js';
+import { CapturePath } from '../types/capture-path.type.js';
 /**
  * Capture Finding Service
  * Finds all possible captures for a player, including multi-capture sequences

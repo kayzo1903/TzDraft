@@ -161,22 +161,24 @@ export class CaptureFindingService {
       furtherCaptures.push(...morePaths);
     }
 
-    // If no further captures, this is a complete path
+    // TZD free-choice capture: the player may stop here (shorter path) or
+    // continue capturing (longer path). Both are valid — unlike Brazilian/
+    // International draughts there is no maximum-capture requirement.
+    const currentEndpoint: CapturePath = {
+      piece: originPiece,
+      from: originFrom,
+      path: newPath,
+      capturedSquares: newCaptured,
+      to: landingPos,
+      isPromotion: shouldPromote,
+    };
+
     if (furtherCaptures.length === 0) {
-      return [
-        {
-          piece: originPiece,
-          from: originFrom,
-          path: newPath,
-          capturedSquares: newCaptured,
-          to: landingPos,
-          isPromotion: shouldPromote,
-        },
-      ];
+      return [currentEndpoint];
     }
 
-    // Return all extended paths
-    return furtherCaptures;
+    // Include both the shorter stop-here option and all longer continuation paths
+    return [currentEndpoint, ...furtherCaptures];
   }
 
   /**
@@ -231,6 +233,10 @@ export class CaptureFindingService {
         const movedPiece = piece.moveTo(landingPos);
 
         tempBoard = tempBoard.removePiece(piece.position);
+        // Remove the captured piece so subsequent recursive searches can slide
+        // through that square in the opposite direction (e.g. the king jumps A
+        // and later wants to continue past A's old square to reach piece C).
+        tempBoard = tempBoard.removePiece(opponentPos);
         tempBoard = tempBoard.placePiece(movedPiece);
 
         const furtherCaptures: CapturePath[] = [];
@@ -267,10 +273,9 @@ export class CaptureFindingService {
       c += direction.col;
     }
 
-    if (extendedCaptures.length > 0) {
-      return extendedCaptures;
-    }
-    return terminalCaptures;
+    // TZD free-choice: terminal captures (shorter paths) and extended captures
+    // (longer paths) are both valid. Return all of them so the player can choose.
+    return [...terminalCaptures, ...extendedCaptures];
   }
 
 

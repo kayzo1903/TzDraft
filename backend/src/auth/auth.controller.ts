@@ -62,6 +62,13 @@ export class AuthController {
   }
 
   @Public()
+  @Post('guest')
+  @HttpCode(HttpStatus.CREATED)
+  async createGuest() {
+    return this.authService.createGuestUser();
+  }
+
+  @Public()
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);

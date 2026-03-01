@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
 import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
 import { CreateGameUseCase } from './create-game.use-case';
@@ -14,7 +14,7 @@ import { EndGameUseCase } from './end-game.use-case';
 import { UserModule } from '../../domain/user/user.module';
 
 @Module({
-  imports: [RepositoryModule, MessagingModule, UserModule],
+  imports: [RepositoryModule, forwardRef(() => MessagingModule), UserModule],
   providers: [
     CreateGameUseCase,
     MakeMoveUseCase,

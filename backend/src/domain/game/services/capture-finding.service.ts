@@ -10,7 +10,11 @@ import {
 
 /**
  * Capture Finding Service
- * Finds all possible captures for a player, including multi-capture sequences
+ * Finds all possible captures for a player, including multi-capture sequences.
+ *
+ * TZD free-choice rule: there is NO maximum-capture requirement. The player
+ * may stop at any point in a capture sequence; shorter paths are as legal as
+ * longer ones. All complete paths are therefore included in the results.
  */
 export class CaptureFindingService {
   /**
@@ -36,13 +40,9 @@ export class CaptureFindingService {
     const directions = getValidDirections(piece);
 
     for (const direction of directions) {
-      const capturePaths = this.findCaptureInDirection(
-        board,
-        piece,
-        direction,
-        [],
-        [],
-      );
+      const capturePaths = piece.isKing()
+        ? this.findKingCaptureInDirection(board, piece, direction, [], [])
+        : this.findManCaptureInDirection(board, piece, direction, [], []);
       captures.push(...capturePaths);
     }
 
@@ -50,121 +50,179 @@ export class CaptureFindingService {
   }
 
   /**
-   * Recursively find capture sequences in a direction
-   * Handles multi-capture by exploring all possible paths
+   * Recursively find man capture sequences in a direction.
+   * Men capture forward only (TZD Article 4.6) and land exactly one square
+   * beyond the captured piece.
    */
-  private findCaptureInDirection(
+  private findManCaptureInDirection(
     board: BoardState,
     piece: Piece,
     direction: Direction,
     currentPath: Position[],
     capturedSoFar: Position[],
+    originFrom: Position = piece.position,
+    originPiece: Piece = piece,
   ): CapturePath[] {
     const { row, col } = piece.position.toRowCol();
     const opponentColor =
       piece.color === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
 
-    // Calculate adjacent square (where opponent piece should be)
     const adjacentRow = row + direction.row;
     const adjacentCol = col + direction.col;
 
-    // Check bounds
-    if (
-      adjacentRow < 0 ||
-      adjacentRow > 7 ||
-      adjacentCol < 0 ||
-      adjacentCol > 7
-    ) {
+    if (adjacentRow < 0 || adjacentRow > 7 || adjacentCol < 0 || adjacentCol > 7)
       return [];
-    }
-
-    // Check if it's a dark square
-    if ((adjacentRow + adjacentCol) % 2 === 0) {
-      return [];
-    }
+    if ((adjacentRow + adjacentCol) % 2 === 0) return [];
 
     const adjacentPos = Position.fromRowCol(adjacentRow, adjacentCol);
     const adjacentPiece = board.getPieceAt(adjacentPos);
 
-    // Must have opponent piece at adjacent square
-    if (!adjacentPiece || adjacentPiece.color !== opponentColor) {
-      return [];
-    }
+    if (!adjacentPiece || adjacentPiece.color !== opponentColor) return [];
+    if (capturedSoFar.some((p) => p.equals(adjacentPos))) return [];
 
-    // Check if this piece was already captured in this sequence
-    if (capturedSoFar.some((p) => p.equals(adjacentPos))) {
-      return [];
-    }
-
-    // Calculate landing square
     const landingRow = adjacentRow + direction.row;
     const landingCol = adjacentCol + direction.col;
 
-    // Check bounds for landing square
-    if (landingRow < 0 || landingRow > 7 || landingCol < 0 || landingCol > 7) {
+    if (landingRow < 0 || landingRow > 7 || landingCol < 0 || landingCol > 7)
       return [];
-    }
-
-    // Check if landing square is dark
-    if ((landingRow + landingCol) % 2 === 0) {
-      return [];
-    }
+    if ((landingRow + landingCol) % 2 === 0) return [];
 
     const landingPos = Position.fromRowCol(landingRow, landingCol);
+    if (board.isOccupied(landingPos)) return [];
 
-    // Landing square must be empty
-    if (board.isOccupied(landingPos)) {
-      return [];
-    }
-
-    // Valid capture found!
     const newPath = [...currentPath, landingPos];
     const newCaptured = [...capturedSoFar, adjacentPos];
 
-    // Create a temporary board with this capture applied
-    let tempBoard = board.removePiece(adjacentPos);
     const movedPiece = piece.moveTo(landingPos);
-
-    // Check for promotion
     const shouldPromote = movedPiece.shouldPromote();
     const finalPiece = shouldPromote ? movedPiece.promote() : movedPiece;
 
+    // Build temp board for recursive search
+    let tempBoard = board.removePiece(adjacentPos);
     tempBoard = tempBoard.removePiece(piece.position);
     tempBoard = tempBoard.placePiece(finalPiece);
 
-    // Try to find more captures from the landing position
-    const furtherCaptures: CapturePath[] = [];
+    const currentEndpoint: CapturePath = {
+      piece: originPiece,
+      from: originFrom,
+      path: newPath,
+      capturedSquares: newCaptured,
+      to: landingPos,
+      isPromotion: shouldPromote,
+    };
 
-    // Kings can continue in all directions, men only forward
+    // TZD: promotion during capture ends the sequence immediately (Article 4.10)
+    if (shouldPromote) {
+      return [currentEndpoint];
+    }
+
+    const furtherCaptures: CapturePath[] = [];
     const nextDirections = getValidDirections(finalPiece);
 
     for (const nextDir of nextDirections) {
-      const morePaths = this.findCaptureInDirection(
+      const morePaths = this.findManCaptureInDirection(
         tempBoard,
         finalPiece,
         nextDir,
         newPath,
         newCaptured,
+        originFrom,
+        originPiece,
       );
       furtherCaptures.push(...morePaths);
     }
 
-    // If no further captures, this is a complete path
     if (furtherCaptures.length === 0) {
-      return [
-        {
-          piece,
-          from: piece.position,
-          path: newPath,
-          capturedSquares: newCaptured,
-          to: landingPos,
-          isPromotion: shouldPromote,
-        },
-      ];
+      return [currentEndpoint];
     }
 
-    // Return all extended paths
-    return furtherCaptures;
+    // TZD free-choice: both stopping here (shorter) and continuing (longer) are legal
+    return [currentEndpoint, ...furtherCaptures];
+  }
+
+  /**
+   * Recursively find flying-king capture sequences in a direction.
+   * Kings slide any number of squares before and after capturing.
+   */
+  private findKingCaptureInDirection(
+    board: BoardState,
+    piece: Piece,
+    direction: Direction,
+    currentPath: Position[],
+    capturedSoFar: Position[],
+    originFrom: Position = piece.position,
+    originPiece: Piece = piece,
+  ): CapturePath[] {
+    const { row, col } = piece.position.toRowCol();
+    const opponentColor =
+      piece.color === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+
+    let r = row + direction.row;
+    let c = col + direction.col;
+    let opponentPos: Position | null = null;
+
+    const terminalCaptures: CapturePath[] = [];
+    const extendedCaptures: CapturePath[] = [];
+
+    while (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
+      const pos = Position.fromRowCol(r, c);
+      const occupant = board.getPieceAt(pos);
+
+      if (occupant) {
+        if (opponentPos) break; // blocked by a second piece
+        if (occupant.color !== opponentColor) break; // own piece blocks
+        if (capturedSoFar.some((p) => p.equals(pos))) break; // already captured
+        opponentPos = pos;
+      } else if (opponentPos) {
+        // This square is a valid landing square after jumping opponentPos
+        const landingPos = pos;
+        const newPath = [...currentPath, landingPos];
+        const newCaptured = [...capturedSoFar, opponentPos];
+
+        const movedPiece = piece.moveTo(landingPos);
+        let tempBoard = board.removePiece(piece.position);
+        // Remove the captured piece so recursive searches can slide through
+        // that square in the opposite direction (king jumps A, then continues
+        // past A's old square to reach another piece C on the same diagonal).
+        tempBoard = tempBoard.removePiece(opponentPos);
+        tempBoard = tempBoard.placePiece(movedPiece);
+
+        const furtherCaptures: CapturePath[] = [];
+        const nextDirections = getValidDirections(movedPiece);
+
+        for (const nextDir of nextDirections) {
+          const morePaths = this.findKingCaptureInDirection(
+            tempBoard,
+            movedPiece,
+            nextDir,
+            newPath,
+            newCaptured,
+            originFrom,
+            originPiece,
+          );
+          furtherCaptures.push(...morePaths);
+        }
+
+        if (furtherCaptures.length === 0) {
+          terminalCaptures.push({
+            piece: originPiece,
+            from: originFrom,
+            path: newPath,
+            capturedSquares: newCaptured,
+            to: landingPos,
+            isPromotion: false,
+          });
+        } else {
+          extendedCaptures.push(...furtherCaptures);
+        }
+      }
+
+      r += direction.row;
+      c += direction.col;
+    }
+
+    // TZD free-choice: both terminal (shorter) and extended (longer) paths are valid
+    return [...terminalCaptures, ...extendedCaptures];
   }
 
   /**

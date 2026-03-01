@@ -18,4 +18,39 @@ export const gameService = {
     const response = await axiosInstance.get(`/games/${id}`);
     return response.data;
   },
+
+  async createInvite(data: { color: string; timeMs: number }) {
+    const response = await axiosInstance.post("/games/invite", data);
+    return response.data;
+  },
+
+  async joinInvite(code: string) {
+    const response = await axiosInstance.post(`/games/invite/${code}/join`);
+    return response.data;
+  },
+
+  async makeMove(gameId: string, from: number, to: number) {
+    const response = await axiosInstance.post(`/games/${gameId}/moves`, { from, to });
+    return response.data;
+  },
+
+  async getLegalMoves(gameId: string) {
+    const response = await axiosInstance.get(`/games/${gameId}/moves/legal`);
+    return response.data;
+  },
+
+  async resign(gameId: string) {
+    const response = await axiosInstance.post(`/games/${gameId}/resign`);
+    return response.data;
+  },
+
+  async offerDraw(gameId: string) {
+    const response = await axiosInstance.post(`/games/${gameId}/draw`);
+    return response.data;
+  },
+
+  async abort(gameId: string) {
+    const response = await axiosInstance.post(`/games/${gameId}/abort`);
+    return response.data;
+  },
 };

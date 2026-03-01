@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Game = void 0;
 const board_state_vo_1 = require("../value-objects/board-state.vo");
+const position_vo_1 = require("../value-objects/position.vo");
 const game_constants_1 = require("../../../shared/constants/game.constants");
 class Game {
     id;
@@ -14,6 +15,7 @@ class Game {
     initialTimeMs;
     clockInfo;
     createdAt;
+    inviteCode;
     _status;
     _board;
     _moves;
@@ -22,7 +24,7 @@ class Game {
     _endReason;
     _startedAt;
     _endedAt;
-    constructor(id, whitePlayerId, blackPlayerId, gameType, whiteElo = null, blackElo = null, aiLevel = null, initialTimeMs = 600000, clockInfo, createdAt = new Date(), startedAt = null, endedAt = null, status = game_constants_1.GameStatus.WAITING, winner = null, endReason = null, currentTurn = game_constants_1.PlayerColor.WHITE) {
+    constructor(id, whitePlayerId, blackPlayerId, gameType, whiteElo = null, blackElo = null, aiLevel = null, initialTimeMs = 600000, clockInfo, createdAt = new Date(), startedAt = null, endedAt = null, status = game_constants_1.GameStatus.WAITING, winner = null, endReason = null, currentTurn = game_constants_1.PlayerColor.WHITE, inviteCode = null) {
         this.id = id;
         this.whitePlayerId = whitePlayerId;
         this.blackPlayerId = blackPlayerId;
@@ -33,6 +35,7 @@ class Game {
         this.initialTimeMs = initialTimeMs;
         this.clockInfo = clockInfo;
         this.createdAt = createdAt;
+        this.inviteCode = inviteCode;
         this._status = status;
         this._board = board_state_vo_1.BoardState.createInitialBoard();
         this._moves = [];
@@ -120,6 +123,16 @@ class Game {
     }
     getLastMove() {
         return this._moves.length > 0 ? this._moves[this._moves.length - 1] : null;
+    }
+    replayMovesFromHistory(rawMoves) {
+        for (const raw of rawMoves) {
+            const from = new position_vo_1.Position(raw.fromSquare);
+            const to = new position_vo_1.Position(raw.toSquare);
+            for (const sq of raw.capturedSquares ?? []) {
+                this._board = this._board.removePiece(new position_vo_1.Position(sq));
+            }
+            this._board = this._board.movePiece(from, to);
+        }
     }
     get clock() {
         return {
