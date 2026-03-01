@@ -1,8 +1,12 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Phone, PhoneOff, PhoneIncoming, PhoneMissed } from "lucide-react";
 import clsx from "clsx";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
+
+/** Seconds before an unanswered incoming call is auto-declined. */
+const RING_TIMEOUT_SECS = 30;
 
 export function VoiceChatControls({ gameId }: { gameId: string }) {
   const {
@@ -16,6 +20,41 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
     endCall,
     toggleMute,
   } = useVoiceChat(gameId);
+
+  // Countdown shown to the callee — auto-declines when it reaches 0.
+  const [ringSecondsLeft, setRingSecondsLeft] = useState<number | null>(null);
+  const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (callState === "incoming") {
+      setRingSecondsLeft(RING_TIMEOUT_SECS);
+      ringIntervalRef.current = setInterval(() => {
+        setRingSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(ringIntervalRef.current!);
+            ringIntervalRef.current = null;
+            declineCall(); // auto-decline
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      // Call was answered, declined manually, or ended — stop countdown.
+      if (ringIntervalRef.current !== null) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+      setRingSecondsLeft(null);
+    }
+
+    return () => {
+      if (ringIntervalRef.current !== null) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+    };
+  }, [callState, declineCall]);
 
   return (
     <div className="rounded-xl border border-neutral-700/60 bg-neutral-900/60 p-3 flex flex-col gap-2">
@@ -70,12 +109,17 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         </div>
       )}
 
-      {/* incoming — callee sees accept / decline */}
+      {/* incoming — accept / decline + auto-decline countdown */}
       {callState === "incoming" && (
         <div className="flex flex-col gap-1.5">
           <p className="text-center text-xs text-emerald-300 font-semibold">
             <PhoneIncoming className="inline w-3.5 h-3.5 mr-1 mb-0.5 animate-bounce" />
             Incoming voice call
+            {ringSecondsLeft !== null && (
+              <span className="ml-1.5 text-neutral-400 font-normal">
+                ({ringSecondsLeft}s)
+              </span>
+            )}
           </p>
           <div className="flex gap-2">
             <button

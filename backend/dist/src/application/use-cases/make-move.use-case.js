@@ -71,15 +71,49 @@ let MakeMoveUseCase = class MakeMoveUseCase {
                 game.endGame(game_constants_1.Winner.DRAW, game_constants_1.EndReason.DRAW);
             }
         }
+        const now = new Date();
+        let clockUpdate = null;
+        if (game.clockInfo && !game.isPvE()) {
+            const elapsed = now.getTime() - game.clockInfo.lastMoveAt.getTime();
+            let newWhite = game.clockInfo.whiteTimeMs;
+            let newBlack = game.clockInfo.blackTimeMs;
+            if (playerColor === game_constants_1.PlayerColor.WHITE) {
+                newWhite = Math.max(0, newWhite - elapsed);
+            }
+            else {
+                newBlack = Math.max(0, newBlack - elapsed);
+            }
+            if (!game.isGameOver()) {
+                if (newWhite <= 0) {
+                    game.endGame(game_constants_1.Winner.BLACK, game_constants_1.EndReason.TIME);
+                }
+                else if (newBlack <= 0) {
+                    game.endGame(game_constants_1.Winner.WHITE, game_constants_1.EndReason.TIME);
+                }
+            }
+            clockUpdate = {
+                whiteTimeMs: newWhite,
+                blackTimeMs: newBlack,
+                lastMoveAt: now,
+            };
+            await this.gameRepository.updateClock(gameId, newWhite, newBlack, now);
+        }
         await this.gameRepository.update(game);
         await this.moveRepository.create(correctedMove);
         this.gamesGateway.emitGameStateUpdate(gameId, {
             lastMove: correctedMove,
-            clockInfo: game.clockInfo ?? null,
+            clockInfo: clockUpdate ?? game.clockInfo ?? null,
             winner: game.winner,
             currentTurn: game.currentTurn,
             status: game.status,
         });
+        if (game.endReason === game_constants_1.EndReason.TIME) {
+            this.gamesGateway.emitGameOver(gameId, {
+                gameId,
+                winner: game.winner.toString(),
+                reason: 'timeout',
+            });
+        }
         return {
             game,
             move: correctedMove,

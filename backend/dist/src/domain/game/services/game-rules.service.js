@@ -93,8 +93,8 @@ class GameRulesService {
                 ];
         for (const dir of directions) {
             if (piece.isKing()) {
-                let newRow = row + dir.row;
-                let newCol = col + dir.col;
+                const newRow = row + dir.row;
+                const newCol = col + dir.col;
                 while (newRow >= 0 && newRow <= 7 && newCol >= 0 && newCol <= 7) {
                     const targetPos = position_vo_1.Position.fromRowCol(newRow, newCol);
                     if (board.isEmpty(targetPos)) {

@@ -44,9 +44,13 @@ let CreateGameUseCase = class CreateGameUseCase {
         game.start();
         return this.gameRepository.create(game);
     }
-    async createInviteGame(creatorId, _creatorColor, creatorElo, initialTimeMs) {
+    async createInviteGame(creatorId, creatorColor, creatorElo, initialTimeMs) {
         const inviteCode = generateInviteCode();
-        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), creatorId, null, game_constants_1.GameType.CASUAL, creatorElo, null, null, initialTimeMs, undefined, new Date(), null, null, game_constants_1.GameStatus.WAITING, null, null, game_constants_1.PlayerColor.WHITE, inviteCode);
+        const whitePlayerId = creatorColor === game_constants_1.PlayerColor.WHITE ? creatorId : null;
+        const blackPlayerId = creatorColor === game_constants_1.PlayerColor.BLACK ? creatorId : null;
+        const whiteElo = creatorColor === game_constants_1.PlayerColor.WHITE ? creatorElo : null;
+        const blackElo = creatorColor === game_constants_1.PlayerColor.BLACK ? creatorElo : null;
+        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.CASUAL, whiteElo, blackElo, null, initialTimeMs, undefined, new Date(), null, null, game_constants_1.GameStatus.WAITING, null, null, creatorColor, inviteCode);
         const created = await this.gameRepository.create(game);
         return { game: created, inviteCode };
     }

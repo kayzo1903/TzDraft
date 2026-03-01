@@ -35,6 +35,7 @@ export interface OnlineGameState {
   myColor: PlayerColor | null;
   moveCount: number;
   result: { winner: Winner; reason?: string } | null;
+  /** Time remaining in **milliseconds** for each player. */
   timeLeft: { WHITE: number; BLACK: number } | null;
   isWaiting: boolean;
   isSubmitting: boolean;
@@ -42,6 +43,8 @@ export interface OnlineGameState {
   drawOffer: DrawOfferState;
   /** False when the opponent's WebSocket disconnected (reconnect timer running). */
   opponentConnected: boolean;
+  /** Seconds until the disconnected opponent is auto-resigned (null = not disconnected). */
+  disconnectSecondsRemaining: number | null;
   rematchOffer: RematchOfferState;
   /** Set to the new game ID when rematch is accepted; page should navigate here. */
   rematchNewGameId: string | null;
@@ -142,7 +145,10 @@ export const useOnlineGame = (gameId: string) => {
     CakeEngine.createInitialState(),
   );
   const [moveCount, setMoveCount] = useState(0);
-  const [result, setResult] = useState<{ winner: Winner; reason?: string } | null>(null);
+  const [result, setResult] = useState<{
+    winner: Winner;
+    reason?: string;
+  } | null>(null);
   const [timeLeft, setTimeLeft] = useState<{
     WHITE: number;
     BLACK: number;
@@ -160,10 +166,29 @@ export const useOnlineGame = (gameId: string) => {
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const prevMoveCountRef = useRef(0);
 
+  // Clock refs — WHITE/BLACK stored in milliseconds for sub-second scheduling precision
+  const serverClockRef = useRef<{
+    WHITE: number;
+    BLACK: number;
+    receivedAt: number;
+  } | null>(null);
+  const currentPlayerRef = useRef<PlayerColor>(PlayerColor.WHITE);
+  const resultRef = useRef<{ winner: Winner; reason?: string } | null>(null);
+  const isWaitingRef = useRef<boolean>(true);
+  const clockTimerRef = useRef<number | null>(null);
+  // Stable refs for use inside the 50ms clock interval closure
+  const socketRef = useRef<typeof socket>(null);
+  const gameIdRef = useRef<string>(gameId);
+
   const [drawOffer, setDrawOffer] = useState<DrawOfferState>({
     offeredByUserId: null,
   });
   const [opponentConnected, setOpponentConnected] = useState(true);
+  const [disconnectSecondsRemaining, setDisconnectSecondsRemaining] = useState<
+    number | null
+  >(null);
+  const disconnectCountdownRef = useRef<number | null>(null);
+  const claimedTimeoutRef = useRef(false);
   const [rematchOffer, setRematchOffer] = useState<RematchOfferState>({
     offeredByUserId: null,
   });
@@ -179,7 +204,7 @@ export const useOnlineGame = (gameId: string) => {
 
   const isWaiting = useMemo(() => {
     if (!gameData) return true;
-    return !gameData.blackPlayerId;
+    return gameData.status === "WAITING";
   }, [gameData]);
 
   // White starts at engine rows 0-2 (top); flip so White sees own pieces at bottom.
@@ -240,6 +265,46 @@ export const useOnlineGame = (gameId: string) => {
           }
         : null,
     [lastMovePositions, flipBoard],
+  );
+
+  const applyClockSnapshot = useCallback(
+    (
+      clock: {
+        whiteTimeMs: number;
+        blackTimeMs: number;
+        lastMoveAt?: string | Date;
+      },
+      activeColor: PlayerColor,
+    ) => {
+      // Keep full millisecond precision — the UI will round/format as needed.
+      const baseWhiteMs = Number(clock.whiteTimeMs);
+      const baseBlackMs = Number(clock.blackTimeMs);
+
+      let whiteMs = baseWhiteMs;
+      let blackMs = baseBlackMs;
+      const lm =
+        clock.lastMoveAt !== undefined
+          ? new Date(clock.lastMoveAt).getTime()
+          : NaN;
+      if (!Number.isNaN(lm)) {
+        const elapsed = Math.max(0, Date.now() - lm);
+        if (activeColor === PlayerColor.WHITE) {
+          whiteMs = Math.max(0, baseWhiteMs - elapsed);
+        } else {
+          blackMs = Math.max(0, baseBlackMs - elapsed);
+        }
+      }
+
+      serverClockRef.current = {
+        WHITE: whiteMs,
+        BLACK: blackMs,
+        receivedAt: Date.now(),
+      };
+      // A new move arrived — allow claimTimeout to be emitted again if needed
+      claimedTimeoutRef.current = false;
+      setTimeLeft({ WHITE: whiteMs, BLACK: blackMs });
+    },
+    [],
   );
 
   /* ── Fetch game state from API ──────────────────────────────────────── */
@@ -326,27 +391,27 @@ export const useOnlineGame = (gameId: string) => {
           DRAW: Winner.DRAW,
         };
         setResult({ winner: winnerMap[game.winner as string] ?? Winner.DRAW });
-      } else if (game.status === 'ABORTED') {
-        setResult({ winner: Winner.DRAW, reason: 'aborted' });
+      } else if (game.status === "ABORTED") {
+        setResult({ winner: Winner.DRAW, reason: "aborted" });
       }
       // If game.winner is null and not aborted we leave the existing result in place;
       // this prevents a race-condition fetch from dismissing the result card.
 
-      // Update clock
+      // Update clock — write server snapshot so the countdown interval can interpolate
       if (game.clockInfo) {
         const clock = game.clockInfo as {
           whiteTimeMs: number;
           blackTimeMs: number;
+          lastMoveAt?: string | Date;
         };
-        setTimeLeft({
-          WHITE: Math.floor(clock.whiteTimeMs / 1000),
-          BLACK: Math.floor(clock.blackTimeMs / 1000),
-        });
+        const activeColor =
+          newMoveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+        applyClockSnapshot(clock, activeColor);
       }
     } catch (err) {
       console.error("Failed to fetch game state:", err);
     }
-  }, [gameId, flipBoard]);
+  }, [applyClockSnapshot, gameId, flipBoard]);
 
   /* ── Initial load ──────────────────────────────────────────────────── */
   useEffect(() => {
@@ -381,13 +446,16 @@ export const useOnlineGame = (gameId: string) => {
         // Our own move echoed back — already applied optimistically.
         // Still extract clock so timers stay in sync.
         const clock = d?.clockInfo as
-          | { whiteTimeMs: number; blackTimeMs: number }
+          | {
+              whiteTimeMs: number;
+              blackTimeMs: number;
+              lastMoveAt?: string | Date;
+            }
           | undefined;
         if (clock) {
-          setTimeLeft({
-            WHITE: Math.floor(clock.whiteTimeMs / 1000),
-            BLACK: Math.floor(clock.blackTimeMs / 1000),
-          });
+          const activeColor =
+            incomingMoveNum % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+          applyClockSnapshot(clock, activeColor);
         }
         return;
       }
@@ -474,13 +542,16 @@ export const useOnlineGame = (gameId: string) => {
         });
         // Extract clock and winner from WS payload so we don't need HTTP for that.
         const clock = d?.clockInfo as
-          | { whiteTimeMs: number; blackTimeMs: number }
+          | {
+              whiteTimeMs: number;
+              blackTimeMs: number;
+              lastMoveAt?: string | Date;
+            }
           | undefined;
         if (clock) {
-          setTimeLeft({
-            WHITE: Math.floor(clock.whiteTimeMs / 1000),
-            BLACK: Math.floor(clock.blackTimeMs / 1000),
-          });
+          const activeColor =
+            incomingMoveNum % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+          applyClockSnapshot(clock, activeColor);
         }
         const winnerStr = d?.winner as string | undefined;
         if (winnerStr) {
@@ -505,10 +576,18 @@ export const useOnlineGame = (gameId: string) => {
         BLACK: Winner.BLACK,
         DRAW: Winner.DRAW,
       };
-      if (d?.winner) {
+      const winnerStr = d?.winner as string | null | undefined;
+      if (winnerStr) {
+        // Normal game-over: timeout, resign, draw, abandon…
         setResult({
-          winner: winnerMap[d.winner as string] ?? Winner.DRAW,
+          winner: winnerMap[winnerStr] ?? Winner.DRAW,
           reason: d.reason as string | undefined,
+        });
+      } else {
+        // winner is null/undefined — treat as aborted (or fall back to HTTP)
+        setResult({
+          winner: Winner.DRAW, // no winner for aborted games
+          reason: (d?.reason as string | undefined) ?? "aborted",
         });
       }
     };
@@ -525,12 +604,46 @@ export const useOnlineGame = (gameId: string) => {
       setDrawOffer({ offeredByUserId: null });
     };
 
-    const handleOpponentDisconnected = () => {
+    const handleOpponentDisconnected = (data: {
+      userId: string;
+      secondsRemaining?: number;
+    }) => {
       setOpponentConnected(false);
+      const secs = data.secondsRemaining ?? 60;
+      setDisconnectSecondsRemaining(secs);
+
+      // Start a local 1-second decrement so the countdown is smooth without
+      // waiting for every server tick.
+      if (disconnectCountdownRef.current !== null) {
+        window.clearInterval(disconnectCountdownRef.current);
+      }
+      disconnectCountdownRef.current = window.setInterval(() => {
+        setDisconnectSecondsRemaining((prev) => {
+          if (prev === null || prev <= 1) {
+            window.clearInterval(disconnectCountdownRef.current!);
+            disconnectCountdownRef.current = null;
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    };
+
+    const handleOpponentDisconnectCountdown = (data: {
+      userId: string;
+      secondsRemaining: number;
+    }) => {
+      // Sync to authoritative server value (avoids drift)
+      setDisconnectSecondsRemaining(data.secondsRemaining);
     };
 
     const handleOpponentReconnected = () => {
       setOpponentConnected(true);
+      if (disconnectCountdownRef.current !== null) {
+        window.clearInterval(disconnectCountdownRef.current);
+        disconnectCountdownRef.current = null;
+      }
+      setDisconnectSecondsRemaining(null);
     };
 
     const handleRematchOffered = (data: { offeredByUserId: string }) => {
@@ -550,15 +663,22 @@ export const useOnlineGame = (gameId: string) => {
     };
 
     socket.on("gameStateUpdated", handleUpdate);
-    socket.on("gameOver", (data: unknown) => {
+    const handleGameOverEvent = (data: unknown) => {
       handleGameOver(data);
-      // Game is over — restore connected state so banner disappears
+      // Game is over — restore connected/disconnect state so banners disappear
       setOpponentConnected(true);
-    });
+      if (disconnectCountdownRef.current !== null) {
+        window.clearInterval(disconnectCountdownRef.current);
+        disconnectCountdownRef.current = null;
+      }
+      setDisconnectSecondsRemaining(null);
+    };
+    socket.on("gameOver", handleGameOverEvent);
     socket.on("drawOffered", handleDrawOffered);
     socket.on("drawDeclined", handleDrawDeclined);
     socket.on("drawCancelled", handleDrawCancelled);
     socket.on("opponentDisconnected", handleOpponentDisconnected);
+    socket.on("opponentDisconnectCountdown", handleOpponentDisconnectCountdown);
     socket.on("opponentReconnected", handleOpponentReconnected);
     socket.on("rematchOffered", handleRematchOffered);
     socket.on("rematchAccepted", handleRematchAccepted);
@@ -567,18 +687,22 @@ export const useOnlineGame = (gameId: string) => {
 
     return () => {
       socket.off("gameStateUpdated", handleUpdate);
-      socket.off("gameOver", handleGameOver);
+      socket.off("gameOver", handleGameOverEvent);
       socket.off("drawOffered", handleDrawOffered);
       socket.off("drawDeclined", handleDrawDeclined);
       socket.off("drawCancelled", handleDrawCancelled);
       socket.off("opponentDisconnected", handleOpponentDisconnected);
+      socket.off(
+        "opponentDisconnectCountdown",
+        handleOpponentDisconnectCountdown,
+      );
       socket.off("opponentReconnected", handleOpponentReconnected);
       socket.off("rematchOffered", handleRematchOffered);
       socket.off("rematchAccepted", handleRematchAccepted);
       socket.off("rematchDeclined", handleRematchDeclined);
       socket.off("rematchCancelled", handleRematchCancelled);
     };
-  }, [socket, gameId, fetchGameState, flipBoard]);
+  }, [socket, gameId, fetchGameState, flipBoard, applyClockSnapshot]);
 
   /* ── Audio ─────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -593,6 +717,54 @@ export const useOnlineGame = (gameId: string) => {
       captureCleanupRef.current = [];
     };
   }, []);
+
+  /* ── Keep clock refs in sync with state (used inside the interval) ── */
+  useEffect(() => {
+    currentPlayerRef.current = currentPlayer;
+  }, [currentPlayer]);
+  useEffect(() => {
+    resultRef.current = result;
+  }, [result]);
+  useEffect(() => {
+    isWaitingRef.current = isWaiting;
+  }, [isWaiting]);
+  // Keep stable refs for the 50ms closure in sync
+  useEffect(() => {
+    socketRef.current = socket;
+  }, [socket]);
+  useEffect(() => {
+    gameIdRef.current = gameId;
+  }, [gameId]);
+
+  /* ── Persistent client-side countdown (chess.com technique) ─────── */
+  // Ticks at 50 ms for sub-second smoothness. Interpolates from the last
+  // server-provided snapshot (stored in ms). Resets on every move.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (!serverClockRef.current || resultRef.current || isWaitingRef.current)
+        return;
+      const elapsedMs = Date.now() - serverClockRef.current.receivedAt;
+      const activeColor =
+        currentPlayerRef.current === PlayerColor.WHITE ? "WHITE" : "BLACK";
+      const otherColor = activeColor === "WHITE" ? "BLACK" : "WHITE";
+      const activeMs = Math.max(
+        0,
+        serverClockRef.current[activeColor] - elapsedMs,
+      );
+
+      setTimeLeft({
+        [activeColor]: activeMs,
+        [otherColor]: serverClockRef.current[otherColor],
+      } as { WHITE: number; BLACK: number });
+
+      // Emit a timeout claim when the active player's clock hits zero
+      if (activeMs <= 0 && !claimedTimeoutRef.current && socketRef.current) {
+        claimedTimeoutRef.current = true;
+        socketRef.current.emit("claimTimeout", { gameId: gameIdRef.current });
+      }
+    }, 50);
+    return () => clearInterval(id);
+  }, []); // intentionally empty — runs once, reads only stable refs
 
   /* ── Submit a move (with optimistic update) ────────────────────────── */
   const makeMove = useCallback(
@@ -765,6 +937,7 @@ export const useOnlineGame = (gameId: string) => {
       error,
       drawOffer,
       opponentConnected,
+      disconnectSecondsRemaining,
       rematchOffer,
       rematchNewGameId,
     } as OnlineGameState,

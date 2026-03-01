@@ -9,6 +9,7 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     private pendingRematchOffers;
     private userGameMap;
     private disconnectTimers;
+    private disconnectTickIntervals;
     constructor(moduleRef: ModuleRef);
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;
@@ -64,6 +65,15 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
         error?: string;
     };
     private isInRoom;
+    handleVoiceRing(data: {
+        gameId: string;
+    }, client: Socket): void;
+    handleVoiceAccept(data: {
+        gameId: string;
+    }, client: Socket): void;
+    handleVoiceDecline(data: {
+        gameId: string;
+    }, client: Socket): void;
     handleVoiceOffer(data: {
         gameId: string;
         sdp: any;
@@ -79,6 +89,11 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     handleVoiceHangup(data: {
         gameId: string;
     }, client: Socket): void;
+    handleClaimTimeout(data: {
+        gameId: string;
+    }, client: Socket): Promise<{
+        error?: string;
+    }>;
     emitGameStateUpdate(gameId: string, gameState: any): void;
     emitGameOver(gameId: string, result: any): void;
 }
