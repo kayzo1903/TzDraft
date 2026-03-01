@@ -28,6 +28,7 @@ let EndGameUseCase = class EndGameUseCase {
         const winner = game.whitePlayerId === playerId ? game_constants_1.Winner.BLACK : game_constants_1.Winner.WHITE;
         game.endGame(winner, game_constants_1.EndReason.RESIGN);
         await this.gameRepository.update(game);
+        return { winner };
     }
     async timeout(gameId, playerId) {
         const game = await this.gameRepository.findById(gameId);

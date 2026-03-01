@@ -379,6 +379,35 @@ let AuthService = class AuthService {
         }
         throw new Error('Could not generate unique display name');
     }
+    async createGuestUser() {
+        const suffix = crypto.randomBytes(4).toString('hex').toUpperCase();
+        const username = `Guest_${suffix}`;
+        const displayName = username;
+        const phoneNumber = `GUEST_${crypto.randomUUID().replace(/-/g, '')}`;
+        const user = await this.prisma.user.create({
+            data: {
+                phoneNumber,
+                username,
+                displayName,
+                isVerified: false,
+                rating: { create: { rating: 1200 } },
+            },
+            include: { rating: true },
+        });
+        const { accessToken, refreshToken } = await this.generateTokens(user.id);
+        return {
+            user: {
+                id: user.id,
+                phoneNumber: user.phoneNumber,
+                username: user.username,
+                displayName: user.displayName,
+                isVerified: user.isVerified,
+                rating: user.rating?.rating || 1200,
+            },
+            accessToken,
+            refreshToken,
+        };
+    }
     async generateTokens(userId) {
         const accessToken = this.jwtService.sign({ sub: userId }, {
             secret: this.config.get('JWT_SECRET'),

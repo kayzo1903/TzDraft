@@ -8,9 +8,9 @@ export declare class UserService {
     findById(id: string): Promise<({
         rating: {
             rating: number;
+            userId: string;
             gamesPlayed: number;
             lastUpdated: Date;
-            userId: string;
         } | null;
     } & {
         id: string;

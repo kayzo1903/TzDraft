@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "./auth/auth-store";
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002",
@@ -46,10 +47,10 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        // Clear both localStorage tokens and the Zustand auth store so the
+        // navbar reflects the signed-out state before redirecting.
+        useAuthStore.getState().clearAuth();
 
-        // Get the current locale from the URL if possible
         const pathParts = window.location.pathname.split("/");
         const currentLocale = ["sw", "en"].includes(pathParts[1])
           ? pathParts[1]

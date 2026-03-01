@@ -1,8 +1,18 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
-import { GameType, PlayerColor } from '../../shared/constants/game.constants';
+import { GameType, PlayerColor, GameStatus } from '../../shared/constants/game.constants';
 import { randomUUID } from 'crypto';
+
+/** Generate a random 6-char alphanumeric invite code */
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
 
 /**
  * Create Game Use Case
@@ -65,6 +75,94 @@ export class CreateGameUseCase {
       aiLevel,
       dto.initialTimeMs || 600000,
       undefined, // clockInfo
+    );
+
+    game.start();
+    return this.gameRepository.create(game);
+  }
+
+  /**
+   * Create an invite game (creator picks side; second slot is empty until join)
+   */
+  async createInviteGame(
+    creatorId: string,
+    _creatorColor: PlayerColor,  // reserved for future color-assignment feature
+    creatorElo: number,
+    initialTimeMs: number,
+  ): Promise<{ game: Game; inviteCode: string }> {
+    const inviteCode = generateInviteCode();
+
+    // Creator always occupies the WHITE slot; joiner takes BLACK on arrival.
+    const game = new Game(
+      randomUUID(),
+      creatorId,
+      null,           // blackPlayerId — filled when joiner arrives
+      GameType.CASUAL,
+      creatorElo,
+      null,
+      null,
+      initialTimeMs,
+      undefined,
+      new Date(),
+      null,
+      null,
+      GameStatus.WAITING,
+      null,
+      null,
+      PlayerColor.WHITE,
+      inviteCode,
+    );
+
+    const created = await this.gameRepository.create(game);
+    return { game: created, inviteCode };
+  }
+
+  /**
+   * Join an invite game via code
+   */
+  async joinInviteGame(
+    code: string,
+    joinerId: string,
+  ): Promise<Game> {
+    const game = await this.gameRepository.findByInviteCode(code);
+    if (!game) {
+      throw new NotFoundException('Invite code not found');
+    }
+    if (game.status !== GameStatus.WAITING) {
+      throw new BadRequestException('This game is no longer available');
+    }
+    if (game.whitePlayerId === joinerId || game.blackPlayerId === joinerId) {
+      throw new BadRequestException('You cannot join your own game');
+    }
+    return this.gameRepository.joinInvite(game.id, joinerId);
+  }
+
+  /**
+   * Create a rematch for a finished game.
+   * Colors are swapped: WHITE becomes BLACK and vice-versa.
+   * The new game starts immediately (ACTIVE) with the same time control.
+   */
+  async createRematch(originalGameId: string): Promise<Game> {
+    const original = await this.gameRepository.findById(originalGameId);
+    if (!original) throw new NotFoundException('Original game not found');
+    if (!original.blackPlayerId) {
+      throw new BadRequestException('Cannot rematch a game that never started');
+    }
+
+    // Swap colours so each player gets the other side
+    const newWhiteId = original.blackPlayerId;
+    const newBlackId = original.whitePlayerId;
+
+    const game = new Game(
+      randomUUID(),
+      newWhiteId,
+      newBlackId,
+      GameType.CASUAL,
+      original.blackElo ?? 1200,
+      original.whiteElo ?? 1200,
+      null,
+      original.initialTimeMs,
+      undefined,
     );
 
     game.start();

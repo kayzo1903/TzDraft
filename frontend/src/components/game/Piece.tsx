@@ -5,10 +5,11 @@ interface PieceProps {
     color: 'WHITE' | 'BLACK';
     isKing?: boolean;
     isSelected?: boolean;
-    isMoving?: boolean;
+    /** True while the piece is landing on a new square — plays a scale-bounce animation */
+    isLanding?: boolean;
 }
 
-export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected, isMoving }) => {
+export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected, isLanding }) => {
     const isWhite = color === 'WHITE';
 
     return (
@@ -17,17 +18,17 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected, isMovin
                 'w-[82%] h-[82%] rounded-full relative transition-transform duration-150',
                 '[transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]',
                 isSelected && 'scale-[1.12]',
-                isMoving && 'scale-[1.08]',
+                isLanding && 'piece-landing',
             )}
             style={{
                 /* Layered box-shadows create a realistic 3-D disc look */
                 boxShadow: isWhite
                     ? [
-                        '0 1px 0 1px rgba(0,0,0,0.25)',          // pressed edge
-                        '0 3px 6px rgba(0,0,0,0.4)',              // drop shadow
-                        '0 6px 10px rgba(0,0,0,0.25)',            // ambient shadow
-                        'inset 0 -3px 5px rgba(0,0,0,0.18)',      // bottom rim shading
-                        'inset 0 3px 6px rgba(255,255,255,0.8)',  // top specular
+                        '0 1px 0 1px rgba(0,0,0,0.25)',
+                        '0 3px 6px rgba(0,0,0,0.4)',
+                        '0 6px 10px rgba(0,0,0,0.25)',
+                        'inset 0 -3px 5px rgba(0,0,0,0.18)',
+                        'inset 0 3px 6px rgba(255,255,255,0.8)',
                     ].join(',')
                     : [
                         '0 1px 0 1px rgba(0,0,0,0.5)',
@@ -83,7 +84,6 @@ export const Piece: React.FC<PieceProps> = ({ color, isKing, isSelected, isMovin
                         )}
                         aria-hidden="true"
                     >
-                        {/* Crown filled shape */}
                         <path
                             d="M3 18h18l-1.5-9-4.5 4.5L12 6l-3 7.5L4.5 9 3 18z"
                             fill={isWhite ? 'rgba(30,20,5,0.85)' : 'rgba(255,220,100,0.9)'}

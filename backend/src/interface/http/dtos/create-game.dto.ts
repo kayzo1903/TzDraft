@@ -1,9 +1,31 @@
-import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   GameType,
   PlayerColor,
 } from '../../../shared/constants/game.constants';
+
+/**
+ * Create Invite Game DTO
+ */
+export class CreateInviteGameDto {
+  @ApiProperty({ description: 'Creator color', enum: PlayerColor })
+  @IsEnum(PlayerColor)
+  color: PlayerColor;
+
+  @ApiProperty({ description: 'Initial time in milliseconds (minimum 60000 = 1 min)', required: false })
+  @IsNumber()
+  @IsOptional()
+  @Min(60000)
+  timeMs?: number;
+}
+
+/**
+ * Join Invite Game DTO
+ */
+export class JoinInviteGameDto {
+  // No body needed — code is in URL path
+}
 
 /**
  * Create PvP Game DTO

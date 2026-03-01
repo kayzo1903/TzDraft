@@ -1,0 +1,4 @@
+C:/Users/Admin/Desktop/TzDraft/build/CMakeFiles/sidra_lib.dir
+C:/Users/Admin/Desktop/TzDraft/build/CMakeFiles/sidra.dir
+C:/Users/Admin/Desktop/TzDraft/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Admin/Desktop/TzDraft/build/CMakeFiles/ZERO_CHECK.dir
