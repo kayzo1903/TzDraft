@@ -58,6 +58,7 @@ let PrismaGameRepository = class PrismaGameRepository {
                 moves: {
                     orderBy: { moveNumber: 'asc' },
                 },
+                clock: true,
             },
         });
         if (!game) {
@@ -167,17 +168,33 @@ let PrismaGameRepository = class PrismaGameRepository {
             return null;
         return this.toDomain(game);
     }
-    async joinInvite(gameId, blackPlayerId) {
+    async joinInvite(gameId, joinerId) {
+        const existing = await this.prisma.game.findUnique({
+            where: { id: gameId },
+        });
+        if (!existing)
+            throw new Error(`Game ${gameId} not found`);
+        const slotData = existing.whitePlayerId === null
+            ? { whitePlayerId: joinerId }
+            : { blackPlayerId: joinerId };
+        const now = new Date();
         const updated = await this.prisma.game.update({
             where: { id: gameId },
             data: {
-                blackPlayerId,
+                ...slotData,
                 status: game_constants_1.GameStatus.ACTIVE,
-                startedAt: new Date(),
+                startedAt: now,
+                clock: { update: { lastMoveAt: now } },
             },
             include: { clock: true },
         });
         return this.toDomain(updated);
+    }
+    async updateClock(gameId, whiteTimeMs, blackTimeMs, lastMoveAt) {
+        await this.prisma.clock.update({
+            where: { gameId },
+            data: { whiteTimeMs, blackTimeMs, lastMoveAt },
+        });
     }
     toDomain(prismaGame) {
         const moves = prismaGame.moves ?? [];

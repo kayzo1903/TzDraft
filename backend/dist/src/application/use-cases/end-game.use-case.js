@@ -56,8 +56,11 @@ let EndGameUseCase = class EndGameUseCase {
             throw new common_1.BadRequestException('Game not found');
         }
         this.ensureParticipant(game, playerId);
-        if (game.getMoveCount() > 0) {
-            throw new common_1.BadRequestException('Cannot abort game after moves are made');
+        const moveCount = game.getMoveCount();
+        const isWhite = game.whitePlayerId === playerId;
+        const hasMoved = isWhite ? moveCount >= 1 : moveCount >= 2;
+        if (hasMoved) {
+            throw new common_1.BadRequestException('Cannot abort after you have made a move');
         }
         game.abort();
         await this.gameRepository.update(game);

@@ -16,10 +16,7 @@ export class EndGameUseCase {
   /**
    * End game by resignation
    */
-  async resign(
-    gameId: string,
-    playerId: string,
-  ): Promise<{ winner: Winner }> {
+  async resign(gameId: string, playerId: string): Promise<{ winner: Winner }> {
     const game = await this.gameRepository.findById(gameId);
     if (!game) {
       throw new BadRequestException('Game not found');
@@ -68,7 +65,9 @@ export class EndGameUseCase {
   }
 
   /**
-   * Abort game (before moves are made)
+   * Abort game (before the requesting player has made their first move).
+   * WHITE can abort until they make move #1 (moveCount < 1).
+   * BLACK can abort until they make move #2 (moveCount < 2).
    */
   async abort(gameId: string, playerId: string): Promise<void> {
     const game = await this.gameRepository.findById(gameId);
@@ -77,8 +76,13 @@ export class EndGameUseCase {
     }
     this.ensureParticipant(game, playerId);
 
-    if (game.getMoveCount() > 0) {
-      throw new BadRequestException('Cannot abort game after moves are made');
+    // Per-player eligibility: you can only abort before you have moved.
+    const moveCount = game.getMoveCount();
+    const isWhite = game.whitePlayerId === playerId;
+    const hasMoved = isWhite ? moveCount >= 1 : moveCount >= 2;
+
+    if (hasMoved) {
+      throw new BadRequestException('Cannot abort after you have made a move');
     }
 
     game.abort();

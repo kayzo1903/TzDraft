@@ -229,7 +229,7 @@
       "q1": "How do I play TzDraft?",
       "a1": "TzDraft follows standard 8x8 Draughts rules. Pieces move forward diagonally. Pieces are removed when captured. Capture is mandatory.",
       "q2": "Can I play against my friends?",
-      "a2": "Yes! Click 'Play Online' to create a game room, then share the Game ID with your friend.",
+      "a2": "Yes! Click 'Play with Friend', create an online invite, then share the invite link or code with your friend.",
       "q3": "I found a bug, how do I report it?",
       "a3": "Please use the form below to describe the issue. Include the Game ID if applicable."
     }

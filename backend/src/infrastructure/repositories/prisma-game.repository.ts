@@ -61,6 +61,7 @@ export class PrismaGameRepository implements IGameRepository {
         moves: {
           orderBy: { moveNumber: 'asc' },
         },
+        clock: true,
       },
     });
 
@@ -191,17 +192,43 @@ export class PrismaGameRepository implements IGameRepository {
     return this.toDomain(game);
   }
 
-  async joinInvite(gameId: string, blackPlayerId: string): Promise<Game> {
+  async joinInvite(gameId: string, joinerId: string): Promise<Game> {
+    // Creator may have taken either side — fill whichever slot is empty
+    const existing = await this.prisma.game.findUnique({
+      where: { id: gameId },
+    });
+    if (!existing) throw new Error(`Game ${gameId} not found`);
+
+    const slotData =
+      existing.whitePlayerId === null
+        ? { whitePlayerId: joinerId }
+        : { blackPlayerId: joinerId };
+
+    const now = new Date();
     const updated = await this.prisma.game.update({
       where: { id: gameId },
       data: {
-        blackPlayerId,
+        ...slotData,
         status: GameStatus.ACTIVE,
-        startedAt: new Date(),
+        startedAt: now,
+        // Reset lastMoveAt so the first player's timer starts from when the opponent joined
+        clock: { update: { lastMoveAt: now } },
       },
       include: { clock: true },
     });
     return this.toDomain(updated);
+  }
+
+  async updateClock(
+    gameId: string,
+    whiteTimeMs: number,
+    blackTimeMs: number,
+    lastMoveAt: Date,
+  ): Promise<void> {
+    await this.prisma.clock.update({
+      where: { gameId },
+      data: { whiteTimeMs, blackTimeMs, lastMoveAt },
+    });
   }
 
   /**
