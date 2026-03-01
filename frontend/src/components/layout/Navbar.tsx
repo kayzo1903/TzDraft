@@ -16,6 +16,7 @@ export const Navbar: React.FC = () => {
     const router = useRouter();
     const locale = useLocale();
     const { user, logout } = useAuth();
+    const isGuest = user?.phoneNumber?.startsWith('GUEST_') ?? false;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -154,7 +155,7 @@ export const Navbar: React.FC = () => {
 
                     {/* Right: Auth Buttons or User Menu */}
                     <div className="hidden md:flex items-center gap-3">
-                        {user ? (
+                        {user && !isGuest ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button
                                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -333,7 +334,7 @@ export const Navbar: React.FC = () => {
                                 </button>
                             </div>
 
-                            {user ? (
+                            {user && !isGuest ? (
                                 <div className="space-y-2">
                                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                                         <p className="text-xs uppercase tracking-[0.4em] text-neutral-400">Signed in</p>
