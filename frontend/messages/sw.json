@@ -291,12 +291,26 @@
   "setupAi": {
     "title": "Cheza dhidi ya AI",
     "subtitle": "Chagua mpinzani na rangi",
+    "unlockedCount": "/ {total} zimefunguliwa",
     "progress": {
       "title": "Maendeleo",
       "unlocked": "Umefungua: Kiwango {level}/{total}",
       "rule": "Shinda bila kutumia Rudisha ili kufungua bot inayofuata."
     },
+    "lockedShort": "Imefungwa",
     "locked": "Imefungwa — shinda bila Rudisha ili kufungua",
+    "unlockInstruction": {
+      "message": "Mshinde {previous} ili kufungua {next} (bila Rudisha).",
+      "allUnlocked": "Viwango vyote vya AI vimefunguliwa."
+    },
+    "unlockHints": {
+      "title": "Jinsi ya kufungua",
+      "options": {
+        "one": "Mshinde bot wa juu zaidi uliyemfungua.",
+        "two": "Usitumie Rudisha kwenye mchezo huo wa ushindi.",
+        "three": "Kila ushindi safi hufungua kiwango kimoja kinachofuata."
+      }
+    },
     "selectOpponent": "Chagua Mpinzani",
     "selectTime": "Chagua Muda",
     "selectColor": "Chagua Rangi",
