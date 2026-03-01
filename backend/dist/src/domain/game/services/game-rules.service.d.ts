@@ -13,6 +13,9 @@ export declare class GameRulesService {
     hasLegalMoves(game: Game, player: PlayerColor): boolean;
     private hasSimpleMovesForPiece;
     isDrawByInsufficientMaterial(board: BoardState): boolean;
+    isDrawByThirtyMoveRule(reversibleMoveCount: number): boolean;
+    isDrawByThreeKingsRule(threeKingsMoveCount: number): boolean;
+    isDrawByArticle84Endgame(endgameMoveCount: number): boolean;
     endGame(game: Game, winner: Winner, reason: EndReason): void;
     countPieces(board: BoardState, player: PlayerColor): number;
 }

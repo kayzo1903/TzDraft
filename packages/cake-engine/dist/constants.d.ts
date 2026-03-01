@@ -34,7 +34,8 @@ export declare enum Winner {
  * End Reason
  */
 export declare enum EndReason {
-    CHECKMATE = "CHECKMATE",
+    STALEMATE = "STALEMATE",// Current player has no legal moves (loses in draughts)
+    CHECKMATE = "CHECKMATE",// Legacy alias kept for existing DB rows
     RESIGN = "RESIGN",
     TIME = "TIME",
     DISCONNECT = "DISCONNECT",

@@ -123,8 +123,8 @@ export class MoveController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'End game by draw agreement' })
   @ApiResponse({ status: 200, description: 'Draw accepted' })
-  async draw(@Param('gameId') gameId: string) {
-    await this.endGameUseCase.drawByAgreement(gameId);
+  async draw(@CurrentUser() user: any, @Param('gameId') gameId: string) {
+    await this.endGameUseCase.drawByAgreement(gameId, user.id);
 
     return {
       success: true,
@@ -140,8 +140,8 @@ export class MoveController {
   @ApiOperation({ summary: 'Abort the game' })
   @ApiResponse({ status: 200, description: 'Game aborted' })
   @ApiResponse({ status: 400, description: 'Cannot abort game after moves' })
-  async abort(@Param('gameId') gameId: string) {
-    await this.endGameUseCase.abort(gameId);
+  async abort(@CurrentUser() user: any, @Param('gameId') gameId: string) {
+    await this.endGameUseCase.abort(gameId, user.id);
 
     return {
       success: true,

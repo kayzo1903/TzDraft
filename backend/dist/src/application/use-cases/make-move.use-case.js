@@ -49,6 +49,28 @@ let MakeMoveUseCase = class MakeMoveUseCase {
         }
         const correctedMove = new moveResult.move.constructor(moveResult.move.id, moveResult.move.gameId, moveNumber, moveResult.move.player, moveResult.move.from, moveResult.move.to, moveResult.move.capturedSquares, moveResult.move.isPromotion, moveResult.move.notation, moveResult.move.createdAt);
         game.applyMove(correctedMove);
+        if (!game.isGameOver()) {
+            if (this.gameRulesService.isGameOver(game)) {
+                const winner = this.gameRulesService.detectWinner(game);
+                if (winner) {
+                    game.endGame(winner, game_constants_1.EndReason.STALEMATE);
+                }
+            }
+        }
+        if (!game.isGameOver()) {
+            if (this.gameRulesService.isDrawByInsufficientMaterial(game.board)) {
+                game.endGame(game_constants_1.Winner.DRAW, game_constants_1.EndReason.DRAW);
+            }
+            else if (this.gameRulesService.isDrawByThirtyMoveRule(game.reversibleMoveCount)) {
+                game.endGame(game_constants_1.Winner.DRAW, game_constants_1.EndReason.DRAW);
+            }
+            else if (this.gameRulesService.isDrawByThreeKingsRule(game.threeKingsMoveCount)) {
+                game.endGame(game_constants_1.Winner.DRAW, game_constants_1.EndReason.DRAW);
+            }
+            else if (this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)) {
+                game.endGame(game_constants_1.Winner.DRAW, game_constants_1.EndReason.DRAW);
+            }
+        }
         await this.gameRepository.update(game);
         await this.moveRepository.create(correctedMove);
         this.gamesGateway.emitGameStateUpdate(gameId, {

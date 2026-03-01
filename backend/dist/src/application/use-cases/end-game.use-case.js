@@ -25,6 +25,7 @@ let EndGameUseCase = class EndGameUseCase {
         if (!game) {
             throw new common_1.BadRequestException('Game not found');
         }
+        this.ensureParticipant(game, playerId);
         const winner = game.whitePlayerId === playerId ? game_constants_1.Winner.BLACK : game_constants_1.Winner.WHITE;
         game.endGame(winner, game_constants_1.EndReason.RESIGN);
         await this.gameRepository.update(game);
@@ -35,28 +36,36 @@ let EndGameUseCase = class EndGameUseCase {
         if (!game) {
             throw new common_1.BadRequestException('Game not found');
         }
+        this.ensureParticipant(game, playerId);
         const winner = game.whitePlayerId === playerId ? game_constants_1.Winner.BLACK : game_constants_1.Winner.WHITE;
         game.endGame(winner, game_constants_1.EndReason.TIME);
         await this.gameRepository.update(game);
     }
-    async drawByAgreement(gameId) {
+    async drawByAgreement(gameId, playerId) {
         const game = await this.gameRepository.findById(gameId);
         if (!game) {
             throw new common_1.BadRequestException('Game not found');
         }
+        this.ensureParticipant(game, playerId);
         game.endGame(game_constants_1.Winner.DRAW, game_constants_1.EndReason.DRAW);
         await this.gameRepository.update(game);
     }
-    async abort(gameId) {
+    async abort(gameId, playerId) {
         const game = await this.gameRepository.findById(gameId);
         if (!game) {
             throw new common_1.BadRequestException('Game not found');
         }
+        this.ensureParticipant(game, playerId);
         if (game.getMoveCount() > 0) {
             throw new common_1.BadRequestException('Cannot abort game after moves are made');
         }
         game.abort();
         await this.gameRepository.update(game);
+    }
+    ensureParticipant(game, playerId) {
+        if (game.whitePlayerId !== playerId && game.blackPlayerId !== playerId) {
+            throw new common_1.BadRequestException('Player not in this game');
+        }
     }
 };
 exports.EndGameUseCase = EndGameUseCase;

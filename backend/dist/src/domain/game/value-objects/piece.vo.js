@@ -30,9 +30,9 @@ class Piece {
         if (this.isKing())
             return false;
         const { row } = this.position.toRowCol();
-        if (this.color === game_constants_1.PlayerColor.WHITE && row === 0)
+        if (this.color === game_constants_1.PlayerColor.WHITE && row === 7)
             return true;
-        if (this.color === game_constants_1.PlayerColor.BLACK && row === 7)
+        if (this.color === game_constants_1.PlayerColor.BLACK && row === 0)
             return true;
         return false;
     }

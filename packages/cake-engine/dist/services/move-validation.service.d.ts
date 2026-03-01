@@ -38,6 +38,10 @@ export declare class MoveValidationService {
      */
     private isValidSimpleMove;
     /**
+     * Check that every intermediate square between from and to is empty.
+     */
+    private isDiagonalPathClear;
+    /**
      * Generate a unique move ID
      */
     private generateMoveId;

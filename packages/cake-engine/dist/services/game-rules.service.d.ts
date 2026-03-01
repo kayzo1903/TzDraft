@@ -38,6 +38,12 @@ export declare class GameRulesService {
      * (e.g., king vs king)
      */
     isDrawByInsufficientMaterial(board: BoardState): boolean;
+    /** Art 8.3 — 30-move rule: 60 half-moves with kings only and no captures. */
+    isDrawByThirtyMoveRule(reversibleMoveCount: number): boolean;
+    /** Art 8.5 — Three-kings rule: stronger side (3+ K) fails to capture within 12 moves. */
+    isDrawByThreeKingsRule(threeKingsMoveCount: number): boolean;
+    /** Art 8.4 — K+Man vs K / 2K vs K: draw after 5 full moves (10 half-moves) with no win. */
+    isDrawByArticle84Endgame(endgameMoveCount: number): boolean;
     /**
      * Count pieces for a player
      */

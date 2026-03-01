@@ -23,6 +23,11 @@ export class Game {
   private _startedAt: Date | null;
   private _endedAt: Date | null;
 
+  // Draw-rule counters
+  private _reversibleMoveCount: number = 0;
+  private _threeKingsMoveCount: number = 0;
+  private _endgameMoveCount: number = 0;
+
   constructor(
     public readonly id: string,
     public readonly whitePlayerId: string,
@@ -103,6 +108,10 @@ export class Game {
     this._startedAt = new Date();
   }
 
+  get reversibleMoveCount(): number { return this._reversibleMoveCount; }
+  get threeKingsMoveCount(): number { return this._threeKingsMoveCount; }
+  get endgameMoveCount(): number { return this._endgameMoveCount; }
+
   /**
    * Get move count
    */
@@ -141,8 +150,53 @@ export class Game {
     // Update game state
     this._moves.push(move);
     this._board = newBoard;
+    this.updateDrawCounters(move.player, move.capturedSquares.length > 0);
     this._currentTurn =
       this._currentTurn === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+  }
+
+  /** Update draw-rule counters after the board has been updated for this half-move. */
+  private updateDrawCounters(movingPlayer: PlayerColor, wasCapture: boolean): void {
+    const whitePieces = this._board.getPiecesByColor(PlayerColor.WHITE);
+    const blackPieces = this._board.getPiecesByColor(PlayerColor.BLACK);
+    const allPieces = [...whitePieces, ...blackPieces];
+    const isKingsOnly = allPieces.length > 0 && allPieces.every((p) => p.isKing());
+
+    // Art 8.3 — 30-move rule
+    if (!isKingsOnly || wasCapture) {
+      this._reversibleMoveCount = 0;
+    } else {
+      this._reversibleMoveCount++;
+    }
+
+    // Art 8.5 — three-kings rule
+    const wKings = whitePieces.filter((p) => p.isKing()).length;
+    const bKings = blackPieces.filter((p) => p.isKing()).length;
+    const whiteIsStrong = wKings >= 3 && blackPieces.length === 1 && bKings === 1;
+    const blackIsStrong = bKings >= 3 && whitePieces.length === 1 && wKings === 1;
+    if (!whiteIsStrong && !blackIsStrong) {
+      this._threeKingsMoveCount = 0;
+    } else {
+      const strongerSide = whiteIsStrong ? PlayerColor.WHITE : PlayerColor.BLACK;
+      if (movingPlayer === strongerSide) {
+        this._threeKingsMoveCount = wasCapture ? 0 : this._threeKingsMoveCount + 1;
+      }
+    }
+
+    // Art 8.4 — endgame material draws (K vs K, K+Man vs K, 2K vs K)
+    const wMen = whitePieces.length - wKings;
+    const bMen = blackPieces.length - bKings;
+    const isEndgame84 =
+      (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 0) ||
+      (wKings === 1 && wMen === 1 && bKings === 1 && bMen === 0) ||
+      (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 1) ||
+      (wKings === 2 && wMen === 0 && bKings === 1 && bMen === 0) ||
+      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0);
+    if (!isEndgame84) {
+      this._endgameMoveCount = 0;
+    } else {
+      this._endgameMoveCount++;
+    }
   }
 
   /**

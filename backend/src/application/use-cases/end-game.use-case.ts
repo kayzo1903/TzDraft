@@ -24,6 +24,7 @@ export class EndGameUseCase {
     if (!game) {
       throw new BadRequestException('Game not found');
     }
+    this.ensureParticipant(game, playerId);
 
     // Determine winner (opponent of resigning player)
     const winner =
@@ -42,6 +43,7 @@ export class EndGameUseCase {
     if (!game) {
       throw new BadRequestException('Game not found');
     }
+    this.ensureParticipant(game, playerId);
 
     // Determine winner (opponent of timed-out player)
     const winner =
@@ -54,11 +56,12 @@ export class EndGameUseCase {
   /**
    * End game by agreement (draw)
    */
-  async drawByAgreement(gameId: string): Promise<void> {
+  async drawByAgreement(gameId: string, playerId: string): Promise<void> {
     const game = await this.gameRepository.findById(gameId);
     if (!game) {
       throw new BadRequestException('Game not found');
     }
+    this.ensureParticipant(game, playerId);
 
     game.endGame(Winner.DRAW, EndReason.DRAW);
     await this.gameRepository.update(game);
@@ -67,11 +70,12 @@ export class EndGameUseCase {
   /**
    * Abort game (before moves are made)
    */
-  async abort(gameId: string): Promise<void> {
+  async abort(gameId: string, playerId: string): Promise<void> {
     const game = await this.gameRepository.findById(gameId);
     if (!game) {
       throw new BadRequestException('Game not found');
     }
+    this.ensureParticipant(game, playerId);
 
     if (game.getMoveCount() > 0) {
       throw new BadRequestException('Cannot abort game after moves are made');
@@ -79,5 +83,14 @@ export class EndGameUseCase {
 
     game.abort();
     await this.gameRepository.update(game);
+  }
+
+  private ensureParticipant(
+    game: { whitePlayerId: string; blackPlayerId: string | null },
+    playerId: string,
+  ): void {
+    if (game.whitePlayerId !== playerId && game.blackPlayerId !== playerId) {
+      throw new BadRequestException('Player not in this game');
+    }
   }
 }

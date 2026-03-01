@@ -67,30 +67,40 @@ export const CakeEngine = {
   evaluateGameResult(
     state: BoardState,
     currentPlayer: PlayerColor,
+    reversibleMoveCount: number = 0,
+    threeKingsMoveCount: number = 0,
+    endgameMoveCount: number = 0,
   ): GameResult | null {
     const rulesService = new GameRulesService();
 
-    // Check for winner
+    // Win: current player has no pieces or no legal moves
     const winner = rulesService.detectWinner(state, currentPlayer);
     if (winner) {
-      let reason = EndReason.RESIGN; // Default
-      if (winner === Winner.WHITE && currentPlayer === PlayerColor.BLACK) {
-        reason = EndReason.CHECKMATE; // Black has no moves
-      } else if (
-        winner === Winner.BLACK &&
-        currentPlayer === PlayerColor.WHITE
-      ) {
-        reason = EndReason.CHECKMATE; // White has no moves
-      }
+      const reason =
+        winner !== Winner.DRAW ? EndReason.STALEMATE : EndReason.DRAW;
       return { winner, reason };
     }
 
-    // Check for draw by insufficient material
+    // Art 8.1 — K vs K (insufficient material)
     if (rulesService.isDrawByInsufficientMaterial(state)) {
       return { winner: Winner.DRAW, reason: EndReason.DRAW };
     }
 
-    // Game is still ongoing
+    // Art 8.3 — 30-move rule
+    if (rulesService.isDrawByThirtyMoveRule(reversibleMoveCount)) {
+      return { winner: Winner.DRAW, reason: EndReason.DRAW };
+    }
+
+    // Art 8.5 — three-kings rule
+    if (rulesService.isDrawByThreeKingsRule(threeKingsMoveCount)) {
+      return { winner: Winner.DRAW, reason: EndReason.DRAW };
+    }
+
+    // Art 8.4 — K+Man vs K / 2K vs K endgame
+    if (rulesService.isDrawByArticle84Endgame(endgameMoveCount)) {
+      return { winner: Winner.DRAW, reason: EndReason.DRAW };
+    }
+
     return null;
   },
 
