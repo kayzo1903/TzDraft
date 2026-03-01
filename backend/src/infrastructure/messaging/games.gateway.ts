@@ -408,6 +408,36 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return !!userId && this.userGameMap.get(userId) === gameId;
   }
 
+  /** Notify opponent that a call is incoming — they must accept before WebRTC starts. */
+  @SubscribeMessage('voice:ring')
+  handleVoiceRing(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:ring', {});
+  }
+
+  /** Callee accepted — tell the caller to now create and send the offer. */
+  @SubscribeMessage('voice:accept')
+  handleVoiceAccept(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:accept', {});
+  }
+
+  /** Callee declined — tell the caller the call was rejected. */
+  @SubscribeMessage('voice:decline')
+  handleVoiceDecline(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    if (!this.isInRoom(client, data.gameId)) return;
+    client.to(data.gameId).emit('voice:decline', {});
+  }
+
   /** Forward SDP offer to the opponent in the same game room. */
   @SubscribeMessage('voice:offer')
   handleVoiceOffer(
