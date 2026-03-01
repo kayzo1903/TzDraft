@@ -11,5 +11,6 @@ export interface IGameRepository {
     findRecentGamesByPlayer(playerId: string, limit: number): Promise<Game[]>;
     countGamesByPlayer(playerId: string): Promise<number>;
     findByInviteCode(code: string): Promise<Game | null>;
-    joinInvite(gameId: string, blackPlayerId: string): Promise<Game>;
+    joinInvite(gameId: string, joinerId: string): Promise<Game>;
+    updateClock(gameId: string, whiteTimeMs: number, blackTimeMs: number, lastMoveAt: Date): Promise<void>;
 }

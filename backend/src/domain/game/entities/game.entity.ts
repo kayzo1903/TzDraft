@@ -206,19 +206,29 @@ export class Game {
     return this._moves.length > 0 ? this._moves[this._moves.length - 1] : null;
   }
 
-  get reversibleMoveCount(): number { return this._reversibleMoveCount; }
-  get threeKingsMoveCount(): number { return this._threeKingsMoveCount; }
-  get endgameMoveCount(): number { return this._endgameMoveCount; }
+  get reversibleMoveCount(): number {
+    return this._reversibleMoveCount;
+  }
+  get threeKingsMoveCount(): number {
+    return this._threeKingsMoveCount;
+  }
+  get endgameMoveCount(): number {
+    return this._endgameMoveCount;
+  }
 
   /**
    * Update draw-rule counters after a half-move has been applied to the board.
    * Call AFTER the board is already in its new state.
    */
-  private updateDrawCounters(movingPlayer: PlayerColor, wasCapture: boolean): void {
+  private updateDrawCounters(
+    movingPlayer: PlayerColor,
+    wasCapture: boolean,
+  ): void {
     const whitePieces = this._board.getPiecesByColor(PlayerColor.WHITE);
     const blackPieces = this._board.getPiecesByColor(PlayerColor.BLACK);
     const allPieces = [...whitePieces, ...blackPieces];
-    const isKingsOnly = allPieces.length > 0 && allPieces.every((p) => p.isKing());
+    const isKingsOnly =
+      allPieces.length > 0 && allPieces.every((p) => p.isKing());
 
     // Art 8.3 — 30-move rule: kings only board, no captures
     if (!isKingsOnly || wasCapture) {
@@ -230,15 +240,21 @@ export class Game {
     // Art 8.5 — three-kings rule: stronger side (3+ kings) vs lone enemy king
     const wKings = whitePieces.filter((p) => p.isKing()).length;
     const bKings = blackPieces.filter((p) => p.isKing()).length;
-    const whiteIsStrong = wKings >= 3 && blackPieces.length === 1 && bKings === 1;
-    const blackIsStrong = bKings >= 3 && whitePieces.length === 1 && wKings === 1;
+    const whiteIsStrong =
+      wKings >= 3 && blackPieces.length === 1 && bKings === 1;
+    const blackIsStrong =
+      bKings >= 3 && whitePieces.length === 1 && wKings === 1;
 
     if (!whiteIsStrong && !blackIsStrong) {
       this._threeKingsMoveCount = 0;
     } else {
-      const strongerSide = whiteIsStrong ? PlayerColor.WHITE : PlayerColor.BLACK;
+      const strongerSide = whiteIsStrong
+        ? PlayerColor.WHITE
+        : PlayerColor.BLACK;
       if (movingPlayer === strongerSide) {
-        this._threeKingsMoveCount = wasCapture ? 0 : this._threeKingsMoveCount + 1;
+        this._threeKingsMoveCount = wasCapture
+          ? 0
+          : this._threeKingsMoveCount + 1;
       }
       // Weaker side's moves don't change the counter
     }
@@ -251,7 +267,7 @@ export class Game {
       (wKings === 1 && wMen === 1 && bKings === 1 && bMen === 0) || // K+Man vs K
       (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 1) || // K vs K+Man
       (wKings === 2 && wMen === 0 && bKings === 1 && bMen === 0) || // 2K vs K
-      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0);   // K vs 2K
+      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0); // K vs 2K
 
     if (!isEndgame84) {
       this._endgameMoveCount = 0;
@@ -296,12 +312,15 @@ export class Game {
       this._board = this._board.movePiece(from, to);
 
       // Rebuild draw-rule counters (WHITE always moves first, then alternate)
-      const movingPlayer = idx % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+      const movingPlayer =
+        idx % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
       const wasCapture = (raw.capturedSquares ?? []).length > 0;
       this.updateDrawCounters(movingPlayer, wasCapture);
 
       // Keep move history count in sync for rules that rely on getMoveCount().
-      const captured = (raw.capturedSquares ?? []).map((sq) => new Position(sq));
+      const captured = (raw.capturedSquares ?? []).map(
+        (sq) => new Position(sq),
+      );
       this._moves.push(
         new Move(
           raw.id ?? `replay-${this.id}-${idx + 1}`,

@@ -21,6 +21,7 @@ const create_game_use_case_1 = require("../../../application/use-cases/create-ga
 const get_game_state_use_case_1 = require("../../../application/use-cases/get-game-state.use-case");
 const end_game_use_case_1 = require("../../../application/use-cases/end-game.use-case");
 const create_game_dto_1 = require("../dtos/create-game.dto");
+const game_constants_1 = require("../../../shared/constants/game.constants");
 const games_gateway_1 = require("../../../infrastructure/messaging/games.gateway");
 let GameController = class GameController {
     createGameUseCase;
@@ -48,7 +49,12 @@ let GameController = class GameController {
         };
     }
     async createInviteGame(user, dto) {
-        const { game, inviteCode } = await this.createGameUseCase.createInviteGame(user.id, dto.color, user.rating?.rating || 1200, dto.timeMs ?? 600000);
+        const resolvedColor = dto.color === 'RANDOM'
+            ? Math.random() < 0.5
+                ? game_constants_1.PlayerColor.WHITE
+                : game_constants_1.PlayerColor.BLACK
+            : dto.color;
+        const { game, inviteCode } = await this.createGameUseCase.createInviteGame(user.id, resolvedColor, user.rating?.rating || 1200, dto.timeMs ?? 600000);
         return {
             success: true,
             data: { gameId: game.id, inviteCode },
@@ -84,12 +90,20 @@ let GameController = class GameController {
     }
     async drawGame(user, id) {
         await this.endGameUseCase.drawByAgreement(id, user.id);
-        this.gamesGateway.emitGameOver(id, { gameId: id, winner: 'DRAW', reason: 'draw' });
+        this.gamesGateway.emitGameOver(id, {
+            gameId: id,
+            winner: 'DRAW',
+            reason: 'draw',
+        });
         return { success: true };
     }
     async abortGame(user, id) {
         await this.endGameUseCase.abort(id, user.id);
-        this.gamesGateway.emitGameStateUpdate(id, { gameId: id, status: 'ABORTED' });
+        this.gamesGateway.emitGameOver(id, {
+            gameId: id,
+            winner: null,
+            reason: 'aborted',
+        });
         return { success: true };
     }
     async getGameState(id, skip = 0, take = 50) {

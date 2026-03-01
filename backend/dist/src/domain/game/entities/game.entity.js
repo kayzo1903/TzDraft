@@ -130,9 +130,15 @@ class Game {
     getLastMove() {
         return this._moves.length > 0 ? this._moves[this._moves.length - 1] : null;
     }
-    get reversibleMoveCount() { return this._reversibleMoveCount; }
-    get threeKingsMoveCount() { return this._threeKingsMoveCount; }
-    get endgameMoveCount() { return this._endgameMoveCount; }
+    get reversibleMoveCount() {
+        return this._reversibleMoveCount;
+    }
+    get threeKingsMoveCount() {
+        return this._threeKingsMoveCount;
+    }
+    get endgameMoveCount() {
+        return this._endgameMoveCount;
+    }
     updateDrawCounters(movingPlayer, wasCapture) {
         const whitePieces = this._board.getPiecesByColor(game_constants_1.PlayerColor.WHITE);
         const blackPieces = this._board.getPiecesByColor(game_constants_1.PlayerColor.BLACK);
@@ -152,9 +158,13 @@ class Game {
             this._threeKingsMoveCount = 0;
         }
         else {
-            const strongerSide = whiteIsStrong ? game_constants_1.PlayerColor.WHITE : game_constants_1.PlayerColor.BLACK;
+            const strongerSide = whiteIsStrong
+                ? game_constants_1.PlayerColor.WHITE
+                : game_constants_1.PlayerColor.BLACK;
             if (movingPlayer === strongerSide) {
-                this._threeKingsMoveCount = wasCapture ? 0 : this._threeKingsMoveCount + 1;
+                this._threeKingsMoveCount = wasCapture
+                    ? 0
+                    : this._threeKingsMoveCount + 1;
             }
         }
         const wMen = whitePieces.length - wKings;

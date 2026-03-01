@@ -8,7 +8,7 @@ export declare class CreateGameUseCase {
     createPvEGame(playerId: string, playerColor: PlayerColor, playerElo: number, aiLevel: number, dto?: {
         initialTimeMs?: number;
     }): Promise<Game>;
-    createInviteGame(creatorId: string, _creatorColor: PlayerColor, creatorElo: number, initialTimeMs: number): Promise<{
+    createInviteGame(creatorId: string, creatorColor: PlayerColor, creatorElo: number, initialTimeMs: number): Promise<{
         game: Game;
         inviteCode: string;
     }>;

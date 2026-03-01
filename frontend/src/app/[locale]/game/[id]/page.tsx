@@ -32,9 +32,22 @@ import { VoiceChatControls } from "@/components/game/VoiceChatControls";
 
 /* ─── Helpers ───────────────────────────────────────────────────────────── */
 
-const formatTime = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+/**
+ * Format milliseconds as MM:SS, or S.t (tenths) when under 10 seconds.
+ * This matches the chess.com clock behaviour.
+ */
+const formatTimeMs = (ms: number): string => {
+  if (ms < 0) ms = 0;
+  if (ms < 10_000) {
+    // Show tenths: "9.8", "0.2"
+    const tenths = Math.floor(ms / 100);
+    const secs = Math.floor(tenths / 10);
+    const frac = tenths % 10;
+    return `${secs}.${frac}`;
+  }
+  const totalSecs = Math.ceil(ms / 1000);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
@@ -151,12 +164,12 @@ function OnlineResultCard({
   const outcome = isAborted
     ? "aborted"
     : isDraw
-    ? "draw"
-    : myColor === null
-    ? "draw"
-    : iWon
-    ? "win"
-    : "loss";
+      ? "draw"
+      : myColor === null
+        ? "draw"
+        : iWon
+          ? "win"
+          : "loss";
 
   const cfg = {
     win: {
@@ -425,6 +438,7 @@ type ConfirmAction = "resign" | "abort" | null;
 function GameActions({
   gameId,
   moveCount,
+  myColor,
   drawOfferPending,
   iAmOffering,
   onDrawOffer,
@@ -434,8 +448,10 @@ function GameActions({
   onDone,
 }: {
   gameId: string;
-  /** Total moves played in the game. 0 = no moves yet → show Abort; >0 → show Resign. */
+  /** Total moves played in the game. */
   moveCount: number;
+  /** This player's color — used to determine if they have already moved. */
+  myColor: PlayerColor | null;
   drawOfferPending: boolean;
   iAmOffering: boolean;
   onDrawOffer: () => void;
@@ -447,15 +463,32 @@ function GameActions({
   const [confirming, setConfirming] = useState<ConfirmAction>(null);
   const [loading, setLoading] = useState(false);
 
+  // A player has "moved" once their first half-move appears in history.
+  // WHITE moves on turn 1, 3, 5 … (moveCount 1, 3, 5 after the move = odd).
+  // BLACK moves on turn 2, 4, 6 … (moveCount 2, 4, 6 after = even & non-zero).
+  const iHaveMoved =
+    myColor === PlayerColor.WHITE
+      ? moveCount >= 1            // WHITE's first move is move #1
+      : moveCount >= 2;           // BLACK's first move is move #2
+
+  // Show abort as long as THIS player hasn't moved yet (regardless of opponent).
+  const canAbort = !iHaveMoved;
+
+  const [execError, setExecError] = useState<string | null>(null);
+
   const execute = async (action: ConfirmAction) => {
     if (!action) return;
     setLoading(true);
+    setExecError(null);
     try {
       if (action === "resign") await gameService.resign(gameId);
       else if (action === "abort") await gameService.abort(gameId);
       onDone();
-    } catch {
-      // Server will respond with error; just close confirm
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Something went wrong";
+      setExecError(msg);
     } finally {
       setLoading(false);
       setConfirming(null);
@@ -504,6 +537,9 @@ function GameActions({
             Cancel
           </button>
         </div>
+        {execError && (
+          <p className="text-xs text-rose-400 text-center">{execError}</p>
+        )}
       </div>
     );
   }
@@ -520,8 +556,8 @@ function GameActions({
         />
       )}
 
-      {/* Abort: no moves played yet (game can still be cancelled cleanly) */}
-      {moveCount === 0 && (
+      {/* Abort: shown until THIS player has made their first move */}
+      {canAbort && (
         <button
           onClick={() => setConfirming("abort")}
           className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-sm font-semibold text-amber-300 hover:bg-amber-500/15 transition"
@@ -532,7 +568,7 @@ function GameActions({
       )}
 
       {/* Resign + Draw: only available once at least one move has been played */}
-      {moveCount > 0 && (
+      {iHaveMoved && (
         <>
           {!drawOfferPending && (
             <button
@@ -684,11 +720,16 @@ export default function OnlineGamePage() {
   const bottomInfo = bottomColor === PlayerColor.WHITE ? whiteInfo : blackInfo;
   const topInfo = topColor === PlayerColor.WHITE ? whiteInfo : blackInfo;
 
-  const timeFor = (color: PlayerColor) => {
+  const timeFor = (color: PlayerColor): string => {
     if (!state.timeLeft) return "–";
-    const secs =
-      color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK;
-    return secs != null ? formatTime(secs) : "–";
+    const ms = color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK;
+    return ms != null ? formatTimeMs(ms) : "–";
+  };
+
+  const isLowTime = (color: PlayerColor): boolean => {
+    if (!state.timeLeft) return false;
+    const ms = color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK;
+    return ms != null && ms < 10_000;
   };
 
   const setupFriendPath = `/${locale}/game/setup-friend`;
@@ -722,7 +763,14 @@ export default function OnlineGamePage() {
             isActive={state.currentPlayer === topColor && !state.isWaiting}
             timeSeconds={null}
           />
-          <div className="bg-neutral-900 rounded p-2 text-center font-mono text-xl text-neutral-400">
+          <div
+            className={clsx(
+              "bg-neutral-900 rounded p-2 text-center font-mono border transition-colors",
+              isLowTime(topColor)
+                ? "text-red-400 border-red-500/40 animate-pulse text-2xl"
+                : "text-xl text-neutral-400 border-transparent",
+            )}
+          >
             {timeFor(topColor)}
           </div>
         </div>
@@ -740,7 +788,14 @@ export default function OnlineGamePage() {
               timeSeconds={null}
               compact
             />
-            <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+            <div
+              className={clsx(
+                "shrink-0 rounded-md px-2 py-1 text-center font-mono border transition-colors",
+                isLowTime(topColor)
+                  ? "bg-red-950/60 text-red-400 border-red-500/40 animate-pulse text-base"
+                  : "bg-neutral-950/60 text-neutral-100 border-neutral-700/60 text-base",
+              )}
+            >
               {timeFor(topColor)}
             </div>
           </div>
@@ -771,7 +826,14 @@ export default function OnlineGamePage() {
               timeSeconds={null}
               compact
             />
-            <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
+            <div
+              className={clsx(
+                "shrink-0 rounded-md px-2 py-1 text-center font-mono border transition-colors",
+                isLowTime(bottomColor)
+                  ? "bg-red-950/60 text-red-400 border-red-500/40 animate-pulse text-base"
+                  : "bg-neutral-950/60 text-neutral-100 border-neutral-700/60 text-base",
+              )}
+            >
               {timeFor(bottomColor)}
             </div>
           </div>
@@ -796,7 +858,14 @@ export default function OnlineGamePage() {
             isActive={state.currentPlayer === bottomColor && !state.isWaiting}
             timeSeconds={null}
           />
-          <div className="bg-neutral-800 rounded p-2 text-center font-mono text-xl text-white border border-neutral-600">
+          <div
+            className={clsx(
+              "rounded p-2 text-center font-mono border transition-colors",
+              isLowTime(bottomColor)
+                ? "bg-red-950/60 text-red-400 border-red-500/40 animate-pulse text-2xl"
+                : "bg-neutral-800 text-white border-neutral-600 text-xl",
+            )}
+          >
             {timeFor(bottomColor)}
           </div>
           {/* Action buttons */}
@@ -804,6 +873,7 @@ export default function OnlineGamePage() {
             <GameActions
               gameId={gameId}
               moveCount={state.moveCount}
+              myColor={state.myColor}
               drawOfferPending={drawOfferPending}
               iAmOffering={iAmOffering}
               onDrawOffer={offerDraw}
@@ -818,10 +888,13 @@ export default function OnlineGamePage() {
         </div>
       </div>
 
-      {/* Opponent disconnect banner */}
+      {/* Opponent disconnect banner with live countdown */}
       {!state.opponentConnected && !state.result && !state.isWaiting && (
         <div className="w-full max-w-[650px] rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300 text-center">
-          Opponent disconnected — will auto-resign in 60 s if they don't return
+          Opponent disconnected —{" "}
+          {state.disconnectSecondsRemaining !== null
+            ? `forfeiting in ${state.disconnectSecondsRemaining}s`
+            : "will be forfeited shortly"}
         </div>
       )}
 
@@ -831,6 +904,7 @@ export default function OnlineGamePage() {
           <GameActions
             gameId={gameId}
             moveCount={state.moveCount}
+            myColor={state.myColor}
             drawOfferPending={drawOfferPending}
             iAmOffering={iAmOffering}
             onDrawOffer={offerDraw}

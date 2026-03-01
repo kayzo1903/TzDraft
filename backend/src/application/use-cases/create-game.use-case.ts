@@ -1,7 +1,16 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
-import { GameType, PlayerColor, GameStatus } from '../../shared/constants/game.constants';
+import {
+  GameType,
+  PlayerColor,
+  GameStatus,
+} from '../../shared/constants/game.constants';
 import { randomUUID } from 'crypto';
 
 /** Generate a random 6-char alphanumeric invite code */
@@ -86,20 +95,25 @@ export class CreateGameUseCase {
    */
   async createInviteGame(
     creatorId: string,
-    _creatorColor: PlayerColor,  // reserved for future color-assignment feature
+    creatorColor: PlayerColor,
     creatorElo: number,
     initialTimeMs: number,
   ): Promise<{ game: Game; inviteCode: string }> {
     const inviteCode = generateInviteCode();
 
-    // Creator always occupies the WHITE slot; joiner takes BLACK on arrival.
+    // Place creator in their chosen slot; the other stays null until joiner arrives.
+    const whitePlayerId = creatorColor === PlayerColor.WHITE ? creatorId : null;
+    const blackPlayerId = creatorColor === PlayerColor.BLACK ? creatorId : null;
+    const whiteElo = creatorColor === PlayerColor.WHITE ? creatorElo : null;
+    const blackElo = creatorColor === PlayerColor.BLACK ? creatorElo : null;
+
     const game = new Game(
       randomUUID(),
-      creatorId,
-      null,           // blackPlayerId — filled when joiner arrives
+      whitePlayerId!, // schema now nullable; "!" silences TS on the entity type
+      blackPlayerId,
       GameType.CASUAL,
-      creatorElo,
-      null,
+      whiteElo,
+      blackElo,
       null,
       initialTimeMs,
       undefined,
@@ -109,7 +123,7 @@ export class CreateGameUseCase {
       GameStatus.WAITING,
       null,
       null,
-      PlayerColor.WHITE,
+      creatorColor,
       inviteCode,
     );
 
@@ -120,10 +134,7 @@ export class CreateGameUseCase {
   /**
    * Join an invite game via code
    */
-  async joinInviteGame(
-    code: string,
-    joinerId: string,
-  ): Promise<Game> {
+  async joinInviteGame(code: string, joinerId: string): Promise<Game> {
     const game = await this.gameRepository.findByInviteCode(code);
     if (!game) {
       throw new NotFoundException('Invite code not found');

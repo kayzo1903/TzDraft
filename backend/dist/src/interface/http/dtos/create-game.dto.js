@@ -19,12 +19,18 @@ class CreateInviteGameDto {
 }
 exports.CreateInviteGameDto = CreateInviteGameDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Creator color', enum: game_constants_1.PlayerColor }),
-    (0, class_validator_1.IsEnum)(game_constants_1.PlayerColor),
+    (0, swagger_1.ApiProperty)({
+        description: 'Creator color',
+        enum: ['WHITE', 'BLACK', 'RANDOM'],
+    }),
+    (0, class_validator_1.IsIn)(['WHITE', 'BLACK', 'RANDOM']),
     __metadata("design:type", String)
 ], CreateInviteGameDto.prototype, "color", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Initial time in milliseconds (minimum 60000 = 1 min)', required: false }),
+    (0, swagger_1.ApiProperty)({
+        description: 'Initial time in milliseconds (minimum 60000 = 1 min)',
+        required: false,
+    }),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.Min)(60000),
