@@ -58,15 +58,15 @@ let MoveController = class MoveController {
             message: 'Game resigned successfully',
         };
     }
-    async draw(gameId) {
-        await this.endGameUseCase.drawByAgreement(gameId);
+    async draw(user, gameId) {
+        await this.endGameUseCase.drawByAgreement(gameId, user.id);
         return {
             success: true,
             message: 'Game ended in draw',
         };
     }
-    async abort(gameId) {
-        await this.endGameUseCase.abort(gameId);
+    async abort(user, gameId) {
+        await this.endGameUseCase.abort(gameId, user.id);
         return {
             success: true,
             message: 'Game aborted successfully',
@@ -122,9 +122,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'End game by draw agreement' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Draw accepted' }),
-    __param(0, (0, common_1.Param)('gameId')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('gameId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MoveController.prototype, "draw", null);
 __decorate([
@@ -133,9 +134,10 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Abort the game' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Game aborted' }),
     (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot abort game after moves' }),
-    __param(0, (0, common_1.Param)('gameId')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('gameId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], MoveController.prototype, "abort", null);
 exports.MoveController = MoveController = __decorate([

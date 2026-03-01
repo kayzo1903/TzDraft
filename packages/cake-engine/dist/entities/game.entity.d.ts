@@ -28,6 +28,9 @@ export declare class Game {
     private _endReason;
     private _startedAt;
     private _endedAt;
+    private _reversibleMoveCount;
+    private _threeKingsMoveCount;
+    private _endgameMoveCount;
     constructor(id: string, whitePlayerId: string, blackPlayerId: string | null, gameType: GameType, whiteElo?: number | null, blackElo?: number | null, aiLevel?: number | null, initialTimeMs?: number, // Default 10 mins
     clockInfo?: {
         whiteTimeMs: number;
@@ -47,6 +50,9 @@ export declare class Game {
      * Start the game
      */
     start(): void;
+    get reversibleMoveCount(): number;
+    get threeKingsMoveCount(): number;
+    get endgameMoveCount(): number;
     /**
      * Get move count
      */
@@ -59,6 +65,8 @@ export declare class Game {
      * Apply a move to the game
      */
     applyMove(move: Move): void;
+    /** Update draw-rule counters after the board has been updated for this half-move. */
+    private updateDrawCounters;
     /**
      * End the game
      */

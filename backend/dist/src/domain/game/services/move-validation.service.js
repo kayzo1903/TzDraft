@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MoveValidationService = void 0;
 const move_entity_1 = require("../entities/move.entity");
+const position_vo_1 = require("../value-objects/position.vo");
 const game_constants_1 = require("../../../shared/constants/game.constants");
 const capture_finding_service_1 = require("./capture-finding.service");
 const validation_error_type_1 = require("../types/validation-error.type");
@@ -83,7 +84,7 @@ class MoveValidationService {
         if (game.board.isOccupied(to)) {
             throw new validation_error_type_1.ValidationError(validation_error_type_1.ValidationErrorCode.DESTINATION_OCCUPIED, `Destination square ${to.value} is occupied`);
         }
-        if (!this.isValidSimpleMove(piece, from, to)) {
+        if (!this.isValidSimpleMove(piece, game.board, from, to)) {
             throw validation_error_type_1.ValidationError.invalidMove(`Piece cannot move from ${from.value} to ${to.value}`);
         }
         const moveNumber = game.getMoveCount() + 1;
@@ -98,20 +99,41 @@ class MoveValidationService {
             newBoardState: newBoard,
         };
     }
-    isValidSimpleMove(piece, from, to) {
+    isValidSimpleMove(piece, board, from, to) {
         const fromCoords = from.toRowCol();
         const toCoords = to.toRowCol();
         const rowDiff = toCoords.row - fromCoords.row;
-        const colDiff = Math.abs(toCoords.col - fromCoords.col);
-        if (Math.abs(rowDiff) !== 1 || colDiff !== 1) {
+        const colDiffSigned = toCoords.col - fromCoords.col;
+        const colDiffAbs = Math.abs(colDiffSigned);
+        const rowDiffAbs = Math.abs(rowDiff);
+        if (rowDiffAbs !== colDiffAbs || rowDiffAbs === 0) {
+            return false;
+        }
+        if (piece.isKing()) {
+            return this.isDiagonalPathClear(board, from, to);
+        }
+        if (rowDiffAbs !== 1 || colDiffAbs !== 1) {
             return false;
         }
         const validDirections = (0, capture_path_type_1.getValidDirections)(piece);
-        const moveDirection = {
-            row: rowDiff,
-            col: toCoords.col - fromCoords.col,
-        };
-        return validDirections.some((dir) => dir.row === moveDirection.row && dir.col === moveDirection.col);
+        return validDirections.some((dir) => dir.row === rowDiff && dir.col === Math.sign(colDiffSigned));
+    }
+    isDiagonalPathClear(board, from, to) {
+        const fromCoords = from.toRowCol();
+        const toCoords = to.toRowCol();
+        const rowStep = Math.sign(toCoords.row - fromCoords.row);
+        const colStep = Math.sign(toCoords.col - fromCoords.col);
+        let row = fromCoords.row + rowStep;
+        let col = fromCoords.col + colStep;
+        while (row !== toCoords.row && col !== toCoords.col) {
+            const pos = position_vo_1.Position.fromRowCol(row, col);
+            if (!board.isEmpty(pos)) {
+                return false;
+            }
+            row += rowStep;
+            col += colStep;
+        }
+        return true;
     }
 }
 exports.MoveValidationService = MoveValidationService;

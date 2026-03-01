@@ -18,7 +18,9 @@
       "Bash(npx prisma migrate dev --name add_invite_code --schema=prisma/schema.prisma)",
       "Bash(npx prisma migrate dev --name add_invite_code --schema=prisma/schema.prisma --create-only)",
       "Bash(xargs cat)",
-      "Bash(npx prisma migrate deploy)"
+      "Bash(npx prisma migrate deploy)",
+      "Bash(npm run build)",
+      "Bash(ls -la \"c:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\backend\\\\src\\\\application\\\\use-cases\"\" 2>/dev/null || echo \"Directory not found, searching for use-case files \")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",

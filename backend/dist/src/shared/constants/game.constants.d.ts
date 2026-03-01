@@ -19,6 +19,7 @@ export declare enum Winner {
     DRAW = "DRAW"
 }
 export declare enum EndReason {
+    STALEMATE = "STALEMATE",
     CHECKMATE = "CHECKMATE",
     RESIGN = "RESIGN",
     TIME = "TIME",

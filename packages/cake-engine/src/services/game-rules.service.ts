@@ -174,18 +174,27 @@ export class GameRulesService {
   isDrawByInsufficientMaterial(board: BoardState): boolean {
     const whitePieces = board.getPiecesByColor(PlayerColor.WHITE);
     const blackPieces = board.getPiecesByColor(PlayerColor.BLACK);
-
-    // King vs King
-    if (
+    return (
       whitePieces.length === 1 &&
       blackPieces.length === 1 &&
       whitePieces[0].isKing() &&
       blackPieces[0].isKing()
-    ) {
-      return true;
-    }
+    );
+  }
 
-    return false;
+  /** Art 8.3 — 30-move rule: 60 half-moves with kings only and no captures. */
+  isDrawByThirtyMoveRule(reversibleMoveCount: number): boolean {
+    return reversibleMoveCount >= 60;
+  }
+
+  /** Art 8.5 — Three-kings rule: stronger side (3+ K) fails to capture within 12 moves. */
+  isDrawByThreeKingsRule(threeKingsMoveCount: number): boolean {
+    return threeKingsMoveCount >= 12;
+  }
+
+  /** Art 8.4 — K+Man vs K / 2K vs K: draw after 5 full moves (10 half-moves) with no win. */
+  isDrawByArticle84Endgame(endgameMoveCount: number): boolean {
+    return endgameMoveCount >= 10;
   }
 
   /**

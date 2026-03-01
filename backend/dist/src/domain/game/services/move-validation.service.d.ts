@@ -12,4 +12,5 @@ export declare class MoveValidationService {
     private validateCaptureMove;
     private validateSimpleMove;
     private isValidSimpleMove;
+    private isDiagonalPathClear;
 }
