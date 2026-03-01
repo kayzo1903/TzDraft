@@ -19,7 +19,12 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
 import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
-import { CreatePvPGameDto, CreatePvEGameDto, CreateInviteGameDto } from '../dtos/create-game.dto';
+import {
+  CreatePvPGameDto,
+  CreatePvEGameDto,
+  CreateInviteGameDto,
+} from '../dtos/create-game.dto';
+import { PlayerColor } from '../../../shared/constants/game.constants';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 
 /**
@@ -91,9 +96,17 @@ export class GameController {
     @CurrentUser() user: any,
     @Body() dto: CreateInviteGameDto,
   ) {
+    // Resolve RANDOM to an actual color before handing to the use case
+    const resolvedColor: PlayerColor =
+      dto.color === 'RANDOM'
+        ? Math.random() < 0.5
+          ? PlayerColor.WHITE
+          : PlayerColor.BLACK
+        : dto.color;
+
     const { game, inviteCode } = await this.createGameUseCase.createInviteGame(
       user.id,
-      dto.color,
+      resolvedColor,
       user.rating?.rating || 1200,
       dto.timeMs ?? 600000,
     );
@@ -111,10 +124,7 @@ export class GameController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Join an invite game using its code' })
   @ApiResponse({ status: 200, description: 'Joined game successfully' })
-  async joinInviteGame(
-    @CurrentUser() user: any,
-    @Param('code') code: string,
-  ) {
+  async joinInviteGame(@CurrentUser() user: any, @Param('code') code: string) {
     const game = await this.createGameUseCase.joinInviteGame(
       code.toUpperCase(),
       user.id,
@@ -173,7 +183,11 @@ export class GameController {
   @ApiOperation({ summary: 'End game as a draw' })
   async drawGame(@CurrentUser() user: any, @Param('id') id: string) {
     await this.endGameUseCase.drawByAgreement(id, user.id);
-    this.gamesGateway.emitGameOver(id, { gameId: id, winner: 'DRAW', reason: 'draw' });
+    this.gamesGateway.emitGameOver(id, {
+      gameId: id,
+      winner: 'DRAW',
+      reason: 'draw',
+    });
     return { success: true };
   }
 
@@ -185,7 +199,13 @@ export class GameController {
   @ApiOperation({ summary: 'Abort a game before it starts' })
   async abortGame(@CurrentUser() user: any, @Param('id') id: string) {
     await this.endGameUseCase.abort(id, user.id);
-    this.gamesGateway.emitGameStateUpdate(id, { gameId: id, status: 'ABORTED' });
+    // Emit gameOver (not just gameStateUpdate) so the result card appears
+    // on both players' screens with the "Game Aborted" state.
+    this.gamesGateway.emitGameOver(id, {
+      gameId: id,
+      winner: null,
+      reason: 'aborted',
+    });
     return { success: true };
   }
 

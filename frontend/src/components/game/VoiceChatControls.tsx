@@ -1,8 +1,12 @@
 "use client";
 
-import { Mic, MicOff, Phone, PhoneOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Mic, MicOff, Phone, PhoneOff, PhoneIncoming, PhoneMissed } from "lucide-react";
 import clsx from "clsx";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
+
+/** Seconds before an unanswered incoming call is auto-declined. */
+const RING_TIMEOUT_SECS = 30;
 
 export function VoiceChatControls({ gameId }: { gameId: string }) {
   const {
@@ -11,9 +15,46 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
     error,
     remoteAudioRef,
     startCall,
+    acceptCall,
+    declineCall,
     endCall,
     toggleMute,
   } = useVoiceChat(gameId);
+
+  // Countdown shown to the callee — auto-declines when it reaches 0.
+  const [ringSecondsLeft, setRingSecondsLeft] = useState<number | null>(null);
+  const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (callState === "incoming") {
+      setRingSecondsLeft(RING_TIMEOUT_SECS);
+      ringIntervalRef.current = setInterval(() => {
+        setRingSecondsLeft((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(ringIntervalRef.current!);
+            ringIntervalRef.current = null;
+            declineCall(); // auto-decline
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      // Call was answered, declined manually, or ended — stop countdown.
+      if (ringIntervalRef.current !== null) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+      setRingSecondsLeft(null);
+    }
+
+    return () => {
+      if (ringIntervalRef.current !== null) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+    };
+  }, [callState, declineCall]);
 
   return (
     <div className="rounded-xl border border-neutral-700/60 bg-neutral-900/60 p-3 flex flex-col gap-2">
@@ -22,8 +63,11 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold flex-1">
           Voice Chat
         </span>
-        {callState === "calling" && (
+        {(callState === "ringing" || callState === "calling") && (
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+        )}
+        {callState === "incoming" && (
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         )}
         {callState === "connected" && (
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -33,7 +77,7 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         )}
       </div>
 
-      {/* Error message */}
+      {/* Error / info message */}
       {error && (
         <p className="text-[11px] text-rose-400 leading-snug">{error}</p>
       )}
@@ -49,7 +93,54 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         </button>
       )}
 
-      {/* calling — waiting for peer */}
+      {/* ringing — caller waiting for answer */}
+      {callState === "ringing" && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-center text-xs text-neutral-400">
+            Calling… waiting for opponent
+          </p>
+          <button
+            onClick={endCall}
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition"
+          >
+            <PhoneMissed className="w-3.5 h-3.5" />
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* incoming — accept / decline + auto-decline countdown */}
+      {callState === "incoming" && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-center text-xs text-emerald-300 font-semibold">
+            <PhoneIncoming className="inline w-3.5 h-3.5 mr-1 mb-0.5 animate-bounce" />
+            Incoming voice call
+            {ringSecondsLeft !== null && (
+              <span className="ml-1.5 text-neutral-400 font-normal">
+                ({ringSecondsLeft}s)
+              </span>
+            )}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={acceptCall}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              Accept
+            </button>
+            <button
+              onClick={declineCall}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 transition"
+            >
+              <PhoneOff className="w-3.5 h-3.5" />
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* calling — WebRTC being negotiated */}
       {callState === "calling" && (
         <p className="text-center text-xs text-neutral-400">Connecting…</p>
       )}
@@ -68,21 +159,15 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
             )}
           >
             {isLocalMuted ? (
-              <>
-                <MicOff className="w-3.5 h-3.5" />
-                Unmute
-              </>
+              <><MicOff className="w-3.5 h-3.5" /> Unmute</>
             ) : (
-              <>
-                <Mic className="w-3.5 h-3.5" />
-                Mute
-              </>
+              <><Mic className="w-3.5 h-3.5" /> Mute</>
             )}
           </button>
           <button
             onClick={endCall}
             title="End call"
-            className="flex items-center justify-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition"
+            className="flex items-center justify-center rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition"
           >
             <PhoneOff className="w-3.5 h-3.5" />
           </button>

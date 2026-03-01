@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  Min,
+  IsIn,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   GameType,
@@ -9,11 +16,17 @@ import {
  * Create Invite Game DTO
  */
 export class CreateInviteGameDto {
-  @ApiProperty({ description: 'Creator color', enum: PlayerColor })
-  @IsEnum(PlayerColor)
-  color: PlayerColor;
+  @ApiProperty({
+    description: 'Creator color',
+    enum: ['WHITE', 'BLACK', 'RANDOM'],
+  })
+  @IsIn(['WHITE', 'BLACK', 'RANDOM'])
+  color: PlayerColor | 'RANDOM';
 
-  @ApiProperty({ description: 'Initial time in milliseconds (minimum 60000 = 1 min)', required: false })
+  @ApiProperty({
+    description: 'Initial time in milliseconds (minimum 60000 = 1 min)',
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   @Min(60000)

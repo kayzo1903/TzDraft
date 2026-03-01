@@ -61,7 +61,17 @@ export interface IGameRepository {
   findByInviteCode(code: string): Promise<Game | null>;
 
   /**
-   * Join an invite game: set blackPlayerId and activate
+   * Join an invite game: fill whichever player slot is empty and activate.
    */
-  joinInvite(gameId: string, blackPlayerId: string): Promise<Game>;
+  joinInvite(gameId: string, joinerId: string): Promise<Game>;
+
+  /**
+   * Persist updated clock times after a move is made.
+   */
+  updateClock(
+    gameId: string,
+    whiteTimeMs: number,
+    blackTimeMs: number,
+    lastMoveAt: Date,
+  ): Promise<void>;
 }
