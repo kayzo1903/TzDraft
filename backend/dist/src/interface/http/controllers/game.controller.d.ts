@@ -44,10 +44,10 @@ export declare class GameController {
     resignGame(user: any, id: string): Promise<{
         success: boolean;
     }>;
-    drawGame(id: string): Promise<{
+    drawGame(user: any, id: string): Promise<{
         success: boolean;
     }>;
-    abortGame(id: string): Promise<{
+    abortGame(user: any, id: string): Promise<{
         success: boolean;
     }>;
     getGameState(id: string, skip?: number, take?: number): Promise<{

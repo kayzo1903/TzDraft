@@ -171,8 +171,8 @@ export class GameController {
   @Post(':id/draw')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'End game as a draw' })
-  async drawGame(@Param('id') id: string) {
-    await this.endGameUseCase.drawByAgreement(id);
+  async drawGame(@CurrentUser() user: any, @Param('id') id: string) {
+    await this.endGameUseCase.drawByAgreement(id, user.id);
     this.gamesGateway.emitGameOver(id, { gameId: id, winner: 'DRAW', reason: 'draw' });
     return { success: true };
   }
@@ -183,8 +183,8 @@ export class GameController {
   @Post(':id/abort')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Abort a game before it starts' })
-  async abortGame(@Param('id') id: string) {
-    await this.endGameUseCase.abort(id);
+  async abortGame(@CurrentUser() user: any, @Param('id') id: string) {
+    await this.endGameUseCase.abort(id, user.id);
     this.gamesGateway.emitGameStateUpdate(id, { gameId: id, status: 'ABORTED' });
     return { success: true };
   }

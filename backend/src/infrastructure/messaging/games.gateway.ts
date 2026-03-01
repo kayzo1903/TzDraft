@@ -255,7 +255,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
         strict: false,
       });
-      await endGameUseCase.drawByAgreement(data.gameId);
+      await endGameUseCase.drawByAgreement(data.gameId, userId);
       this.emitGameOver(data.gameId, {
         gameId: data.gameId,
         winner: 'DRAW',

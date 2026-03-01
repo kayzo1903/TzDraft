@@ -39,6 +39,7 @@ export var Winner;
  */
 export var EndReason;
 (function (EndReason) {
+    EndReason["STALEMATE"] = "STALEMATE";
     EndReason["CHECKMATE"] = "CHECKMATE";
     EndReason["RESIGN"] = "RESIGN";
     EndReason["TIME"] = "TIME";

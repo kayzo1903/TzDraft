@@ -82,13 +82,13 @@ let GameController = class GameController {
         });
         return { success: true };
     }
-    async drawGame(id) {
-        await this.endGameUseCase.drawByAgreement(id);
+    async drawGame(user, id) {
+        await this.endGameUseCase.drawByAgreement(id, user.id);
         this.gamesGateway.emitGameOver(id, { gameId: id, winner: 'DRAW', reason: 'draw' });
         return { success: true };
     }
-    async abortGame(id) {
-        await this.endGameUseCase.abort(id);
+    async abortGame(user, id) {
+        await this.endGameUseCase.abort(id, user.id);
         this.gamesGateway.emitGameStateUpdate(id, { gameId: id, status: 'ABORTED' });
         return { success: true };
     }
@@ -169,18 +169,20 @@ __decorate([
     (0, common_1.Post)(':id/draw'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'End game as a draw' }),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "drawGame", null);
 __decorate([
     (0, common_1.Post)(':id/abort'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'Abort a game before it starts' }),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "abortGame", null);
 __decorate([

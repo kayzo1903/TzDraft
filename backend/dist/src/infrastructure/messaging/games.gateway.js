@@ -168,7 +168,7 @@ let GamesGateway = class GamesGateway {
             const endGameUseCase = this.moduleRef.get(end_game_use_case_1.EndGameUseCase, {
                 strict: false,
             });
-            await endGameUseCase.drawByAgreement(data.gameId);
+            await endGameUseCase.drawByAgreement(data.gameId, userId);
             this.emitGameOver(data.gameId, {
                 gameId: data.gameId,
                 winner: 'DRAW',
