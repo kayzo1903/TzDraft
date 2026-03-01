@@ -40,14 +40,14 @@ export default function PlayPage() {
             id: 'friend',
             title: t('modes.friend.title'),
             description: t('modes.friend.description'),
-            icon: <Users className="w-8 h-8 text-purple-400" />,
-            href: '#',
-            enabled: false,
-            comingSoon: true,
-            comingSoonLabel: t('modes.friend.comingSoon'),
-            action: t('modes.friend.unavailable'),
-            color: 'bg-purple-500/10 border-purple-500/20',
-            buttonColor: 'bg-neutral-700'
+            icon: <Users className="w-8 h-8 text-[#C47A2C]" />,
+            href: '/game/setup-friend',
+            enabled: true,
+            comingSoon: false,
+            comingSoonLabel: '',
+            action: t('modes.friend.action'),
+            color: 'bg-[#C47A2C]/10 border-[#C47A2C]/25 hover:border-[#C47A2C]/55',
+            buttonColor: 'bg-[#C47A2C] hover:bg-[#D48A3A]'
         },
         {
             id: 'tournament',
@@ -118,7 +118,7 @@ export default function PlayPage() {
                                             <button className={clsx(
                                                 "w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all",
                                                 mode.buttonColor,
-                                                "group-hover:shadow-lg group-hover:shadow-blue-500/20" // Generic shadow, could be specific
+                                                "group-hover:shadow-lg group-hover:shadow-black/25"
                                             )}>
                                                 {mode.action}
                                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

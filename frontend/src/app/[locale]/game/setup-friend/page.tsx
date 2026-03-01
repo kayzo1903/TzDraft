@@ -8,7 +8,6 @@ import {
   Copy,
   Globe,
   Loader2,
-  Lock,
   Monitor,
   Shuffle,
   Users,
@@ -16,27 +15,31 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import QRCode from "react-qr-code";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/auth/auth-store";
+import { authClient } from "@/lib/auth/auth-client";
 import { Button } from "@/components/ui/Button";
 import { gameService } from "@/services/game.service";
-
-/* ─── Constants ─────────────────────────────────────────────────────────── */
 
 const TIME_OPTIONS = [5, 10, 15] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];
 
 type ColorChoice = "WHITE" | "BLACK" | "RANDOM";
 
-/* ─── Color picker ──────────────────────────────────────────────────────── */
-
 function ColorPicker({
   value,
   onChange,
-  label = "Color",
+  label,
+  whiteLabel,
+  randomLabel,
+  blackLabel,
 }: {
   value: ColorChoice;
   onChange: (c: ColorChoice) => void;
-  label?: string;
+  label: string;
+  whiteLabel: string;
+  randomLabel: string;
+  blackLabel: string;
 }) {
   const options: { value: ColorChoice; icon: React.ReactNode; label: string }[] = [
     {
@@ -44,19 +47,19 @@ function ColorPicker({
       icon: (
         <div className="w-5 h-5 rounded-full bg-white border border-neutral-400 shadow-sm" />
       ),
-      label: "White",
+      label: whiteLabel,
     },
     {
       value: "RANDOM",
       icon: <Shuffle className="w-4 h-4" />,
-      label: "Random",
+      label: randomLabel,
     },
     {
       value: "BLACK",
       icon: (
         <div className="w-5 h-5 rounded-full bg-neutral-900 border border-neutral-600 shadow-sm" />
       ),
-      label: "Black",
+      label: blackLabel,
     },
   ];
 
@@ -93,19 +96,21 @@ function ColorPicker({
   );
 }
 
-/* ─── Time picker ───────────────────────────────────────────────────────── */
-
 function TimePicker({
   value,
   onChange,
+  label,
+  getTimeLabel,
 }: {
   value: TimeOption;
   onChange: (t: TimeOption) => void;
+  label: string;
+  getTimeLabel: (minutes: TimeOption) => string;
 }) {
   return (
     <div>
       <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-        Time control
+        {label}
       </div>
       <div className="flex gap-2">
         {TIME_OPTIONS.map((t) => (
@@ -121,7 +126,7 @@ function TimePicker({
             )}
           >
             <Clock className="w-3.5 h-3.5 opacity-70" />
-            {`${t}m`}
+            {getTimeLabel(t)}
           </button>
         ))}
       </div>
@@ -129,9 +134,8 @@ function TimePicker({
   );
 }
 
-/* ─── Local Pass-and-Play tab ───────────────────────────────────────────── */
-
 function LocalTab() {
+  const t = useTranslations("setupFriend");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const [color, setColor] = useState<ColorChoice>("WHITE");
@@ -147,29 +151,36 @@ function LocalTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Info banner */}
       <div className="flex items-start gap-3 rounded-xl border border-neutral-700/50 bg-neutral-800/30 p-4">
         <Monitor className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
         <div className="text-sm text-neutral-300">
-          <span className="font-semibold text-white">Pass-and-play</span> — two players share the same device, taking turns on the same board.
+          <span className="font-semibold text-white">{t("local.bannerTitle")}</span>{" "}
+          - {t("local.bannerDesc")}
         </div>
       </div>
 
       <ColorPicker
         value={color}
         onChange={setColor}
-        label="Player 1 plays as"
+        label={t("local.playerOneColor")}
+        whiteLabel={t("colors.white")}
+        randomLabel={t("colors.random")}
+        blackLabel={t("colors.black")}
       />
-      <TimePicker value={time} onChange={setTime} />
+      <TimePicker
+        value={time}
+        onChange={setTime}
+        label={t("timeControl")}
+        getTimeLabel={(minutes) => t("minutes", { minutes })}
+      />
 
-      {/* Pass device toggle */}
       <div className="flex items-center justify-between rounded-xl border border-neutral-700/50 bg-neutral-800/30 px-4 py-3">
         <div>
           <div className="text-sm font-semibold text-neutral-200">
-            Pass-device screen
+            {t("local.passDeviceTitle")}
           </div>
           <div className="text-xs text-neutral-500 mt-0.5">
-            Show a handoff screen between turns
+            {t("local.passDeviceDesc")}
           </div>
         </div>
         <button
@@ -194,17 +205,16 @@ function LocalTab() {
       </div>
 
       <Button onClick={handlePlay} className="w-full py-3 text-base font-bold">
-        Play Now
+        {t("local.playNow")}
       </Button>
     </div>
   );
 }
 
-/* ─── Online tab ─────────────────────────────────────────────────────────── */
-
 type OnlineView = "choose" | "creating" | "created" | "joining" | "joining-loading";
 
 function OnlineTab() {
+  const t = useTranslations("setupFriend");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const { isAuthenticated } = useAuthStore();
@@ -216,31 +226,26 @@ function OnlineTab() {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [ensuringGuest, setEnsuringGuest] = useState(false);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-8 text-center">
-        <div className="w-14 h-14 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-          <Lock className="w-6 h-6 text-neutral-400" />
-        </div>
-        <div>
-          <div className="text-base font-bold text-neutral-200">Sign in required</div>
-          <div className="text-sm text-neutral-500 mt-1">
-            Create an account to play online with friends.
-          </div>
-        </div>
-        <Button
-          onClick={() => router.push(`/${locale}/auth/login`)}
-          className="px-8"
-        >
-          Sign In
-        </Button>
-      </div>
-    );
-  }
+  const ensureGuestSession = async () => {
+    if (isAuthenticated) return true;
+    setEnsuringGuest(true);
+    try {
+      await authClient.createGuest();
+      return true;
+    } catch {
+      setError(t("online.guestCreateFailed"));
+      return false;
+    } finally {
+      setEnsuringGuest(false);
+    }
+  };
 
   const handleCreate = async () => {
     setError("");
+    const ready = await ensureGuestSession();
+    if (!ready) return;
     setView("creating");
     try {
       const timeMs = time * 60 * 1000;
@@ -249,7 +254,7 @@ function OnlineTab() {
       setInviteCode(res.data.inviteCode);
       setView("created");
     } catch {
-      setError("Failed to create game. Please try again.");
+      setError(t("online.createFailed"));
       setView("choose");
     }
   };
@@ -260,16 +265,18 @@ function OnlineTab() {
 
   const handleJoin = async () => {
     if (joinCode.trim().length < 4) {
-      setError("Please enter a valid invite code.");
+      setError(t("online.invalidCodeInput"));
       return;
     }
     setError("");
+    const ready = await ensureGuestSession();
+    if (!ready) return;
     setView("joining-loading");
     try {
       const res = await gameService.joinInvite(joinCode.trim().toUpperCase());
       router.push(`/${locale}/game/${res.data.gameId}`);
     } catch {
-      setError("Invalid or expired invite code.");
+      setError(t("online.invalidOrExpiredCode"));
       setView("joining");
     }
   };
@@ -287,7 +294,8 @@ function OnlineTab() {
         <div className="flex items-start gap-3 rounded-xl border border-neutral-700/50 bg-neutral-800/30 p-4">
           <Wifi className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
           <div className="text-sm text-neutral-300">
-            <span className="font-semibold text-white">Online PvP</span> — create a game and share the invite link with your friend.
+            <span className="font-semibold text-white">{t("online.bannerTitle")}</span>{" "}
+            - {t("online.bannerDesc")}
           </div>
         </div>
 
@@ -297,19 +305,35 @@ function OnlineTab() {
           </div>
         )}
 
-        <ColorPicker value={color} onChange={setColor} label="Your color" />
-        <TimePicker value={time} onChange={setTime} />
+        <ColorPicker
+          value={color}
+          onChange={setColor}
+          label={t("online.yourColor")}
+          whiteLabel={t("colors.white")}
+          randomLabel={t("colors.random")}
+          blackLabel={t("colors.black")}
+        />
+        <TimePicker
+          value={time}
+          onChange={setTime}
+          label={t("timeControl")}
+          getTimeLabel={(minutes) => t("minutes", { minutes })}
+        />
 
         <div className="flex flex-col gap-2">
-          <Button onClick={handleCreate} className="w-full py-3 text-base font-bold">
-            Create Game
+          <Button
+            onClick={handleCreate}
+            disabled={ensuringGuest}
+            className="w-full py-3 text-base font-bold"
+          >
+            {ensuringGuest ? <Loader2 className="w-5 h-5 animate-spin" /> : t("online.createGame")}
           </Button>
           <button
             type="button"
             onClick={() => setView("joining")}
             className="w-full rounded-xl border border-neutral-700 bg-neutral-800/40 px-4 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition"
           >
-            Join with code
+            {t("online.joinWithCode")}
           </button>
         </div>
       </div>
@@ -320,7 +344,7 @@ function OnlineTab() {
     return (
       <div className="flex flex-col items-center gap-4 py-10">
         <Loader2 className="w-10 h-10 text-orange-400 animate-spin" />
-        <div className="text-sm text-neutral-400">Creating your game…</div>
+        <div className="text-sm text-neutral-400">{t("online.creatingGame")}</div>
       </div>
     );
   }
@@ -331,13 +355,12 @@ function OnlineTab() {
       <div className="flex flex-col gap-5">
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300 flex items-center gap-2">
           <Check className="w-4 h-4 shrink-0" />
-          Game created! Share the invite with your friend.
+          {t("online.gameCreated")}
         </div>
 
-        {/* Invite code */}
         <div>
           <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            Invite code
+            {t("online.inviteCode")}
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3">
             <span className="flex-1 font-mono text-2xl tracking-[0.3em] text-white font-bold">
@@ -346,20 +369,18 @@ function OnlineTab() {
           </div>
         </div>
 
-        {/* QR code */}
         <div>
           <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            Scan to join
+            {t("online.scanToJoin")}
           </div>
           <div className="flex justify-center rounded-xl border border-neutral-700 bg-white p-4">
             <QRCode value={shareUrl} size={160} />
           </div>
         </div>
 
-        {/* Share link */}
         <div>
           <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            Or copy link
+            {t("online.orCopyLink")}
           </div>
           <button
             type="button"
@@ -376,14 +397,18 @@ function OnlineTab() {
         </div>
 
         <Button onClick={handleGoToGame} className="w-full py-3 text-base font-bold">
-          Go to Board
+          {t("online.goToBoard")}
         </Button>
         <button
           type="button"
-          onClick={() => { setView("choose"); setInviteCode(""); setGameId(""); }}
+          onClick={() => {
+            setView("choose");
+            setInviteCode("");
+            setGameId("");
+          }}
           className="w-full text-sm text-neutral-500 hover:text-neutral-300 transition py-1"
         >
-          ← Start over
+          {"<-"} {t("online.startOver")}
         </button>
       </div>
     );
@@ -394,10 +419,13 @@ function OnlineTab() {
       <div className="flex flex-col gap-5">
         <button
           type="button"
-          onClick={() => { setView("choose"); setError(""); }}
+          onClick={() => {
+            setView("choose");
+            setError("");
+          }}
           className="text-sm text-neutral-500 hover:text-neutral-300 transition text-left"
         >
-          ← Back
+          {"<-"} {t("online.back")}
         </button>
 
         {error && (
@@ -408,7 +436,7 @@ function OnlineTab() {
 
         <div>
           <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            Enter invite code
+            {t("online.enterInviteCode")}
           </div>
           <input
             type="text"
@@ -422,13 +450,13 @@ function OnlineTab() {
 
         <Button
           onClick={handleJoin}
-          disabled={view === "joining-loading"}
+          disabled={view === "joining-loading" || ensuringGuest}
           className="w-full py-3 text-base font-bold"
         >
-          {view === "joining-loading" ? (
+          {view === "joining-loading" || ensuringGuest ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            "Join Game"
+            t("online.joinGame")
           )}
         </Button>
       </div>
@@ -438,35 +466,38 @@ function OnlineTab() {
   return null;
 }
 
-/* ─── Page ──────────────────────────────────────────────────────────────── */
-
 type Tab = "local" | "online";
 
 export default function SetupFriendPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("local");
+  const t = useTranslations("setupFriend");
+  const [activeTab, setActiveTab] = useState<Tab>("online");
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-start px-4 py-8 sm:py-12">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-8">
           <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center">
             <Users className="w-7 h-7 text-orange-400" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-black text-white">Play with a Friend</h1>
-            <p className="text-sm text-neutral-500 mt-1">
-              Challenge a friend locally or online
-            </p>
+            <h1 className="text-2xl font-black text-white">{t("title")}</h1>
+            <p className="text-sm text-neutral-500 mt-1">{t("subtitle")}</p>
           </div>
         </div>
 
-        {/* Tab toggle */}
         <div className="flex gap-1 rounded-xl border border-neutral-700/60 bg-neutral-800/40 p-1 mb-6">
           {(
             [
-              { value: "local" as const, icon: <Monitor className="w-4 h-4" />, label: "Local" },
-              { value: "online" as const, icon: <Globe className="w-4 h-4" />, label: "Online" },
+              {
+                value: "online" as const,
+                icon: <Globe className="w-4 h-4" />,
+                label: t("tabs.online"),
+              },
+              {
+                value: "local" as const,
+                icon: <Monitor className="w-4 h-4" />,
+                label: t("tabs.local"),
+              },
             ] as const
           ).map(({ value, icon, label }) => (
             <button
@@ -486,7 +517,6 @@ export default function SetupFriendPage() {
           ))}
         </div>
 
-        {/* Tab content */}
         <div className="rounded-2xl border border-neutral-700/50 bg-neutral-900/60 p-5">
           {activeTab === "local" ? <LocalTab /> : <OnlineTab />}
         </div>
