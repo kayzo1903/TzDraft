@@ -129,10 +129,19 @@ interface BotCardProps {
   bot: Bot;
   selected: boolean;
   locked: boolean;
+  lockedLabel: string;
+  unlockInstruction: string;
   onClick: () => void;
 }
 
-function BotCard({ bot, selected, locked, onClick }: BotCardProps) {
+function BotCard({
+  bot,
+  selected,
+  locked,
+  lockedLabel,
+  unlockInstruction,
+  onClick,
+}: BotCardProps) {
   const tier = getTierForLevel(bot.level);
   return (
     <button
@@ -140,6 +149,7 @@ function BotCard({ bot, selected, locked, onClick }: BotCardProps) {
       onClick={onClick}
       disabled={locked}
       aria-pressed={selected}
+      title={locked ? unlockInstruction : undefined}
       className={clsx(
         "relative w-full rounded-2xl border transition-all duration-200 overflow-hidden group text-left",
         "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1c1917]",
@@ -179,7 +189,10 @@ function BotCard({ bot, selected, locked, onClick }: BotCardProps) {
         {locked && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-950/70 backdrop-blur-[2px]">
             <Lock className="w-6 h-6 text-neutral-400 mb-1" />
-            <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Locked</span>
+            <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">{lockedLabel}</span>
+            <div className="mt-1 max-w-[88%] text-center text-[10px] leading-snug text-neutral-300">
+              {unlockInstruction}
+            </div>
           </div>
         )}
 
@@ -376,6 +389,16 @@ export default function SetupAiPage() {
       : selectedColor === "BLACK"
         ? t("colors.black")
         : t("colors.random");
+  const currentUnlockedBot =
+    BOTS.find((b) => b.level === maxUnlockedLevel) ?? BOTS[0];
+  const nextLockedBot = BOTS.find((b) => b.level === maxUnlockedLevel + 1) ?? null;
+  const headerUnlockInstruction =
+    nextLockedBot === null
+      ? t("unlockInstruction.allUnlocked")
+      : t("unlockInstruction.message", {
+        previous: currentUnlockedBot.name,
+        next: nextLockedBot.name,
+      });
 
   return (
     <div className="min-h-[100svh] bg-[var(--background)] text-foreground">
@@ -389,13 +412,17 @@ export default function SetupAiPage() {
               {t("title")}
             </h1>
             <p className="mt-1 text-sm text-neutral-400">{t("subtitle")}</p>
+            <p className="mt-2 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
+              <Lock className="h-3.5 w-3.5" />
+              {headerUnlockInstruction}
+            </p>
           </div>
 
           {/* Progress badge */}
           <div className="hidden sm:flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/40 px-4 py-2 text-xs text-neutral-300 shrink-0">
             <Trophy className="h-3.5 w-3.5 text-[var(--primary)]" />
             <span className="font-semibold text-white">{maxUnlockedLevel}</span>
-            <span className="text-neutral-500">/ {BOTS.length} unlocked</span>
+            <span className="text-neutral-500">{t("unlockedCount", { total: BOTS.length })}</span>
           </div>
         </header>
 
@@ -428,6 +455,11 @@ export default function SetupAiPage() {
                         bot={bot}
                         selected={selectedBot.level === bot.level}
                         locked={bot.level > maxUnlockedLevel}
+                        lockedLabel={t("lockedShort")}
+                        unlockInstruction={t("unlockInstruction.message", {
+                          previous: (BOTS.find((b) => b.level === bot.level - 1)?.name ?? currentUnlockedBot.name),
+                          next: bot.name,
+                        })}
                         onClick={() => { if (bot.level <= maxUnlockedLevel) setSelectedBot(bot); }}
                       />
                     ))}
