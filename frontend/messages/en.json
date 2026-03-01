@@ -291,12 +291,26 @@
   "setupAi": {
     "title": "Play vs AI",
     "subtitle": "Choose your opponent and color",
+    "unlockedCount": "/ {total} unlocked",
     "progress": {
       "title": "Progress",
       "unlocked": "Unlocked: Level {level}/{total}",
       "rule": "Win without using Undo to unlock the next bot."
     },
+    "lockedShort": "Locked",
     "locked": "Locked — win without Undo to unlock",
+    "unlockInstruction": {
+      "message": "Defeat {previous} to unlock {next} (no Undo).",
+      "allUnlocked": "All AI levels unlocked."
+    },
+    "unlockHints": {
+      "title": "How to unlock",
+      "options": {
+        "one": "Beat your highest unlocked bot.",
+        "two": "Do not use Undo in that winning game.",
+        "three": "Each clean win unlocks one next level."
+      }
+    },
     "selectOpponent": "Select Opponent",
     "selectTime": "Select Time",
     "selectColor": "Select Color",
