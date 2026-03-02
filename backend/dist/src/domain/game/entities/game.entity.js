@@ -17,6 +17,7 @@ class Game {
     clockInfo;
     createdAt;
     inviteCode;
+    creatorColor;
     _status;
     _board;
     _moves;
@@ -28,7 +29,7 @@ class Game {
     _reversibleMoveCount = 0;
     _threeKingsMoveCount = 0;
     _endgameMoveCount = 0;
-    constructor(id, whitePlayerId, blackPlayerId, gameType, whiteElo = null, blackElo = null, aiLevel = null, initialTimeMs = 600000, clockInfo, createdAt = new Date(), startedAt = null, endedAt = null, status = game_constants_1.GameStatus.WAITING, winner = null, endReason = null, currentTurn = game_constants_1.PlayerColor.WHITE, inviteCode = null) {
+    constructor(id, whitePlayerId, blackPlayerId, gameType, whiteElo = null, blackElo = null, aiLevel = null, initialTimeMs = 600000, clockInfo, createdAt = new Date(), startedAt = null, endedAt = null, status = game_constants_1.GameStatus.WAITING, winner = null, endReason = null, currentTurn = game_constants_1.PlayerColor.WHITE, inviteCode = null, creatorColor = null) {
         this.id = id;
         this.whitePlayerId = whitePlayerId;
         this.blackPlayerId = blackPlayerId;
@@ -40,6 +41,7 @@ class Game {
         this.clockInfo = clockInfo;
         this.createdAt = createdAt;
         this.inviteCode = inviteCode;
+        this.creatorColor = creatorColor;
         this._status = status;
         this._board = board_state_vo_1.BoardState.createInitialBoard();
         this._moves = [];
@@ -209,6 +211,29 @@ class Game {
     }
     toString() {
         return `Game ${this.id}: ${this._status} - ${this._currentTurn} to move`;
+    }
+    toJSON() {
+        return {
+            id: this.id,
+            whitePlayerId: this.whitePlayerId,
+            blackPlayerId: this.blackPlayerId,
+            gameType: this.gameType,
+            whiteElo: this.whiteElo,
+            blackElo: this.blackElo,
+            aiLevel: this.aiLevel,
+            initialTimeMs: this.initialTimeMs,
+            clockInfo: this.clockInfo,
+            createdAt: this.createdAt,
+            inviteCode: this.inviteCode,
+            creatorColor: this.creatorColor,
+            status: this._status,
+            winner: this._winner,
+            endReason: this._endReason,
+            currentTurn: this._currentTurn,
+            startedAt: this._startedAt,
+            endedAt: this._endedAt,
+            ruleVersion: this.ruleVersion,
+        };
     }
 }
 exports.Game = Game;

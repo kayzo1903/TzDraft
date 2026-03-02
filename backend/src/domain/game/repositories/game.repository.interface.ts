@@ -61,9 +61,16 @@ export interface IGameRepository {
   findByInviteCode(code: string): Promise<Game | null>;
 
   /**
-   * Join an invite game: fill whichever player slot is empty and activate.
+   * Join an invite game: fill whichever player slot is empty.
+   * Game status stays WAITING until the host explicitly calls startGame().
    */
   joinInvite(gameId: string, joinerId: string): Promise<Game>;
+
+  /**
+   * Transition a WAITING game (both slots filled) to ACTIVE.
+   * Called by the host after both players have joined.
+   */
+  startGame(gameId: string): Promise<Game>;
 
   /**
    * Persist updated clock times after a move is made.

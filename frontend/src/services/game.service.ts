@@ -29,8 +29,16 @@ export const gameService = {
     return response.data;
   },
 
+  async startGame(gameId: string) {
+    const response = await axiosInstance.post(`/games/${gameId}/start`);
+    return response.data;
+  },
+
   async makeMove(gameId: string, from: number, to: number) {
-    const response = await axiosInstance.post(`/games/${gameId}/moves`, { from, to });
+    const response = await axiosInstance.post(`/games/${gameId}/moves`, {
+      from,
+      to,
+    });
     return response.data;
   },
 

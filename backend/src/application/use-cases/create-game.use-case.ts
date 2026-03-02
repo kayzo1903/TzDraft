@@ -3,6 +3,7 @@ import {
   Inject,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
@@ -125,10 +126,11 @@ export class CreateGameUseCase {
       null,
       null,
       GameStatus.WAITING,
-      null,
-      null,
-      creatorColor,
+      null,         // winner
+      null,         // endReason
+      PlayerColor.WHITE, // currentTurn — WHITE always moves first
       inviteCode,
+      creatorColor, // stored as dedicated field (not reused as currentTurn)
     );
 
     const created = await this.gameRepository.create(game);
@@ -150,6 +152,34 @@ export class CreateGameUseCase {
       throw new BadRequestException('You cannot join your own game');
     }
     return this.gameRepository.joinInvite(game.id, joinerId);
+  }
+
+  /**
+   * Transition a WAITING invite game (both slots filled) to ACTIVE.
+   * Only the host (creator) may call this.
+   */
+  async startGame(gameId: string, requesterId: string): Promise<Game> {
+    const game = await this.gameRepository.findById(gameId);
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+    if (game.status !== GameStatus.WAITING) {
+      throw new BadRequestException('Game is not in WAITING status');
+    }
+    if (!game.whitePlayerId || !game.blackPlayerId) {
+      throw new BadRequestException(
+        'Game cannot start until both players have joined',
+      );
+    }
+    // Derive the creator's ID from the stored creatorColor
+    const creatorId =
+      game.creatorColor === PlayerColor.WHITE
+        ? game.whitePlayerId
+        : game.blackPlayerId;
+    if (creatorId !== requesterId) {
+      throw new ForbiddenException('Only the game creator can start the game');
+    }
+    return this.gameRepository.startGame(gameId);
   }
 
   /**

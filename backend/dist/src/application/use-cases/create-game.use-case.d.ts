@@ -13,6 +13,7 @@ export declare class CreateGameUseCase {
         inviteCode: string;
     }>;
     joinInviteGame(code: string, joinerId: string): Promise<Game>;
+    startGame(gameId: string, requesterId: string): Promise<Game>;
     createRematch(originalGameId: string): Promise<Game>;
     findGameById(gameId: string): Promise<Game>;
 }

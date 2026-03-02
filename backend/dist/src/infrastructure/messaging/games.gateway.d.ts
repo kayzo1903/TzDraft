@@ -10,6 +10,7 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     private userGameMap;
     private disconnectTimers;
     private disconnectTickIntervals;
+    private userConnectionCounts;
     constructor(moduleRef: ModuleRef);
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;

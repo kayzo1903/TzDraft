@@ -38,6 +38,7 @@ export interface OnlineGameState {
   /** Time remaining in **milliseconds** for each player. */
   timeLeft: { WHITE: number; BLACK: number } | null;
   isWaiting: boolean;
+  bothPlayersPresent: boolean;
   isSubmitting: boolean;
   error: string | null;
   drawOffer: DrawOfferState;
@@ -205,6 +206,11 @@ export const useOnlineGame = (gameId: string) => {
   const isWaiting = useMemo(() => {
     if (!gameData) return true;
     return gameData.status === "WAITING";
+  }, [gameData]);
+
+  const bothPlayersPresent = useMemo(() => {
+    if (!gameData) return false;
+    return gameData.whitePlayerId !== null && gameData.blackPlayerId !== null;
   }, [gameData]);
 
   // White starts at engine rows 0-2 (top); flip so White sees own pieces at bottom.
@@ -852,36 +858,55 @@ export const useOnlineGame = (gameId: string) => {
           // Fallback: HTTP (e.g. socket not yet connected)
           await gameService.makeMove(gameId, from.value, to.value);
         }
-      } catch (err: unknown) {
-        const msg =
-          (err as { response?: { data?: { message?: string } } })?.response
-            ?.data?.message ?? "Move failed";
-        setError(msg);
-        fetchGameState();
+      } catch (err) {
+        setError("Failed to make move. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
     },
     [
-      result,
+      board,
       currentPlayer,
       myColor,
+      moveCount,
+      gameId,
+      result,
       isSubmitting,
       flipBoard,
-      gameId,
-      board,
-      moveCount,
       fetchGameState,
       socket,
     ],
   );
 
+  /* ── Submit start game (host only) ─────────────────────────────────── */
+  const startGame = useCallback(async () => {
+    if (!isWaiting || !bothPlayersPresent || myColor === null) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await gameService.startGame(gameId);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to start game.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isWaiting, bothPlayersPresent, myColor, gameId]);
+
   /* ── Draw offer actions ─────────────────────────────────────────────── */
 
-  const offerDraw = useCallback(() => {
-    if (!socket || !gameId) return;
-    socket.emit("offerDraw", { gameId });
-  }, [socket, gameId]);
+  const offerDraw = useCallback(async () => {
+    if (result || !myColor) return; // Cannot offer draw if game is over or color is unknown
+    setError(null);
+    try {
+      await gameService.offerDraw(gameId);
+      // Optimistically update local state so UI updates instantly
+      if (user?.id) {
+        setDrawOffer({ offeredByUserId: user.id });
+      }
+    } catch (err) {
+      setError("Failed to offer draw.");
+    }
+  }, [gameId, result, myColor, user?.id]);
 
   const acceptDraw = useCallback(() => {
     if (!socket || !gameId) return;
@@ -933,6 +958,7 @@ export const useOnlineGame = (gameId: string) => {
       result,
       timeLeft,
       isWaiting,
+      bothPlayersPresent,
       isSubmitting,
       error,
       drawOffer,
@@ -950,6 +976,7 @@ export const useOnlineGame = (gameId: string) => {
     forcedPieces,
     flipBoard,
     makeMove,
+    startGame,
     offerDraw,
     acceptDraw,
     declineDraw,
