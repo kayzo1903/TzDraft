@@ -403,7 +403,8 @@ export const useOnlineGame = (gameId: string) => {
       // If game.winner is null and not aborted we leave the existing result in place;
       // this prevents a race-condition fetch from dismissing the result card.
 
-      // Update clock — write server snapshot so the countdown interval can interpolate
+      // Update clock — write server snapshot so the countdown interval can interpolate.
+      // Before the first move the clock hasn't truly started — show full initial time.
       if (game.clockInfo) {
         const clock = game.clockInfo as {
           whiteTimeMs: number;
@@ -412,7 +413,9 @@ export const useOnlineGame = (gameId: string) => {
         };
         const activeColor =
           newMoveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
-        applyClockSnapshot(clock, activeColor);
+        const clockForSnapshot =
+          newMoveCount === 0 ? { ...clock, lastMoveAt: undefined } : clock;
+        applyClockSnapshot(clockForSnapshot, activeColor);
       }
     } catch (err) {
       console.error("Failed to fetch game state:", err);
@@ -747,7 +750,14 @@ export const useOnlineGame = (gameId: string) => {
   // server-provided snapshot (stored in ms). Resets on every move.
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (!serverClockRef.current || resultRef.current || isWaitingRef.current)
+      // Don't tick before the first move — the clock only starts running after
+      // white's first move so neither player loses time while reading the board.
+      if (
+        !serverClockRef.current ||
+        resultRef.current ||
+        isWaitingRef.current ||
+        prevMoveCountRef.current === 0
+      )
         return;
       const elapsedMs = Date.now() - serverClockRef.current.receivedAt;
       const activeColor =
@@ -895,18 +905,21 @@ export const useOnlineGame = (gameId: string) => {
   /* ── Draw offer actions ─────────────────────────────────────────────── */
 
   const offerDraw = useCallback(async () => {
-    if (result || !myColor) return; // Cannot offer draw if game is over or color is unknown
+    if (result || !myColor || !socket) return;
     setError(null);
     try {
-      await gameService.offerDraw(gameId);
-      // Optimistically update local state so UI updates instantly
+      const ack = await socket.emitWithAck("offerDraw", { gameId });
+      if (ack?.error) {
+        setError(ack.error);
+        return;
+      }
       if (user?.id) {
         setDrawOffer({ offeredByUserId: user.id });
       }
-    } catch (err) {
+    } catch {
       setError("Failed to offer draw.");
     }
-  }, [gameId, result, myColor, user?.id]);
+  }, [gameId, result, myColor, socket, user?.id]);
 
   const acceptDraw = useCallback(() => {
     if (!socket || !gameId) return;

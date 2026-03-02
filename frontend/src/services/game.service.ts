@@ -61,4 +61,16 @@ export const gameService = {
     const response = await axiosInstance.post(`/games/${gameId}/abort`);
     return response.data;
   },
+
+  async joinQueue(timeMs: number, socketId: string) {
+    const response = await axiosInstance.post("/games/queue/join", { timeMs, socketId });
+    return response.data as {
+      success: boolean;
+      data: { status: "waiting" | "matched"; gameId?: string };
+    };
+  },
+
+  async cancelQueue() {
+    await axiosInstance.post("/games/queue/cancel");
+  },
 };

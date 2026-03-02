@@ -26,6 +26,7 @@ export class PrismaGameRepository implements IGameRepository {
         status: game.status,
         gameType: game.gameType,
         ruleVersion: game.ruleVersion,
+        initialTimeMs: game.initialTimeMs,
         whitePlayerId: game.whitePlayerId,
         blackPlayerId: game.blackPlayerId,
         whiteElo: game.whiteElo,
@@ -292,8 +293,8 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.whiteElo,
       prismaGame.blackElo,
       prismaGame.aiLevel,
-      // Use clock whiteTimeMs as initial time approximation if not stored, or default 10 mins
-      Number(prismaGame.clock?.whiteTimeMs || 600000),
+      // Use persisted game initial time; fall back only for pre-migration rows.
+      Number(prismaGame.initialTimeMs ?? prismaGame.clock?.whiteTimeMs ?? 600000),
 
       prismaGame.clock
         ? {

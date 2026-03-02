@@ -26,6 +26,7 @@ let PrismaGameRepository = class PrismaGameRepository {
                 status: game.status,
                 gameType: game.gameType,
                 ruleVersion: game.ruleVersion,
+                initialTimeMs: game.initialTimeMs,
                 whitePlayerId: game.whitePlayerId,
                 blackPlayerId: game.blackPlayerId,
                 whiteElo: game.whiteElo,
@@ -234,7 +235,7 @@ let PrismaGameRepository = class PrismaGameRepository {
         const moves = prismaGame.moves ?? [];
         const moveCount = moves.length;
         const currentTurn = moveCount % 2 === 0 ? game_constants_1.PlayerColor.WHITE : game_constants_1.PlayerColor.BLACK;
-        const game = new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, Number(prismaGame.clock?.whiteTimeMs || 600000), prismaGame.clock
+        const game = new game_entity_1.Game(prismaGame.id, prismaGame.whitePlayerId, prismaGame.blackPlayerId, prismaGame.gameType, prismaGame.whiteElo, prismaGame.blackElo, prismaGame.aiLevel, Number(prismaGame.initialTimeMs ?? prismaGame.clock?.whiteTimeMs ?? 600000), prismaGame.clock
             ? {
                 whiteTimeMs: Number(prismaGame.clock.whiteTimeMs),
                 blackTimeMs: Number(prismaGame.clock.blackTimeMs),

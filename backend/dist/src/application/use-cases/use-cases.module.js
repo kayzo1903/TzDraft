@@ -15,6 +15,7 @@ const make_move_use_case_1 = require("./make-move.use-case");
 const get_game_state_use_case_1 = require("./get-game-state.use-case");
 const get_legal_moves_use_case_1 = require("./get-legal-moves.use-case");
 const end_game_use_case_1 = require("./end-game.use-case");
+const join_queue_use_case_1 = require("./join-queue.use-case");
 const user_module_1 = require("../../domain/user/user.module");
 let UseCasesModule = class UseCasesModule {
 };
@@ -28,6 +29,7 @@ exports.UseCasesModule = UseCasesModule = __decorate([
             get_game_state_use_case_1.GetGameStateUseCase,
             get_legal_moves_use_case_1.GetLegalMovesUseCase,
             end_game_use_case_1.EndGameUseCase,
+            join_queue_use_case_1.JoinQueueUseCase,
         ],
         exports: [
             create_game_use_case_1.CreateGameUseCase,
@@ -35,6 +37,7 @@ exports.UseCasesModule = UseCasesModule = __decorate([
             get_game_state_use_case_1.GetGameStateUseCase,
             get_legal_moves_use_case_1.GetLegalMovesUseCase,
             end_game_use_case_1.EndGameUseCase,
+            join_queue_use_case_1.JoinQueueUseCase,
         ],
     })
 ], UseCasesModule);
