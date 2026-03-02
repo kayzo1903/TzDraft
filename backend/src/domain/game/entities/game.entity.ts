@@ -54,6 +54,7 @@ export class Game {
     endReason: EndReason | null = null,
     currentTurn: PlayerColor = PlayerColor.WHITE,
     public readonly inviteCode: string | null = null,
+    public readonly creatorColor: PlayerColor | null = null,
   ) {
     this._status = status;
     this._board = BoardState.createInitialBoard();
@@ -363,5 +364,34 @@ export class Game {
 
   toString(): string {
     return `Game ${this.id}: ${this._status} - ${this._currentTurn} to move`;
+  }
+
+  /**
+   * Controls JSON serialization. Without this, JSON.stringify only sees
+   * own enumerable properties (the underscore-prefixed private fields),
+   * so getters like `status`, `winner`, `currentTurn` are silently dropped.
+   */
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      whitePlayerId: this.whitePlayerId,
+      blackPlayerId: this.blackPlayerId,
+      gameType: this.gameType,
+      whiteElo: this.whiteElo,
+      blackElo: this.blackElo,
+      aiLevel: this.aiLevel,
+      initialTimeMs: this.initialTimeMs,
+      clockInfo: this.clockInfo,
+      createdAt: this.createdAt,
+      inviteCode: this.inviteCode,
+      creatorColor: this.creatorColor,
+      status: this._status,
+      winner: this._winner,
+      endReason: this._endReason,
+      currentTurn: this._currentTurn,
+      startedAt: this._startedAt,
+      endedAt: this._endedAt,
+      ruleVersion: this.ruleVersion,
+    };
   }
 }

@@ -16,7 +16,8 @@ model Game {
     whiteElo   Int?    @map("white_elo")
     blackElo   Int?    @map("black_elo")
     aiLevel    Int?    @map("ai_level")
-    inviteCode String? @unique @map("invite_code")
+    inviteCode   String? @unique @map("invite_code")
+    creatorColor String? @map("creator_color")
 
     winner    Winner?    @map("winner")
     endReason EndReason? @map("end_reason")

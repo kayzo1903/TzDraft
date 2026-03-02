@@ -51,7 +51,7 @@ let CreateGameUseCase = class CreateGameUseCase {
         const blackPlayerId = creatorColor === game_constants_1.PlayerColor.BLACK ? creatorId : null;
         const whiteElo = creatorColor === game_constants_1.PlayerColor.WHITE ? creatorElo : null;
         const blackElo = creatorColor === game_constants_1.PlayerColor.BLACK ? creatorElo : null;
-        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.CASUAL, whiteElo, blackElo, null, initialTimeMs, undefined, new Date(), null, null, game_constants_1.GameStatus.WAITING, null, null, creatorColor, inviteCode);
+        const game = new game_entity_1.Game((0, crypto_1.randomUUID)(), whitePlayerId, blackPlayerId, game_constants_1.GameType.CASUAL, whiteElo, blackElo, null, initialTimeMs, undefined, new Date(), null, null, game_constants_1.GameStatus.WAITING, null, null, game_constants_1.PlayerColor.WHITE, inviteCode, creatorColor);
         const created = await this.gameRepository.create(game);
         return { game: created, inviteCode };
     }
@@ -67,6 +67,25 @@ let CreateGameUseCase = class CreateGameUseCase {
             throw new common_1.BadRequestException('You cannot join your own game');
         }
         return this.gameRepository.joinInvite(game.id, joinerId);
+    }
+    async startGame(gameId, requesterId) {
+        const game = await this.gameRepository.findById(gameId);
+        if (!game) {
+            throw new common_1.NotFoundException('Game not found');
+        }
+        if (game.status !== game_constants_1.GameStatus.WAITING) {
+            throw new common_1.BadRequestException('Game is not in WAITING status');
+        }
+        if (!game.whitePlayerId || !game.blackPlayerId) {
+            throw new common_1.BadRequestException('Game cannot start until both players have joined');
+        }
+        const creatorId = game.creatorColor === game_constants_1.PlayerColor.WHITE
+            ? game.whitePlayerId
+            : game.blackPlayerId;
+        if (creatorId !== requesterId) {
+            throw new common_1.ForbiddenException('Only the game creator can start the game');
+        }
+        return this.gameRepository.startGame(gameId);
     }
     async createRematch(originalGameId) {
         const original = await this.gameRepository.findById(originalGameId);

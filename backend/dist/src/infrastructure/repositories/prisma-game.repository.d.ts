@@ -16,6 +16,7 @@ export declare class PrismaGameRepository implements IGameRepository {
     countGamesByPlayer(playerId: string): Promise<number>;
     findByInviteCode(code: string): Promise<Game | null>;
     joinInvite(gameId: string, joinerId: string): Promise<Game>;
+    startGame(gameId: string): Promise<Game>;
     expireStaleInvitesByPlayer(creatorId: string): Promise<void>;
     updateClock(gameId: string, whiteTimeMs: number, blackTimeMs: number, lastMoveAt: Date): Promise<void>;
     private toDomain;
