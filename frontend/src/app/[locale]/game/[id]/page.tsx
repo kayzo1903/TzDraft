@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Board } from "@/components/game/Board";
 import { ConnectionStatus } from "@/components/game/ConnectionStatus";
@@ -714,13 +714,25 @@ export default function OnlineGamePage() {
   const drawOfferPending = state.drawOffer.offeredByUserId !== null;
   const iAmOffering = state.drawOffer.offeredByUserId === user?.id;
 
+  // Dynamic back path based on game type
+  const backPath = useMemo(() => {
+    if (!game) return `/${locale}/game/setup-friend`;
+    if (game.whitePlayerId === "AI" || game.blackPlayerId === "AI") {
+      return `/${locale}/game/setup-ai`;
+    }
+    if (game.inviteCode) {
+      return `/${locale}/game/setup-friend`;
+    }
+    return `/${locale}/game/setup-online`;
+  }, [game, locale]);
+
   const handleCancelGame = useCallback(async () => {
     try {
       await gameService.abort(gameId);
     } finally {
-      router.push(`/${locale}`);
+      router.push(backPath);
     }
-  }, [gameId, locale, router]);
+  }, [gameId, backPath, router]);
 
   // Navigate to the new game when rematch is accepted by either player
   useEffect(() => {
@@ -824,8 +836,6 @@ export default function OnlineGamePage() {
     const ms = color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK;
     return ms != null && ms < 10_000;
   };
-
-  const setupFriendPath = `/${locale}/game/setup-friend`;
 
   // Voice chat: registered users only, both players present, PvP game, in-game
   const isGuest = user?.phoneNumber?.startsWith("GUEST_") ?? true;
@@ -1041,7 +1051,7 @@ export default function OnlineGamePage() {
           onAcceptRematch={acceptRematch}
           onDeclineRematch={declineRematch}
           onCancelRematch={cancelRematch}
-          onSetupFriend={() => router.push(setupFriendPath)}
+          onSetupFriend={() => router.push(backPath)}
         />
       )}
     </main>
