@@ -74,4 +74,11 @@ export interface IGameRepository {
     blackTimeMs: number,
     lastMoveAt: Date,
   ): Promise<void>;
+
+  /**
+   * Expire (ABORT) all open WAITING invite games created by this player
+   * that have no second player yet. Called before creating a new invite game
+   * so stale codes don't pile up.
+   */
+  expireStaleInvitesByPlayer(creatorId: string): Promise<void>;
 }

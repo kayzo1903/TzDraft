@@ -166,6 +166,17 @@ let PrismaGameRepository = class PrismaGameRepository {
         });
         if (!game)
             return null;
+        if (game.status === game_constants_1.GameStatus.WAITING) {
+            const ageMs = Date.now() - game.createdAt.getTime();
+            const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+            if (ageMs > THIRTY_MINUTES_MS) {
+                await this.prisma.game.update({
+                    where: { id: game.id },
+                    data: { status: game_constants_1.GameStatus.ABORTED },
+                });
+                return null;
+            }
+        }
         return this.toDomain(game);
     }
     async joinInvite(gameId, joinerId) {
@@ -189,6 +200,19 @@ let PrismaGameRepository = class PrismaGameRepository {
             include: { clock: true },
         });
         return this.toDomain(updated);
+    }
+    async expireStaleInvitesByPlayer(creatorId) {
+        await this.prisma.game.updateMany({
+            where: {
+                status: game_constants_1.GameStatus.WAITING,
+                inviteCode: { not: null },
+                OR: [
+                    { whitePlayerId: creatorId, blackPlayerId: null },
+                    { blackPlayerId: creatorId, whitePlayerId: null },
+                ],
+            },
+            data: { status: game_constants_1.GameStatus.ABORTED },
+        });
     }
     async updateClock(gameId, whiteTimeMs, blackTimeMs, lastMoveAt) {
         await this.prisma.clock.update({

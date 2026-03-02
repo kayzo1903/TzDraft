@@ -99,6 +99,10 @@ export class CreateGameUseCase {
     creatorElo: number,
     initialTimeMs: number,
   ): Promise<{ game: Game; inviteCode: string }> {
+    // Abort any previous open invite games by this creator that no one joined yet.
+    // This prevents the "expired code" problem where old WAITING games pile up.
+    await this.gameRepository.expireStaleInvitesByPlayer(creatorId);
+
     const inviteCode = generateInviteCode();
 
     // Place creator in their chosen slot; the other stays null until joiner arrives.
