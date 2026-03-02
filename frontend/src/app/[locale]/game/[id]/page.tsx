@@ -713,6 +713,7 @@ export default function OnlineGamePage() {
   const { connected, reconnecting } = useSocket();
   const drawOfferPending = state.drawOffer.offeredByUserId !== null;
   const iAmOffering = state.drawOffer.offeredByUserId === user?.id;
+  const game = gameData as Record<string, unknown> | null;
 
   // Dynamic back path based on game type
   const backPath = useMemo(() => {
@@ -784,8 +785,6 @@ export default function OnlineGamePage() {
       document.body.style.overscrollBehavior = prevScroll;
     };
   }, []);
-
-  const game = gameData as Record<string, unknown> | null;
 
   const getPlayerInfo = (color: "WHITE" | "BLACK") => {
     if (!game) return { name: "...", rating: 1200, avatarSrc: undefined, isAi: false };
