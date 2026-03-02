@@ -36,6 +36,7 @@ model User {
     gamesAsWhite        Game[]               @relation("WhitePlayer")
     gamesAsBlack        Game[]               @relation("BlackPlayer")
     rating              Rating?
+    matchmakingQueue    MatchmakingQueue?
     refreshTokens       RefreshToken[]
     verificationTokens  VerificationToken[]
     passwordResetTokens PasswordResetToken[]
@@ -130,6 +131,7 @@ model Game {
     status      GameStatus @default(WAITING)
     gameType    GameType   @map("game_type")
     ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
+    initialTimeMs Int      @default(600000) @map("initial_time_ms")
 
     whitePlayerId String? @map("white_player_id")
     blackPlayerId String? @map("black_player_id")
@@ -233,4 +235,25 @@ model Clock {
     lastMoveAt  DateTime @map("last_move_at")
 
     @@map("clocks")
+}
+
+// ============================================
+// MATCHMAKING QUEUE
+// ============================================
+
+model MatchmakingQueue {
+    id       String   @id @default(uuid())
+    userId   String   @unique @map("user_id")
+    timeMs   Int      @map("time_ms") // 180000 | 300000 | 600000 | 1800000
+    socketId String   @map("socket_id")
+    joinedAt DateTime @default(now()) @map("joined_at")
+
+    // Future ILO / Glicko-2 fields — nullable, unused until player base grows
+    rating     Int?
+    rd         Float?
+    volatility Float?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("matchmaking_queue")
 }

@@ -7,6 +7,7 @@ model Game {
     status      GameStatus @default(WAITING)
     gameType    GameType   @map("game_type")
     ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
+    initialTimeMs Int      @default(600000) @map("initial_time_ms")
 
     whitePlayerId String? @map("white_player_id")
     blackPlayerId String? @map("black_player_id")

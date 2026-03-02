@@ -485,6 +485,11 @@ export default function SetupFriendPage() {
   const t = useTranslations("setupFriend");
   const [activeTab, setActiveTab] = useState<Tab>("online");
 
+  const tabs = [
+    { value: "online" as const, icon: <Globe className="w-4 h-4" />, label: t("tabs.online") },
+    { value: "local" as const, icon: <Monitor className="w-4 h-4" />, label: t("tabs.local") },
+  ];
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-start px-4 py-8 sm:py-12">
       <div className="w-full max-w-md">
@@ -499,26 +504,13 @@ export default function SetupFriendPage() {
         </div>
 
         <div className="flex gap-1 rounded-xl border border-neutral-700/60 bg-neutral-800/40 p-1 mb-6">
-          {(
-            [
-              {
-                value: "online" as const,
-                icon: <Globe className="w-4 h-4" />,
-                label: t("tabs.online"),
-              },
-              {
-                value: "local" as const,
-                icon: <Monitor className="w-4 h-4" />,
-                label: t("tabs.local"),
-              },
-            ] as const
-          ).map(({ value, icon, label }) => (
+          {tabs.map(({ value, icon, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => setActiveTab(value)}
               className={clsx(
-                "flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all",
+                "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
                 activeTab === value
                   ? "bg-[var(--primary)] text-white shadow"
                   : "text-neutral-400 hover:text-neutral-200",
@@ -531,7 +523,8 @@ export default function SetupFriendPage() {
         </div>
 
         <div className="rounded-2xl border border-neutral-700/50 bg-neutral-900/60 p-5">
-          {activeTab === "local" ? <LocalTab /> : <OnlineTab />}
+          {activeTab === "local" && <LocalTab />}
+          {activeTab === "online" && <OnlineTab />}
         </div>
       </div>
     </main>

@@ -419,6 +419,10 @@ let GamesGateway = class GamesGateway {
             return { error: err?.message || 'Claim failed' };
         }
     }
+    emitMatchFound(socketId, gameId) {
+        this.server.to(socketId).emit("matchFound", { gameId });
+        this.logger.log(`Emitted matchFound to socket ${socketId} for game ${gameId}`);
+    }
     emitGameStateUpdate(gameId, gameState) {
         this.server.to(gameId).emit('gameStateUpdated', gameState);
         this.logger.log(`Emitted gameStateUpdated for game: ${gameId}`);

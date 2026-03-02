@@ -6,6 +6,7 @@ import { MakeMoveUseCase } from './make-move.use-case';
 import { GetGameStateUseCase } from './get-game-state.use-case';
 import { GetLegalMovesUseCase } from './get-legal-moves.use-case';
 import { EndGameUseCase } from './end-game.use-case';
+import { JoinQueueUseCase } from './join-queue.use-case';
 
 /**
  * Use Cases Module
@@ -21,6 +22,7 @@ import { UserModule } from '../../domain/user/user.module';
     GetGameStateUseCase,
     GetLegalMovesUseCase,
     EndGameUseCase,
+    JoinQueueUseCase,
   ],
   exports: [
     CreateGameUseCase,
@@ -28,6 +30,7 @@ import { UserModule } from '../../domain/user/user.module';
     GetGameStateUseCase,
     GetLegalMovesUseCase,
     EndGameUseCase,
+    JoinQueueUseCase,
   ],
 })
 export class UseCasesModule {}

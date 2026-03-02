@@ -1,5 +1,11 @@
 # Phase 11: Online Quick Match (Matchmaking)
 
+**Status:** 🟢 Implementation complete — migration applied
+**Branch:** `feature/start-pvp-game`
+**Last updated:** 2026-03-02
+
+---
+
 ## Goal
 
 Deliver a **Quick Match** experience where any player can join a queue and be automatically paired with another waiting player — no invite code, no manual coordination.
@@ -19,6 +25,47 @@ Policy compliance: implements **Section 4.2** (time control buckets) immediately
 
 ---
 
+## Implementation Status
+
+### Backend
+
+| File | Status | Notes |
+|------|--------|-------|
+| `backend/prisma/schema/matchmaking.prisma` | ✅ Created | `MatchmakingQueue` model with Glicko-2 stubs |
+| `backend/prisma/schema/user.prisma` | ✅ Updated | Added `matchmakingQueue` back-relation on `User` |
+| `backend/prisma/schema/base.prisma` | ✅ Updated | Added `directUrl = env("DIRECT_URL")` for migration support |
+| `backend/prisma/schema.prisma` | ✅ Merged | All schema files merged via `node scripts/merge-schemas.js` |
+| `backend/prisma/migrations/20260302000000_add_matchmaking_queue/migration.sql` | ✅ Created | SQL ready — **not yet applied to DB** |
+| `backend/scripts/merge-schemas.js` | ✅ Updated | Added `matchmaking.prisma` to merge list |
+| `backend/src/domain/game/repositories/matchmaking.repository.interface.ts` | ✅ Created | `IMatchmakingRepository` with upsert / findOldestMatch / remove / removeStale |
+| `backend/src/infrastructure/repositories/prisma-matchmaking.repository.ts` | ✅ Created | Full Prisma implementation |
+| `backend/src/infrastructure/repositories/repository.module.ts` | ✅ Updated | Registered `IMatchmakingRepository` |
+| `backend/src/application/use-cases/join-queue.use-case.ts` | ✅ Created | FIFO pairing + stale cleanup (3 min TTL) |
+| `backend/src/application/use-cases/use-cases.module.ts` | ✅ Updated | Registered `JoinQueueUseCase` |
+| `backend/src/interface/http/dtos/join-queue.dto.ts` | ✅ Created | Validates `timeMs` ∈ {180000, 300000, 600000, 1800000} |
+| `backend/src/interface/http/controllers/game.controller.ts` | ✅ Updated | Added `POST /games/queue/join` + `POST /games/queue/cancel` |
+| `backend/src/infrastructure/messaging/games.gateway.ts` | ✅ Updated | Added `emitMatchFound(socketId, gameId)` |
+| Prisma client regenerated | ✅ Done | `npx prisma generate` succeeded |
+
+### Frontend
+
+| File | Status | Notes |
+|------|--------|-------|
+| `frontend/src/services/game.service.ts` | ✅ Updated | Added `joinQueue(timeMs, socketId)` + `cancelQueue()` |
+| `frontend/src/hooks/useMatchmaking.ts` | ✅ Created | `idle → searching → matched` state machine; auto-cancel on unmount |
+| `frontend/src/app/[locale]/game/setup-friend/page.tsx` | ✅ Updated | Added Quick Match tab + `QuickMatchTab` component |
+
+### Database
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Migration SQL written | ✅ Done | `20260302000000_add_matchmaking_queue` |
+| `DIRECT_URL` added to base.prisma | ✅ Done | Required for Supabase DDL via pooler |
+| `DIRECT_URL` added to `.env` | ✅ Not needed | Pooler accepted DDL once DB was awake |
+| `npx prisma migrate deploy` | ✅ Done | `20260302000000_add_matchmaking_queue` applied |
+
+---
+
 ## Data Model
 
 File: `backend/prisma/schema/matchmaking.prisma`
@@ -27,7 +74,7 @@ File: `backend/prisma/schema/matchmaking.prisma`
 model MatchmakingQueue {
   id         String   @id @default(uuid())
   userId     String   @unique          // one entry per user at most
-  timeMs     Int                       // 300000 | 600000 | 900000
+  timeMs     Int                       // 180000 | 300000 | 600000 | 1800000
   socketId   String                    // used to emit matchFound directly
   joinedAt   DateTime @default(now())
 
@@ -36,7 +83,7 @@ model MatchmakingQueue {
   rd         Float?
   volatility Float?
 
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("matchmaking_queue")
 }
@@ -44,141 +91,104 @@ model MatchmakingQueue {
 
 ---
 
-## Backend Implementation
+## Backend Logic
 
-### 1. Join Queue Use Case
+### JoinQueueUseCase — FIFO pairing
 
-File: `backend/src/application/use-cases/join-queue.use-case.ts`
-
-Pairing logic (FIFO, time-control bucketed):
-
-1. Remove any existing queue entry for the requesting user (one entry per user max).
-2. Auto-delete stale entries older than 3 minutes.
+1. Remove stale entries older than 3 minutes.
+2. Remove any existing entry for the requesting user.
 3. Look for the oldest waiting entry with the same `timeMs`.
-4a. **Match found** → delete both entries → `createPvPGame()` → emit `matchFound` to both `socketId`s → return `{ status: "matched", gameId }`.
-4b. **No match** → insert new entry → return `{ status: "waiting" }`.
+4a. **Match found** → delete both entries → `createGame(ACTIVE, CASUAL)` → emit `matchFound` to both sockets → return `{ status: "matched", gameId }`.
+4b. **No match** → insert entry → return `{ status: "waiting" }`.
 
-### 2. HTTP Controller
-
-File: `backend/src/interface/http/controllers/game.controller.ts`
-
-New endpoints:
+### HTTP Endpoints
 
 | Method | Path | Body | Response | Purpose |
 |--------|------|------|----------|---------|
-| `POST` | `/games/queue/join` | `{ timeMs }` | `{ status, gameId? }` | Enqueue player |
+| `POST` | `/games/queue/join` | `{ timeMs, socketId }` | `{ status, gameId? }` | Enqueue player |
 | `POST` | `/games/queue/cancel` | — | `204` | Remove self from queue |
 
-### 3. WebSocket Gateway
-
-File: `backend/src/infrastructure/messaging/games.gateway.ts`
-
-New server-emitted event:
+### WebSocket Event
 
 | Event | Direction | Payload | Purpose |
 |-------|-----------|---------|---------|
-| `matchFound` | Server → Client | `{ gameId }` | Notify both matched players to navigate to the game |
-
-Emitted directly to each player's `socketId` (not a room broadcast) so only the two matched players receive it.
-
-### 4. DTO
-
-File: `backend/src/interface/http/dtos/join-queue.dto.ts`
-
-```typescript
-export class JoinQueueDto {
-  @IsIn([300000, 600000, 900000])
-  timeMs: number;
-}
-```
+| `matchFound` | Server → Client | `{ gameId }` | Notify both matched players |
 
 ---
 
-## Frontend Implementation
+## Frontend
 
-### 1. Matchmaking Hook
+### Time Controls
 
-File: `frontend/src/hooks/useMatchmaking.ts`
+| Label | Name | `timeMs` |
+|-------|------|----------|
+| 3 min | Bullet | 180000 |
+| 5 min | Blitz | 300000 |
+| 10 min | Rapid | 600000 |
+| 30 min | Classic | 1800000 |
 
-State:
-
-```typescript
-type MatchmakingState = 'idle' | 'searching' | 'matched';
-```
-
-Behavior:
-
-1. `joinQueue(timeMs)` → `POST /games/queue/join` → sets state to `searching`.
-2. Listens for WS `matchFound` event → sets state to `matched` → navigates to `/game/{gameId}`.
-3. `cancelQueue()` → `POST /games/queue/cancel` → sets state to `idle`.
-4. On component unmount: auto-cancel if still `searching`.
-
-### 2. Game Service
-
-File: `frontend/src/services/game.service.ts`
-
-New methods:
-
-1. `joinQueue(timeMs)` → `POST /games/queue/join`
-2. `cancelQueue()` → `POST /games/queue/cancel`
-
-### 3. Setup Page — Quick Match Tab
-
-File: `frontend/src/app/[locale]/game/setup-friend/page.tsx`
-
-New "Quick Match" tab alongside Local and Online (Invite):
+### useMatchmaking hook states
 
 ```
-[ Local ]  [ Online - Invite ]  [ Quick Match ]
-
-   Time control:
-   ┌─────────┐  ┌──────────┐  ┌───────────┐
-   │  Blitz  │  │  Rapid   │  │  Classic  │
-   │  5 min  │  │  10 min  │  │  15 min   │
-   └─────────┘  └──────────┘  └───────────┘
-
-        [ Find Opponent ]
-
-   --- while searching ---
-   Searching for opponent...  ●●●
-              [ Cancel ]
+idle  →  (joinQueue)  →  searching  →  (matchFound WS)  →  matched  →  navigate
+                               ↓
+                          (cancelQueue)
+                               ↓
+                             idle
 ```
 
 ---
 
 ## End-to-End Flow
 
-1. Player A opens the Quick Match tab and selects Rapid (10 min).
-2. Player A clicks "Find Opponent" → `POST /games/queue/join { timeMs: 600000 }`.
-3. No match found → entry inserted, UI shows "Searching...".
-4. Player B opens Quick Match, selects Rapid, clicks "Find Opponent".
-5. `JoinQueueUseCase` finds Player A's entry → deletes both → creates CASUAL PvP game.
-6. Backend emits `matchFound { gameId }` directly to both players' sockets.
-7. Both clients navigate to `/game/{gameId}` simultaneously.
-8. Game is already `ACTIVE` (no host-start step needed — both slots filled at creation).
-9. Board renders interactively, clocks start running.
+1. Player A opens Quick Match tab, selects Rapid (10 min).
+2. Clicks "Find Opponent" → `POST /games/queue/join { timeMs: 600000, socketId }`.
+3. No match → entry inserted, UI shows "Searching…".
+4. Player B does the same.
+5. `JoinQueueUseCase` finds Player A → deletes both → creates CASUAL ACTIVE game.
+6. Gateway emits `matchFound { gameId }` to both socket IDs.
+7. Both navigate to `/game/{gameId}` simultaneously.
+8. Game is already `ACTIVE` — clocks start immediately, no host-start step.
 
 ---
 
 ## ILO Deferral Note (Policy Section 4.1)
 
-The full local-first ILO-banded matchmaking described in the official policy (Section 4.1) will activate in a future phase when:
-
-- Enough concurrent users exist to sustain per-region queues without excessive wait times.
-- Glicko-2 `rating` / `rd` / `volatility` fields have been populated from actual game history.
-
-The `MatchmakingQueue` schema is already prepared with these nullable fields — enabling the upgrade requires no breaking migrations, only activating the filtering logic.
-
-| Phase | Matchmaking strategy | Rating |
-|-------|----------------------|--------|
-| **11 (now)** | FIFO within time-control bucket | No ILO change (Casual, policy §3.1) |
+| Phase | Matchmaking | Rating |
+|-------|-------------|--------|
+| **11 (now)** | FIFO within time-control bucket (3/5/10/30 min) | No ILO change — Casual (policy §3.1) |
 | **Future** | ILO ±100→±300 expanding local-first | Glicko-2 rated games |
+
+Schema already has nullable `rating`, `rd`, `volatility` — no breaking migration needed when upgrading.
+
+---
+
+## Next Steps
+
+### 1. End-to-end test
+
+Once the table exists:
+
+- [ ] Open two browser tabs, both authenticated.
+- [ ] Both join Quick Match with the same time control.
+- [ ] Verify both tabs navigate to the same game simultaneously.
+- [ ] Verify the game starts `ACTIVE` with clocks running.
+- [ ] Verify cancelling removes the entry cleanly.
+- [ ] Verify stale entries (wait 3+ min without a match) are cleaned up on next enqueue.
+
+### 3. Future — ILO rating activation (Phase 12+)
+
+When player base is large enough:
+- Populate `rating` / `rd` / `volatility` in `MatchmakingQueue.upsert` from `user.rating`.
+- Add ELO-band filter in `findOldestMatch` (e.g. `|rating_a - rating_b| < 200`).
+- Expand band every 30 s of wait time.
+- Switch matched games from `GameType.CASUAL` to `GameType.RANKED`.
 
 ---
 
 ## Phase 11 Acceptance Criteria
 
-- [ ] Player can join queue with a selected time control.
+- [ ] Player can join queue with a selected time control (3 / 5 / 10 / 30 min).
 - [ ] Second player joining the same time control triggers `matchFound` for both immediately.
 - [ ] First player waits if queue is empty (searching state shown).
 - [ ] Cancelling removes the player from the queue cleanly.

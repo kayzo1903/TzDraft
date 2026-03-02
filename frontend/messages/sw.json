@@ -334,6 +334,18 @@
       "loading": "Inaandaa mchezo..."
     }
   },
+  "setupOnline": {
+    "title": "Cheza Mtandaoni",
+    "subtitle": "Pata mpinzani wa nasibu mara moja",
+    "bannerTitle": "Mechi ya Haraka",
+    "bannerDesc": "inakupanga na mpinzani anayesubiri moja kwa moja. Hakuna mwaliko unaohitajika.",
+    "bannerDescShort": "inakupanga na mpinzani anayesubiri moja kwa moja.",
+    "authRequired": "Ingia ili kutumia Mechi ya Haraka.",
+    "timeControl": "Muda wa mchezo",
+    "findOpponent": "Tafuta Mpinzani",
+    "searching": "Inatafuta mpinzani...",
+    "cancel": "Ghairi"
+  },
   "setupFriend": {
     "title": "Cheza na Rafiki",
     "subtitle": "Mpe changamoto rafiki wako ana kwa ana au mtandaoni",

@@ -2,13 +2,16 @@ import { CreateGameUseCase } from '../../../application/use-cases/create-game.us
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
 import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
 import { CreatePvPGameDto, CreatePvEGameDto, CreateInviteGameDto } from '../dtos/create-game.dto';
+import { JoinQueueDto } from '../dtos/join-queue.dto';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
+import { JoinQueueUseCase } from '../../../application/use-cases/join-queue.use-case';
 export declare class GameController {
     private readonly createGameUseCase;
     private readonly getGameStateUseCase;
     private readonly endGameUseCase;
     private readonly gamesGateway;
-    constructor(createGameUseCase: CreateGameUseCase, getGameStateUseCase: GetGameStateUseCase, endGameUseCase: EndGameUseCase, gamesGateway: GamesGateway);
+    private readonly joinQueueUseCase;
+    constructor(createGameUseCase: CreateGameUseCase, getGameStateUseCase: GetGameStateUseCase, endGameUseCase: EndGameUseCase, gamesGateway: GamesGateway, joinQueueUseCase: JoinQueueUseCase);
     createPvPGame(user: any, dto: CreatePvPGameDto): Promise<{
         success: boolean;
         data: import("../../../domain/game/entities/game.entity").Game;
@@ -33,6 +36,14 @@ export declare class GameController {
     startGame(user: any, id: string): Promise<{
         success: boolean;
     }>;
+    joinQueue(user: any, dto: JoinQueueDto): Promise<{
+        success: boolean;
+        data: {
+            gameId?: string | undefined;
+            status: "waiting" | "matched";
+        };
+    }>;
+    cancelQueue(user: any): Promise<void>;
     getGame(id: string): Promise<{
         success: boolean;
         data: {
