@@ -1,0 +1,20 @@
+// ============================================
+// MATCHMAKING QUEUE
+// ============================================
+
+model MatchmakingQueue {
+    id       String   @id @default(uuid())
+    userId   String   @unique @map("user_id")
+    timeMs   Int      @map("time_ms") // 180000 | 300000 | 600000 | 1800000
+    socketId String   @map("socket_id")
+    joinedAt DateTime @default(now()) @map("joined_at")
+
+    // Future ILO / Glicko-2 fields — nullable, unused until player base grows
+    rating     Int?
+    rd         Float?
+    volatility Float?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("matchmaking_queue")
+}

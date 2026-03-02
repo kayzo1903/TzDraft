@@ -23,6 +23,7 @@ model User {
     gamesAsWhite        Game[]               @relation("WhitePlayer")
     gamesAsBlack        Game[]               @relation("BlackPlayer")
     rating              Rating?
+    matchmakingQueue    MatchmakingQueue?
     refreshTokens       RefreshToken[]
     verificationTokens  VerificationToken[]
     passwordResetTokens PasswordResetToken[]
