@@ -6,7 +6,9 @@
       "Bash(ls -la /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game/)",
       "Bash(npx prisma migrate status)",
       "Bash(pnpm add react-qr-code)",
-      "Bash(grep -rn \"notFound\\\\\\(\\\\\\)\" /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game/)"
+      "Bash(grep -rn \"notFound\\\\\\(\\\\\\)\" /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game/)",
+      "Bash(xargs head -30)",
+      "Bash(xargs grep -l \"Phase 11\\\\|phase 11\\\\|Phase11\\\\|phase11\")"
     ]
   }
 }
