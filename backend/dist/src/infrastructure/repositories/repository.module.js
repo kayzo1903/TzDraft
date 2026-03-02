@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const prisma_module_1 = require("../database/prisma/prisma.module");
 const prisma_game_repository_1 = require("./prisma-game.repository");
 const prisma_move_repository_1 = require("./prisma-move.repository");
+const prisma_matchmaking_repository_1 = require("./prisma-matchmaking.repository");
 let RepositoryModule = class RepositoryModule {
 };
 exports.RepositoryModule = RepositoryModule;
@@ -26,8 +27,12 @@ exports.RepositoryModule = RepositoryModule = __decorate([
                 provide: 'IMoveRepository',
                 useClass: prisma_move_repository_1.PrismaMoveRepository,
             },
+            {
+                provide: 'IMatchmakingRepository',
+                useClass: prisma_matchmaking_repository_1.PrismaMatchmakingRepository,
+            },
         ],
-        exports: ['IGameRepository', 'IMoveRepository'],
+        exports: ['IGameRepository', 'IMoveRepository', 'IMatchmakingRepository'],
     })
 ], RepositoryModule);
 //# sourceMappingURL=repository.module.js.map

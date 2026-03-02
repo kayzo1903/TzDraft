@@ -43,9 +43,16 @@ function getOrCreateSocket(token: string): Socket {
     sharedSocket.on("disconnect", (reason) =>
       console.log("[Socket] Disconnected:", reason),
     );
-    sharedSocket.on("connect_error", (err) =>
-      console.error("[Socket] Connection error:", err.message),
-    );
+    sharedSocket.on("connect_error", (err) => {
+      console.error("[Socket] Connection error:", err.message);
+      // If the server rejected our token, clear the stale session so we stop
+      // hammering the server with invalid reconnect attempts.
+      if (err.message === "invalid token" || err.message === "no token") {
+        sharedSocket?.disconnect();
+        sharedSocket = null;
+        currentToken = null;
+      }
+    });
   }
 
   return sharedSocket;

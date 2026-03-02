@@ -95,6 +95,7 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     }, client: Socket): Promise<{
         error?: string;
     }>;
+    emitMatchFound(socketId: string, gameId: string): void;
     emitGameStateUpdate(gameId: string, gameState: any): void;
     emitGameOver(gameId: string, result: any): void;
 }

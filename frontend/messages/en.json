@@ -334,6 +334,18 @@
       "loading": "Starting Game..."
     }
   },
+  "setupOnline": {
+    "title": "Play Online",
+    "subtitle": "Get matched with a random opponent instantly",
+    "bannerTitle": "Quick Match",
+    "bannerDesc": "automatically pairs you with a waiting opponent. No invite needed.",
+    "bannerDescShort": "automatically pairs you with a waiting opponent.",
+    "authRequired": "Sign in to use Quick Match.",
+    "timeControl": "Time control",
+    "findOpponent": "Find Opponent",
+    "searching": "Searching for opponent...",
+    "cancel": "Cancel"
+  },
   "setupFriend": {
     "title": "Play with a Friend",
     "subtitle": "Challenge a friend locally or online",
