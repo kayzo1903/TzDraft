@@ -8,7 +8,11 @@
       "Bash(pnpm add react-qr-code)",
       "Bash(grep -rn \"notFound\\\\\\(\\\\\\)\" /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/game/)",
       "Bash(xargs head -30)",
-      "Bash(xargs grep -l \"Phase 11\\\\|phase 11\\\\|Phase11\\\\|phase11\")"
+      "Bash(xargs grep -l \"Phase 11\\\\|phase 11\\\\|Phase11\\\\|phase11\")",
+      "Bash(python3 -c \":*)",
+      "Bash(node scripts/merge-schemas.js)",
+      "Bash(curl -s --connect-timeout 8 \"https://aws-1-eu-west-1.pooler.supabase.com\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(timeout 8 bash -c \"echo > /dev/tcp/aws-1-eu-west-1.pooler.supabase.com/5432\")"
     ]
   }
 }

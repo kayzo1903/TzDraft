@@ -21,18 +21,22 @@ const create_game_use_case_1 = require("../../../application/use-cases/create-ga
 const get_game_state_use_case_1 = require("../../../application/use-cases/get-game-state.use-case");
 const end_game_use_case_1 = require("../../../application/use-cases/end-game.use-case");
 const create_game_dto_1 = require("../dtos/create-game.dto");
+const join_queue_dto_1 = require("../dtos/join-queue.dto");
 const game_constants_1 = require("../../../shared/constants/game.constants");
 const games_gateway_1 = require("../../../infrastructure/messaging/games.gateway");
+const join_queue_use_case_1 = require("../../../application/use-cases/join-queue.use-case");
 let GameController = class GameController {
     createGameUseCase;
     getGameStateUseCase;
     endGameUseCase;
     gamesGateway;
-    constructor(createGameUseCase, getGameStateUseCase, endGameUseCase, gamesGateway) {
+    joinQueueUseCase;
+    constructor(createGameUseCase, getGameStateUseCase, endGameUseCase, gamesGateway, joinQueueUseCase) {
         this.createGameUseCase = createGameUseCase;
         this.getGameStateUseCase = getGameStateUseCase;
         this.endGameUseCase = endGameUseCase;
         this.gamesGateway = gamesGateway;
+        this.joinQueueUseCase = joinQueueUseCase;
     }
     async createPvPGame(user, dto) {
         const game = await this.createGameUseCase.createPvPGame(user.id, dto.blackPlayerId, user.rating?.rating || 1200, dto.blackElo || 1200);
@@ -72,6 +76,22 @@ let GameController = class GameController {
         await this.createGameUseCase.startGame(id, user.id);
         this.gamesGateway.emitGameStateUpdate(id, { gameId: id });
         return { success: true };
+    }
+    async joinQueue(user, dto) {
+        const result = await this.joinQueueUseCase.execute(user.id, dto.timeMs, dto.socketId ?? '', user.rating?.rating ?? null);
+        if (result.status === 'matched') {
+            this.gamesGateway.emitMatchFound(result.opponentSocketId, result.gameId);
+        }
+        return {
+            success: true,
+            data: {
+                status: result.status,
+                ...(result.status === 'matched' ? { gameId: result.gameId } : {}),
+            },
+        };
+    }
+    async cancelQueue(user) {
+        await this.joinQueueUseCase.cancelQueue(user.id);
     }
     async getGame(id) {
         const { game, moves, players } = await this.getGameStateUseCase.execute(id);
@@ -176,6 +196,27 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "startGame", null);
 __decorate([
+    (0, common_1.Post)('queue/join'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Join the matchmaking queue' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Queued or matched' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, join_queue_dto_1.JoinQueueDto]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "joinQueue", null);
+__decorate([
+    (0, common_1.Post)('queue/cancel'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Leave the matchmaking queue' }),
+    (0, swagger_1.ApiResponse)({ status: 204, description: 'Removed from queue' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "cancelQueue", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get game by ID' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Game found' }),
@@ -234,6 +275,7 @@ exports.GameController = GameController = __decorate([
     __metadata("design:paramtypes", [create_game_use_case_1.CreateGameUseCase,
         get_game_state_use_case_1.GetGameStateUseCase,
         end_game_use_case_1.EndGameUseCase,
-        games_gateway_1.GamesGateway])
+        games_gateway_1.GamesGateway,
+        join_queue_use_case_1.JoinQueueUseCase])
 ], GameController);
 //# sourceMappingURL=game.controller.js.map

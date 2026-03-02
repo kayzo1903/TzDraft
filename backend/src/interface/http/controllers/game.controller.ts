@@ -24,8 +24,10 @@ import {
   CreatePvEGameDto,
   CreateInviteGameDto,
 } from '../dtos/create-game.dto';
+import { JoinQueueDto } from '../dtos/join-queue.dto';
 import { PlayerColor } from '../../../shared/constants/game.constants';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
+import { JoinQueueUseCase } from '../../../application/use-cases/join-queue.use-case';
 
 /**
  * Game Controller
@@ -41,6 +43,7 @@ export class GameController {
     private readonly getGameStateUseCase: GetGameStateUseCase,
     private readonly endGameUseCase: EndGameUseCase,
     private readonly gamesGateway: GamesGateway,
+    private readonly joinQueueUseCase: JoinQueueUseCase,
   ) {}
 
   /**
@@ -151,6 +154,52 @@ export class GameController {
     // Notify both clients that the game is now ACTIVE
     this.gamesGateway.emitGameStateUpdate(id, { gameId: id });
     return { success: true };
+  }
+
+  /**
+   * Join the matchmaking queue
+   * If a match is found immediately, returns { status: "matched", gameId }.
+   * Otherwise returns { status: "waiting" } and the client listens for the
+   * "matchFound" WebSocket event.
+   */
+  @Post('queue/join')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Join the matchmaking queue' })
+  @ApiResponse({ status: 200, description: 'Queued or matched' })
+  async joinQueue(@CurrentUser() user: any, @Body() dto: JoinQueueDto) {
+    const result = await this.joinQueueUseCase.execute(
+      user.id,
+      dto.timeMs,
+      dto.socketId ?? '',
+      user.rating?.rating ?? null,
+    );
+
+    if (result.status === 'matched') {
+      // Notify the matched opponent via their socket
+      this.gamesGateway.emitMatchFound(
+        result.opponentSocketId,
+        result.gameId,
+      );
+    }
+
+    return {
+      success: true,
+      data: {
+        status: result.status,
+        ...(result.status === 'matched' ? { gameId: result.gameId } : {}),
+      },
+    };
+  }
+
+  /**
+   * Cancel the matchmaking queue entry for the current user
+   */
+  @Post('queue/cancel')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Leave the matchmaking queue' })
+  @ApiResponse({ status: 204, description: 'Removed from queue' })
+  async cancelQueue(@CurrentUser() user: any) {
+    await this.joinQueueUseCase.cancelQueue(user.id);
   }
 
   /**

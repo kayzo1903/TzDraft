@@ -641,6 +641,11 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /* ── Emit helpers (called by application layer) ─────────────────────── */
 
+  emitMatchFound(socketId: string, gameId: string) {
+    this.server.to(socketId).emit("matchFound", { gameId });
+    this.logger.log(`Emitted matchFound to socket ${socketId} for game ${gameId}`);
+  }
+
   emitGameStateUpdate(gameId: string, gameState: any) {
     this.server.to(gameId).emit('gameStateUpdated', gameState);
     this.logger.log(`Emitted gameStateUpdated for game: ${gameId}`);

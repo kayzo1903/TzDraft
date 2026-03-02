@@ -15,13 +15,13 @@ export default function PlayPage() {
             title: t('modes.online.title'),
             description: t('modes.online.description'),
             icon: <Globe className="w-8 h-8 text-blue-400" />,
-            href: '#',
-            enabled: false,
-            comingSoon: true,
-            comingSoonLabel: t('modes.online.comingSoon'),
-            action: t('modes.online.unavailable'),
-            color: 'bg-blue-500/10 border-blue-500/20',
-            buttonColor: 'bg-neutral-700'
+            href: '/game/setup-online',
+            enabled: true,
+            comingSoon: false,
+            comingSoonLabel: '',
+            action: t('modes.online.action'),
+            color: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/50',
+            buttonColor: 'bg-blue-600 hover:bg-blue-500'
         },
         {
             id: 'ai',

@@ -37,14 +37,11 @@ export default function Home() {
                 </Button>
               </Link>
 
-              {/* Secondary — Play Online (limited) */}
-              <Link href="/play" className="w-full">
-                <Button variant="secondary" size="lg" className="w-full gap-3 opacity-60 justify-center relative">
+              {/* Secondary — Play Online */}
+              <Link href="/game/setup-online" className="w-full">
+                <Button variant="secondary" size="lg" className="w-full gap-3 justify-center">
                   <span className="text-2xl">{"\u{1F310}"}</span>
                   <span className="font-bold">{t('playOnline')}</span>
-                  <span className="absolute right-4 text-[10px] font-black uppercase tracking-wide text-amber-400 border border-amber-500/40 bg-amber-500/10 rounded-full px-2 py-0.5">
-                    {t('featureGrid.limited')}
-                  </span>
                 </Button>
               </Link>
             </div>
@@ -102,23 +99,21 @@ export default function Home() {
           {/* Row 2 — 6 compact tiles (2 limited/coming-soon + 4 locked) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
 
-            {/* Play Online — Limited (amber badge, no lock) */}
-            <div className="relative flex flex-col gap-3 rounded-xl border border-amber-500/15 bg-[var(--secondary)]/40 p-4 sm:p-5 opacity-60 cursor-not-allowed select-none">
-              <div className="flex items-start justify-between gap-2">
-                <div className="w-9 h-9 rounded-lg bg-white/5 text-neutral-500 flex items-center justify-center shrink-0">
-                  <Globe className="w-4 h-4" />
+            {/* Play Online — Active */}
+            <Link href="/game/setup-online">
+              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] hover:border-blue-500/30 p-4 sm:p-5 transition-all duration-200 cursor-pointer">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                    <Globe className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 shrink-0">
-                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">
-                    {t('featureGrid.limited')}
-                  </span>
+                <div>
+                  <h3 className="font-bold text-sm text-white">{t('featureGrid.playOnline.title')}</h3>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{t('featureGrid.playOnline.desc')}</p>
                 </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-neutral-400">{t('featureGrid.playOnline.title')}</h3>
-                <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">{t('featureGrid.playOnline.desc')}</p>
-              </div>
-            </div>
+            </Link>
 
             {/* Play with Friend — Active */}
             <Link href="/game/setup-friend">
