@@ -67,6 +67,11 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     string,
     ReturnType<typeof setInterval>
   >();
+  /**
+   * Number of currently connected sockets per user.
+   * Prevents false "abandon" when one of multiple sockets disconnects.
+   */
+  private userConnectionCounts = new Map<string, number>();
 
   constructor(private readonly moduleRef: ModuleRef) {}
 
@@ -97,6 +102,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       client.data.user = { id: payload.sub };
+      const existingConnections = this.userConnectionCounts.get(payload.sub) ?? 0;
+      this.userConnectionCounts.set(payload.sub, existingConnections + 1);
       this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
     } catch {
       this.logger.warn(`Socket ${client.id} rejected: invalid token`);
@@ -111,8 +118,32 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     if (!userId) return;
+
+    const existingConnections = this.userConnectionCounts.get(userId) ?? 0;
+    const remainingConnections = Math.max(0, existingConnections - 1);
+    if (remainingConnections === 0) {
+      this.userConnectionCounts.delete(userId);
+    } else {
+      this.userConnectionCounts.set(userId, remainingConnections);
+      // User still has another active socket (e.g. refresh/multi-tab).
+      // Do not start abandonment flow.
+      return;
+    }
+
     const gameId = this.userGameMap.get(userId);
     if (!gameId) return;
+
+    // Avoid orphan timers/intervals when disconnect happens repeatedly.
+    const existingTimer = this.disconnectTimers.get(userId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.disconnectTimers.delete(userId);
+    }
+    const existingTick = this.disconnectTickIntervals.get(userId);
+    if (existingTick) {
+      clearInterval(existingTick);
+      this.disconnectTickIntervals.delete(userId);
+    }
 
     // Notify the opponent immediately with the full grace-period duration
     this.server.to(gameId).emit('opponentDisconnected', {

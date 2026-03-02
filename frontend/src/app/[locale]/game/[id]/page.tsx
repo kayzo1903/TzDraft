@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Board } from "@/components/game/Board";
 import { ConnectionStatus } from "@/components/game/ConnectionStatus";
@@ -57,10 +57,18 @@ function WaitingBanner({
   gameId,
   locale,
   inviteCode,
+  isHost,
+  bothPlayersPresent,
+  onStartGame,
+  onCancel,
 }: {
   gameId: string;
   locale: string;
   inviteCode: string | null;
+  isHost: boolean;
+  bothPlayersPresent: boolean;
+  onStartGame: () => void;
+  onCancel: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -75,6 +83,61 @@ function WaitingBanner({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 1. Guest view waiting for host
+  if (!isHost) {
+    return (
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-950/95 backdrop-blur-sm p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-neutral-700/60 bg-neutral-900 shadow-2xl overflow-hidden px-6 py-10 flex flex-col items-center gap-5">
+          <div className="w-16 h-16 rounded-full bg-orange-500/15 border border-orange-500/30 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-black text-white">Waiting for host...</h2>
+            <p className="text-sm text-neutral-400 mt-1">
+              The game will begin once the host starts it.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Host view when guest has joined
+  if (isHost && bothPlayersPresent) {
+    return (
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-950/95 backdrop-blur-sm p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-neutral-900 shadow-[0_0_40px_rgba(16,185,129,0.15)] overflow-hidden">
+          <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
+          <div className="flex flex-col items-center px-6 pt-8 pb-6 gap-5">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+              <Check className="w-8 h-8 text-emerald-400" />
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-black text-white">Opponent Joined!</h2>
+              <p className="text-sm text-neutral-400 mt-1">
+                Both players are ready to play.
+              </p>
+            </div>
+            <button
+              onClick={onStartGame}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 border border-orange-400/50 px-4 py-3.5 text-base font-black text-white shadow-lg transition"
+            >
+              Start Game
+            </button>
+            <button
+              onClick={onCancel}
+              className="w-full text-sm text-neutral-500 hover:text-rose-400 transition py-1"
+            >
+              Cancel game
+            </button>
+          </div>
+          <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Host view waiting for guest to join
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-950/95 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-2xl border border-neutral-700/60 bg-neutral-900 shadow-2xl overflow-hidden">
@@ -86,7 +149,7 @@ function WaitingBanner({
           <div className="text-center">
             <h2 className="text-xl font-black text-white">Waiting for opponent</h2>
             <p className="text-sm text-neutral-400 mt-1">
-              Share the link or scan the QR code.
+              Share the link or scan the QR code to join.
             </p>
           </div>
 
@@ -131,6 +194,14 @@ function WaitingBanner({
               Share on WhatsApp
             </a>
           </div>
+          {/* Cancel invite */}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-full text-sm text-neutral-500 hover:text-rose-400 transition py-1"
+          >
+            Cancel invite
+          </button>
         </div>
         <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-orange-500/40 to-transparent" />
       </div>
@@ -626,6 +697,7 @@ export default function OnlineGamePage() {
     forcedPieces,
     flipBoard,
     makeMove,
+    startGame,
     offerDraw,
     acceptDraw,
     declineDraw,
@@ -641,6 +713,14 @@ export default function OnlineGamePage() {
   const { connected, reconnecting } = useSocket();
   const drawOfferPending = state.drawOffer.offeredByUserId !== null;
   const iAmOffering = state.drawOffer.offeredByUserId === user?.id;
+
+  const handleCancelGame = useCallback(async () => {
+    try {
+      await gameService.abort(gameId);
+    } finally {
+      router.push(`/${locale}`);
+    }
+  }, [gameId, locale, router]);
 
   // Navigate to the new game when rematch is accepted by either player
   useEffect(() => {
@@ -937,6 +1017,14 @@ export default function OnlineGamePage() {
           gameId={gameId}
           locale={locale}
           inviteCode={(game?.inviteCode as string | null) ?? null}
+          isHost={
+            game?.creatorColor === "WHITE"
+              ? game?.whitePlayerId === user?.id
+              : game?.blackPlayerId === user?.id
+          }
+          bothPlayersPresent={state.bothPlayersPresent}
+          onStartGame={startGame}
+          onCancel={handleCancelGame}
         />
       )}
 

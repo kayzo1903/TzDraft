@@ -30,6 +30,9 @@ export declare class GameController {
             gameId: string;
         };
     }>;
+    startGame(user: any, id: string): Promise<{
+        success: boolean;
+    }>;
     getGame(id: string): Promise<{
         success: boolean;
         data: {
