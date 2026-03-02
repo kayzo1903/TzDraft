@@ -140,6 +140,20 @@ export class GameController {
   }
 
   /**
+   * Host starts the game (both players must be present)
+   */
+  @Post(':id/start')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Host starts the game after both players joined' })
+  @ApiResponse({ status: 200, description: 'Game started' })
+  async startGame(@CurrentUser() user: any, @Param('id') id: string) {
+    await this.createGameUseCase.startGame(id, user.id);
+    // Notify both clients that the game is now ACTIVE
+    this.gamesGateway.emitGameStateUpdate(id, { gameId: id });
+    return { success: true };
+  }
+
+  /**
    * Get game by ID
    */
   @Get(':id')

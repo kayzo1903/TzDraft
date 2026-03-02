@@ -32,6 +32,7 @@ export class PrismaGameRepository implements IGameRepository {
         blackElo: game.blackElo,
         aiLevel: game.aiLevel,
         inviteCode: game.inviteCode,
+        creatorColor: game.creatorColor,
         winner: game.winner,
         endReason: game.endReason,
         createdAt: game.createdAt,
@@ -207,7 +208,8 @@ export class PrismaGameRepository implements IGameRepository {
   }
 
   async joinInvite(gameId: string, joinerId: string): Promise<Game> {
-    // Creator may have taken either side — fill whichever slot is empty
+    // Creator may have taken either side — fill whichever slot is empty.
+    // Status stays WAITING; the host will call startGame() when ready.
     const existing = await this.prisma.game.findUnique({
       where: { id: gameId },
     });
@@ -218,14 +220,25 @@ export class PrismaGameRepository implements IGameRepository {
         ? { whitePlayerId: joinerId }
         : { blackPlayerId: joinerId };
 
-    const now = new Date();
     const updated = await this.prisma.game.update({
       where: { id: gameId },
       data: {
         ...slotData,
+        // status stays WAITING — host must click "Start Game"
+      },
+      include: { clock: true },
+    });
+    return this.toDomain(updated);
+  }
+
+  async startGame(gameId: string): Promise<Game> {
+    const now = new Date();
+    const updated = await this.prisma.game.update({
+      where: { id: gameId },
+      data: {
         status: GameStatus.ACTIVE,
         startedAt: now,
-        // Reset lastMoveAt so the first player's timer starts from when the opponent joined
+        // Reset clock so the first player's timer starts from now
         clock: { update: { lastMoveAt: now } },
       },
       include: { clock: true },
@@ -298,6 +311,7 @@ export class PrismaGameRepository implements IGameRepository {
       undefined, // endReason not mapped here — already works
       currentTurn, // derived from move history
       prismaGame.inviteCode ?? null,
+      (prismaGame.creatorColor as PlayerColor | null) ?? null,
     );
 
     // Replay all historical moves to reconstruct the correct board state.

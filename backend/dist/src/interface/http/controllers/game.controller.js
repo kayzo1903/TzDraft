@@ -68,6 +68,11 @@ let GameController = class GameController {
             data: { gameId: game.id },
         };
     }
+    async startGame(user, id) {
+        await this.createGameUseCase.startGame(id, user.id);
+        this.gamesGateway.emitGameStateUpdate(id, { gameId: id });
+        return { success: true };
+    }
     async getGame(id) {
         const { game, moves, players } = await this.getGameStateUseCase.execute(id);
         return {
@@ -159,6 +164,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "joinInviteGame", null);
+__decorate([
+    (0, common_1.Post)(':id/start'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Host starts the game after both players joined' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Game started' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "startGame", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get game by ID' }),
