@@ -32,6 +32,7 @@ let PrismaGameRepository = class PrismaGameRepository {
                 blackElo: game.blackElo,
                 aiLevel: game.aiLevel,
                 inviteCode: game.inviteCode,
+                creatorColor: game.creatorColor,
                 winner: game.winner,
                 endReason: game.endReason,
                 createdAt: game.createdAt,
@@ -188,11 +189,20 @@ let PrismaGameRepository = class PrismaGameRepository {
         const slotData = existing.whitePlayerId === null
             ? { whitePlayerId: joinerId }
             : { blackPlayerId: joinerId };
-        const now = new Date();
         const updated = await this.prisma.game.update({
             where: { id: gameId },
             data: {
                 ...slotData,
+            },
+            include: { clock: true },
+        });
+        return this.toDomain(updated);
+    }
+    async startGame(gameId) {
+        const now = new Date();
+        const updated = await this.prisma.game.update({
+            where: { id: gameId },
+            data: {
                 status: game_constants_1.GameStatus.ACTIVE,
                 startedAt: now,
                 clock: { update: { lastMoveAt: now } },
@@ -230,7 +240,7 @@ let PrismaGameRepository = class PrismaGameRepository {
                 blackTimeMs: Number(prismaGame.clock.blackTimeMs),
                 lastMoveAt: prismaGame.clock.lastMoveAt,
             }
-            : undefined, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner, undefined, currentTurn, prismaGame.inviteCode ?? null);
+            : undefined, prismaGame.createdAt, prismaGame.startedAt, prismaGame.endedAt, prismaGame.status, prismaGame.winner, undefined, currentTurn, prismaGame.inviteCode ?? null, prismaGame.creatorColor ?? null);
         if (moves.length > 0) {
             game.replayMovesFromHistory(moves);
         }

@@ -35,6 +35,7 @@ let GamesGateway = class GamesGateway {
     userGameMap = new Map();
     disconnectTimers = new Map();
     disconnectTickIntervals = new Map();
+    userConnectionCounts = new Map();
     constructor(moduleRef) {
         this.moduleRef = moduleRef;
     }
@@ -59,6 +60,8 @@ let GamesGateway = class GamesGateway {
                 secret: configService.get('JWT_SECRET'),
             });
             client.data.user = { id: payload.sub };
+            const existingConnections = this.userConnectionCounts.get(payload.sub) ?? 0;
+            this.userConnectionCounts.set(payload.sub, existingConnections + 1);
             this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
         }
         catch {
@@ -71,9 +74,28 @@ let GamesGateway = class GamesGateway {
         this.logger.log(`Client disconnected: ${client.id} (User: ${userId || 'unknown'})`);
         if (!userId)
             return;
+        const existingConnections = this.userConnectionCounts.get(userId) ?? 0;
+        const remainingConnections = Math.max(0, existingConnections - 1);
+        if (remainingConnections === 0) {
+            this.userConnectionCounts.delete(userId);
+        }
+        else {
+            this.userConnectionCounts.set(userId, remainingConnections);
+            return;
+        }
         const gameId = this.userGameMap.get(userId);
         if (!gameId)
             return;
+        const existingTimer = this.disconnectTimers.get(userId);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+            this.disconnectTimers.delete(userId);
+        }
+        const existingTick = this.disconnectTickIntervals.get(userId);
+        if (existingTick) {
+            clearInterval(existingTick);
+            this.disconnectTickIntervals.delete(userId);
+        }
         this.server.to(gameId).emit('opponentDisconnected', {
             userId,
             secondsRemaining: Math.round(ABANDON_TIMEOUT_MS / 1000),

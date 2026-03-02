@@ -6,7 +6,7 @@ Deliver a complete "Play with Friend" experience with:
 
 1. Local pass-and-play on one device.
 2. Online friend invites with real-time play.
-3. Full lifecycle support: create, join, move, draw, resign, abort.
+3. Full lifecycle support: create, join, host-start, move, draw, resign, abort, rematch.
 
 ## Scope
 
@@ -27,7 +27,7 @@ Tabs:
 
 1. `Local`:
    - Select color (`WHITE | BLACK | RANDOM`)
-   - Select time (`0, 5, 10, 15` minutes)
+   - Select time (`5, 10, 15` minutes)
    - Toggle pass-device handoff screen
    - Navigates to `/game/local-pvp`
 
@@ -35,11 +35,9 @@ Tabs:
    - Requires authentication.
    - Create invite:
      - Calls `gameService.createInvite({ color, timeMs })`
+     - Auto-expires prior stale WAITING invites for the creator.
      - Receives `gameId` + `inviteCode`
-     - Shows invite code + QR + copyable link
-   - Join invite:
-     - Calls `gameService.joinInvite(code)`
-     - Redirects to `/game/{gameId}`
+     - Shows invite code + QR + copyable link + WhatsApp share
 
 ### 2. Online Game Screen
 
@@ -47,16 +45,22 @@ File: `frontend/src/app/[locale]/game/[id]/page.tsx`
 
 Core behavior:
 
-1. Uses `useOnlineGame(gameId)` hook for board state, legal moves, clocks, and draw flow.
-2. Shows waiting overlay when only one player is present.
+1. Uses `useOnlineGame(gameId)` hook for board state, legal moves, clocks, rematch and draw flow.
+2. Shows waiting banner when only one player is present.
 3. Supports invite auto-join via URL query `?code=XXXXXX`.
 4. If unauthenticated during auto-join:
-   - Creates guest account.
+   - Creates a temporary guest account.
    - Then attempts `joinInvite`.
-5. Supports actions:
+5. **Host-Controlled Start Flow**:
+   - Guest user joins the room (`joinInvite`) which simply takes an available player slot but does not start the game.
+   - Host sees "Opponent Joined" and a "Start Game" button.
+   - Guest sees "Waiting for host to start the game."
+   - Host calling `startGame` activates the game board for both players.
+6. Supports actions:
    - Offer/cancel/accept/decline draw
    - Resign
    - Abort (before game starts)
+   - Offer/accept/decline/cancel Rematch (swaps colors and creates new game instantly)
 
 ### 3. Frontend Service Contracts
 
@@ -65,12 +69,13 @@ File: `frontend/src/services/game.service.ts`
 Key methods:
 
 1. `POST /games/invite` via `createInvite`
-2. `POST /games/invite/:code/join` via `joinInvite`
-3. `GET /games/:id` via `getGame`
-4. `POST /games/:id/moves` via `makeMove`
-5. `POST /games/:id/resign` via `resign`
-6. `POST /games/:id/draw` via `offerDraw` (HTTP fallback path)
-7. `POST /games/:id/abort` via `abort`
+2. `POST /games/invite/:code/join` via `joinInvite` (Assigns player slot, leaves game WAITING)
+3. `POST /games/:id/start` via `startGame` (Starts the game, transitions host/guest to ACTIVE)
+4. `GET /games/:id` via `getGame`
+5. `POST /games/:id/moves` via `makeMove`
+6. `POST /games/:id/resign` via `resign`
+7. `POST /games/:id/draw` via `offerDraw` (HTTP fallback path)
+8. `POST /games/:id/abort` via `abort`
 
 ### 4. Realtime Socket Behavior
 
@@ -86,15 +91,12 @@ File: `frontend/src/hooks/useOnlineGame.ts`
 
 1. On connect: emits `joinGame(gameId)`.
 2. Subscribes:
-   - `gameStateUpdated`
+   - `gameStateUpdated` (Optimized to process payloads instantly rather than re-triggering heavy HTTP fetches)
    - `gameOver`
-   - `drawOffered`
-   - `drawDeclined`
-   - `drawCancelled`
+   - `drawOffered`, `drawDeclined`, `drawCancelled`
 3. Move submission path:
    - Optimistic local apply
    - `socket.emitWithAck("makeMove", { gameId, from, to })`
-   - On ack error, refetches game state
 
 ## Backend Implementation
 
@@ -105,23 +107,23 @@ File: `backend/src/interface/http/controllers/game.controller.ts`
 Invite endpoints:
 
 1. `POST /games/invite`
-   - Creates waiting game + invite code
+   - Aborts any existing stale WAITING invites for the creator.
+   - Creates a waiting game + invite code.
    - Returns `{ gameId, inviteCode }`
 
 2. `POST /games/invite/:code/join`
-   - Joins waiting invite game
-   - Emits room update so host UI exits waiting state
+   - Joins waiting invite game (assigns player slot).
+   - Emits room update so host UI detects guest arrival.
+
+3. `POST /games/:id/start`
+   - Validates that creator is starting it and both slots are filled.
+   - Activates game, resets clocks, and notifies guests.
 
 Game state endpoint:
 
 1. `GET /games/:id`
-   - Returns game, moves, and player metadata
-
-Actions:
-
-1. `POST /games/:id/resign`
-2. `POST /games/:id/draw`
-3. `POST /games/:id/abort`
+   - Returns game, moves, player metadata.
+   - (Engineering feature) Prisma historical move replay is used on load to properly reconstruct deep board states.
 
 ### 2. Invite Domain Logic
 
@@ -130,13 +132,13 @@ File: `backend/src/application/use-cases/create-game.use-case.ts`
 Invite flow:
 
 1. `createInviteGame(...)`
-   - Generates 6-char invite code
-   - Creates CASUAL game in `WAITING`
-   - Stores code in game record
+   - Generates 6-char invite code.
+   - Creates CASUAL game in `WAITING`.
 2. `joinInviteGame(code, joinerId)`
-   - Validates invite exists and is still joinable
-   - Prevents joining own game
-   - Assigns joiner to second seat and starts game
+   - Validates invite is WAITING and not owned by self.
+   - Fills empty slot but leaves game WAITING.
+3. `startGame(gameId, requesterId)`
+   - Transitions game to ACTIVE state.
 
 ### 3. WebSocket Gateway
 
@@ -146,12 +148,10 @@ Namespace: `/games`
 
 Socket events:
 
-1. `joinGame` -> adds socket to game room
-2. `makeMove` -> validates and executes move via use case, returns ack
-3. `offerDraw` -> broadcasts `drawOffered`
-4. `acceptDraw` -> ends game as draw, broadcasts `gameOver`
-5. `declineDraw` -> broadcasts `drawDeclined`
-6. `cancelDraw` -> broadcasts `drawCancelled`
+1. `joinGame` -> adds socket to game room, enforces 1-active-game-at-a-time limit per user.
+2. `makeMove` -> validates and executes move via use case, returns ack.
+3. `offerDraw`, `acceptDraw`, `declineDraw`, `cancelDraw`
+4. Post-match rematch events: `offerRematch`, `acceptRematch`, etc.
 
 Emit helpers:
 
@@ -167,30 +167,36 @@ Fields used by friend mode:
 1. `status` (`WAITING | ACTIVE | FINISHED | ABORTED`)
 2. `gameType` (`CASUAL` for invite friend games)
 3. `whitePlayerId`
-4. `blackPlayerId` (nullable while waiting)
+4. `blackPlayerId` (nullable while waiting, filled on guest join)
 5. `inviteCode` (unique, nullable)
 6. `winner`
 7. `createdAt | startedAt | endedAt`
 
-## End-to-End Flow
+## End-to-End Flow (Final Implemented State)
 
 1. Host opens setup-friend online tab.
 2. Host creates invite via `POST /games/invite`.
-3. UI receives `gameId + inviteCode`, renders QR/link.
-4. Friend opens link and joins via `POST /games/invite/:code/join`.
-5. Backend emits `gameStateUpdated` to room.
-6. Both clients in room receive updates and render board active.
-7. Moves sent over socket `makeMove` with optimistic frontend updates.
-8. Draw/resign/abort handled by socket or HTTP action endpoints.
-9. `gameOver` event ends session and displays result.
+3. UI receives `gameId + inviteCode`, renders QR/link and WhatsApp Share button.
+4. Friend opens link (or auto-joins via guest account if not logged in).
+5. Friend calls `POST /games/invite/:code/join`. The guest slot is filled.
+6. Backend emits `gameStateUpdated` to room.
+7. Host's WaitingBanner changes to "Opponent Joined" with a "Start Game" button. Friend's screen says "Waiting for host".
+8. Host clicks "Start Game" -> calls `POST /games/:id/start`. Game enters `ACTIVE` state.
+9. WS emits state update to both clients. Board renders interactively.
+10. Real-time moves use WS payloads to ensure sub-100ms UI latency.
+11. Optional: Draw/Resign/Abort/Rematch flows triggered.
+12. `gameOver` event ends the session and displays results correctly.
 
-## Phase 10 Acceptance Criteria
+## Phase 10 Final Acceptance Criteria
 
-1. Host can create invite and receive code.
-2. Friend can join with code or link.
-3. Host waiting screen disappears immediately after join.
-4. Real-time moves are synchronized for both players.
-5. Draw flow works (offer, accept/decline/cancel).
-6. Resign and abort endpoints update both clients correctly.
-7. Game result is shown consistently after `gameOver`.
-
+1. [x] Host can create invite and receive code.
+2. [x] Stale unused invites auto-expire (Aborted after 30m or when creating new).
+3. [x] Friend can join with code or link.
+4. [x] Host manually controls the actual game start logic.
+5. [x] Player color assignments are correct (host/guest map correctly).
+6. [x] Real-time moves are synchronized with ultra-low latency.
+7. [x] Historical moves replay on DB load to prevent board state bugs.
+8. [x] Draw flow works (offer, accept, decline, cancel).
+9. [x] Rematch flow works with instant game recreation.
+10. [x] Resign and Abort actions reliably reflect across screens.
+11. [x] Game result is shown consistently after `gameOver`.

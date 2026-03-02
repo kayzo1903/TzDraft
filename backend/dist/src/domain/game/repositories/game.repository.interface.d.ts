@@ -12,6 +12,7 @@ export interface IGameRepository {
     countGamesByPlayer(playerId: string): Promise<number>;
     findByInviteCode(code: string): Promise<Game | null>;
     joinInvite(gameId: string, joinerId: string): Promise<Game>;
+    startGame(gameId: string): Promise<Game>;
     updateClock(gameId: string, whiteTimeMs: number, blackTimeMs: number, lastMoveAt: Date): Promise<void>;
     expireStaleInvitesByPlayer(creatorId: string): Promise<void>;
 }
