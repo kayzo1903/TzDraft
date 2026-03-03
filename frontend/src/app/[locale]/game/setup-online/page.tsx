@@ -11,6 +11,7 @@ import {
   QUEUE_TIME_OPTIONS,
   type QueueTimeMs,
 } from "@/hooks/useMatchmaking";
+import { Link } from "@/i18n/routing";
 
 export default function SetupOnlinePage() {
   const t = useTranslations("setupOnline");
@@ -43,9 +44,12 @@ export default function SetupOnlinePage() {
                   — {t("bannerDescShort")}
                 </div>
               </div>
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+              <Link
+                href="/auth/login"
+                className="block rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 hover:border-amber-400/50 hover:text-amber-200 transition-colors"
+              >
                 {t("authRequired")}
-              </div>
+              </Link>
             </div>
           ) : (
             <div className="flex flex-col gap-6">

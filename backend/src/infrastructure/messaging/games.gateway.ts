@@ -73,6 +73,13 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   private userConnectionCounts = new Map<string, number>();
 
+  /**
+   * Maps userId → most-recently-connected socketId.
+   * Used to deliver matchFound to a player whose socket may have
+   * reconnected after they joined the matchmaking queue.
+   */
+  private userSocketMap = new Map<string, string>();
+
   constructor(private readonly moduleRef: ModuleRef) {}
 
   handleConnection(client: Socket) {
@@ -104,6 +111,8 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.data.user = { id: payload.sub };
       const existingConnections = this.userConnectionCounts.get(payload.sub) ?? 0;
       this.userConnectionCounts.set(payload.sub, existingConnections + 1);
+      // Always track the latest socket so matchFound reaches reconnected clients
+      this.userSocketMap.set(payload.sub, client.id);
       this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
     } catch {
       this.logger.warn(`Socket ${client.id} rejected: invalid token`);
@@ -123,6 +132,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const remainingConnections = Math.max(0, existingConnections - 1);
     if (remainingConnections === 0) {
       this.userConnectionCounts.delete(userId);
+      this.userSocketMap.delete(userId);
     } else {
       this.userConnectionCounts.set(userId, remainingConnections);
       // User still has another active socket (e.g. refresh/multi-tab).
@@ -641,9 +651,14 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /* ── Emit helpers (called by application layer) ─────────────────────── */
 
-  emitMatchFound(socketId: string, gameId: string) {
-    this.server.to(socketId).emit("matchFound", { gameId });
-    this.logger.log(`Emitted matchFound to socket ${socketId} for game ${gameId}`);
+  emitMatchFound(userId: string, gameId: string) {
+    const socketId = this.userSocketMap.get(userId);
+    if (!socketId) {
+      this.logger.warn(`emitMatchFound: no live socket for user ${userId}, game ${gameId}`);
+      return;
+    }
+    this.server.to(socketId).emit('matchFound', { gameId });
+    this.logger.log(`Emitted matchFound to socket ${socketId} (user ${userId}) for game ${gameId}`);
   }
 
   emitGameStateUpdate(gameId: string, gameState: any) {

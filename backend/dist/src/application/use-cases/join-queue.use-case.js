@@ -40,7 +40,7 @@ let JoinQueueUseCase = class JoinQueueUseCase {
             return {
                 status: 'matched',
                 gameId: created.id,
-                opponentSocketId: opponent.socketId,
+                opponentUserId: opponent.userId,
             };
         }
         await this.matchmakingRepo.upsert({
