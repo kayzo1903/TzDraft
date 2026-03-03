@@ -180,12 +180,20 @@ export class MakeMoveUseCase {
       status: game.status,
     });
 
-    // 11. If a timeout ended the game, emit the dedicated gameOver event
-    if (game.endReason === EndReason.TIME) {
+    // 11. Emit dedicated gameOver for any server-detected game end
+    // (stalemate, draw rules, timeout) so both players see the result card
+    // even when the moving player's optimistic-update path would skip it.
+    if (game.isGameOver() && game.winner !== null) {
+      const reasonStr =
+        game.endReason === EndReason.TIME
+          ? 'timeout'
+          : game.endReason === EndReason.STALEMATE
+            ? 'stalemate'
+            : 'draw';
       this.gamesGateway.emitGameOver(gameId, {
         gameId,
-        winner: game.winner!.toString(),
-        reason: 'timeout',
+        winner: game.winner.toString(),
+        reason: reasonStr,
       });
     }
 
