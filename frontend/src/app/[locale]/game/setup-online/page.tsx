@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Clock, Search, X } from "lucide-react";
 import clsx from "clsx";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
 import {
@@ -43,9 +44,12 @@ export default function SetupOnlinePage() {
                   — {t("bannerDescShort")}
                 </div>
               </div>
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+              <Link
+                href="/auth/signin"
+                className="block rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 hover:border-amber-400/50 hover:text-amber-200 transition-colors"
+              >
                 {t("authRequired")}
-              </div>
+              </Link>
             </div>
           ) : (
             <div className="flex flex-col gap-6">
