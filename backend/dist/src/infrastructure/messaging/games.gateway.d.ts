@@ -11,6 +11,7 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     private disconnectTimers;
     private disconnectTickIntervals;
     private userConnectionCounts;
+    private userSocketMap;
     constructor(moduleRef: ModuleRef);
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): void;
@@ -95,7 +96,7 @@ export declare class GamesGateway implements OnGatewayConnection, OnGatewayDisco
     }, client: Socket): Promise<{
         error?: string;
     }>;
-    emitMatchFound(socketId: string, gameId: string): void;
+    emitMatchFound(userId: string, gameId: string): void;
     emitGameStateUpdate(gameId: string, gameState: any): void;
     emitGameOver(gameId: string, result: any): void;
 }

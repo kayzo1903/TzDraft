@@ -36,6 +36,7 @@ let GamesGateway = class GamesGateway {
     disconnectTimers = new Map();
     disconnectTickIntervals = new Map();
     userConnectionCounts = new Map();
+    userSocketMap = new Map();
     constructor(moduleRef) {
         this.moduleRef = moduleRef;
     }
@@ -62,6 +63,7 @@ let GamesGateway = class GamesGateway {
             client.data.user = { id: payload.sub };
             const existingConnections = this.userConnectionCounts.get(payload.sub) ?? 0;
             this.userConnectionCounts.set(payload.sub, existingConnections + 1);
+            this.userSocketMap.set(payload.sub, client.id);
             this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
         }
         catch {
@@ -78,6 +80,7 @@ let GamesGateway = class GamesGateway {
         const remainingConnections = Math.max(0, existingConnections - 1);
         if (remainingConnections === 0) {
             this.userConnectionCounts.delete(userId);
+            this.userSocketMap.delete(userId);
         }
         else {
             this.userConnectionCounts.set(userId, remainingConnections);
@@ -419,9 +422,14 @@ let GamesGateway = class GamesGateway {
             return { error: err?.message || 'Claim failed' };
         }
     }
-    emitMatchFound(socketId, gameId) {
-        this.server.to(socketId).emit("matchFound", { gameId });
-        this.logger.log(`Emitted matchFound to socket ${socketId} for game ${gameId}`);
+    emitMatchFound(userId, gameId) {
+        const socketId = this.userSocketMap.get(userId);
+        if (!socketId) {
+            this.logger.warn(`emitMatchFound: no live socket for user ${userId}, game ${gameId}`);
+            return;
+        }
+        this.server.to(socketId).emit('matchFound', { gameId });
+        this.logger.log(`Emitted matchFound to socket ${socketId} (user ${userId}) for game ${gameId}`);
     }
     emitGameStateUpdate(gameId, gameState) {
         this.server.to(gameId).emit('gameStateUpdated', gameState);
