@@ -175,9 +175,9 @@ export class GameController {
     );
 
     if (result.status === 'matched') {
-      // Notify the matched opponent via their socket
+      // Notify the matched opponent via their current live socket
       this.gamesGateway.emitMatchFound(
-        result.opponentSocketId,
+        result.opponentUserId,
         result.gameId,
       );
     }

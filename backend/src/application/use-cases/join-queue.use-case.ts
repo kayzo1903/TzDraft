@@ -10,7 +10,7 @@ const STALE_QUEUE_AGE_MS = 1 * 60 * 1000; // 1 minute
 
 export type JoinQueueResult =
   | { status: 'waiting' }
-  | { status: 'matched'; gameId: string; opponentSocketId: string };
+  | { status: 'matched'; gameId: string; opponentUserId: string };
 
 @Injectable()
 export class JoinQueueUseCase {
@@ -63,7 +63,7 @@ export class JoinQueueUseCase {
       return {
         status: 'matched',
         gameId: created.id,
-        opponentSocketId: opponent.socketId,
+        opponentUserId: opponent.userId,
       };
     }
 
