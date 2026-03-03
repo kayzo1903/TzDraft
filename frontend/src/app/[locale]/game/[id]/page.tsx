@@ -653,11 +653,11 @@ function GameActions({
 
       {/* Resign + Draw: only available once at least one move has been played */}
       {iHaveMoved && (
-        <>
+        <div className="flex flex-row gap-2">
           {!drawOfferPending && (
             <button
               onClick={onDrawOffer}
-              className="flex items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/8 px-4 py-2.5 text-sm font-semibold text-sky-300 hover:bg-sky-500/15 transition"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/8 px-4 py-2.5 text-sm font-semibold text-sky-300 hover:bg-sky-500/15 transition"
             >
               <Handshake className="w-4 h-4" />
               Offer Draw
@@ -665,12 +665,12 @@ function GameActions({
           )}
           <button
             onClick={() => setConfirming("resign")}
-            className="flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/8 px-4 py-2.5 text-sm font-semibold text-rose-300 hover:bg-rose-500/15 transition"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/8 px-4 py-2.5 text-sm font-semibold text-rose-300 hover:bg-rose-500/15 transition"
           >
             <Flag className="w-4 h-4" />
             Resign
           </button>
-        </>
+        </div>
       )}
     </div>
   );
