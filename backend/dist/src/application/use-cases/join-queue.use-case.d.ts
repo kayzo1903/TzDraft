@@ -5,7 +5,7 @@ export type JoinQueueResult = {
 } | {
     status: 'matched';
     gameId: string;
-    opponentSocketId: string;
+    opponentUserId: string;
 };
 export declare class JoinQueueUseCase {
     private readonly matchmakingRepo;

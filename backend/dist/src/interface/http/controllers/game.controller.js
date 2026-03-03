@@ -80,7 +80,7 @@ let GameController = class GameController {
     async joinQueue(user, dto) {
         const result = await this.joinQueueUseCase.execute(user.id, dto.timeMs, dto.socketId ?? '', user.rating?.rating ?? null);
         if (result.status === 'matched') {
-            this.gamesGateway.emitMatchFound(result.opponentSocketId, result.gameId);
+            this.gamesGateway.emitMatchFound(result.opponentUserId, result.gameId);
         }
         return {
             success: true,
