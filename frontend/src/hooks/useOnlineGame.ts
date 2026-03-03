@@ -466,6 +466,18 @@ export const useOnlineGame = (gameId: string) => {
             incomingMoveNum % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
           applyClockSnapshot(clock, activeColor);
         }
+        // Also check if our move ended the game (e.g. stalemate, draw).
+        // The backend sends winner in the same gameStateUpdated payload.
+        const winnerStrEcho = d?.winner as string | undefined;
+        if (winnerStrEcho) {
+          const winnerMapEcho: Record<string, Winner> = {
+            WHITE: Winner.WHITE,
+            BLACK: Winner.BLACK,
+            DRAW: Winner.DRAW,
+          };
+          const w = winnerMapEcho[winnerStrEcho];
+          if (w !== undefined) setResult({ winner: w });
+        }
         return;
       }
 
