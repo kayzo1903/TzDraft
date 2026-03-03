@@ -17,7 +17,7 @@ const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const game_entity_1 = require("../../domain/game/entities/game.entity");
 const game_constants_1 = require("../../shared/constants/game.constants");
-const STALE_QUEUE_AGE_MS = 3 * 60 * 1000;
+const STALE_QUEUE_AGE_MS = 1 * 60 * 1000;
 let JoinQueueUseCase = class JoinQueueUseCase {
     matchmakingRepo;
     gameRepo;

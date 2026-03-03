@@ -107,11 +107,16 @@ let MakeMoveUseCase = class MakeMoveUseCase {
             currentTurn: game.currentTurn,
             status: game.status,
         });
-        if (game.endReason === game_constants_1.EndReason.TIME) {
+        if (game.isGameOver() && game.winner !== null) {
+            const reasonStr = game.endReason === game_constants_1.EndReason.TIME
+                ? 'timeout'
+                : game.endReason === game_constants_1.EndReason.STALEMATE
+                    ? 'stalemate'
+                    : 'draw';
             this.gamesGateway.emitGameOver(gameId, {
                 gameId,
                 winner: game.winner.toString(),
-                reason: 'timeout',
+                reason: reasonStr,
             });
         }
         return {
