@@ -6,7 +6,7 @@ import { Game } from '../../domain/game/entities/game.entity';
 import { GameType, PlayerColor } from '../../shared/constants/game.constants';
 
 /** Stale queue entries older than this are removed on each enqueue. */
-const STALE_QUEUE_AGE_MS = 3 * 60 * 1000; // 3 minutes
+const STALE_QUEUE_AGE_MS = 1 * 60 * 1000; // 1 minute
 
 export type JoinQueueResult =
   | { status: 'waiting' }
