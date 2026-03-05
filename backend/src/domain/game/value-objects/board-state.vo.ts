@@ -2,9 +2,13 @@ import { Piece } from './piece.vo';
 import { Position } from './position.vo';
 import {
   PlayerColor,
+  PieceType,
   TOTAL_SQUARES,
   PIECES_PER_PLAYER,
 } from '../../../shared/constants/game.constants';
+
+/** Compact per-piece snapshot stored in the `boardSnapshot` JSON column. */
+export type PieceSnapshot = { p: number; c: 'WHITE' | 'BLACK'; k: boolean };
 
 /**
  * BoardState Value Object
@@ -142,5 +146,32 @@ export class BoardState {
     });
 
     return board.map((row) => row.join(' ')).join('\n');
+  }
+
+  /**
+   * Serialize the board to a compact array for the `boardSnapshot` DB column.
+   * Each entry: { p: position(1-32), c: color, k: isKing }
+   */
+  serialize(): PieceSnapshot[] {
+    return this.getAllPieces().map((piece) => ({
+      p: piece.position.value,
+      c: piece.color as 'WHITE' | 'BLACK',
+      k: piece.isKing(),
+    }));
+  }
+
+  /**
+   * Restore a BoardState from a snapshot array previously produced by serialize().
+   */
+  static fromSnapshot(data: PieceSnapshot[]): BoardState {
+    const pieces = data.map(
+      (d) =>
+        new Piece(
+          d.k ? PieceType.KING : PieceType.MAN,
+          d.c as PlayerColor,
+          new Position(d.p),
+        ),
+    );
+    return new BoardState(pieces);
   }
 }

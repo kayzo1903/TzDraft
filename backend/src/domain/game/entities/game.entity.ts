@@ -1,4 +1,4 @@
-import { BoardState } from '../value-objects/board-state.vo';
+import { BoardState, PieceSnapshot } from '../value-objects/board-state.vo';
 import { Move } from './move.entity';
 import { Position } from '../value-objects/position.vo';
 import {
@@ -325,6 +325,63 @@ export class Game {
       this._moves.push(
         new Move(
           raw.id ?? `replay-${this.id}-${idx + 1}`,
+          raw.gameId ?? this.id,
+          raw.moveNumber ?? idx + 1,
+          raw.player ?? movingPlayer,
+          from,
+          to,
+          captured,
+          Boolean(raw.isPromotion),
+          raw.notation ?? Move.generateNotation(from, to, captured),
+          raw.createdAt ? new Date(raw.createdAt) : new Date(),
+        ),
+      );
+    });
+  }
+
+  /**
+   * Fast board restoration from a persisted snapshot (O(1) vs O(n) replay).
+   * Restores the board directly from the snapshot, then rebuilds move metadata
+   * (count, draw counters) by replaying only the lightweight move records
+   * without re-executing board mutations.
+   *
+   * @param snapshot  Array from boardSnapshot DB column
+   * @param rawMoves  Full move rows still needed for count / draw-counter state
+   */
+  restoreFromSnapshot(
+    snapshot: PieceSnapshot[],
+    rawMoves: {
+      id?: string;
+      gameId?: string;
+      moveNumber?: number;
+      player?: PlayerColor;
+      fromSquare: number;
+      toSquare: number;
+      capturedSquares: number[];
+      isPromotion?: boolean;
+      notation?: string;
+      createdAt?: Date;
+    }[],
+  ): void {
+    // Restore board directly — no move replay needed for the board itself
+    this._board = BoardState.fromSnapshot(snapshot);
+
+    // Still rebuild draw counters and _moves list from raw moves so that
+    // getMoveCount(), reversibleMoveCount, etc. are correct.
+    rawMoves.forEach((raw, idx) => {
+      const from = new Position(raw.fromSquare);
+      const to = new Position(raw.toSquare);
+      const movingPlayer =
+        idx % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+      const wasCapture = (raw.capturedSquares ?? []).length > 0;
+      this.updateDrawCounters(movingPlayer, wasCapture);
+
+      const captured = (raw.capturedSquares ?? []).map(
+        (sq) => new Position(sq),
+      );
+      this._moves.push(
+        new Move(
+          raw.id ?? `snap-${this.id}-${idx + 1}`,
           raw.gameId ?? this.id,
           raw.moveNumber ?? idx + 1,
           raw.player ?? movingPlayer,
