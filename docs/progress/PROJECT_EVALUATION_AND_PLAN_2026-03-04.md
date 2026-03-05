@@ -4,19 +4,19 @@
 **Last updated:** 2026-03-04
 **Prepared by:** Claude (AI Code Review)
 **Branch at time of review:** `bug/atomic-matchmaking`
-**Status:** ~~Feature-complete. NOT production-ready.~~ → **Week 2 complete. Week 1 next.**
+**Status:** ~~Feature-complete. NOT production-ready.~~ → **Weeks 1 & 2 complete. Week 3 (tests) next.**
 
 ---
 
 ## Overall Progress
 
 ```
-Week 1 — Operational Foundation     [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]   0 / 8    0%
+Week 1 — Operational Foundation     [x] [x] [x] [x] [x] [x] [x] [x]   8 / 8  100%  ✅
 Week 2 — Performance & Security     [x] [x] [x] [x] [x] [x] [x]       7 / 7  100%  ✅
 Week 3 — Test Coverage              [ ] [ ] [ ] [ ] [ ] [ ] [ ]        0 / 7    0%
 Week 4 — Staging & Launch Prep      [ ] [ ] [ ] [ ] [ ] [ ] [ ]        0 / 7    0%
 ─────────────────────────────────────────────────────────────────────────────────
-Total                                                                   7 / 29   24%
+Total                                                                  15 / 29   52%
 ```
 
 ---
@@ -135,14 +135,14 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 
 | # | Task | Status |
 |---|---|---|
-| W1.1 | Write `Dockerfile` for backend (NestJS + Prisma) | ⬜ |
-| W1.2 | Write `Dockerfile` for frontend (Next.js) | ⬜ |
-| W1.3 | Write `docker-compose.yml` with backend, frontend, postgres services | ⬜ |
-| W1.4 | Add `GET /health` endpoint using `@nestjs/terminus` (DB ping check) | ⬜ |
-| W1.5 | Integrate Sentry in backend (unhandled exceptions + WS errors) | ⬜ |
-| W1.6 | Integrate Sentry in frontend (JS runtime errors) | ⬜ |
-| W1.7 | Set up GitHub Actions: run `pnpm test` on every PR | ⬜ |
-| W1.8 | Add `.env.example` files for backend and frontend | ⬜ |
+| W1.1 | Write `Dockerfile` for backend (NestJS + Prisma) | ✅ `backend/Dockerfile` (multi-stage, node:22-slim) |
+| W1.2 | Write `Dockerfile` for frontend (Next.js) | ✅ `frontend/Dockerfile` (multi-stage, node:22-slim) |
+| W1.3 | Write `docker-compose.yml` with backend, frontend, postgres services | ✅ `docker-compose.yml` (root) |
+| W1.4 | Add `GET /health` endpoint using `@nestjs/terminus` (DB ping check) | ✅ `src/health/` — PrismaHealthIndicator + HealthController |
+| W1.5 | Integrate Sentry in backend (unhandled exceptions + WS errors) | ✅ `src/instrument.ts` + `@sentry/nestjs` |
+| W1.6 | Integrate Sentry in frontend (JS runtime errors) | ✅ `sentry.*.config.ts` + `@sentry/nextjs` |
+| W1.7 | Set up GitHub Actions: run `pnpm test` on every PR | ✅ `.github/workflows/ci.yml` (test + lint + docker-build) |
+| W1.8 | Add `.env.example` files for backend and frontend | ✅ `backend/.env.example`, `frontend/.env.example` |
 
 **Exit criteria:** App starts via `docker-compose up`. Health endpoint returns 200. Sentry receives a test event. CI runs on PRs.
 

@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './domain/user/user.module';
 import { EngineModule } from './infrastructure/engine/engine.module';
 import { TasksModule } from './infrastructure/tasks/tasks.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TasksModule } from './infrastructure/tasks/tasks.module';
     HttpModule,
     EngineModule, // Provides SidraAdapter globally
     TasksModule,  // Scheduled cleanup jobs
+    HealthModule,
   ],
   controllers: [],
   providers: [
