@@ -1,5 +1,6 @@
 import path from "node:path";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin();
 
@@ -24,4 +25,18 @@ const nextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+// Wrap with Sentry only in CI when SENTRY_AUTH_TOKEN is present (source-map upload).
+// In local dev and Docker builds the Sentry SDK still initialises at runtime via
+// sentry.client.config.ts / sentry.server.config.ts — no build-time wrapping needed.
+const baseConfig = withNextIntl(nextConfig);
+
+export default process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(baseConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      hideSourceMaps: true,
+      disableLogger: true,
+    })
+  : baseConfig;
