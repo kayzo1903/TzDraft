@@ -23,6 +23,10 @@ const ABANDON_TIMEOUT_MS = 60_000;
 /** Tick interval for broadcasting abandon countdown to opponent. */
 const ABANDON_TICK_MS = 1_000;
 
+/** WS rate limit: max move/draw/rematch events per socket per window. */
+const WS_RATE_LIMIT = 30;
+const WS_RATE_WINDOW_MS = 60_000;
+
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -80,7 +84,25 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   private userSocketMap = new Map<string, string>();
 
+  /**
+   * Per-socket event counter for WS rate limiting.
+   * socketId → { count, windowStart }
+   */
+  private wsRateCounts = new Map<string, { count: number; windowStart: number }>();
+
   constructor(private readonly moduleRef: ModuleRef) {}
+
+  /** Returns true if the socket has exceeded the WS rate limit. */
+  private isWsRateLimited(socketId: string): boolean {
+    const now = Date.now();
+    const entry = this.wsRateCounts.get(socketId);
+    if (!entry || now - entry.windowStart > WS_RATE_WINDOW_MS) {
+      this.wsRateCounts.set(socketId, { count: 1, windowStart: now });
+      return false;
+    }
+    entry.count += 1;
+    return entry.count > WS_RATE_LIMIT;
+  }
 
   handleConnection(client: Socket) {
     try {
@@ -125,6 +147,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(
       `Client disconnected: ${client.id} (User: ${userId || 'unknown'})`,
     );
+
+    // Clean up rate-limit tracking for this socket
+    this.wsRateCounts.delete(client.id);
 
     if (!userId) return;
 
@@ -273,6 +298,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<{ error?: string }> {
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
+    if (this.isWsRateLimited(client.id)) return { error: 'Too many requests' };
 
     try {
       const makeMoveUseCase = this.moduleRef.get(MakeMoveUseCase, {
