@@ -48,6 +48,10 @@ jobs:
         working-directory: packages/cake-engine
         run: pnpm build
 
+      - name: Generate Prisma client
+        working-directory: backend
+        run: pnpm prisma:generate
+
       - name: Run backend tests
         working-directory: backend
         run: pnpm test
