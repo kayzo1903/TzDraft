@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { MoveGeneratorService } from '../../domain/game/services/move-generator.service';
 import { Move } from '../../domain/game/entities/move.entity';
+import { Position } from '../../domain/game/value-objects/position.vo';
 
 /**
  * Get Legal Moves Use Case
@@ -39,7 +40,7 @@ export class GetLegalMovesUseCase {
       throw new Error('Game not found');
     }
 
-    const piece = game.board.getPieceAt({ value: position } as any);
+    const piece = game.board.getPieceAt(new Position(position));
     if (!piece) {
       return [];
     }

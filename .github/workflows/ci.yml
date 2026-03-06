@@ -83,6 +83,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build CAKE engine
+        working-directory: packages/cake-engine
+        run: pnpm build
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: pnpm prisma:generate
+
       - name: Lint backend
         working-directory: backend
         run: pnpm lint
