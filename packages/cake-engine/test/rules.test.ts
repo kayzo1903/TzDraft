@@ -208,10 +208,12 @@ describe("CAKE Engine - Tanzania Drafti 8x8", () => {
       expect(match?.capturedSquares[2].equals(black3.position)).toBe(true);
     });
 
-    test("king cannot chain through an already-captured piece that remains on board", () => {
+    test("king CAN chain through the vacated square of an early-removed captured piece", () => {
       // Position:
       // BK @ d4, WM @ f6 and WM @ b2
-      // With deferred piece removal, each route is only a single capture.
+      // With early removal, capturing f6 vacates that square so the king can
+      // slide through it to reach b2 (and vice-versa). Both 2-piece chains
+      // must be found; no single-piece partial sequences are returned.
       const blackKing = new Piece(
         PieceType.KING,
         PlayerColor.BLACK,
@@ -233,7 +235,9 @@ describe("CAKE Engine - Tanzania Drafti 8x8", () => {
       const captures = captureService.findCapturesForPiece(board, blackKing);
 
       expect(captures.length).toBeGreaterThan(0);
-      expect(captures.every((c) => c.capturedSquares.length === 1)).toBe(true);
+      // All sequences are 2-piece chains (mandatory continuation, early removal)
+      expect(captures.every((c) => c.capturedSquares.length === 2)).toBe(true);
+      // The f6 → b2 chain must exist
       expect(
         captures.some(
           (c) =>
@@ -241,7 +245,8 @@ describe("CAKE Engine - Tanzania Drafti 8x8", () => {
             c.capturedSquares[0].equals(whiteF6.position) &&
             c.capturedSquares[1].equals(whiteB2.position),
         ),
-      ).toBe(false);
+      ).toBe(true);
+      // The b2 → f6 chain must exist
       expect(
         captures.some(
           (c) =>
@@ -249,10 +254,14 @@ describe("CAKE Engine - Tanzania Drafti 8x8", () => {
             c.capturedSquares[0].equals(whiteB2.position) &&
             c.capturedSquares[1].equals(whiteF6.position),
         ),
-      ).toBe(false);
+      ).toBe(true);
     });
 
-    test("BK g1 with WM e3/f6/b2 allows only one continuation branch", () => {
+    test("BK g1 with WM e3/f6/b2 chains all three pieces in one sequence", () => {
+      // BK at g1 can only initially reach e3. After capturing e3 (early
+      // removal) the king lands at d4 from which both f6 and b2 are reachable.
+      // Art 4.6 mandatory continuation means ONLY the full 3-piece sequences
+      // are returned — no partial 2-piece paths.
       const blackKing = new Piece(
         PieceType.KING,
         PlayerColor.BLACK,
@@ -278,26 +287,28 @@ describe("CAKE Engine - Tanzania Drafti 8x8", () => {
       const captureService = new CaptureFindingService();
       const captures = captureService.findCapturesForPiece(board, blackKing);
 
-      // No route should capture all three in one move.
-      expect(captures.some((c) => c.capturedSquares.length > 2)).toBe(false);
+      // All returned paths must capture all three pieces.
+      expect(captures.every((c) => c.capturedSquares.length === 3)).toBe(true);
 
-      // Must include one-branch continuations after e3:
-      // e3 -> f6 branch and e3 -> b2 branch.
-      const hasE3ThenF6 = captures.some(
+      // Must include the e3 → f6 → b2 order.
+      const hasE3ThenF6ThenB2 = captures.some(
         (c) =>
-          c.capturedSquares.length === 2 &&
+          c.capturedSquares.length === 3 &&
           c.capturedSquares[0].equals(whiteE3.position) &&
-          c.capturedSquares[1].equals(whiteF6.position),
+          c.capturedSquares[1].equals(whiteF6.position) &&
+          c.capturedSquares[2].equals(whiteB2.position),
       );
-      const hasE3ThenB2 = captures.some(
+      // Must include the e3 → b2 → f6 order.
+      const hasE3ThenB2ThenF6 = captures.some(
         (c) =>
-          c.capturedSquares.length === 2 &&
+          c.capturedSquares.length === 3 &&
           c.capturedSquares[0].equals(whiteE3.position) &&
-          c.capturedSquares[1].equals(whiteB2.position),
+          c.capturedSquares[1].equals(whiteB2.position) &&
+          c.capturedSquares[2].equals(whiteF6.position),
       );
 
-      expect(hasE3ThenF6).toBe(true);
-      expect(hasE3ThenB2).toBe(true);
+      expect(hasE3ThenF6ThenB2).toBe(true);
+      expect(hasE3ThenB2ThenF6).toBe(true);
     });
   });
 
