@@ -1,10 +1,10 @@
 # TzDraft — Project Evaluation Report & Production Readiness Plan
 
 **Date:** 2026-03-04
-**Last updated:** 2026-03-04
+**Last updated:** 2026-03-06
 **Prepared by:** Claude (AI Code Review)
 **Branch at time of review:** `bug/atomic-matchmaking`
-**Status:** ~~Feature-complete. NOT production-ready.~~ → **Weeks 1 & 2 complete. Week 3 (tests) next.**
+**Status:** ~~Feature-complete. NOT production-ready.~~ → **Weeks 1, 2 & 3 (partial) complete. W3.1-W3.4 done (76 tests passing).**
 
 ---
 
@@ -13,10 +13,10 @@
 ```
 Week 1 — Operational Foundation     [x] [x] [x] [x] [x] [x] [x] [x]   8 / 8  100%  ✅
 Week 2 — Performance & Security     [x] [x] [x] [x] [x] [x] [x]       7 / 7  100%  ✅
-Week 3 — Test Coverage              [ ] [ ] [ ] [ ] [ ] [ ] [ ]        0 / 7    0%
+Week 3 — Test Coverage              [x] [x] [x] [x] [ ] [ ] [ ]        4 / 7   57%  🔄
 Week 4 — Staging & Launch Prep      [ ] [ ] [ ] [ ] [ ] [ ] [ ]        0 / 7    0%
 ─────────────────────────────────────────────────────────────────────────────────
-Total                                                                  15 / 29   52%
+Total                                                                  19 / 29   66%
 ```
 
 ---
@@ -188,11 +188,11 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 
 | # | Task | Status | Priority |
 |---|---|---|---|
-| W3.1 | Unit tests for `CaptureFindingService` | ⬜ | Critical |
-| W3.2 | Unit tests for `MoveValidationService` | ⬜ | Critical |
-| W3.3 | Unit tests for `GameRulesService` | ⬜ | Critical |
-| W3.4 | Unit tests for `MakeMoveUseCase` | ⬜ | High |
-| W3.5 | Unit tests for `JoinQueueUseCase` | ⬜ | High |
+| W3.1 | Unit tests for `CaptureFindingService` | ✅ `capture-finding.service.spec.ts` (20 tests) | Critical |
+| W3.2 | Unit tests for `MoveValidationService` | ✅ `move-validation.service.spec.ts` (12 tests) | Critical |
+| W3.3 | Unit tests for `GameRulesService` | ✅ `game-rules.service.spec.ts` (22 tests) | Critical |
+| W3.4 | Unit tests for `MakeMoveUseCase` | ✅ `make-move.use-case.spec.ts` (10 tests) | High |
+| W3.5 | Unit tests for `JoinQueueUseCase` | ✅ existing spec (12 tests) | High |
 | W3.6 | Unit tests for CAKE engine move generation | ⬜ | High |
 | W3.7 | Integration test: full game sequence | ⬜ | Medium |
 
