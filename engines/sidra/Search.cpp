@@ -1,4 +1,6 @@
+#ifdef _WIN32
 #include <windows.h>
+#endif
 #include <iostream>
 using namespace std;
 #include <stdio.h>
