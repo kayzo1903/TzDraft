@@ -5,14 +5,18 @@
 #else
 #define DLL_EXPORT
 #define API_CALL
+#define MB_OK 0
+#define MessageBox(hwnd, text, caption, flags) fprintf(stderr, "%s: %s\n", caption, text)
 #endif
+#include <cstring>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 
 using namespace std;
 
-#include "EdAccess.h"
 #include "Checkers.h"
+#include "EdAccess.h"
 
 // ôóíêöèÿ îáðàòíîãî âûçîâà äëÿ îòîáðàæåíèÿ èíôîðìàöèè î õîäå âû÷èñëåíèé
 // score - îöåíêà ïîçèöèè.
