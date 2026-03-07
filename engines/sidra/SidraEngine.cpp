@@ -12,7 +12,7 @@
 using namespace std;
 
 #include "EdAccess.h"
-#include "checkers.h"
+#include "Checkers.h"
 
 // ôóíêöèÿ îáðàòíîãî âûçîâà äëÿ îòîáðàæåíèÿ èíôîðìàöèè î õîäå âû÷èñëåíèé
 // score - îöåíêà ïîçèöèè.
