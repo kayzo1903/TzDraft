@@ -52,19 +52,19 @@ export class SidraAdapter
       this.cliPath = envPath;
     } else {
       const projectRoot = path.resolve(__dirname, '..', '..', '..', '..', '..');
-      this.cliPath = path.join(
-        projectRoot,
-        'engines',
-        'sidra',
-        'cli',
-        'sidra-cli.exe',
-      );
+      const binaryName =
+        process.platform === 'win32'
+          ? path.join('cli', 'sidra-cli.exe')
+          : path.join('bin', 'sidra');
+      this.cliPath = path.join(projectRoot, 'engines', 'sidra', binaryName);
     }
 
     if (!fs.existsSync(this.cliPath)) {
       this.logger.warn(
-        `sidra-cli.exe not found at: ${this.cliPath}. ` +
-          `Build it: cd engines\\sidra\\cli && build_cli.bat`,
+        `Sidra binary not found at: ${this.cliPath}. ` +
+          (process.platform === 'win32'
+            ? `Build it: cd engines\\sidra\\cli && build_cli.bat`
+            : `Build it: cd engines/sidra && bash build.sh`),
       );
       return;
     }
