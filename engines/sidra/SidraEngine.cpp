@@ -18,10 +18,6 @@ using namespace std;
 #include "Checkers.h"
 #include "EdAccess.h"
 
-#ifndef _WIN32
-extern "C" {
-#endif
-
 // ôóíêöèÿ îáðàòíîãî âûçîâà äëÿ îòîáðàæåíèÿ èíôîðìàöèè î õîäå âû÷èñëåíèé
 // score - îöåíêà ïîçèöèè.
 //         âûèãðûø ëó÷øå îáîçíà÷àòü òàê: 32767 - N, ãäå N ýòî êîëè÷åñòâî
@@ -40,6 +36,10 @@ PF_SearchInfo pfSearchInfo = 0;
 typedef void(__stdcall *PF_SearchInfoEx)(char *score, char *depth, char *speed,
                                          char **pv, char *cv);
 PF_SearchInfoEx pfSearchInfoEx = 0;
+
+#ifndef _WIN32
+extern "C" {
+#endif
 
 // Ñäåëàòü õîä move
 // Ôîðìàò õîäîâ: "a3b4" è "a3:b4:d6:e7". Òàêîé ôîðìàò ïîçâîëÿåò óñòðàíèòü âñå
