@@ -48,6 +48,44 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findAndClaimMatch(
+    timeMs: number,
+    excludeUserId: string,
+    userRating?: number | null,
+  ): Promise<MatchmakingEntry | null> {
+    const MAX_ELO_GAP = 200;
+    const ratingFilter =
+      userRating != null
+        ? {
+            OR: [
+              { rating: null },
+              {
+                AND: [
+                  { rating: { gte: userRating - MAX_ELO_GAP } },
+                  { rating: { lte: userRating + MAX_ELO_GAP } },
+                ],
+              },
+            ],
+          }
+        : {};
+
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.matchmakingQueue.findFirst({
+        where: { timeMs, userId: { not: excludeUserId }, ...ratingFilter },
+        orderBy: { joinedAt: 'asc' },
+      });
+      if (!row) return null;
+
+      const deleted = await tx.matchmakingQueue.deleteMany({
+        where: { id: row.id },
+      });
+      // If another worker already deleted this row, abort and return null
+      if (deleted.count !== 1) return null;
+
+      return this.toDomain(row);
+    });
+  }
+
   async remove(userId: string): Promise<void> {
     await this.prisma.matchmakingQueue
       .delete({ where: { userId } })

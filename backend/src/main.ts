@@ -2,18 +2,21 @@
 import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'express';
 
 async function bootstrap() {
-  const isProd = process.env.NODE_ENV === 'production';
-
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: isProd ? false : undefined,
+    // Disable NestJS built-in logger — nestjs-pino (configured in AppModule) takes over
+    logger: false,
     bodyParser: false,
   });
+
+  // Wire in the pino logger so all NestJS Logger calls go through pino
+  app.useLogger(app.get(Logger));
 
   const configService = app.get(ConfigService);
 
@@ -167,8 +170,6 @@ async function bootstrap() {
   // Explicitly bind to all interfaces
   await app.listen(port, '0.0.0.0');
 
-  if (!isProd) {
-    new Logger('Bootstrap').log(`TzDraft server listening on port ${port}`);
-  }
+  app.get(Logger).log(`TzDraft server listening on port ${port}`, 'Bootstrap');
 }
 bootstrap();
