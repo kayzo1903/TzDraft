@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: tzdraft
       POSTGRES_USER: tzdraft
-      POSTGRES_PASSWORD: tzdraft_dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -25,7 +25,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgresql://tzdraft:tzdraft_dev@postgres:5432/tzdraft
+      DATABASE_URL: ${DATABASE_URL}
       CORS_ORIGINS: http://localhost:3000
       # ── Auth ──
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change_me_in_production}
