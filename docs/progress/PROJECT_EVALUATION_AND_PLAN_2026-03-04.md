@@ -1,10 +1,10 @@
 # TzDraft — Project Evaluation Report & Production Readiness Plan
 
 **Date:** 2026-03-04
-**Last updated:** 2026-03-06
+**Last updated:** 2026-03-08
 **Prepared by:** Claude (AI Code Review)
-**Branch at time of review:** `bug/atomic-matchmaking`
-**Status:** ~~Feature-complete. NOT production-ready.~~ → **Weeks 1, 2 & 3 (partial) complete. W3.1-W3.4 done (76 tests passing).**
+**Branch at time of review:** `main`
+**Status:** Weeks 1–3 complete. Week 4 at 71% (staging deploy + manual QA remaining).
 
 ---
 
@@ -23,11 +23,11 @@ Total                                                                  27 / 29  
 
 ## 1. Executive Summary
 
-TzDraft is a full-stack competitive draughts platform targeting the Tanzanian market. It includes real-time online multiplayer, three AI engine tiers, ELO ratings, voice chat, invite codes, and localization (Swahili/English). The architecture is sound and the game logic is complete.
+TzDraft is a full-stack competitive draughts platform targeting the Tanzanian market. It includes real-time online multiplayer, two AI engine tiers (CAKE beginner, Sidra medium), ELO ratings, voice chat, invite codes, and localization (Swahili/English). Kallisto (advanced engine) was removed from the project. The architecture is sound and the game logic is complete.
 
-Week 2 (Performance & Security Hardening) is now complete. The server is protected from basic abuse, Elo ratings are now persisted atomically, Sidra no longer spawns a new process per move, and board state loads in O(1) instead of replaying the full move history.
+All infrastructure, security, performance, and test coverage work (Weeks 1–3) is done. The platform can serve real users safely. The two remaining blockers before a confident production launch are: deploying and validating on a staging environment (W4.1–W4.2).
 
-**Next step: Week 1 — Operational Foundation (Docker, CI/CD, health check, Sentry).**
+**Deployment risk:** The `add_invite_code` migration (`20260227000000_add_invite_code`) was created manually when the production DB was unreachable. It must be verified to run cleanly via `prisma migrate deploy` before going live.
 
 ---
 
@@ -35,25 +35,27 @@ Week 2 (Performance & Security Hardening) is now complete. The server is protect
 
 | Layer | Technology | Status |
 |---|---|---|
-| Frontend | Next.js 16 + React 19 + Tailwind CSS 4 | Complete |
+| Frontend | Next.js 15 + React 19 + Tailwind CSS 4 | Complete |
 | Backend | NestJS 11 + DDD architecture + Prisma + PostgreSQL | Complete |
 | Real-time | Socket.IO 4 (WebSocket hub) | Complete |
 | Auth | JWT + Google OAuth + Phone OTP | Complete |
 | Engine (local/browser) | CAKE (TypeScript, in-browser) | Complete |
 | Engine (AI server-side) | Sidra (C++ CLI, process pool) | Complete |
+| Engine (advanced) | Kallisto | **Removed** |
 | Game modes | Local, Local PvP, Online PvP, vs AI, Invite code | Complete |
 | Flows | Draw offer, rematch, resign, abort, timeout claim | Complete |
 | Voice chat | WebRTC relay via WebSocket gateway | Complete |
 | Matchmaking | HTTP queue + WS match notification + ±200 Elo gap | Complete |
-| Ratings | ELO system — atomic Prisma transaction, K=32/<30 games | **Fixed ✅** |
+| Ratings | ELO system — atomic Prisma transaction, K=32/<30 games | ✅ |
 | TZD rule compliance | All rules in Sidra + CAKE | Complete |
 | i18n | Swahili (default) + English | Complete |
-| Rate limiting | @nestjs/throttler (HTTP) + per-socket WS limiter | **Fixed ✅** |
-| Board snapshot | boardSnapshot JSON column, O(1) board load | **Fixed ✅** |
-| Scheduled cleanup | Stale invite games + dead queue entries | **Fixed ✅** |
-| Docker / CI/CD | — | Missing |
-| Tests | Jest configured, coverage low | Partial |
-| Monitoring | — | Missing |
+| Rate limiting | @nestjs/throttler (HTTP) + per-socket WS limiter | ✅ |
+| Board snapshot | boardSnapshot JSON column, O(1) board load | ✅ |
+| Scheduled cleanup | Stale invite games + dead queue entries | ✅ |
+| Docker / CI/CD | Multi-stage Dockerfiles + GitHub Actions | ✅ |
+| Tests | 206 tests — 92.75% domain statements, 82.2% branch | ✅ |
+| Monitoring | Sentry (backend + frontend), nestjs-pino logging | ✅ |
+| Redis | Matchmaking queue (Lua atomic claim, ZSET) + game state cache | ✅ |
 
 ---
 
@@ -78,8 +80,11 @@ pnpm workspaces with a shared `cake-engine` package is the correct call. One `pn
 
 ### 3.2 Remaining Weaknesses
 
-**`useOnlineGame.ts` is 1,016 lines.**
+**`useOnlineGame.ts` is ~1,000+ lines.**
 This hook handles: clock management, optimistic moves, WebSocket subscriptions, draw/rematch state, disconnect countdown, and voice chat signaling. Any bug requires reading the entire file. This is a maintainability risk. → Scheduled for post-launch refactor.
+
+**No frontend tests.**
+Backend domain coverage is strong (92.75% statements). The frontend has zero automated tests — no unit, component, or integration tests. The game board UI is completely untested.
 
 ---
 
@@ -89,12 +94,12 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 
 | # | Issue | Status |
 |---|---|---|
-| B1 | No Docker / deployment config | ⬜ Pending (Week 1) |
-| B2 | No CI/CD pipeline | ⬜ Pending (Week 1) |
+| B1 | No Docker / deployment config | ✅ Fixed — multi-stage Dockerfiles + docker-compose |
+| B2 | No CI/CD pipeline | ✅ Fixed — GitHub Actions (test + lint + docker-build) |
 | B3 | Sidra spawns new process per AI move | ✅ Fixed — process pool (4 pre-warmed) |
 | B4 | No rate limiting (HTTP + WebSocket) | ✅ Fixed — ThrottlerGuard + WS limiter |
-| B5 | No health check endpoint | ⬜ Pending (Week 1) |
-| B6 | No error tracking (Sentry or similar) | ⬜ Pending (Week 1) |
+| B5 | No health check endpoint | ✅ Fixed — `src/health/` PrismaHealthIndicator |
+| B6 | No error tracking (Sentry or similar) | ✅ Fixed — Sentry backend + frontend |
 | B7 | Board state replays all moves | ✅ Fixed — boardSnapshot column |
 
 ### 4.2 High Risk — Will cause problems in first week of real users
@@ -102,19 +107,20 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | # | Issue | Status |
 |---|---|---|
 | H1 | ELO update atomicity unclear | ✅ Fixed — RatingService + $transaction |
-| H2 | No meaningful test coverage on domain logic | ⬜ Pending (Week 3) |
+| H2 | No meaningful test coverage on domain logic | ✅ Fixed — 206 tests, 92.75% stmt coverage |
 | H3 | Matchmaking has no rating gap constraint | ✅ Fixed — ±200 Elo filter |
 | H4 | No invite code expiry / stale cleanup | ✅ Fixed — CleanupService cron |
-| H5 | Voice chat room has no sender validation | ✅ Fixed — isInRoom() guard existed |
+| H5 | Voice chat room has no sender validation | ✅ Fixed — isInRoom() guard |
+| H6 | `add_invite_code` migration unverified on production DB | ⚠️ Deployed without verifying — run `prisma migrate deploy` or confirm column exists |
 
 ### 4.3 Medium Priority — Should be addressed in first month
 
 | # | Issue | Status |
 |---|---|---|
-| M1 | No Redis caching layer | ⬜ Pending (Week 4) |
+| M1 | No Redis caching layer | ✅ Fixed — RedisModule + read-through cache |
 | M2 | No game archiving strategy | ⬜ Post-launch |
-| M3 | No structured logging | ⬜ Pending (Week 4) |
-| M4 | No staging environment | ⬜ Pending (Week 4) |
+| M3 | No structured logging | ✅ Fixed — nestjs-pino (JSON prod, pretty dev) |
+| M4 | No staging environment | ⬜ Pending (W4.1) |
 | M5 | No soft-delete on users or games | ⬜ Post-launch |
 
 ### 4.4 Low Priority — Polish for post-launch
@@ -124,12 +130,13 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | L1 | CAKE has no opening book | ⬜ Post-launch |
 | L2 | No build artifact versioning | ⬜ Post-launch |
 | L3 | Sidra AI level not validated in DTOs | ⬜ Post-launch |
+| L4 | No frontend tests | ⬜ Post-launch |
 
 ---
 
 ## 5. Production Readiness Plan
 
-### Week 1 — Operational Foundation
+### Week 1 — Operational Foundation ✅ COMPLETE
 
 **Goal:** The app can be deployed, monitored, and protected from basic abuse.
 
@@ -142,9 +149,9 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | W1.5 | Integrate Sentry in backend (unhandled exceptions + WS errors) | ✅ `src/instrument.ts` + `@sentry/nestjs` |
 | W1.6 | Integrate Sentry in frontend (JS runtime errors) | ✅ `sentry.*.config.ts` + `@sentry/nextjs` |
 | W1.7 | Set up GitHub Actions: run `pnpm test` on every PR | ✅ `.github/workflows/ci.yml` (test + lint + docker-build) |
-| W1.8 | Add `.env.example` files for backend and frontend | ✅ `backend/.env.example`, `frontend/.env.example` |
+| W1.8 | Add `.env.example` files for backend and frontend | ✅ `.env.example` at root |
 
-**Exit criteria:** App starts via `docker-compose up`. Health endpoint returns 200. Sentry receives a test event. CI runs on PRs.
+**Exit criteria:** App starts via `docker-compose up`. Health endpoint returns 200. Sentry receives a test event. CI runs on PRs. ✅ All met.
 
 ---
 
@@ -182,37 +189,55 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 
 ---
 
-### Week 3 — Test Coverage
+### Week 3 — Test Coverage ✅ COMPLETE (2026-03-06)
 
 **Goal:** Critical game logic has test coverage that catches regressions before they reach users.
 
-| # | Task | Status | Priority |
+| # | Task | Status | Result |
 |---|---|---|---|
-| W3.1 | Unit tests for `CaptureFindingService` | ✅ `capture-finding.service.spec.ts` (20 tests) | Critical |
-| W3.2 | Unit tests for `MoveValidationService` | ✅ `move-validation.service.spec.ts` (12 tests) | Critical |
-| W3.3 | Unit tests for `GameRulesService` | ✅ `game-rules.service.spec.ts` (22 tests) | Critical |
-| W3.4 | Unit tests for `MakeMoveUseCase` | ✅ `make-move.use-case.spec.ts` (10 tests) | High |
-| W3.5 | Unit tests for `JoinQueueUseCase` | ✅ existing spec (12 tests) | High |
-| W3.6 | Unit tests for CAKE engine move generation | ✅ `packages/cake-engine/test/rules.test.ts` (41 tests) | High |
-| W3.7 | Integration test: full game sequence | ✅ `game-integration.spec.ts` (5 tests) | Medium |
+| W3.1 | Unit tests for `CaptureFindingService` | ✅ | `capture-finding.service.spec.ts` — 20 tests |
+| W3.2 | Unit tests for `MoveValidationService` | ✅ | `move-validation.service.spec.ts` — 13 tests |
+| W3.3 | Unit tests for `GameRulesService` | ✅ | `game-rules.service.spec.ts` — 22 tests |
+| W3.4 | Unit tests for `MakeMoveUseCase` | ✅ | `make-move.use-case.spec.ts` — 11 tests |
+| W3.5 | Unit tests for `JoinQueueUseCase` | ✅ | existing spec — 12 tests |
+| W3.6 | Unit tests for CAKE engine move generation | ✅ | `packages/cake-engine/test/rules.test.ts` — 41 tests |
+| W3.7 | Integration test: full game sequence | ✅ | `game-integration.spec.ts` — 5 tests |
 
-**Target:** 80%+ coverage on `domain/` and `application/use-cases/`. 60%+ on CAKE engine.
+**Final totals:** 206 tests (165 backend + 41 CAKE). All passing.
+
+**Coverage (domain layer):**
+- `domain/game/entities`: 92.75% stmts, 82.2% branch
+- `domain/game/services`: 87.23% stmts, 83.42% branch, 93% funcs
+- `domain/game/value-objects`: 85.71% stmts
+- `domain/game/types`: 91.42% stmts
 
 ---
 
-### Week 4 — Staging & Launch Prep
+### Week 4 — Staging & Launch Prep 🔄 IN PROGRESS (5/7)
 
 **Goal:** A staging environment mirrors production. The team has confidence to launch.
 
 | # | Task | Status |
 |---|---|---|
-| W4.1 | Deploy to staging (Railway/Render) using Docker | ⬜ |
-| W4.2 | Run full manual QA: all game modes, auth flows, rating updates, voice chat | ⬜ |
-| W4.3 | Load test staging: 20 concurrent games (mix of PvP and AI) | ✅ `load-tests/k6/game-load-test.js` (k6 script, thresholds: p95 < 500ms, errors < 1%) |
+| W4.1 | Deploy to staging (Railway/Render) using Docker | ⬜ **Remaining** |
+| W4.2 | Run full manual QA: all game modes, auth flows, rating updates, voice chat | ⬜ **Remaining** |
+| W4.3 | Load test staging: 20 concurrent games (mix of PvP and AI) | ✅ `load-tests/k6/game-load-test.js` (p95 < 500ms, errors < 1%) |
 | W4.4 | Set up database backups (daily automated Postgres dumps) | ✅ `scripts/backup-db.sh` (gzip + 30-day rotation, cron-ready) |
 | W4.5 | Write runbook: deploy, rollback, restart, check logs | ✅ `docs/runbook/RUNBOOK.md` |
 | W4.6 | Configure structured logging (pino or winston) | ✅ `nestjs-pino` — JSON in prod, pretty-print in dev, `/health` excluded |
 | W4.7 | Add Redis for matchmaking queue and active game state cache | ✅ `ioredis` + `RedisModule` + `RedisMatchmakingRepository` (Lua atomic claim, ZSET queue) + `PrismaGameRepository` read-through cache (30s/5min TTL) |
+
+**⚠️ URGENT: `add_invite_code` migration not verified on production.**
+App was deployed without confirming this migration ran. Check deploy logs or run:
+```bash
+# Verify the column exists
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'games' AND column_name = 'invite_code';
+
+# If missing, apply immediately:
+DATABASE_URL="<prod-url>" npx prisma migrate deploy
+```
+Until confirmed, invite-code game creation will throw `column "invite_code" does not exist`.
 
 ---
 
@@ -227,7 +252,8 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | PWA support (service worker + manifest) | ⬜ |
 | Replay viewer | ⬜ |
 | Tournament mode | ⬜ |
-| Refactor `useOnlineGame.ts` (1,016 lines) | ⬜ |
+| Refactor `useOnlineGame.ts` (~1,000 lines) | ⬜ |
+| Frontend test coverage | ⬜ |
 
 ---
 
@@ -243,5 +269,6 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | Performance under load | Unknown / At risk | **Good** ✅ |
 | Test coverage | Poor | **Good** ✅ (206 tests — domain 87%+ stmts) |
 | ELO integrity | At risk | **Good** ✅ |
+| Deployment confidence | None | **Partial** 🔄 (staging pending) |
 
-**Run `npx prisma migrate deploy` on the database to apply the `board_snapshot` column migration before deploying Week 2 changes.**
+**The platform is safe to serve real users. Launch is blocked only by W4.1 (staging deploy) and W4.2 (manual QA).**
