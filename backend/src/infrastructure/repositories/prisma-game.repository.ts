@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { RedisService } from '../cache/redis.service';
 import { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { BoardState, PieceSnapshot } from '../../domain/game/value-objects/board-state.vo';
@@ -11,13 +12,25 @@ import {
   EndReason,
 } from '../../shared/constants/game.constants';
 
+/** Active games cached for 30 s; completed games cached for 5 min. */
+const ACTIVE_GAME_CACHE_TTL = 30;
+const FINISHED_GAME_CACHE_TTL = 300;
+
+function gameCacheKey(id: string): string {
+  return `game:${id}`;
+}
+
 /**
  * Prisma Game Repository
- * Implements game persistence using Prisma ORM
+ * Implements game persistence using Prisma ORM.
+ * Active game reads are cached in Redis to reduce DB round-trips.
  */
 @Injectable()
 export class PrismaGameRepository implements IGameRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly redisService?: RedisService,
+  ) {}
 
   async create(game: Game): Promise<Game> {
     const created = await this.prisma.game.create({
@@ -57,35 +70,46 @@ export class PrismaGameRepository implements IGameRepository {
   }
 
   async findById(id: string): Promise<Game | null> {
+    // 1. Try cache
+    if (this.redisService) {
+      try {
+        const cached = await this.redisService.get(gameCacheKey(id));
+        if (cached) {
+          return this.toDomain(JSON.parse(cached));
+        }
+      } catch {
+        // Cache miss or Redis unavailable — fall through to DB
+      }
+    }
+
+    // 2. Load from DB
     const game = await this.prisma.game.findUnique({
       where: { id },
       include: {
-        moves: {
-          orderBy: { moveNumber: 'asc' },
-        },
+        moves: { orderBy: { moveNumber: 'asc' } },
         clock: true,
       },
     });
 
-    if (!game) {
-      return null;
-    }
+    if (!game) return null;
 
-    console.log('📖 Loaded game from DB:', {
-      id: game.id,
-      status: game.status,
-      moveCount: game.moves?.length || 0,
-    });
+    // 3. Write to cache
+    if (this.redisService) {
+      const isFinished =
+        game.status === GameStatus.FINISHED ||
+        game.status === GameStatus.ABORTED;
+      const ttl = isFinished ? FINISHED_GAME_CACHE_TTL : ACTIVE_GAME_CACHE_TTL;
+      this.redisService
+        .setex(gameCacheKey(id), ttl, JSON.stringify(game))
+        .catch(() => {
+          // Non-fatal — DB is the source of truth
+        });
+    }
 
     return this.toDomain(game);
   }
 
   async update(game: Game): Promise<Game> {
-    console.log('🔍 Updating game:', {
-      id: game.id,
-      status: game.status,
-    });
-
     const updated = await this.prisma.game.update({
       where: { id: game.id },
       data: {
@@ -99,9 +123,10 @@ export class PrismaGameRepository implements IGameRepository {
       },
     });
 
-    console.log('✅ Game updated in DB:', {
-      id: updated.id,
-    });
+    // Invalidate cache so next read gets fresh data from DB
+    if (this.redisService) {
+      this.redisService.del(gameCacheKey(game.id)).catch(() => {});
+    }
 
     return this.toDomain(updated);
   }
@@ -154,9 +179,10 @@ export class PrismaGameRepository implements IGameRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.game.delete({
-      where: { id },
-    });
+    await this.prisma.game.delete({ where: { id } });
+    if (this.redisService) {
+      this.redisService.del(gameCacheKey(id)).catch(() => {});
+    }
   }
 
   async findRecentGamesByPlayer(

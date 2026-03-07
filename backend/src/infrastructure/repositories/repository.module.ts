@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../database/prisma/prisma.module';
 import { PrismaGameRepository } from './prisma-game.repository';
 import { PrismaMoveRepository } from './prisma-move.repository';
-import { PrismaMatchmakingRepository } from './prisma-matchmaking.repository';
+import { RedisMatchmakingRepository } from './redis-matchmaking.repository';
 
 /**
  * Repository Module
- * Provides repository implementations
+ * Provides repository implementations.
+ * Matchmaking queue → Redis (sub-ms ops, Lua atomic claim).
+ * Game state → Postgres with Redis read-through cache.
  */
 @Module({
   imports: [PrismaModule],
@@ -21,7 +23,7 @@ import { PrismaMatchmakingRepository } from './prisma-matchmaking.repository';
     },
     {
       provide: 'IMatchmakingRepository',
-      useClass: PrismaMatchmakingRepository,
+      useClass: RedisMatchmakingRepository,
     },
   ],
   exports: ['IGameRepository', 'IMoveRepository', 'IMatchmakingRepository'],
