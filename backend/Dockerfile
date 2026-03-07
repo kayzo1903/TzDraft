@@ -1,7 +1,7 @@
 # ─── Stage 0: Sidra Linux build ──────────────────────────────────────────────
 FROM ubuntu:24.04 AS sidra-builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends cmake g++ && \
+RUN apt-get update && apt-get install -y --no-install-recommends cmake g++ make && \
     rm -rf /var/lib/apt/lists/*
 
 COPY engines/sidra/ /sidra/
