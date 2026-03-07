@@ -19,6 +19,50 @@ type GameRow = {
   blackPlayerId: string | null;
 };
 
+type DeleteManyWhere = {
+  joinedAt?: { lt: Date };
+  userId?: string;
+  id?: string;
+};
+
+type FindFirstWhere = {
+  timeMs: number;
+  userId?: { not: string };
+  rating?: { gte: number; lte: number } | null;
+};
+
+type UpsertWhere = { userId: string };
+
+type QueueUpsertData = {
+  timeMs: number;
+  socketId: string;
+  joinedAt: Date;
+  rating?: number | null;
+  rd?: number | null;
+  volatility?: number | null;
+};
+
+type QueueCreateData = {
+  userId: string;
+  timeMs: number;
+  socketId: string;
+  rating?: number | null;
+  rd?: number | null;
+  volatility?: number | null;
+};
+
+type GameCountWhere = {
+  status?: { in: GameStatus[] };
+  OR?: [{ whitePlayerId: string }, { blackPlayerId: string }];
+};
+
+type GameCreateData = {
+  id: string;
+  status: GameStatus;
+  whitePlayerId: string;
+  blackPlayerId: string;
+};
+
 class FakePrismaService {
   private queueRows: QueueRow[] = [];
   private gameRows: GameRow[] = [];
@@ -55,10 +99,10 @@ class FakePrismaService {
     return [...this.queueRows];
   }
 
-  async $transaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+  async $transaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
     return fn({
       matchmakingQueue: {
-        deleteMany: async ({ where }: { where: any }) => {
+        deleteMany: ({ where }: { where: DeleteManyWhere }) => {
           const before = this.queueRows.length;
           this.queueRows = this.queueRows.filter((row) => {
             if (where.joinedAt?.lt) {
@@ -72,9 +116,9 @@ class FakePrismaService {
             }
             return true;
           });
-          return { count: before - this.queueRows.length };
+          return Promise.resolve({ count: before - this.queueRows.length });
         },
-        findFirst: async ({ where }: { where: any }) => {
+        findFirst: async ({ where }: { where: FindFirstWhere }) => {
           const candidates = this.queueRows
             .filter(
               (row) =>
@@ -93,7 +137,7 @@ class FakePrismaService {
           }
           return oldest;
         },
-        upsert: async ({ where, update, create }: { where: any; update: any; create: any }) => {
+        upsert: ({ where, update, create }: { where: UpsertWhere; update: QueueUpsertData; create: QueueCreateData }) => {
           const existing = this.queueRows.find((row) => row.userId === where.userId);
           if (existing) {
             existing.timeMs = update.timeMs;
@@ -102,7 +146,7 @@ class FakePrismaService {
             existing.rating = update.rating ?? null;
             existing.rd = update.rd ?? null;
             existing.volatility = update.volatility ?? null;
-            return existing;
+            return Promise.resolve(existing);
           }
 
           const created: QueueRow = {
@@ -116,11 +160,11 @@ class FakePrismaService {
             volatility: create.volatility ?? null,
           };
           this.queueRows.push(created);
-          return created;
+          return Promise.resolve(created);
         },
       },
       game: {
-        count: async ({ where }: { where: any }) => {
+        count: async ({ where }: { where: GameCountWhere }) => {
           const statuses: GameStatus[] = where.status?.in ?? [];
           const a = where.OR?.[0]?.whitePlayerId;
           const b = where.OR?.[1]?.blackPlayerId;
@@ -130,14 +174,14 @@ class FakePrismaService {
             return statusOk && playerOk;
           }).length;
         },
-        create: async ({ data }: { data: any }) => {
+        create: ({ data }: { data: GameCreateData }) => {
           this.gameRows.push({
             id: data.id,
             status: data.status,
             whitePlayerId: data.whitePlayerId,
             blackPlayerId: data.blackPlayerId,
           });
-          return data;
+          return Promise.resolve(data);
         },
       },
     });
