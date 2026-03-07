@@ -1,16 +1,19 @@
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Winner, EndReason } from '../../shared/constants/game.constants';
+import { RatingService } from './rating.service';
 
 /**
  * End Game Use Case
  * Handles game termination (resignation, timeout, etc.)
+ * Rating updates are delegated to RatingService and wrapped in a DB transaction.
  */
 @Injectable()
 export class EndGameUseCase {
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
+    private readonly ratingService: RatingService,
   ) {}
 
   /**
@@ -23,12 +26,17 @@ export class EndGameUseCase {
     }
     this.ensureParticipant(game, playerId);
 
-    // Determine winner (opponent of resigning player)
     const winner =
       game.whitePlayerId === playerId ? Winner.BLACK : Winner.WHITE;
 
     game.endGame(winner, EndReason.RESIGN);
     await this.gameRepository.update(game);
+    await this.ratingService.updateRatings(
+      game.whitePlayerId,
+      game.blackPlayerId,
+      winner,
+      game.gameType,
+    );
     return { winner };
   }
 
@@ -42,12 +50,17 @@ export class EndGameUseCase {
     }
     this.ensureParticipant(game, playerId);
 
-    // Determine winner (opponent of timed-out player)
     const winner =
       game.whitePlayerId === playerId ? Winner.BLACK : Winner.WHITE;
 
     game.endGame(winner, EndReason.TIME);
     await this.gameRepository.update(game);
+    await this.ratingService.updateRatings(
+      game.whitePlayerId,
+      game.blackPlayerId,
+      winner,
+      game.gameType,
+    );
   }
 
   /**
@@ -62,6 +75,12 @@ export class EndGameUseCase {
 
     game.endGame(Winner.DRAW, EndReason.DRAW);
     await this.gameRepository.update(game);
+    await this.ratingService.updateRatings(
+      game.whitePlayerId,
+      game.blackPlayerId,
+      Winner.DRAW,
+      game.gameType,
+    );
   }
 
   /**
@@ -76,7 +95,6 @@ export class EndGameUseCase {
     }
     this.ensureParticipant(game, playerId);
 
-    // Per-player eligibility: you can only abort before you have moved.
     const moveCount = game.getMoveCount();
     const isWhite = game.whitePlayerId === playerId;
     const hasMoved = isWhite ? moveCount >= 1 : moveCount >= 2;
@@ -87,6 +105,7 @@ export class EndGameUseCase {
 
     game.abort();
     await this.gameRepository.update(game);
+    // No rating change on abort — game was never played
   }
 
   private ensureParticipant(

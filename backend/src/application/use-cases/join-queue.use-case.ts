@@ -56,10 +56,29 @@ export class JoinQueueUseCase {
             }
 
             // 3. Look for the oldest waiting entry with the same timeMs.
+            // If both players have ratings, enforce a ±200 Elo window.
+            // Unrated opponents (rating: null) always match with anyone.
+            const MAX_ELO_GAP = 200;
+            const ratingFilter =
+              userRating != null
+                ? {
+                    OR: [
+                      { rating: null },
+                      {
+                        AND: [
+                          { rating: { gte: userRating - MAX_ELO_GAP } },
+                          { rating: { lte: userRating + MAX_ELO_GAP } },
+                        ],
+                      },
+                    ],
+                  }
+                : {};
+
             const opponent = await tx.matchmakingQueue.findFirst({
               where: {
                 timeMs,
                 userId: { not: userId },
+                ...ratingFilter,
               },
               orderBy: { joinedAt: 'asc' },
             });

@@ -7,16 +7,17 @@ import { GetGameStateUseCase } from './get-game-state.use-case';
 import { GetLegalMovesUseCase } from './get-legal-moves.use-case';
 import { EndGameUseCase } from './end-game.use-case';
 import { JoinQueueUseCase } from './join-queue.use-case';
+import { RatingService } from './rating.service';
+import { UserModule } from '../../domain/user/user.module';
 
 /**
  * Use Cases Module
  * Provides all application use cases
  */
-import { UserModule } from '../../domain/user/user.module';
-
 @Module({
   imports: [RepositoryModule, forwardRef(() => MessagingModule), UserModule],
   providers: [
+    RatingService,
     CreateGameUseCase,
     MakeMoveUseCase,
     GetGameStateUseCase,
@@ -25,6 +26,7 @@ import { UserModule } from '../../domain/user/user.module';
     JoinQueueUseCase,
   ],
   exports: [
+    RatingService,
     CreateGameUseCase,
     MakeMoveUseCase,
     GetGameStateUseCase,

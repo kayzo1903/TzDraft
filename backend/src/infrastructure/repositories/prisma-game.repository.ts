@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
-import { BoardState } from '../../domain/game/value-objects/board-state.vo';
+import { BoardState, PieceSnapshot } from '../../domain/game/value-objects/board-state.vo';
 import {
   GameStatus,
   GameType,
@@ -94,6 +94,8 @@ export class PrismaGameRepository implements IGameRepository {
         endReason: game.endReason,
         startedAt: game.startedAt,
         endedAt: game.endedAt,
+        // Persist current board so future loads skip full move replay
+        boardSnapshot: game.board.serialize(),
       },
     });
 
@@ -315,10 +317,14 @@ export class PrismaGameRepository implements IGameRepository {
       (prismaGame.creatorColor as PlayerColor | null) ?? null,
     );
 
-    // Replay all historical moves to reconstruct the correct board state.
-    // Without this, the board always starts from the initial position and
-    // the second move fails with "No piece at position X".
-    if (moves.length > 0) {
+    // Restore board state: use the stored snapshot when available (O(1)),
+    // otherwise fall back to replaying all moves from history (O(n)).
+    if (prismaGame.boardSnapshot) {
+      game.restoreFromSnapshot(
+        prismaGame.boardSnapshot as PieceSnapshot[],
+        moves,
+      );
+    } else if (moves.length > 0) {
       game.replayMovesFromHistory(moves);
     }
 
