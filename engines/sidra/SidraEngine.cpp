@@ -18,6 +18,10 @@ using namespace std;
 #include "Checkers.h"
 #include "EdAccess.h"
 
+#ifndef _WIN32
+extern "C" {
+#endif
+
 // ôóíêöèÿ îáðàòíîãî âûçîâà äëÿ îòîáðàæåíèÿ èíôîðìàöèè î õîäå âû÷èñëåíèé
 // score - îöåíêà ïîçèöèè.
 //         âûèãðûø ëó÷øå îáîçíà÷àòü òàê: 32767 - N, ãäå N ýòî êîëè÷åñòâî
@@ -152,6 +156,10 @@ DLL_EXPORT void API_CALL EI_EGDB(EdAccess *eda) {
     }
   }
 }
+
+#ifndef _WIN32
+} // extern "C"
+#endif
 
 // Åñëè åñòü êàêèå-íèáóäü ïðåäëîæåíèÿ ïî ïîâîäó óëó÷øåíèÿ èíòåðôåéñà, òî áóäó
 // ðàä èõ îáñóäèòü Ïèøèòå ïèñüìà igorkorshunov@yandex.ru èëè
