@@ -1,0 +1,93 @@
+<#
+PowerShell build helper for SiDra.sln
+Usage: .\build_sidra.ps1 [-SolutionPath <path to SiDra.sln>]
+This script locates Visual Studio (via vswhere if available), builds the solution using devenv.com,
+and copies the produced SiDra.dll into the local `bin\SiDra.dll`.
+#>
+[CmdletBinding()]
+param(
+    [string]$SolutionPath = "$PSScriptRoot\SiDra.sln",
+    [string]$Configuration = 'Release',
+    [string]$Platform = 'x64'
+)
+
+function Find-Devenv {
+    # Try vswhere first
+    $vswherePaths = @("$env:ProgramFiles(x86)\Microsoft Visual Studio\Installer\vswhere.exe", "$env:ProgramFiles\Microsoft Visual Studio\Installer\vswhere.exe")
+    foreach ($p in $vswherePaths) {
+        if (Test-Path $p) {
+            try {
+                $inst = & $p -latest -prerelease -products * -property installationPath 2>&1 | Select-Object -First 1
+                if ($inst) {
+                    $devenv = Join-Path $inst 'Common7\IDE\devenv.com'
+                    if (Test-Path $devenv) { return $devenv }
+                }
+            } catch { }
+        }
+    }
+
+    # Fallback common path for Visual Studio 18 Insiders (user environment)
+    $fallback = 'C:\Program Files\Microsoft Visual Studio\18\Insiders\Common7\IDE\devenv.com'
+    if (Test-Path $fallback) { return $fallback }
+
+    # Try non-Insiders default locations
+    $fallback2 = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.com'
+    if (Test-Path $fallback2) { return $fallback2 }
+
+    return $null
+}
+
+Write-Host "Solution: $SolutionPath" -ForegroundColor Cyan
+if (-not (Test-Path $SolutionPath)) {
+    Write-Error "Solution file not found at: $SolutionPath"
+    exit 1
+}
+
+$devenv = Find-Devenv
+if (-not $devenv) {
+    Write-Error "Could not locate devenv.com. Install Visual Studio or adjust the script."
+    exit 2
+}
+
+Write-Host "Using Visual Studio: $devenv" -ForegroundColor Green
+
+$buildArgs = "`"$SolutionPath`" /Build `"$Configuration|$Platform`""
+Write-Host "Running: $devenv $buildArgs"
+
+$proc = Start-Process -FilePath $devenv -ArgumentList $buildArgs -Wait -NoNewWindow -PassThru
+if ($proc.ExitCode -ne 0) {
+    Write-Error "Build failed with exit code $($proc.ExitCode)"
+    exit $proc.ExitCode
+}
+
+Write-Host "Build succeeded." -ForegroundColor Green
+
+$searchPaths = @(
+    Join-Path $PSScriptRoot "$Configuration\SiDra.dll",
+    Join-Path $PSScriptRoot "x64\$Configuration\SiDra.dll"
+)
+$found = $null
+foreach ($p in $searchPaths) {
+    if (Test-Path $p) { $found = $p; break }
+}
+
+if (-not $found) {
+    Write-Host "SiDra.dll not found in expected locations, searching recursively..." -ForegroundColor Yellow
+    $g = Get-ChildItem -Path $PSScriptRoot -Filter SiDra.dll -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($g) { $found = $g.FullName }
+}
+
+if (-not $found) {
+    Write-Error "Could not find SiDra.dll after build. Please check the Visual Studio output for the target path."
+    Get-ChildItem -Path $PSScriptRoot -Filter SiDra.dll -Recurse | ForEach-Object { Write-Host $_.FullName }
+    exit 3
+}
+
+$destDir = Join-Path $PSScriptRoot 'bin'
+if (-not (Test-Path $destDir)) { New-Item -Path $destDir -ItemType Directory | Out-Null }
+$dest = Join-Path $destDir 'SiDra.dll'
+
+Copy-Item -Path $found -Destination $dest -Force
+Write-Host "Copied $found -> $dest" -ForegroundColor Green
+
+exit 0

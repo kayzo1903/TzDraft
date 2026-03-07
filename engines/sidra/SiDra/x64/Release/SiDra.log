@@ -1,0 +1,15 @@
+﻿  Board.cpp
+  ED.cpp
+  Evaluate.cpp
+  Generator.cpp
+  main.cpp
+  Move.cpp
+  Search.cpp
+  Time.cpp
+  Utils.cpp
+     Creating library C:\Users\Admin\Desktop\TzDraft\engines\sidra\x64\Release\SiDra.lib and object C:\Users\Admin\Desktop\TzDraft\engines\sidra\x64\Release\SiDra.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 379 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  SiDra.vcxproj -> C:\Users\Admin\Desktop\TzDraft\engines\sidra\x64\Release\SiDra.dll
