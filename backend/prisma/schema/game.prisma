@@ -23,6 +23,10 @@ model Game {
     winner    Winner?    @map("winner")
     endReason EndReason? @map("end_reason")
 
+    /// Serialized board state after the latest move (array of PieceSnapshot).
+    /// Avoids replaying the full move history on every load.
+    boardSnapshot Json? @map("board_snapshot")
+
     createdAt DateTime  @default(now()) @map("created_at")
     startedAt DateTime? @map("started_at")
     endedAt   DateTime? @map("ended_at")

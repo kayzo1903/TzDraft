@@ -12,7 +12,10 @@
       "Bash(python3 -c \":*)",
       "Bash(node scripts/merge-schemas.js)",
       "Bash(curl -s --connect-timeout 8 \"https://aws-1-eu-west-1.pooler.supabase.com\" -o /dev/null -w \"%{http_code}\")",
-      "Bash(timeout 8 bash -c \"echo > /dev/tcp/aws-1-eu-west-1.pooler.supabase.com/5432\")"
+      "Bash(timeout 8 bash -c \"echo > /dev/tcp/aws-1-eu-west-1.pooler.supabase.com/5432\")",
+      "Bash(pnpm test --testPathPatterns=\"capture-finding|move-validation|game-rules|make-move.use-case\" --no-coverage)",
+      "Bash(pnpm test --no-coverage)",
+      "Bash(pnpm test:cov)"
     ]
   }
 }

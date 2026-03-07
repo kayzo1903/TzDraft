@@ -1,0 +1,88 @@
+services:
+  # ─── Redis (matchmaking queue + game state cache) ─────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── PostgreSQL (local dev only) ──────────────────────────────────────────
+  # Production uses Supabase — set DATABASE_URL in .env or CI secrets instead.
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tzdraft
+      POSTGRES_USER: tzdraft
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tzdraft -d tzdraft"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Backend (NestJS) ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      CORS_ORIGINS: http://localhost:3000
+      # ── Auth ──
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change_me_in_production}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      JWT_EXPIRATION: 7d
+      # ── Email (Resend) ──
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_AUTH_DOMAIN: ${RESEND_AUTH_DOMAIN:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      # ── Google OAuth ──
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # ── SMS (BeemAfrica) ──
+      BEAM_AFRICA_SENDER_ID: ${BEAM_AFRICA_SENDER_ID:-}
+      BEAM_AFRICA_API_KEY: ${BEAM_AFRICA_API_KEY:-}
+      BEAM_AFRICA_SECRET_KEY: ${BEAM_AFRICA_SECRET_KEY:-}
+      # ── Sentry ──
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    ports:
+      - "3002:3002"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── Frontend (Next.js) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # These are baked into the Next.js build — set real values before building
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3002}
+        NEXT_PUBLIC_BETTER_AUTH_URL: ${NEXT_PUBLIC_BETTER_AUTH_URL:-http://localhost:3000}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3002}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

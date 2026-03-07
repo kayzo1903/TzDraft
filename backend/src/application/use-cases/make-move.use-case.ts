@@ -18,6 +18,7 @@ import {
   Winner,
 } from '../../shared/constants/game.constants';
 import { ValidationError } from '../../domain/game/types/validation-error.type';
+import { RatingService } from './rating.service';
 
 /**
  * Make Move Use Case
@@ -35,6 +36,7 @@ export class MakeMoveUseCase {
     private readonly moveRepository: IMoveRepository,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
+    private readonly ratingService: RatingService,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -180,10 +182,20 @@ export class MakeMoveUseCase {
       status: game.status,
     });
 
-    // 11. Emit dedicated gameOver for any server-detected game end
+    // 11. Update ratings and emit gameOver for any server-detected game end
     // (stalemate, draw rules, timeout) so both players see the result card
     // even when the moving player's optimistic-update path would skip it.
     if (game.isGameOver() && game.winner !== null) {
+      // Fire-and-forget: rating update must not block the move response
+      this.ratingService
+        .updateRatings(
+          game.whitePlayerId,
+          game.blackPlayerId,
+          game.winner,
+          game.gameType,
+        )
+        .catch(() => { /* non-fatal: ratings are best-effort from MakeMove */ });
+
       const reasonStr =
         game.endReason === EndReason.TIME
           ? 'timeout'

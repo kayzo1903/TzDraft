@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main, production-Already-prep]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tzdraft_test
+          POSTGRES_USER: tzdraft
+          POSTGRES_PASSWORD: tzdraft_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tzdraft -d tzdraft_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CAKE engine
+        working-directory: packages/cake-engine
+        run: pnpm build
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: pnpm prisma:generate
+
+      - name: Run backend tests
+        working-directory: backend
+        run: pnpm test
+        env:
+          DATABASE_URL: postgresql://tzdraft:tzdraft_test@localhost:5432/tzdraft_test
+          NODE_ENV: test
+          JWT_SECRET: ci_test_secret
+          BETTER_AUTH_SECRET: ci_test_secret
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CAKE engine
+        working-directory: packages/cake-engine
+        run: pnpm build
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: pnpm prisma:generate
+
+      - name: Lint backend
+        working-directory: backend
+        run: pnpm lint
+
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    # Only run on PRs to main to keep CI fast on feature branches
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
