@@ -89,7 +89,7 @@ const TIER_UNLOCK_DATA = [
 ] as const;
 
 function TierUnlockOverlay({ newMaxLevel, onContinue }: { newMaxLevel: number; onContinue: () => void }) {
-  const tierIdx = BOT_TIERS.findIndex(([, end]) => end === newMaxLevel);
+  const tierIdx = BOT_TIERS.findIndex(([start]) => start === newMaxLevel);
   const data = tierIdx >= 0 ? TIER_UNLOCK_DATA[tierIdx] : null;
   if (!data) return null;
 
