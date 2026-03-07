@@ -66,12 +66,11 @@ COPY --from=builder /app/backend/dist ./backend/dist
 # Copy compiled CAKE engine (backend requires it at runtime)
 COPY --from=builder /app/packages/cake-engine/dist ./packages/cake-engine/dist
 
-# Copy Prisma generated client (binary must match OS — both stages use node:22-slim)
-COPY --from=builder /app/backend/node_modules/.prisma ./backend/node_modules/.prisma
-COPY --from=builder /app/backend/node_modules/@prisma/client ./backend/node_modules/@prisma/client
-
-# Prisma schema files (needed by migrate deploy)
+# Prisma schema files (needed by migrate deploy and prisma generate)
 COPY --from=builder /app/backend/prisma ./backend/prisma
+
+# Generate Prisma client in this stage — avoids pnpm virtual-store path issues
+RUN cd /app/backend && pnpm exec prisma generate
 
 # Sidra CLI — Linux binary compiled in sidra-builder stage
 RUN mkdir -p ./engines/sidra/bin
