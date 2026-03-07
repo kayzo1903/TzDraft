@@ -62,8 +62,6 @@ services:
     ports:
       - "3002:3002"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped

@@ -1,6 +1,7 @@
 const LEGACY_STORAGE_KEY = "tzdraft:bot-max-unlocked";
 const UNLOCKED_TIER_KEY = "tzdraft:bot-unlocked-tier";
 const COMPLETED_LEVELS_KEY = "tzdraft:bot-completed-levels";
+const MAX_UNLOCKED_LEVEL_KEY = "tzdraft:bot-max-level";
 
 export const BOT_TIERS: ReadonlyArray<readonly [number, number]> = [
   [1, 5],
@@ -11,6 +12,7 @@ export const BOT_TIERS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 export const TOTAL_BOT_LEVELS = 19;
+export const INITIAL_FREE_LEVELS = 5;
 
 const clampLevel = (level: number) => Math.min(Math.max(level, 1), TOTAL_BOT_LEVELS);
 
@@ -20,26 +22,6 @@ const getTierIndexByLevel = (level: number): number => {
     ([start, end]) => normalized >= start && normalized <= end,
   );
   return found >= 0 ? found : 0;
-};
-
-const getDefaultTierIndexFromLegacy = (): number => {
-  if (typeof window === "undefined") return 0;
-  const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-  const parsed = Number(raw);
-  if (!raw || Number.isNaN(parsed)) return 0;
-  return getTierIndexByLevel(parsed);
-};
-
-const getUnlockedTierIndex = (): number => {
-  if (typeof window === "undefined") return 0;
-  const raw = window.localStorage.getItem(UNLOCKED_TIER_KEY);
-  const parsed = Number(raw);
-  if (!raw || Number.isNaN(parsed)) {
-    const fallback = getDefaultTierIndexFromLegacy();
-    window.localStorage.setItem(UNLOCKED_TIER_KEY, String(fallback));
-    return fallback;
-  }
-  return Math.min(Math.max(parsed, 0), BOT_TIERS.length - 1);
 };
 
 const setUnlockedTierIndex = (tierIndex: number) => {
@@ -72,17 +54,36 @@ const saveCompletedLevelsSet = (completed: Set<number>) => {
   window.localStorage.setItem(COMPLETED_LEVELS_KEY, JSON.stringify(ordered));
 };
 
-const isTierComplete = (tierIndex: number, completed: Set<number>): boolean => {
-  const [start, end] = BOT_TIERS[tierIndex];
-  for (let level = start; level <= end; level += 1) {
-    if (!completed.has(level)) return false;
-  }
-  return true;
-};
-
 export const getMaxUnlockedBotLevel = (): number => {
-  const tierIndex = getUnlockedTierIndex();
-  return BOT_TIERS[tierIndex][1];
+  if (typeof window === "undefined") return INITIAL_FREE_LEVELS;
+
+  const raw = window.localStorage.getItem(MAX_UNLOCKED_LEVEL_KEY);
+  const parsed = Number(raw);
+  if (raw && !Number.isNaN(parsed) && parsed >= 1) {
+    return Math.min(Math.max(parsed, INITIAL_FREE_LEVELS), TOTAL_BOT_LEVELS);
+  }
+
+  // Migrate from legacy tier-based storage
+  const tierRaw = window.localStorage.getItem(UNLOCKED_TIER_KEY);
+  const tierParsed = Number(tierRaw);
+  if (!tierRaw && typeof window !== "undefined") {
+    const legacyRaw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    const legacyLevel = Number(legacyRaw);
+    if (legacyRaw && !Number.isNaN(legacyLevel)) {
+      const tierIdx = getTierIndexByLevel(legacyLevel);
+      const migratedMax = BOT_TIERS[tierIdx][1];
+      window.localStorage.setItem(MAX_UNLOCKED_LEVEL_KEY, String(migratedMax));
+      return migratedMax;
+    }
+  }
+  if (tierRaw && !Number.isNaN(tierParsed)) {
+    const tierIdx = Math.min(Math.max(tierParsed, 0), BOT_TIERS.length - 1);
+    const migratedMax = BOT_TIERS[tierIdx][1];
+    window.localStorage.setItem(MAX_UNLOCKED_LEVEL_KEY, String(migratedMax));
+    return migratedMax;
+  }
+
+  return INITIAL_FREE_LEVELS;
 };
 
 export const getCompletedBotLevels = (): number[] => {
@@ -99,6 +100,7 @@ export const isBotLevelUnlocked = (level: number): boolean => {
 
 export const unlockAllBotLevels = () => {
   if (typeof window === "undefined") return;
+  window.localStorage.setItem(MAX_UNLOCKED_LEVEL_KEY, String(TOTAL_BOT_LEVELS));
   setUnlockedTierIndex(BOT_TIERS.length - 1);
   const completed = new Set<number>();
   for (let level = 1; level <= TOTAL_BOT_LEVELS; level++) completed.add(level);
@@ -112,13 +114,13 @@ export const unlockNextBotLevel = (currentBotLevel: number) => {
   completed.add(level);
   saveCompletedLevelsSet(completed);
 
-  const tierIndex = getUnlockedTierIndex();
-  if (tierIndex >= BOT_TIERS.length - 1) return;
+  if (level >= TOTAL_BOT_LEVELS) return;
 
-  const [tierStart, tierEnd] = BOT_TIERS[tierIndex];
-  if (level < tierStart || level > tierEnd) return;
-
-  if (isTierComplete(tierIndex, completed)) {
-    setUnlockedTierIndex(tierIndex + 1);
+  const currentMax = getMaxUnlockedBotLevel();
+  const nextLevel = level + 1;
+  if (nextLevel > currentMax) {
+    window.localStorage.setItem(MAX_UNLOCKED_LEVEL_KEY, String(nextLevel));
+    // Keep tier index in sync for compatibility
+    setUnlockedTierIndex(getTierIndexByLevel(nextLevel));
   }
 };
