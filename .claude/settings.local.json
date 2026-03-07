@@ -24,7 +24,18 @@
       "Bash(unzip -p docs/chat/Voice_Chat_Analysis.docx word/document.xml)",
       "Bash(sed 's/<[^>]*>//g')",
       "Bash(xargs grep -l \"socket\\\\|Socket\\\\|WebSocket\\\\|gateway\")",
-      "Bash(xargs grep -l \"Gateway\\\\|gateway\\\\|socket\\\\|WebSocket\")"
+      "Bash(xargs grep -l \"Gateway\\\\|gateway\\\\|socket\\\\|WebSocket\")",
+      "Bash(npm install nestjs-pino pino-http)",
+      "Bash(npm install --save-dev pino-pretty)",
+      "Bash(npm install nestjs-pino pino-http --ignore-scripts)",
+      "Bash(npm install --save-dev pino-pretty --ignore-scripts)",
+      "Bash(npx tsc -p tsconfig.build.json --noEmit)",
+      "Bash(npm install ioredis --ignore-scripts)",
+      "Bash(npm install @types/ioredis --ignore-scripts --save-dev)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx jest --passWithNoTests --testPathPattern=\"join-queue|make-move\")",
+      "Bash(npx jest \"join-queue|make-move\")",
+      "Bash(npx jest)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",
