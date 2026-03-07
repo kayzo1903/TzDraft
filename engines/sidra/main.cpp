@@ -4,7 +4,7 @@
 #include <fstream>
 using namespace std;
 
-#include "checkers.h"
+#include "Checkers.h"
 #include "EdAccess.h"
 
 // ������� ��������� ������ ��� ����������� ���������� � ���� ����������
