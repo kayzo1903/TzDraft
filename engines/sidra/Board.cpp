@@ -1,5 +1,10 @@
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstring>
+#include <cstdio>
+#define MessageBox(hwnd, text, caption, flags) fprintf(stderr, "%s: %s\n", caption, text)
+#define ZeroMemory(ptr, size) memset(ptr, 0, size)
 #endif
 #include <iostream>
 using namespace std;

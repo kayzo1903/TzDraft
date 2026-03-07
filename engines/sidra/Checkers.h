@@ -1,6 +1,11 @@
 #ifndef Checkers_H
 #define Checkers_H
 
+#ifndef _WIN32
+#define __stdcall
+#define __int64 long long
+#endif
+
 #include "EdAccess.h"
 #include <stdint.h>
 
