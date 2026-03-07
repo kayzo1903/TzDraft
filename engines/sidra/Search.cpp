@@ -5,6 +5,14 @@
 using namespace std;
 #include <stdio.h>
 #include <string>
+#include <cstring>
+#ifndef _WIN32
+#include <cstdlib>
+static char* itoa(int value, char* str, int base) {
+    sprintf(str, base == 10 ? "%d" : "%x", value);
+    return str;
+}
+#endif
 
 #include "Checkers.h"
 #include "EdAccess.h"
