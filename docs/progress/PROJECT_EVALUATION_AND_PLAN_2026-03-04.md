@@ -13,10 +13,10 @@
 ```
 Week 1 — Operational Foundation     [x] [x] [x] [x] [x] [x] [x] [x]   8 / 8  100%  ✅
 Week 2 — Performance & Security     [x] [x] [x] [x] [x] [x] [x]       7 / 7  100%  ✅
-Week 3 — Test Coverage              [x] [x] [x] [x] [ ] [ ] [ ]        4 / 7   57%  🔄
+Week 3 — Test Coverage              [x] [x] [x] [x] [x] [x] [x]        7 / 7  100%  ✅
 Week 4 — Staging & Launch Prep      [ ] [ ] [ ] [ ] [ ] [ ] [ ]        0 / 7    0%
 ─────────────────────────────────────────────────────────────────────────────────
-Total                                                                  19 / 29   66%
+Total                                                                  22 / 29   76%
 ```
 
 ---
@@ -193,8 +193,8 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | W3.3 | Unit tests for `GameRulesService` | ✅ `game-rules.service.spec.ts` (22 tests) | Critical |
 | W3.4 | Unit tests for `MakeMoveUseCase` | ✅ `make-move.use-case.spec.ts` (10 tests) | High |
 | W3.5 | Unit tests for `JoinQueueUseCase` | ✅ existing spec (12 tests) | High |
-| W3.6 | Unit tests for CAKE engine move generation | ⬜ | High |
-| W3.7 | Integration test: full game sequence | ⬜ | Medium |
+| W3.6 | Unit tests for CAKE engine move generation | ✅ `packages/cake-engine/test/rules.test.ts` (41 tests) | High |
+| W3.7 | Integration test: full game sequence | ✅ `game-integration.spec.ts` (5 tests) | Medium |
 
 **Target:** 80%+ coverage on `domain/` and `application/use-cases/`. 60%+ on CAKE engine.
 
@@ -241,7 +241,7 @@ This hook handles: clock management, optimistic moves, WebSocket subscriptions, 
 | Security fundamentals | Acceptable | **Good** ✅ |
 | Operational readiness | Poor | Poor (Week 1 pending) |
 | Performance under load | Unknown / At risk | **Good** ✅ |
-| Test coverage | Poor | Poor (Week 3 pending) |
+| Test coverage | Poor | **Good** ✅ (206 tests — domain 87%+ stmts) |
 | ELO integrity | At risk | **Good** ✅ |
 
 **Run `npx prisma migrate deploy` on the database to apply the `board_snapshot` column migration before deploying Week 2 changes.**
