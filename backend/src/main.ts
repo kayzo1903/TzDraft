@@ -49,12 +49,8 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   // 2. Enable CORS - MUST be before Body Parser
-  const corsOriginsRaw =
-    configService.get<string>('CORS_ORIGINS') ||
-    configService.get<string>('CORS_ORIGIN') ||
-    configService.get<string>('FRONTEND_URL') ||
-    configService.get<string>('APP_URL') ||
-    'http://localhost:3000';
+  // CORS_ORIGINS is required — env validation already guarantees it is set.
+  const corsOriginsRaw = configService.getOrThrow<string>('CORS_ORIGINS');
 
   // Normalize origins: ensure they have protocols.
   const allowedOrigins = corsOriginsRaw
