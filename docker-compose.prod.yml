@@ -49,7 +49,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # NOTE: NEXT_PUBLIC_* vars are baked into the JS bundle at Docker build time
+      # via build-args in deploy.yml — setting them here has NO effect on a pre-built image.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     ports:
       - "3000:3000"
