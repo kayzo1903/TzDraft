@@ -7,6 +7,8 @@ import { Logger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'express';
+import helmet from 'helmet';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -22,6 +24,29 @@ async function bootstrap() {
 
   // 1. Trust Proxy - Crucial for Render/Load Balancers
   app.set('trust proxy', 1);
+
+  // 1b. Security headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // allows cross-origin embeds (socket.io needs this)
+    }),
+  );
+
+  // 1c. Global exception filter — prevents stack trace leakage
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // 2. Enable CORS - MUST be before Body Parser
   const corsOriginsRaw =
