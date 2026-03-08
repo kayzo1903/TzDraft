@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings, ChevronDown, Globe, Menu, X } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard } from 'lucide-react';
 import Image from 'next/image';
 
 export const Navbar: React.FC = () => {
@@ -211,6 +211,16 @@ export const Navbar: React.FC = () => {
                                                 <Settings className="w-4 h-4" />
                                                 Settings
                                             </Link>
+                                            {user.role === 'ADMIN' && (
+                                                <Link
+                                                    href="/admin"
+                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-400/90 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                                                    onClick={() => setIsUserMenuOpen(false)}
+                                                >
+                                                    <LayoutDashboard className="w-4 h-4" />
+                                                    Admin Panel
+                                                </Link>
+                                            )}
                                         </div>
                                         <div className="border-t border-white/10">
                                             <button
@@ -365,6 +375,14 @@ export const Navbar: React.FC = () => {
                                             Settings
                                         </Button>
                                     </Link>
+                                    {user.role === 'ADMIN' && (
+                                        <Link href="/admin" onClick={() => setIsMenuOpen(false)}>
+                                            <Button variant="secondary" className="w-full justify-start gap-2 text-amber-400">
+                                                <LayoutDashboard className="w-4 h-4" />
+                                                Admin Panel
+                                            </Button>
+                                        </Link>
+                                    )}
                                     <Button
                                         onClick={handleLogout}
                                         variant="secondary"
