@@ -4,13 +4,26 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin();
 
-if (
-  process.env.NODE_ENV === "production" &&
-  (!process.env.NEXT_PUBLIC_API_URL || !process.env.NEXT_PUBLIC_BETTER_AUTH_URL)
-) {
-  throw new Error(
-    "❌ Missing required NEXT_PUBLIC_API_URL or NEXT_PUBLIC_BETTER_AUTH_URL environment variables during build.",
+if (process.env.NODE_ENV === "production") {
+  const required = ["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_BETTER_AUTH_URL"];
+
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(
+      `❌ Missing required build-time env vars: ${missing.join(", ")}. ` +
+        `Set them in GitHub Actions → Environments → production → Variables.`,
+    );
+  }
+
+  const localhostVars = required.filter((k) =>
+    (process.env[k] ?? "").includes("localhost"),
   );
+  if (localhostVars.length > 0) {
+    throw new Error(
+      `❌ Build-time env vars contain localhost in production: ${localhostVars.join(", ")}. ` +
+        `These must be real domain URLs.`,
+    );
+  }
 }
 
 /** @type {import('next').NextConfig} */
