@@ -25,6 +25,10 @@ RUN pnpm build
 # Build Next.js frontend
 WORKDIR /app/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_BETTER_AUTH_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_BETTER_AUTH_URL=$NEXT_PUBLIC_BETTER_AUTH_URL
 RUN pnpm build
 
 # ─── Stage 2: Production ──────────────────────────────────────────────────────
