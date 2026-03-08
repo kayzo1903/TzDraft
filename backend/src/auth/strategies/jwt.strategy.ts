@@ -31,6 +31,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         username: true,
         displayName: true,
         isVerified: true,
+        role: true,
+        isBanned: true,
         rating: {
           select: {
             rating: true,
@@ -60,6 +62,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       displayName: user.displayName,
       isVerified: hasRealPhoneNumber ? true : false,
       rating: user.rating?.rating ?? 1200,
+      role: user.role,
+      isBanned: user.isBanned,
     };
   }
 }
