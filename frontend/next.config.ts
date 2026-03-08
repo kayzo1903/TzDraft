@@ -4,6 +4,15 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin();
 
+if (
+  process.env.NODE_ENV === "production" &&
+  (!process.env.NEXT_PUBLIC_API_URL || !process.env.NEXT_PUBLIC_BETTER_AUTH_URL)
+) {
+  throw new Error(
+    "❌ Missing required NEXT_PUBLIC_API_URL or NEXT_PUBLIC_BETTER_AUTH_URL environment variables during build.",
+  );
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
