@@ -35,7 +35,8 @@
       "Bash(npx tsc --noEmit)",
       "Bash(npx jest --passWithNoTests --testPathPattern=\"join-queue|make-move\")",
       "Bash(npx jest \"join-queue|make-move\")",
-      "Bash(npx jest)"
+      "Bash(npx jest)",
+      "Bash(ls /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",
