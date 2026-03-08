@@ -1,0 +1,55 @@
+# Production docker-compose — uses pre-built images from GHCR.
+# Database (Supabase) is external — set DATABASE_URL in .env on the VPS.
+# Do NOT use this file for local dev; use docker-compose.yml instead.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    image: ghcr.io/kayzo1903/tzdraft-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      APP_URL: ${APP_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 7d
+      FRONTEND_URL: ${FRONTEND_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_AUTH_DOMAIN: ${RESEND_AUTH_DOMAIN:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      BEAM_AFRICA_SENDER_ID: ${BEAM_AFRICA_SENDER_ID:-}
+      BEAM_AFRICA_API_KEY: ${BEAM_AFRICA_API_KEY:-}
+      BEAM_AFRICA_SECRET_KEY: ${BEAM_AFRICA_SECRET_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    ports:
+      - "3002:3002"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: ghcr.io/kayzo1903/tzdraft-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend

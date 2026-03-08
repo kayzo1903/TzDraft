@@ -4,3 +4,11 @@ node_modules
 .env
 .env.local
 .env.*.local
+packages/cake-engine/dist/
+
+# Visual Studio local files
+.vs/
+*.ipch
+*.VC.db
+*.vsidx
+*.wsuo
