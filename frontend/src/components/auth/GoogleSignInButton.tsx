@@ -10,7 +10,7 @@ export default function GoogleSignInButton({
     text = "Continue with Google",
 }: GoogleSignInButtonProps) {
     const handleGoogleSignIn = () => {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL as string;
         const baseUrl = apiUrl.replace(/\/$/, "");
 
         // Redirect to backend OAuth endpoint

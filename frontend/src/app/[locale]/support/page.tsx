@@ -24,7 +24,7 @@ export default function SupportPage() {
         };
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/support`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/support`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
