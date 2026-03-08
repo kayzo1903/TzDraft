@@ -16,6 +16,8 @@ export interface User {
   displayName: string;
   isVerified: boolean;
   rating: number | Rating;
+  role?: 'USER' | 'ADMIN';
+  isBanned?: boolean;
 }
 
 export interface AuthState {

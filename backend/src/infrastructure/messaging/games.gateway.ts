@@ -84,8 +84,15 @@ export class GamesGateway
 
   afterInit(server: Server) {
     const configService = this.moduleRef.get(ConfigService, { strict: false });
-    const redisUrl =
-      configService.get<string>('REDIS_URL') ?? 'redis://localhost:6379';
+    const redisUrl = configService.get<string>('REDIS_URL');
+    const isProd = configService.get<string>('NODE_ENV') === 'production';
+
+    // Skip Redis adapter in development — single-process in-memory adapter is fine.
+    // In production REDIS_URL is required, so the adapter always activates there.
+    if (!isProd || !redisUrl) {
+      this.logger.log('Socket.IO using in-memory adapter (development mode)');
+      return;
+    }
 
     this.pubClient = new Redis(redisUrl, { lazyConnect: false });
     this.subClient = this.pubClient.duplicate();
@@ -97,7 +104,10 @@ export class GamesGateway
       this.logger.error(`WS Redis sub error: ${err.message}`),
     );
 
-    server.adapter(createAdapter(this.pubClient, this.subClient));
+    // When a namespace is used, afterInit receives the Namespace object.
+    // The adapter must be set on the root Server (namespace.server).
+    const rootServer = (server as unknown as { server: Server }).server ?? server;
+    rootServer.adapter(createAdapter(this.pubClient, this.subClient));
     this.logger.log('Socket.IO Redis adapter initialized');
   }
 
