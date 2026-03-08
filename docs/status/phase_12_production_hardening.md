@@ -124,20 +124,51 @@ Previously, Socket.IO rooms existed only in the memory of the process that creat
 | Env validation at boot | ✅ P12.5 |
 | WebSocket horizontal scaling | ✅ P12.6 |
 | CI — tests + lint | ✅ |
-| **Production deploy pipeline** | ❌ Remaining |
+| **Production deploy pipeline** | ✅ P12.7 |
+
+---
+
+### P12.7 — Production CI/CD Deploy Pipeline
+
+Two new files implement fully automated deploy on every merge to `main`.
+
+#### `docker-compose.prod.yml`
+- Mirror of `docker-compose.yml` but uses pre-built GHCR images (`ghcr.io/kayzo1903/tzdraft-backend:latest` / `tzdraft-frontend:latest`) instead of building from source on the server
+- No postgres service (production uses Supabase)
+- All secrets passed from VPS `.env` file via environment variables
+
+#### `.github/workflows/deploy.yml`
+Triggered by `workflow_run` — only fires when the CI workflow (`test` + `lint`) **passes** on `main`. A broken build can never reach production.
+
+**Job 1 — Build & Push:**
+- Logs in to GHCR using `GITHUB_TOKEN`
+- Builds backend and frontend Docker images
+- Pushes two tags per image: `:latest` and `:<git-sha>` (`:sha` tag enables one-command rollback)
+- Uses GitHub Actions layer cache — subsequent builds are significantly faster
+
+**Job 2 — Deploy (runs only after Job 1 succeeds):**
+- Copies `docker-compose.prod.yml` to `/opt/tzdraft/` on the VPS via SCP
+- SSHs into VPS: logs in to GHCR, pulls new images, runs `docker compose up -d --remove-orphans`, prunes old images
+- Health check: polls `http://localhost:3002/health` every 5 seconds for up to 120 seconds — the workflow **fails** if the backend doesn't become healthy, making broken deploys immediately visible
+
+**GitHub Secrets required:**
+
+| Secret | Value |
+|--------|-------|
+| `VPS_HOST` | VPS IP or domain |
+| `VPS_USER` | SSH username (e.g. `deploy`) |
+| `VPS_SSH_KEY` | Private SSH key matching a key authorised on the VPS |
+| `GHCR_TOKEN` | GitHub PAT with `read:packages` scope (for VPS to pull images) |
+
+**GitHub Variables required (non-secret, baked into frontend build):**
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_API_URL` | e.g. `https://api.tzdraft.com` |
+| `NEXT_PUBLIC_BETTER_AUTH_URL` | e.g. `https://tzdraft.com` |
 
 ---
 
 ## What Remains
 
-### Production CI/CD Deploy Pipeline
-
-The only remaining item before the project can be considered fully production-ready.
-
-CI currently runs tests and lint on every PR and `main` push, but there is no automated deploy step. Deployments to the Hetzner VPS are still manual (SSH → `git pull` → `docker compose up`).
-
-**Planned approach:**
-- GitHub Actions workflow triggered on `push to main` or `git tag v*`
-- Build and push Docker images to GitHub Container Registry (GHCR)
-- SSH into Hetzner VPS, pull new images, run `docker compose up -d`
-- Health check poll after deploy to verify success before marking the run green
+Nothing. The project is fully production-ready.
