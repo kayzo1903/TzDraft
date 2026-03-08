@@ -19,7 +19,7 @@ function getOrCreateSocket(token: string): Socket {
   }
 
   if (!sharedSocket) {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
 
     sharedSocket = io(`${apiBase}/games`, {
       // handshake.auth is where socket.io actually places auth data
