@@ -35,18 +35,7 @@
       "Bash(npx tsc --noEmit)",
       "Bash(npx jest --passWithNoTests --testPathPattern=\"join-queue|make-move\")",
       "Bash(npx jest \"join-queue|make-move\")",
-      "Bash(npx jest)",
-      "Bash(ls -la frontend/src/app/[locale]/game/)",
-      "Bash(wc -l backend/src/**/*.ts frontend/src/**/*.ts)",
-      "Bash(xargs wc -l)",
-      "Bash(git filter-repo --version)",
-      "Bash(python -m git_filter_repo --version)",
-      "Bash(echo \"exit: $?\")",
-      "Bash(python -c \":*)",
-      "Read(//c/Users/**)",
-      "Bash(pnpm add helmet)",
-      "Bash(pnpm tsc --noEmit)",
-      "Bash(pnpm add @socket.io/redis-adapter)"
+      "Bash(npx jest)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",
