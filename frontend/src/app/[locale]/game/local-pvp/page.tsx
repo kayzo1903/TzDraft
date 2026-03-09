@@ -384,7 +384,9 @@ export default function LocalPvpPage() {
           {/* Endgame countdown notice */}
           {state.endgameCountdown && (
             <div className="mt-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-center text-sm text-orange-200">
-              3-kings rule: {state.endgameCountdown.remaining} moves remaining for the stronger side
+              {state.endgameCountdown.favored !== null
+                ? `Endgame: ${state.endgameCountdown.remaining} moves left for ${state.endgameCountdown.favored} to win or draw`
+                : `King vs King: draw in ${state.endgameCountdown.remaining} moves`}
             </div>
           )}
         </div>

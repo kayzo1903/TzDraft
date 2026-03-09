@@ -6,7 +6,9 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
   ChevronDown,
+  CheckCircle2,
   Clock,
+  Crown,
   Flame,
   Loader2,
   Lock,
@@ -23,7 +25,7 @@ import clsx from "clsx";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
 import { BOTS } from "@/lib/game/bots";
-import { getMaxUnlockedBotLevel } from "@/lib/game/bot-progression";
+import { getMaxUnlockedBotLevel, getCompletedBotLevels, INITIAL_FREE_LEVELS } from "@/lib/game/bot-progression";
 
 type Bot = (typeof BOTS)[number];
 
@@ -129,6 +131,7 @@ interface BotCardProps {
   bot: Bot;
   selected: boolean;
   locked: boolean;
+  completed: boolean;
   lockedLabel: string;
   unlockInstruction: string;
   onClick: () => void;
@@ -138,6 +141,7 @@ function BotCard({
   bot,
   selected,
   locked,
+  completed,
   lockedLabel,
   unlockInstruction,
   onClick,
@@ -157,7 +161,9 @@ function BotCard({
           ? "opacity-50 cursor-not-allowed border-neutral-800 bg-neutral-900/30"
           : selected
             ? clsx("border-[var(--primary)] shadow-lg ring-1", tier.glow, tier.bg)
-            : "border-neutral-800 bg-neutral-900/40 hover:border-neutral-600 hover:bg-neutral-900/70",
+            : completed
+              ? "border-amber-500/30 bg-amber-500/5 hover:border-amber-400/50 hover:bg-amber-500/10"
+              : "border-neutral-800 bg-neutral-900/40 hover:border-neutral-600 hover:bg-neutral-900/70",
         locked ? "" : `focus:${tier.glow}`
       )}
     >
@@ -176,14 +182,18 @@ function BotCard({
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
 
-        {/* Selected indicator */}
-        {selected && (
+        {/* Selected indicator (checkmark) or completed crown */}
+        {selected ? (
           <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center shadow-md">
             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-        )}
+        ) : completed && !locked ? (
+          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500/90 flex items-center justify-center shadow-md" title="Beaten">
+            <Crown className="w-3 h-3 text-white" />
+          </div>
+        ) : null}
 
         {/* Lock overlay */}
         {locked && (
@@ -206,7 +216,13 @@ function BotCard({
       <div className="px-2.5 py-2">
         <div className="flex items-baseline justify-between gap-1 mb-1.5">
           <span className="font-bold text-sm text-white truncate">{bot.name}</span>
-          <span className="font-mono text-[10px] text-neutral-400 shrink-0">{bot.elo}</span>
+          {completed && !locked ? (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 shrink-0">
+              <CheckCircle2 className="w-3 h-3" /> Beaten
+            </span>
+          ) : (
+            <span className="font-mono text-[10px] text-neutral-400 shrink-0">{bot.elo}</span>
+          )}
         </div>
         <DifficultyBar level={bot.level} />
       </div>
@@ -323,8 +339,9 @@ export default function SetupAiPage() {
   const locale = typeof params?.locale === "string" ? params.locale : "en";
   const { user } = useAuthStore();
 
-  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(1);
-  useEffect(() => { setMaxUnlockedLevel(getMaxUnlockedBotLevel()); }, []);
+  // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of all-locked UI
+  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(INITIAL_FREE_LEVELS);
+  const [completedLevels, setCompletedLevels] = useState<Set<number>>(new Set());
 
   const highestUnlockedBot = useMemo((): Bot => {
     let best = BOTS[0];
@@ -332,12 +349,24 @@ export default function SetupAiPage() {
     return best;
   }, [maxUnlockedLevel]);
 
+  // Bug fix: default selectedBot to highest unlocked, not always BOTS[0]
   const [selectedBot, setSelectedBot] = useState<Bot>(BOTS[0]);
   const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
   const [selectedTime, setSelectedTime] = useState<TimeOption>(0);
   const [loading, setLoading] = useState(false);
   const [timeMenuOpen, setTimeMenuOpen] = useState(false);
   const timeMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const max = getMaxUnlockedBotLevel();
+    const completed = new Set<number>(getCompletedBotLevels());
+    setMaxUnlockedLevel(max);
+    setCompletedLevels(completed);
+    // Default to the highest unlocked bot on mount
+    let best = BOTS[0];
+    for (const bot of BOTS) { if (bot.level <= max) best = bot; }
+    setSelectedBot(best);
+  }, []);
 
   useEffect(() => {
     if (selectedBot.level > maxUnlockedLevel) setSelectedBot(highestUnlockedBot);
@@ -419,10 +448,22 @@ export default function SetupAiPage() {
           </div>
 
           {/* Progress badge */}
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/40 px-4 py-2 text-xs text-neutral-300 shrink-0">
-            <Trophy className="h-3.5 w-3.5 text-[var(--primary)]" />
-            <span className="font-semibold text-white">{maxUnlockedLevel}</span>
-            <span className="text-neutral-500">{t("unlockedCount", { total: BOTS.length })}</span>
+          <div className="hidden sm:flex items-center gap-3 rounded-full border border-neutral-800 bg-neutral-900/40 px-4 py-2 text-xs text-neutral-300 shrink-0">
+            <span className="inline-flex items-center gap-1.5">
+              <Trophy className="h-3.5 w-3.5 text-primary" />
+              <span className="font-semibold text-white">{maxUnlockedLevel}</span>
+              <span className="text-neutral-500">{t("unlockedCount", { total: BOTS.length })}</span>
+            </span>
+            {completedLevels.size > 0 && (
+              <>
+                <span className="text-neutral-700">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Crown className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="font-semibold text-amber-300">{completedLevels.size}</span>
+                  <span className="text-neutral-500">beaten</span>
+                </span>
+              </>
+            )}
           </div>
         </header>
 
@@ -455,6 +496,7 @@ export default function SetupAiPage() {
                         bot={bot}
                         selected={selectedBot.level === bot.level}
                         locked={bot.level > maxUnlockedLevel}
+                        completed={completedLevels.has(bot.level)}
                         lockedLabel={t("lockedShort")}
                         unlockInstruction={t("unlockInstruction.message", {
                           previous: (BOTS.find((b) => b.level === bot.level - 1)?.name ?? currentUnlockedBot.name),
