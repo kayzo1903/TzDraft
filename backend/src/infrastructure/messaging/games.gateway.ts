@@ -40,7 +40,10 @@ const KEY_TTL_S = 24 * 60 * 60; // 24 h
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+      .split(/[,\n]+/)
+      .map((o) => o.trim().replace(/\/$/, ''))
+      .filter(Boolean),
     credentials: true,
   },
   namespace: 'games',
