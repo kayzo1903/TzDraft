@@ -742,9 +742,36 @@ export const useLocalGame = (
         }
 
         // Backend returned null or no match — check for game over
-        const gameResult = CakeEngine.evaluateGameResult(board, currentPlayer);
-        if (gameResult) {
-          setResult({ winner: gameResult.winner });
+        const aiLegalMoves = CakeEngine.generateLegalMoves(
+          board,
+          currentPlayer,
+          moveCount,
+        );
+        if (aiLegalMoves.length === 0) {
+          // AI has no legal moves — declare the opponent as winner
+          const gameResult = CakeEngine.evaluateGameResult(
+            board,
+            currentPlayer,
+          );
+          const winner =
+            gameResult?.winner ??
+            (currentPlayer === PlayerColor.WHITE
+              ? Winner.BLACK
+              : Winner.WHITE);
+          setResult({ winner });
+        } else {
+          // Backend returned null or bad move but CAKE finds legal moves — fall back to local engine
+          const fallbackMove = getBestMove(board, currentPlayer, 9);
+          if (fallbackMove) {
+            applyMove(fallbackMove);
+          } else {
+            setResult({
+              winner:
+                currentPlayer === PlayerColor.WHITE
+                  ? Winner.BLACK
+                  : Winner.WHITE,
+            });
+          }
         }
       } catch (e) {
         // Network / engine failure → fall back to local engine at depth 5
