@@ -594,10 +594,14 @@ export default function LocalGamePage() {
           {/* Endgame countdown */}
           {state.endgameCountdown && (
             <div className="mt-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-center text-sm text-orange-200">
-              {t("endgameCountdown", {
-                remaining: state.endgameCountdown.remaining,
-                favored: state.endgameCountdown.favored,
-              })}
+              {state.endgameCountdown.favored !== null
+                ? t("endgameCountdown", {
+                    remaining: state.endgameCountdown.remaining,
+                    favored: state.endgameCountdown.favored,
+                  })
+                : t("endgameCountdownEqual", {
+                    remaining: state.endgameCountdown.remaining,
+                  })}
             </div>
           )}
         </div>
