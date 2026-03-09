@@ -142,12 +142,14 @@ export class GamesGateway
       void client.join(`user:${payload.sub}`);
 
       // Track connection count in Redis (INCR is atomic, safe cross-instance)
-      this.pubClient
-        .incr(K_USER_CONNS(payload.sub))
-        .then(() =>
-          this.pubClient.expire(K_USER_CONNS(payload.sub), KEY_TTL_S),
-        )
-        .catch(() => {});
+      if (this.pubClient) {
+        this.pubClient
+          .incr(K_USER_CONNS(payload.sub))
+          .then(() =>
+            this.pubClient.expire(K_USER_CONNS(payload.sub), KEY_TTL_S),
+          )
+          .catch(() => {});
+      }
 
       this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
     } catch {
@@ -167,6 +169,7 @@ export class GamesGateway
     if (!userId) return;
 
     // Atomically decrement; if result > 0 the user still has other sockets
+    if (!this.pubClient) return;
     const remaining = await this.pubClient.decr(K_USER_CONNS(userId));
     if (remaining > 0) return;
 
@@ -262,7 +265,9 @@ export class GamesGateway
         this.logger.log(`User ${userId} reconnected to game ${gameId}`);
       }
 
-      await this.pubClient.set(K_USER_GAME(userId), gameId, 'EX', KEY_TTL_S);
+      if (this.pubClient) {
+        await this.pubClient.set(K_USER_GAME(userId), gameId, 'EX', KEY_TTL_S);
+      }
     }
 
     return { status: 'success', message: `Joined game ${gameId}` };
@@ -299,12 +304,12 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const existing = await this.pubClient.get(K_DRAW(data.gameId));
+    const existing = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
     if (existing === userId) {
       return { error: 'You already have a pending draw offer' };
     }
 
-    await this.pubClient.set(K_DRAW(data.gameId), userId, 'EX', KEY_TTL_S);
+    if (this.pubClient) await this.pubClient.set(K_DRAW(data.gameId), userId, 'EX', KEY_TTL_S);
     this.logger.log(`Draw offered in game ${data.gameId} by ${userId}`);
 
     this.server.to(data.gameId).emit('drawOffered', {
@@ -323,12 +328,12 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = await this.pubClient.get(K_DRAW(data.gameId));
+    const offeredBy = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
     if (!offeredBy) return { error: 'No pending draw offer' };
     if (offeredBy === userId)
       return { error: 'Cannot accept your own draw offer' };
 
-    await this.pubClient.del(K_DRAW(data.gameId));
+    if (this.pubClient) await this.pubClient.del(K_DRAW(data.gameId));
 
     try {
       const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
@@ -354,12 +359,12 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = await this.pubClient.get(K_DRAW(data.gameId));
+    const offeredBy = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
     if (!offeredBy) return { error: 'No pending draw offer' };
     if (offeredBy === userId)
       return { error: 'Cannot decline your own draw offer' };
 
-    await this.pubClient.del(K_DRAW(data.gameId));
+    if (this.pubClient) await this.pubClient.del(K_DRAW(data.gameId));
     this.logger.log(`Draw declined in game ${data.gameId} by ${userId}`);
 
     this.server.to(data.gameId).emit('drawDeclined', {
@@ -378,10 +383,10 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = await this.pubClient.get(K_DRAW(data.gameId));
+    const offeredBy = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
     if (offeredBy !== userId) return { error: 'No draw offer to cancel' };
 
-    await this.pubClient.del(K_DRAW(data.gameId));
+    if (this.pubClient) await this.pubClient.del(K_DRAW(data.gameId));
     this.server.to(data.gameId).emit('drawCancelled', { gameId: data.gameId });
     return {};
   }
@@ -396,12 +401,12 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const existing = await this.pubClient.get(K_REMATCH(data.gameId));
+    const existing = this.pubClient ? await this.pubClient.get(K_REMATCH(data.gameId)) : null;
     if (existing === userId) {
       return { error: 'You already offered a rematch' };
     }
 
-    await this.pubClient.set(K_REMATCH(data.gameId), userId, 'EX', KEY_TTL_S);
+    if (this.pubClient) await this.pubClient.set(K_REMATCH(data.gameId), userId, 'EX', KEY_TTL_S);
     this.server
       .to(data.gameId)
       .emit('rematchOffered', { offeredByUserId: userId });
@@ -417,12 +422,12 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = await this.pubClient.get(K_REMATCH(data.gameId));
+    const offeredBy = this.pubClient ? await this.pubClient.get(K_REMATCH(data.gameId)) : null;
     if (!offeredBy) return { error: 'No pending rematch offer' };
     if (offeredBy === userId)
       return { error: 'Cannot accept your own rematch offer' };
 
-    await this.pubClient.del(K_REMATCH(data.gameId));
+    if (this.pubClient) await this.pubClient.del(K_REMATCH(data.gameId));
 
     try {
       const createGameUseCase = this.moduleRef.get(CreateGameUseCase, {
@@ -449,7 +454,7 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    await this.pubClient.del(K_REMATCH(data.gameId));
+    if (this.pubClient) await this.pubClient.del(K_REMATCH(data.gameId));
     this.server
       .to(data.gameId)
       .emit('rematchDeclined', { declinedByUserId: userId });
@@ -464,12 +469,12 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = await this.pubClient.get(K_REMATCH(data.gameId));
+    const offeredBy = this.pubClient ? await this.pubClient.get(K_REMATCH(data.gameId)) : null;
     if (offeredBy !== userId) {
       return { error: 'No rematch offer to cancel' };
     }
 
-    await this.pubClient.del(K_REMATCH(data.gameId));
+    if (this.pubClient) await this.pubClient.del(K_REMATCH(data.gameId));
     this.server.to(data.gameId).emit('rematchCancelled', {});
     return {};
   }
@@ -479,6 +484,7 @@ export class GamesGateway
   private async isInRoom(client: Socket, gameId: string): Promise<boolean> {
     const userId = client.data.user?.id;
     if (!userId) return false;
+    if (!this.pubClient) return client.rooms.has(gameId);
     const storedGameId = await this.pubClient.get(K_USER_GAME(userId));
     return storedGameId === gameId;
   }
@@ -640,13 +646,21 @@ export class GamesGateway
 
   emitGameOver(gameId: string, result: any) {
     // Clear transient Redis keys for this game
-    void this.pubClient.del(K_DRAW(gameId));
-    void this.pubClient.del(K_REMATCH(gameId));
+    if (this.pubClient) {
+      void this.pubClient.del(K_DRAW(gameId));
+      void this.pubClient.del(K_REMATCH(gameId));
+    }
 
     // Cancel local disconnect timers for players in this game (best-effort)
     for (const [userId, timer] of this.disconnectTimers.entries()) {
       // We don't store the reverse gameId→userId mapping in Redis for timers,
       // so we clear all timers that belong to this game by checking Redis.
+      if (!this.pubClient) {
+        clearTimeout(timer);
+        this.disconnectTimers.delete(userId);
+        this.clearUserTimers(userId);
+        continue;
+      }
       this.pubClient.get(K_USER_GAME(userId)).then((gid) => {
         if (gid === gameId) {
           clearTimeout(timer);
