@@ -10,7 +10,7 @@ import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS } from "@/lib/game/bot-progression";
+import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS, INITIAL_FREE_LEVELS } from "@/lib/game/bot-progression";
 import {
   AlertTriangle,
   ArrowRight,
@@ -201,6 +201,7 @@ interface GameResultCardProps {
   userRating: number;
   userName: string;
   canOfferNextBot: boolean;
+  isNewUnlock: boolean;
   nextBotLevel: number;
   nextBot?: BotProfile;
   locale: string;
@@ -220,6 +221,7 @@ function GameResultCard({
   userRating,
   userName,
   canOfferNextBot,
+  isNewUnlock,
   nextBotLevel,
   nextBot,
   undoUsed,
@@ -342,25 +344,33 @@ function GameResultCard({
           </div>
         )}
 
-        {/* ── Unlock next bot notice ── */}
-        {canOfferNextBot && (
+        {/* ── Progression notice ── */}
+        {canOfferNextBot && isNewUnlock && (
+          // First win: celebratory "you unlocked level X" banner
           <div className={clsx("mx-4 mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs", cfg.tagBg)}>
             <Trophy className={clsx("w-3.5 h-3.5 shrink-0", cfg.iconColor)} />
             <span>{t("gameOver.unlockedNext", { level: nextBotLevel })}</span>
           </div>
         )}
+        {canOfferNextBot && !isNewUnlock && outcome === "win" && (
+          // Replay win: low-key "already conquered" note instead
+          <div className="mx-4 mt-4 flex items-center gap-2 rounded-lg border border-neutral-700/50 bg-neutral-800/30 px-3 py-2 text-xs text-neutral-400">
+            <Crown className="w-3.5 h-3.5 text-amber-500/70 shrink-0" />
+            <span>Already conquered — want to push further?</span>
+          </div>
+        )}
 
         {/* ── Action buttons ── */}
         <div className="p-4 flex flex-col gap-2.5">
-          {/* Next opponent CTA (primary when won) */}
+          {/* Next opponent CTA — primary styling on new unlock, subtle on replay */}
           {canOfferNextBot && (
             <button
               onClick={onNextBot}
               className={clsx(
                 "w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 font-bold transition hover:opacity-90",
-                cfg.borderColor,
-                "bg-gradient-to-r",
-                outcome === "win" ? "from-amber-600/80 to-orange-600/80" : "from-neutral-800 to-neutral-800",
+                isNewUnlock
+                  ? clsx(cfg.borderColor, "bg-gradient-to-r", outcome === "win" ? "from-amber-600/80 to-orange-600/80" : "from-neutral-800 to-neutral-800")
+                  : "border-neutral-700 bg-neutral-800/60 hover:bg-neutral-800",
                 "text-white"
               )}
             >
@@ -371,7 +381,7 @@ function GameResultCard({
                   </div>
                 )}
                 <div className="text-left min-w-0">
-                  <div className="text-sm font-bold truncate">{t("gameOver.nextBot")}</div>
+                  <div className="text-sm font-bold truncate">{isNewUnlock ? t("gameOver.nextBot") : "Next Opponent"}</div>
                   {nextBot && (
                     <div className="text-[11px] text-white/60 font-mono">{nextBot.name} · ELO {nextBot.elo}</div>
                   )}
@@ -420,9 +430,12 @@ export default function LocalGamePage() {
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const nextBot = useMemo(() => getBotByLevel(Math.min(level + 1, TOTAL_BOT_LEVELS)), [level]);
   const { user } = useAuthStore();
-  const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(1);
-  const [maxUnlockedNow, setMaxUnlockedNow] = useState(1);
+  // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of redirect before mount effect runs
+  const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(INITIAL_FREE_LEVELS);
+  const [maxUnlockedNow, setMaxUnlockedNow] = useState(INITIAL_FREE_LEVELS);
   const [tierUnlockLevel, setTierUnlockLevel] = useState<number | null>(null);
+  // true only when this specific game advanced the player's progression (first win of this level)
+  const [isNewUnlock, setIsNewUnlock] = useState(false);
 
   const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, playWarning, undo, resign, makeMove, reset } =
     useLocalGame(level, playerColor, timeSeconds);
@@ -452,12 +465,25 @@ export default function LocalGamePage() {
   }, [level, router, setupAiPath]);
 
   useEffect(() => {
-    if (!state.result) return;
+    if (!state.result) {
+      // Reset per-game flags when the game resets
+      setIsNewUnlock(false);
+      return;
+    }
     const newMax = getMaxUnlockedBotLevel();
     setMaxUnlockedNow(newMax);
-    // A tier unlock happens when the max unlocked level jumps
     if (newMax > maxUnlockedAtStart) {
-      setTierUnlockLevel(newMax);
+      setIsNewUnlock(true);
+      setMaxUnlockedAtStart(newMax);
+      // Only show the tier overlay when newMax is actually the start of a new tier
+      // (6, 10, 14, 17). For wins within the same tier the overlay returns null
+      // but still hides the result card — causing a blank screen.
+      const isTierStart = BOT_TIERS.some(([start]) => start === newMax);
+      if (isTierStart) {
+        setTierUnlockLevel(newMax);
+      }
+    } else {
+      setIsNewUnlock(false);
     }
   }, [state.result, maxUnlockedAtStart]);
 
@@ -568,10 +594,14 @@ export default function LocalGamePage() {
           {/* Endgame countdown */}
           {state.endgameCountdown && (
             <div className="mt-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-center text-sm text-orange-200">
-              {t("endgameCountdown", {
-                remaining: state.endgameCountdown.remaining,
-                favored: state.endgameCountdown.favored,
-              })}
+              {state.endgameCountdown.favored !== null
+                ? t("endgameCountdown", {
+                    remaining: state.endgameCountdown.remaining,
+                    favored: state.endgameCountdown.favored,
+                  })
+                : t("endgameCountdownEqual", {
+                    remaining: state.endgameCountdown.remaining,
+                  })}
             </div>
           )}
         </div>
@@ -640,6 +670,7 @@ export default function LocalGamePage() {
           userRating={userRating}
           userName={userLabel}
           canOfferNextBot={canOfferNextBot}
+          isNewUnlock={isNewUnlock}
           nextBotLevel={nextBotLevel}
           nextBot={nextBot}
           locale={locale}
