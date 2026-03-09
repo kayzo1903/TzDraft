@@ -1,17 +1,52 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { GetAiMoveUseCase } from '../../../application/use-cases/get-ai-move.use-case';
 
+class BoardPieceDto {
+  @IsIn(['MAN', 'KING'])
+  type: 'MAN' | 'KING';
+
+  @IsIn(['WHITE', 'BLACK'])
+  color: 'WHITE' | 'BLACK';
+
+  @IsInt()
+  @Min(1)
+  @Max(32)
+  position: number;
+}
+
 export class AiMoveRequestDto {
-  boardStatePieces: {
-    type: 'MAN' | 'KING';
-    color: 'WHITE' | 'BLACK';
-    position: number;
-  }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BoardPieceDto)
+  boardStatePieces: BoardPieceDto[];
+
+  @IsIn(['WHITE', 'BLACK'])
   currentPlayer: 'WHITE' | 'BLACK';
+
+  @IsInt()
+  @Min(1)
+  @Max(19)
   aiLevel: number;
+
+  @IsOptional()
+  @IsNumber()
   timeLimitMs?: number;
-  /** Square number (1-32) from which the AI must continue a capture chain. */
+
+  @IsOptional()
+  @IsInt()
   mustContinueFrom?: number | null;
 }
 
