@@ -10,7 +10,7 @@ import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS } from "@/lib/game/bot-progression";
+import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS, INITIAL_FREE_LEVELS } from "@/lib/game/bot-progression";
 import {
   AlertTriangle,
   ArrowRight,
@@ -420,8 +420,9 @@ export default function LocalGamePage() {
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const nextBot = useMemo(() => getBotByLevel(Math.min(level + 1, TOTAL_BOT_LEVELS)), [level]);
   const { user } = useAuthStore();
-  const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(1);
-  const [maxUnlockedNow, setMaxUnlockedNow] = useState(1);
+  // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of redirect before mount effect runs
+  const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(INITIAL_FREE_LEVELS);
+  const [maxUnlockedNow, setMaxUnlockedNow] = useState(INITIAL_FREE_LEVELS);
   const [tierUnlockLevel, setTierUnlockLevel] = useState<number | null>(null);
 
   const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, playWarning, undo, resign, makeMove, reset } =
@@ -455,9 +456,11 @@ export default function LocalGamePage() {
     if (!state.result) return;
     const newMax = getMaxUnlockedBotLevel();
     setMaxUnlockedNow(newMax);
-    // A tier unlock happens when the max unlocked level jumps
+    // A tier unlock happens when the max unlocked level jumps to a new tier boundary
     if (newMax > maxUnlockedAtStart) {
       setTierUnlockLevel(newMax);
+      // Bug fix: advance the baseline so replaying this level doesn't retrigger the overlay
+      setMaxUnlockedAtStart(newMax);
     }
   }, [state.result, maxUnlockedAtStart]);
 
