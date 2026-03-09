@@ -406,6 +406,7 @@
       "botToMove": "Zamu ya AI"
     },
     "endgameCountdown": "Hesabu ya mwisho: hatua {remaining} zimebaki kwa {favored}",
+    "endgameCountdownEqual": "Mfalme dhidi ya Mfalme: sare baada ya hatua {remaining}",
     "winnerInline": "Mshindi: {winner}",
     "actions": {
       "undo": "Rudisha",
