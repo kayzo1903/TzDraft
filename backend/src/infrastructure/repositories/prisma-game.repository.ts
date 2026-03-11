@@ -340,7 +340,7 @@ export class PrismaGameRepository implements IGameRepository {
         ? {
             whiteTimeMs: Number(prismaGame.clock.whiteTimeMs),
             blackTimeMs: Number(prismaGame.clock.blackTimeMs),
-            lastMoveAt: prismaGame.clock.lastMoveAt,
+            lastMoveAt: new Date(prismaGame.clock.lastMoveAt),
           }
         : undefined,
 
