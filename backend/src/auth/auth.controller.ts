@@ -56,7 +56,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax' as const,
+      sameSite: isProd ? ('none' as const) : ('lax' as const),
       path: '/',
       ...(cookieDomain ? { domain: cookieDomain } : {}),
     };
@@ -195,8 +195,8 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleOAuthGuard)
   async googleAuthCallback(@CurrentUser() user: any, @Res() res: Response) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${frontendUrl}/auth/oauth-callback`;
+    const frontendUrl = process.env.FRONTEND_URL!;
+    const redirectUrl = `${frontendUrl}/sw/auth/oauth-callback`;
 
     try {
       // Generate JWT tokens for the OAuth user.
@@ -210,7 +210,7 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch {
-      return res.redirect(`${frontendUrl}/auth/login?error=google_failed`);
+      return res.redirect(`${process.env.FRONTEND_URL!}/sw/auth/login?error=google_failed`);
     }
   }
 }

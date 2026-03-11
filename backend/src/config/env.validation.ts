@@ -1,17 +1,26 @@
 /**
  * Validates required environment variables at startup.
- * Called by ConfigModule.forRoot({ validate }) — throws if any required var is missing.
+ * Called by ConfigModule.forRoot({ validate }) — throws if any required var is missing or invalid.
+ *
+ * Rules:
+ *  - Required vars must be present and non-empty in every environment.
+ *  - URL vars must not contain "localhost" when NODE_ENV=production.
+ *    This makes it structurally impossible to deploy with localhost URLs.
  */
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
+  const isProd = config['NODE_ENV'] === 'production';
+
+  // ── Required in every environment ─────────────────────────────────────────
   const required = [
     'DATABASE_URL',
     'JWT_SECRET',
+    'JWT_REFRESH_SECRET',
     'REDIS_URL',
     'CORS_ORIGINS',
+    'FRONTEND_URL',
   ];
 
   const missing = required.filter((key) => !config[key]);
-
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missing.join(', ')}. ` +
@@ -19,13 +28,20 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     );
   }
 
-  // Warn about optional-but-recommended vars
-  const recommended = ['SENTRY_DSN', 'FRONTEND_URL', 'BETTER_AUTH_SECRET'];
-  const missingRecommended = recommended.filter((key) => !config[key]);
-  if (missingRecommended.length > 0 && config['NODE_ENV'] === 'production') {
-    console.warn(
-      `[Config] Recommended production env vars not set: ${missingRecommended.join(', ')}`,
-    );
+  // ── Production: URL vars must never contain localhost ──────────────────────
+  if (isProd) {
+    const urlVars = ['FRONTEND_URL', 'BACKEND_URL', 'APP_URL', 'CORS_ORIGINS'];
+    const localhostVars = urlVars.filter((key) => {
+      const val = config[key] as string | undefined;
+      return val && val.includes('localhost');
+    });
+
+    if (localhostVars.length > 0) {
+      throw new Error(
+        `Environment variables contain localhost URLs in production: ${localhostVars.join(', ')}. ` +
+          `Set them to your real domain URLs.`,
+      );
+    }
   }
 
   return config;

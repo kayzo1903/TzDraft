@@ -47,6 +47,7 @@ services:
       BACKEND_URL: ${BACKEND_URL:-http://localhost:3002}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_in_production}
       JWT_EXPIRATION: 7d
       # ── Email (Resend) ──
       RESEND_API_KEY: ${RESEND_API_KEY:-}

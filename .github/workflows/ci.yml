@@ -100,6 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run on PRs to main to keep CI fast on feature branches
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    environment: production
 
     steps:
       - name: Checkout
@@ -123,5 +124,8 @@ jobs:
           context: .
           file: frontend/Dockerfile
           push: false
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_BETTER_AUTH_URL=${{ vars.NEXT_PUBLIC_BETTER_AUTH_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

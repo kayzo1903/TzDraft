@@ -406,6 +406,7 @@
       "botToMove": "Bot to move"
     },
     "endgameCountdown": "Endgame countdown: {remaining} moves remaining for {favored}",
+    "endgameCountdownEqual": "King vs King: draw in {remaining} moves",
     "winnerInline": "Winner: {winner}",
     "actions": {
       "undo": "Undo",
