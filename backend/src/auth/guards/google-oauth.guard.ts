@@ -5,7 +5,7 @@ import type { ExecutionContext } from '@nestjs/common';
 @Injectable()
 export class GoogleOAuthGuard extends AuthGuard('google') {
   getAuthenticateOptions(context: ExecutionContext) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL!;
 
     return {
       session: false,

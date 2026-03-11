@@ -29,7 +29,7 @@ export interface LocalGameState {
   result: { winner: Winner } | null;
   isAiThinking: boolean;
   timeLeft: { WHITE: number; BLACK: number };
-  endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+  endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
   mustContinueFrom: number | null;
   undoUsed: boolean;
 }
@@ -42,7 +42,8 @@ type SavedGame = {
   currentPlayer: PlayerColor;
   moveCount: number;
   timeLeft: { WHITE: number; BLACK: number };
-  endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+  endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
+  thirtyMoveCount: number;
   mustContinueFrom: number | null;
   undoUsed: boolean;
   moves: {
@@ -118,7 +119,8 @@ const loadSavedGame = (
   moves: Move[];
   result: { winner: Winner } | null;
   timeLeft: { WHITE: number; BLACK: number };
-  endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+  endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
+  thirtyMoveCount: number;
   mustContinueFrom: Position | null;
   undoUsed: boolean;
 } | null => {
@@ -161,6 +163,7 @@ const loadSavedGame = (
       result: parsed.result,
       timeLeft: parsed.timeLeft,
       endgameCountdown: parsed.endgameCountdown ?? null,
+      thirtyMoveCount: parsed.thirtyMoveCount ?? 0,
       mustContinueFrom:
         typeof parsed.mustContinueFrom === "number"
           ? new Position(parsed.mustContinueFrom)
@@ -180,7 +183,8 @@ const saveGame = (
     moves: Move[];
     result: { winner: Winner } | null;
     timeLeft: { WHITE: number; BLACK: number };
-    endgameCountdown: { favored: PlayerColor; remaining: number } | null;
+    endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
+    thirtyMoveCount: number;
     mustContinueFrom: Position | null;
     undoUsed: boolean;
   },
@@ -216,6 +220,7 @@ const saveGame = (
     pieces,
     timeLeft: state.timeLeft,
     endgameCountdown: state.endgameCountdown,
+    thirtyMoveCount: state.thirtyMoveCount,
     result: state.result,
     mustContinueFrom: state.mustContinueFrom?.value ?? null,
     undoUsed: state.undoUsed,
@@ -249,9 +254,12 @@ export const useLocalGame = (
     loaded?.timeLeft ?? { WHITE: timeSeconds, BLACK: timeSeconds },
   );
   const [endgameCountdown, setEndgameCountdown] = useState<{
-    favored: PlayerColor;
+    favored: PlayerColor | null;
     remaining: number;
   } | null>(loaded?.endgameCountdown ?? null);
+  const [thirtyMoveCount, setThirtyMoveCount] = useState<number>(
+    loaded?.thirtyMoveCount ?? 0,
+  );
   const [mustContinueFrom, setMustContinueFrom] = useState<Position | null>(
     loaded?.mustContinueFrom ?? null,
   );
@@ -309,41 +317,87 @@ export const useLocalGame = (
   }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom]);
 
   const evaluateEndgameCountdown = useCallback(
-    (nextBoard: BoardState, movePlayer: PlayerColor) => {
+    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean) => {
       const whitePieces = nextBoard.getPiecesByColor(PlayerColor.WHITE);
       const blackPieces = nextBoard.getPiecesByColor(PlayerColor.BLACK);
 
       const whiteKings = whitePieces.filter((p) => p.isKing()).length;
       const blackKings = blackPieces.filter((p) => p.isKing()).length;
+      const whiteMen = whitePieces.length - whiteKings;
+      const blackMen = blackPieces.length - blackKings;
 
+      // Article 8.3 — 30-move rule: all kings, no captures → count; reset on capture or man
+      const allKings = whiteMen === 0 && blackMen === 0;
+      setThirtyMoveCount((prev) => {
+        if (!allKings || hadCapture) return 0;
+        const next = prev + 1;
+        if (next >= 30) setResult({ winner: Winner.DRAW });
+        return next;
+      });
+
+      // Classify endgame scenario for timed draws
       const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
       const blackOnlyKing = blackPieces.length === 1 && blackKings === 1;
-
-      const whiteThreeKings = whitePieces.length === 3 && whiteKings === 3;
-      const blackThreeKings = blackPieces.length === 3 && blackKings === 3;
+      const whiteTwoKings = whitePieces.length === 2 && whiteKings === 2;
+      const blackTwoKings = blackPieces.length === 2 && blackKings === 2;
+      // K+Man = exactly 1 king + 1 man (2 pieces total)
+      const whiteKingMan =
+        whitePieces.length === 2 && whiteKings === 1 && whiteMen === 1;
+      const blackKingMan =
+        blackPieces.length === 2 && blackKings === 1 && blackMen === 1;
+      // 3+ kings vs 1 king (Article 8.5 — 12-move rule)
+      const whiteThreePlusKings = whiteKings >= 3 && whiteMen === 0;
+      const blackThreePlusKings = blackKings >= 3 && blackMen === 0;
 
       let favored: PlayerColor | null = null;
-      if (whiteOnlyKing && blackThreeKings) favored = PlayerColor.BLACK;
-      if (blackOnlyKing && whiteThreeKings) favored = PlayerColor.WHITE;
+      let limit = 0;
 
-      if (!favored) {
+      if (whiteOnlyKing && blackThreePlusKings) {
+        // Article 8.5: 3+ K vs 1K — 12 moves by stronger side
+        favored = PlayerColor.BLACK;
+        limit = 12;
+      } else if (blackOnlyKing && whiteThreePlusKings) {
+        favored = PlayerColor.WHITE;
+        limit = 12;
+      } else if (whiteOnlyKing && blackTwoKings) {
+        // Article 8.4: 2K vs K — 5 moves by stronger side
+        favored = PlayerColor.BLACK;
+        limit = 5;
+      } else if (blackOnlyKing && whiteTwoKings) {
+        favored = PlayerColor.WHITE;
+        limit = 5;
+      } else if (whiteOnlyKing && blackKingMan) {
+        // Article 8.4: K+Man vs K — 5 moves by stronger side
+        favored = PlayerColor.BLACK;
+        limit = 5;
+      } else if (blackOnlyKing && whiteKingMan) {
+        favored = PlayerColor.WHITE;
+        limit = 5;
+      } else if (whiteOnlyKing && blackOnlyKing) {
+        // Article 8.4: K vs K — 5 moves total (no favored side)
+        favored = null;
+        limit = 5;
+      }
+
+      if (limit === 0) {
         setEndgameCountdown(null);
         return;
       }
 
       setEndgameCountdown((prev) => {
-        const next = prev ?? { favored, remaining: 12 };
-        if (next.favored !== favored) {
-          return { favored, remaining: 12 };
+        // Start fresh when entering a new endgame scenario
+        const isNewScenario = !prev || prev.favored !== favored;
+        const base = isNewScenario ? limit : prev!.remaining;
+
+        // Decrement: null favored (K vs K) → every move; otherwise → only favored's move
+        const shouldDecrement = favored === null || movePlayer === favored;
+        if (!shouldDecrement) {
+          return isNewScenario ? { favored, remaining: base } : prev!;
         }
-        if (movePlayer === favored) {
-          const remaining = Math.max(0, next.remaining - 1);
-          if (remaining === 0) {
-            setResult({ winner: Winner.DRAW });
-          }
-          return { favored, remaining };
-        }
-        return next;
+
+        const remaining = Math.max(0, base - 1);
+        if (remaining === 0) setResult({ winner: Winner.DRAW });
+        return { favored, remaining };
       });
     },
     [],
@@ -402,7 +456,11 @@ export const useLocalGame = (
       // always passes to the opponent — never force a "continue capturing" chain.
       setMustContinueFrom(null);
       setCurrentPlayer(nextPlayer);
-      evaluateEndgameCountdown(nextBoard, move.player);
+      evaluateEndgameCountdown(
+        nextBoard,
+        move.player,
+        move.capturedSquares.length > 0,
+      );
 
       const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) {
@@ -525,6 +583,7 @@ export const useLocalGame = (
     setUndoUsed(false);
     setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
     setEndgameCountdown(null);
+    setThirtyMoveCount(0);
     setMustContinueFrom(null);
     setLastMove(null);
     setCapturedGhosts([]);
@@ -580,6 +639,8 @@ export const useLocalGame = (
     setCurrentPlayer(nextPlayer);
     setResult(null);
     setIsAiThinking(false);
+    setEndgameCountdown(null);
+    setThirtyMoveCount(0);
     setMustContinueFrom(null);
     setLastMove(null);
     setCapturedGhosts([]);
@@ -742,9 +803,36 @@ export const useLocalGame = (
         }
 
         // Backend returned null or no match — check for game over
-        const gameResult = CakeEngine.evaluateGameResult(board, currentPlayer);
-        if (gameResult) {
-          setResult({ winner: gameResult.winner });
+        const aiLegalMoves = CakeEngine.generateLegalMoves(
+          board,
+          currentPlayer,
+          moveCount,
+        );
+        if (aiLegalMoves.length === 0) {
+          // AI has no legal moves — declare the opponent as winner
+          const gameResult = CakeEngine.evaluateGameResult(
+            board,
+            currentPlayer,
+          );
+          const winner =
+            gameResult?.winner ??
+            (currentPlayer === PlayerColor.WHITE
+              ? Winner.BLACK
+              : Winner.WHITE);
+          setResult({ winner });
+        } else {
+          // Backend returned null or bad move but CAKE finds legal moves — fall back to local engine
+          const fallbackMove = getBestMove(board, currentPlayer, 9);
+          if (fallbackMove) {
+            applyMove(fallbackMove);
+          } else {
+            setResult({
+              winner:
+                currentPlayer === PlayerColor.WHITE
+                  ? Winner.BLACK
+                  : Winner.WHITE,
+            });
+          }
         }
       } catch (e) {
         // Network / engine failure → fall back to local engine at depth 5
@@ -825,6 +913,7 @@ export const useLocalGame = (
         result,
         timeLeft,
         endgameCountdown,
+        thirtyMoveCount,
         mustContinueFrom,
         undoUsed,
       },
@@ -839,6 +928,7 @@ export const useLocalGame = (
     result,
     timeLeft,
     endgameCountdown,
+    thirtyMoveCount,
     mustContinueFrom,
     undoUsed,
     aiLevel,

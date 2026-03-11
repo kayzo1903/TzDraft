@@ -36,10 +36,9 @@ axiosInstance.interceptors.response.use(
           throw new Error("No refresh token");
         }
 
-        const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
-          { refreshToken },
-        );
+        const { data } = await axiosInstance.post(`/auth/refresh`, {
+          refreshToken,
+        });
 
         localStorage.setItem("accessToken", data.accessToken);
         localStorage.setItem("refreshToken", data.refreshToken);
