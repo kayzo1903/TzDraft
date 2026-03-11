@@ -100,7 +100,7 @@ export class PrismaGameRepository implements IGameRepository {
         game.status === GameStatus.ABORTED;
       const ttl = isFinished ? FINISHED_GAME_CACHE_TTL : ACTIVE_GAME_CACHE_TTL;
       this.redisService
-        .setex(gameCacheKey(id), ttl, JSON.stringify(game))
+        .setex(gameCacheKey(id), ttl, JSON.stringify(game, (_, v) => (typeof v === 'bigint' ? v.toString() : v)))
         .catch(() => {
           // Non-fatal — DB is the source of truth
         });
