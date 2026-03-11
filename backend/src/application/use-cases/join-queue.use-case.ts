@@ -33,10 +33,11 @@ export class JoinQueueUseCase {
     // 2. Remove any existing entry for this user so they re-queue fresh.
     await this.matchmakingRepo.remove(userId);
 
-    // 3. Prevent queueing while already in a live game (authoritative check via Postgres).
+    // 3. Prevent queueing while already in an ACTIVE game.
+    //    WAITING games are solo invite lobbies — they must not block matchmaking.
     const selfActiveGameCount = await this.prisma.game.count({
       where: {
-        status: { in: [GameStatus.WAITING, GameStatus.ACTIVE] },
+        status: GameStatus.ACTIVE,
         OR: [{ whitePlayerId: userId }, { blackPlayerId: userId }],
       },
     });
