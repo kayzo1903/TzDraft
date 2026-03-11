@@ -257,6 +257,12 @@ export class PrismaGameRepository implements IGameRepository {
       },
       include: { clock: true },
     });
+
+    // Invalidate cache so creator's next fetchGameState sees the joiner
+    if (this.redisService) {
+      this.redisService.del(gameCacheKey(gameId)).catch(() => {});
+    }
+
     return this.toDomain(updated);
   }
 
@@ -272,6 +278,12 @@ export class PrismaGameRepository implements IGameRepository {
       },
       include: { clock: true },
     });
+
+    // Invalidate cache so both clients see ACTIVE status after the WS event
+    if (this.redisService) {
+      this.redisService.del(gameCacheKey(gameId)).catch(() => {});
+    }
+
     return this.toDomain(updated);
   }
 
