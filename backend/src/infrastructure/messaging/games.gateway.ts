@@ -38,12 +38,25 @@ const K_USER_CONNS = (userId: string) => `ws:user:connections:${userId}`;
 /** TTL (seconds) for transient WS keys — longer than any game duration. */
 const KEY_TTL_S = 24 * 60 * 60; // 24 h
 
+/**
+ * Parse Socket.IO allowed origins from env in a resilient way.
+ * Handles optional wrapping quotes, e.g.:
+ * CORS_ORIGINS="https://a.com,https://b.com"
+ */
+const WS_ALLOWED_ORIGINS = (() => {
+  const raw = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '').trim();
+  const dequotedRaw = raw.replace(/^['"']|['"']$/g, '');
+
+  return dequotedRaw
+    .split(/[,\n]+/)
+    .map((origin) => origin.trim())
+    .map((origin) => origin.replace(/^['"']|['"']$/g, ''))
+    .map((origin) => origin.replace(/\/$/, ''))
+    .filter(Boolean);
+})();
 @WebSocketGateway({
   cors: {
-    origin: (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
-      .split(/[,\n]+/)
-      .map((o) => o.trim().replace(/\/$/, ''))
-      .filter(Boolean),
+    origin: WS_ALLOWED_ORIGINS,
     credentials: true,
   },
   namespace: 'games',
@@ -708,3 +721,6 @@ export class GamesGateway
     }
   }
 }
+
+
+
