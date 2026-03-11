@@ -142,7 +142,7 @@ export class MakeMoveUseCase {
     } | null = null;
 
     if (game.clockInfo && !game.isPvE()) {
-      const elapsed = now.getTime() - game.clockInfo.lastMoveAt.getTime();
+      const elapsed = now.getTime() - new Date(game.clockInfo.lastMoveAt).getTime();
       let newWhite = game.clockInfo.whiteTimeMs;
       let newBlack = game.clockInfo.blackTimeMs;
 
