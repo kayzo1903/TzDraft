@@ -80,6 +80,10 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     remaining: number;
   } | null>(null);
   const [thirtyMoveCount, setThirtyMoveCount] = useState(0);
+  const endgameCountdownRef = useRef<{ favored: PlayerColor | null; remaining: number } | null>(null);
+  const thirtyMoveCountRef = useRef(0);
+  endgameCountdownRef.current = endgameCountdown;
+  thirtyMoveCountRef.current = thirtyMoveCount;
   const [mustContinueFrom, setMustContinueFrom] = useState<Position | null>(null);
   const [showPassOverlay, setShowPassOverlay] = useState(false);
   // Store last move in board coordinates so it re-maps correctly when board flips
@@ -148,8 +152,9 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     [lastMovePositions, flipForCurrentPlayer],
   );
 
+  // Returns true if a draw should be declared — caller is responsible for setResult.
   const evaluateEndgameCountdown = useCallback(
-    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean) => {
+    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean): boolean => {
       const whitePieces = nextBoard.getPiecesByColor(PlayerColor.WHITE);
       const blackPieces = nextBoard.getPiecesByColor(PlayerColor.BLACK);
       const whiteKings = whitePieces.filter((p) => p.isKing()).length;
@@ -159,12 +164,11 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
 
       // Article 8.3 — 30-move rule: all kings, no captures → count; reset otherwise
       const allKings = whiteMen === 0 && blackMen === 0;
-      setThirtyMoveCount((prev) => {
-        if (!allKings || hadCapture) return 0;
-        const next = prev + 1;
-        if (next >= 30) setResult({ winner: Winner.DRAW });
-        return next;
-      });
+      const newThirtyCount =
+        !allKings || hadCapture ? 0 : thirtyMoveCountRef.current + 1;
+      setThirtyMoveCount(newThirtyCount);
+      thirtyMoveCountRef.current = newThirtyCount;
+      if (newThirtyCount >= 30) return true;
 
       const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
       const blackOnlyKing = blackPieces.length === 1 && blackKings === 1;
@@ -188,20 +192,26 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
 
       if (limit === 0) {
         setEndgameCountdown(null);
-        return;
+        endgameCountdownRef.current = null;
+        return false;
       }
 
-      setEndgameCountdown((prev) => {
-        const isNewScenario = !prev || prev.favored !== favored;
-        const base = isNewScenario ? limit : prev!.remaining;
-        const shouldDecrement = favored === null || movePlayer === favored;
-        if (!shouldDecrement) {
-          return isNewScenario ? { favored, remaining: base } : prev!;
-        }
+      const prev = endgameCountdownRef.current;
+      const isNewScenario = !prev || prev.favored !== favored;
+      const base = isNewScenario ? limit : prev.remaining;
+      const shouldDecrement = favored === null || movePlayer === favored;
+
+      let newCountdown: { favored: PlayerColor | null; remaining: number };
+      if (!shouldDecrement) {
+        newCountdown = isNewScenario ? { favored, remaining: base } : prev;
+      } else {
         const remaining = Math.max(0, base - 1);
-        if (remaining === 0) setResult({ winner: Winner.DRAW });
-        return { favored, remaining };
-      });
+        newCountdown = { favored, remaining };
+      }
+
+      setEndgameCountdown(newCountdown);
+      endgameCountdownRef.current = newCountdown;
+      return newCountdown.remaining === 0;
     },
     [],
   );
@@ -258,10 +268,15 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       setCurrentPlayer(nextPlayer);
       if (passDevice) setShowPassOverlay(true);
 
-      evaluateEndgameCountdown(nextBoard, move.player, move.capturedSquares.length > 0);
+      const isDraw = evaluateEndgameCountdown(
+        nextBoard,
+        move.player,
+        move.capturedSquares.length > 0,
+      );
 
       const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) setResult({ winner: gameResult.winner });
+      else if (isDraw) setResult({ winner: Winner.DRAW });
     },
     [board, currentPlayer, evaluateEndgameCountdown, flipForCurrentPlayer, passDevice],
   );
@@ -362,7 +377,9 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     setCurrentPlayer(nextPlayer);
     setResult(null);
     setEndgameCountdown(null);
+    endgameCountdownRef.current = null;
     setThirtyMoveCount(0);
+    thirtyMoveCountRef.current = 0;
     setMustContinueFrom(null);
     setLastMovePositions(null);
     setCapturedGhosts([]);
@@ -382,7 +399,9 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     setResult(null);
     setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
     setEndgameCountdown(null);
+    endgameCountdownRef.current = null;
     setThirtyMoveCount(0);
+    thirtyMoveCountRef.current = 0;
     setMustContinueFrom(null);
     setLastMovePositions(null);
     setCapturedGhosts([]);
