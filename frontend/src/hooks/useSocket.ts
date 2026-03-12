@@ -47,7 +47,12 @@ function getOrCreateSocket(token: string): Socket {
       console.error("[Socket] Connection error:", err.message);
       // If the server rejected our token, clear the stale session so we stop
       // hammering the server with invalid reconnect attempts.
-      if (err.message === "invalid token" || err.message === "no token") {
+      const msg = (err.message || "").toLowerCase();
+      if (
+        msg === "invalid token" ||
+        msg === "no token" ||
+        msg === "unauthorized"
+      ) {
         sharedSocket?.disconnect();
         sharedSocket = null;
         currentToken = null;

@@ -28,6 +28,37 @@ export function useMatchmaking() {
   const cancelledRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const ensureSocketConnected = useCallback(async () => {
+    if (!socket) return false;
+    if (socket.connected && socket.id) return true;
+
+    // Try to establish/re-establish the WS connection before joining queue.
+    socket.connect();
+
+    return await new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        socket.off("connect", onConnect);
+        socket.off("connect_error", onError);
+        resolve(false);
+      }, 5000);
+
+      const onConnect = () => {
+        clearTimeout(timeout);
+        socket.off("connect_error", onError);
+        resolve(Boolean(socket.id));
+      };
+
+      const onError = () => {
+        clearTimeout(timeout);
+        socket.off("connect", onConnect);
+        resolve(false);
+      };
+
+      socket.once("connect", onConnect);
+      socket.once("connect_error", onError);
+    });
+  }, [socket]);
+
   // Listen for matchFound from the server
   useEffect(() => {
     if (!socket) return;
@@ -52,6 +83,12 @@ export function useMatchmaking() {
         return;
       }
 
+      const ready = await ensureSocketConnected();
+      if (!ready || !socket.id) {
+        setError("No live connection. Please check network and try again.");
+        return;
+      }
+
       cancelledRef.current = false;
       setError(null);
       setState("searching");
@@ -67,7 +104,7 @@ export function useMatchmaking() {
       }, SEARCH_TIMEOUT_MS);
 
       try {
-        const socketId = socket.id ?? "";
+        const socketId = socket.id;
         const res = await gameService.joinQueue(timeMs, socketId);
 
         if (cancelledRef.current) return;
@@ -87,7 +124,7 @@ export function useMatchmaking() {
         }
       }
     },
-    [socket, router, locale],
+    [socket, router, locale, ensureSocketConnected],
   );
 
   const cancelQueue = useCallback(async () => {
