@@ -82,6 +82,13 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
       // If another worker already deleted this row, abort and return null
       if (deleted.count !== 1) return null;
 
+      // Remove the caller from the queue too — prevents symmetric step-7b
+      // race where both concurrent callers each claim the other and create
+      // two separate games.
+      await tx.matchmakingQueue.deleteMany({
+        where: { userId: excludeUserId },
+      });
+
       return this.toDomain(row);
     });
   }
