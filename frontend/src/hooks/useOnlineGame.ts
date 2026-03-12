@@ -150,6 +150,7 @@ export const useOnlineGame = (gameId: string) => {
     winner: Winner;
     reason?: string;
   } | null>(null);
+  const [autoRequeue, setAutoRequeue] = useState<{ timeMs: number } | null>(null);
   const [timeLeft, setTimeLeft] = useState<{
     WHITE: number;
     BLACK: number;
@@ -694,6 +695,10 @@ export const useOnlineGame = (gameId: string) => {
       }
       setDisconnectSecondsRemaining(null);
     };
+    const handleAutoRequeue = (data: { timeMs: number }) => {
+      setAutoRequeue({ timeMs: data.timeMs });
+    };
+
     socket.on("gameOver", handleGameOverEvent);
     socket.on("drawOffered", handleDrawOffered);
     socket.on("drawDeclined", handleDrawDeclined);
@@ -705,6 +710,7 @@ export const useOnlineGame = (gameId: string) => {
     socket.on("rematchAccepted", handleRematchAccepted);
     socket.on("rematchDeclined", handleRematchDeclined);
     socket.on("rematchCancelled", handleRematchCancelled);
+    socket.on("autoRequeue", handleAutoRequeue);
 
     return () => {
       socket.off("gameStateUpdated", handleUpdate);
@@ -722,6 +728,7 @@ export const useOnlineGame = (gameId: string) => {
       socket.off("rematchAccepted", handleRematchAccepted);
       socket.off("rematchDeclined", handleRematchDeclined);
       socket.off("rematchCancelled", handleRematchCancelled);
+      socket.off("autoRequeue", handleAutoRequeue);
     };
   }, [socket, gameId, fetchGameState, flipBoard, applyClockSnapshot]);
 
@@ -1011,5 +1018,6 @@ export const useOnlineGame = (gameId: string) => {
     declineRematch,
     cancelRematch,
     refetch: fetchGameState,
+    autoRequeue,
   };
 };

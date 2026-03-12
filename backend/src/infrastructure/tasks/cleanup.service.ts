@@ -37,6 +37,36 @@ export class CleanupService {
   }
 
   /**
+   * Abandon ACTIVE games where the clock hasn't moved for more than 1 hour.
+   * This catches games orphaned by server restarts or both players disconnecting
+   * before the 60-second abandon timer fired — they would otherwise block both
+   * players from ever joining matchmaking again.
+   * Runs every 30 minutes.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async abandonStaleActiveGames(): Promise<void> {
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+
+    const result = await this.prisma.game.updateMany({
+      where: {
+        status: 'ACTIVE',
+        gameType: { not: 'AI' },
+        clock: { lastMoveAt: { lt: cutoff } },
+      },
+      data: {
+        status: 'FINISHED',
+        winner: 'DRAW',
+        endReason: 'DISCONNECT',
+        endedAt: new Date(),
+      },
+    });
+
+    if (result.count > 0) {
+      this.logger.log(`Abandoned ${result.count} stale active game(s) (no activity for 1h+)`);
+    }
+  }
+
+  /**
    * Remove matchmaking queue entries older than 5 minutes (stale from crashed clients).
    * Runs every 5 minutes.
    */
