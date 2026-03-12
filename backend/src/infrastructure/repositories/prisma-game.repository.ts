@@ -349,7 +349,7 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.endedAt,
       prismaGame.status as GameStatus,
       prismaGame.winner as Winner | null,
-      undefined, // endReason not mapped here — already works
+      (prismaGame.endReason as EndReason | null) ?? null,
       currentTurn, // derived from move history
       prismaGame.inviteCode ?? null,
       (prismaGame.creatorColor as PlayerColor | null) ?? null,
