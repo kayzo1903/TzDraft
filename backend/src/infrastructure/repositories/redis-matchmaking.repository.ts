@@ -125,11 +125,15 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
         }
       }
 
-      // Atomic claim: ZREM + DEL via Lua script
+      // Atomic claim: ZREM candidate + DEL their HASH + ZREM self.
+      // Removing the caller (ARGV[2]=excludeUserId) from the ZSET in the
+      // same Lua script prevents a symmetric race where two concurrent step-7b
+      // calls each claim the other, producing two separate games.
       const claimScript = `
         local removed = redis.call('ZREM', KEYS[1], ARGV[1])
         if removed == 1 then
           redis.call('DEL', KEYS[2])
+          redis.call('ZREM', KEYS[1], ARGV[2])
           return 1
         end
         return 0
@@ -138,7 +142,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
       const claimed = await this.redis.eval(
         claimScript,
         [zsetKey, this.entryKey(candidateUserId)],
-        [candidateUserId],
+        [candidateUserId, excludeUserId],
       );
 
       if (claimed === 1) {
