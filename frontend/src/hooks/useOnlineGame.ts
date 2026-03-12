@@ -940,10 +940,18 @@ export const useOnlineGame = (gameId: string) => {
     }
   }, [gameId, result, myColor, socket, user?.id]);
 
-  const acceptDraw = useCallback(() => {
+  const acceptDraw = useCallback(async () => {
     if (!socket || !gameId) return;
-    socket.emit("acceptDraw", { gameId });
     setDrawOffer({ offeredByUserId: null });
+    try {
+      const ack = await socket.emitWithAck("acceptDraw", { gameId });
+      if (ack?.error) {
+        setError(ack.error);
+        setDrawOffer({ offeredByUserId: null });
+      }
+    } catch {
+      setError("Failed to accept draw.");
+    }
   }, [socket, gameId]);
 
   const declineDraw = useCallback(() => {
