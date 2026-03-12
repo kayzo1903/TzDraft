@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import type { IMatchmakingRepository } from '../../domain/game/repositories/matchmaking.repository.interface';
+import type { IMatchmakingRepository, MatchmakingEntry } from '../../domain/game/repositories/matchmaking.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GameStatus, GameType } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
@@ -19,6 +19,65 @@ export class JoinQueueUseCase {
     private readonly matchmakingRepo: IMatchmakingRepository,
     private readonly prisma: PrismaService,
   ) {}
+
+  /**
+   * Create a matched game in Postgres between userId and opponent.
+   * Returns the new game's id and opponentUserId.
+   */
+  private async createMatchedGame(
+    userId: string,
+    opponent: MatchmakingEntry,
+    timeMs: number,
+  ): Promise<{ gameId: string; opponentUserId: string }> {
+    const [whiteId, blackId] =
+      Math.random() < 0.5
+        ? [userId, opponent.userId]
+        : [opponent.userId, userId];
+
+    const game = new Game(
+      randomUUID(),
+      whiteId,
+      blackId,
+      GameType.CASUAL,
+      null,
+      null,
+      null,
+      timeMs,
+      undefined,
+    );
+    game.start();
+
+    await this.prisma.game.create({
+      data: {
+        id: game.id,
+        status: game.status,
+        gameType: game.gameType,
+        ruleVersion: game.ruleVersion,
+        initialTimeMs: game.initialTimeMs,
+        whitePlayerId: game.whitePlayerId,
+        blackPlayerId: game.blackPlayerId,
+        whiteElo: game.whiteElo,
+        blackElo: game.blackElo,
+        aiLevel: game.aiLevel,
+        inviteCode: game.inviteCode,
+        creatorColor: game.creatorColor,
+        winner: game.winner,
+        endReason: game.endReason,
+        createdAt: game.createdAt,
+        startedAt: game.startedAt,
+        endedAt: game.endedAt,
+        clock: {
+          create: {
+            whiteTimeMs: game.initialTimeMs,
+            blackTimeMs: game.initialTimeMs,
+            lastMoveAt: new Date(),
+          },
+        },
+      },
+    });
+
+    return { gameId: game.id, opponentUserId: opponent.userId };
+  }
 
   async execute(
     userId: string,
@@ -58,7 +117,8 @@ export class JoinQueueUseCase {
       // 5. Double-check the opponent is not already in a live game.
       const opponentActiveGameCount = await this.prisma.game.count({
         where: {
-          status: { in: [GameStatus.WAITING, GameStatus.ACTIVE] },
+          // WAITING invite lobbies are not live games and must not block matchmaking.
+          status: GameStatus.ACTIVE,
           OR: [
             { whitePlayerId: opponent.userId },
             { blackPlayerId: opponent.userId },
@@ -68,7 +128,8 @@ export class JoinQueueUseCase {
 
       if (opponentActiveGameCount > 0) {
         // Opponent slipped into another game between enqueue and claim.
-        // Re-add this user to the queue and return waiting.
+        // Re-add this user to the queue, then run race-condition recovery
+        // in case another user upserted concurrently.
         await this.matchmakingRepo.upsert({
           userId,
           timeMs,
@@ -77,62 +138,29 @@ export class JoinQueueUseCase {
           rd: null,
           volatility: null,
         });
+        const recoveredOpponent = await this.matchmakingRepo.findAndClaimMatch(
+          timeMs,
+          userId,
+          userRating,
+        );
+        if (recoveredOpponent) {
+          const { gameId, opponentUserId } = await this.createMatchedGame(
+            userId,
+            recoveredOpponent,
+            timeMs,
+          );
+          return { status: 'matched', gameId, opponentUserId };
+        }
         return { status: 'waiting' };
       }
 
-      // 6. Randomly assign colors and create the game in Postgres.
-      const [whiteId, blackId] =
-        Math.random() < 0.5
-          ? [userId, opponent.userId]
-          : [opponent.userId, userId];
-
-      const game = new Game(
-        randomUUID(),
-        whiteId,
-        blackId,
-        GameType.CASUAL,
-        null,
-        null,
-        null,
+      // 6. Create the game and return matched result.
+      const { gameId, opponentUserId } = await this.createMatchedGame(
+        userId,
+        opponent,
         timeMs,
-        undefined,
       );
-      game.start();
-
-      await this.prisma.game.create({
-        data: {
-          id: game.id,
-          status: game.status,
-          gameType: game.gameType,
-          ruleVersion: game.ruleVersion,
-          initialTimeMs: game.initialTimeMs,
-          whitePlayerId: game.whitePlayerId,
-          blackPlayerId: game.blackPlayerId,
-          whiteElo: game.whiteElo,
-          blackElo: game.blackElo,
-          aiLevel: game.aiLevel,
-          inviteCode: game.inviteCode,
-          creatorColor: game.creatorColor,
-          winner: game.winner,
-          endReason: game.endReason,
-          createdAt: game.createdAt,
-          startedAt: game.startedAt,
-          endedAt: game.endedAt,
-          clock: {
-            create: {
-              whiteTimeMs: game.initialTimeMs,
-              blackTimeMs: game.initialTimeMs,
-              lastMoveAt: new Date(),
-            },
-          },
-        },
-      });
-
-      return {
-        status: 'matched',
-        gameId: game.id,
-        opponentUserId: opponent.userId,
-      };
+      return { status: 'matched', gameId, opponentUserId };
     }
 
     // 7. No match found — add this user to the queue.
@@ -144,6 +172,27 @@ export class JoinQueueUseCase {
       rd: null,
       volatility: null,
     });
+
+    // 7b. Race-condition recovery: a concurrent user may have upserted between
+    //     our findAndClaimMatch (step 4) and our own upsert above — check once more.
+    const lateOpponent = await this.matchmakingRepo.findAndClaimMatch(
+      timeMs,
+      userId,
+      userRating,
+    );
+
+    if (lateOpponent) {
+      const { gameId, opponentUserId } = await this.createMatchedGame(
+        userId,
+        lateOpponent,
+        timeMs,
+      );
+      // The opponent is waiting in the queue (not making an HTTP call), so we
+      // must push the matchFound event to them via the WebSocket gateway.
+      // We return the opponent's userId so the controller can do the emit.
+      return { status: 'matched', gameId, opponentUserId };
+    }
+
     return { status: 'waiting' };
   }
 
