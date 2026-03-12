@@ -117,7 +117,8 @@ export class JoinQueueUseCase {
       // 5. Double-check the opponent is not already in a live game.
       const opponentActiveGameCount = await this.prisma.game.count({
         where: {
-          status: { in: [GameStatus.WAITING, GameStatus.ACTIVE] },
+          // WAITING invite lobbies are not live games and must not block matchmaking.
+          status: GameStatus.ACTIVE,
           OR: [
             { whitePlayerId: opponent.userId },
             { blackPlayerId: opponent.userId },

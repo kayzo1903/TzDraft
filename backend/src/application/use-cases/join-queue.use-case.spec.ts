@@ -18,11 +18,16 @@ class FakePrismaService {
       where,
     }: {
       where: {
-        status?: { in: GameStatus[] };
+        status?: GameStatus | { in: GameStatus[] };
         OR?: [{ whitePlayerId: string }, { blackPlayerId: string }];
       };
     }): Promise<number> => {
-      const statuses: GameStatus[] = where.status?.in ?? [];
+      const statuses: GameStatus[] =
+        typeof where.status === 'object'
+          ? where.status?.in ?? []
+          : where.status
+            ? [where.status]
+            : [];
       const a = where.OR?.[0]?.whitePlayerId;
       const b = where.OR?.[1]?.blackPlayerId;
       return this.gameRows.filter((g) => {
@@ -156,6 +161,35 @@ describe('JoinQueueUseCase', () => {
       expect(result.status).toBe('matched');
       expect((result as any).opponentUserId).toBe('opponent');
       expect(prisma.getGames()).toHaveLength(1);
+    });
+
+    it('matches even when opponent has a WAITING invite game', async () => {
+      prisma.game.create({
+        data: {
+          id: 'waiting-invite',
+          status: GameStatus.WAITING,
+          whitePlayerId: 'opponent',
+          blackPlayerId: null,
+        },
+      });
+
+      matchmakingRepo.findAndClaimMatch.mockResolvedValue({
+        id: 'opp',
+        userId: 'opponent',
+        timeMs: 300000,
+        socketId: 'sock-opp',
+        joinedAt: new Date(),
+        rating: 1000,
+        rd: null,
+        volatility: null,
+      });
+
+      const result = await useCase.execute('user1', 300000, 'sock1', 1000);
+
+      expect(result.status).toBe('matched');
+      expect((result as any).opponentUserId).toBe('opponent');
+      // waiting invite + newly matched ACTIVE game
+      expect(prisma.getGames()).toHaveLength(2);
     });
 
     it('cancels queue for a user', async () => {
