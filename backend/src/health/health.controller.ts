@@ -37,6 +37,10 @@ export class RedisHealthIndicator extends HealthIndicator {
   }
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    if (!this.redis.client) {
+      // Redis not configured (dev mode) — report as healthy/disabled
+      return this.getStatus(key, true, { status: 'disabled' });
+    }
     try {
       await this.redis.client.ping();
       return this.getStatus(key, true);

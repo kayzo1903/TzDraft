@@ -23,7 +23,18 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
   private static readonly ENTRY_TTL_SECONDS = 120; // auto-expire after 2 min
   private static readonly MAX_ELO_GAP = 200;
 
-  constructor(private readonly redis: RedisService) {}
+  /** Typed alias — guaranteed non-null because this repo is only instantiated in production. */
+  private readonly rc: NonNullable<RedisService['client']>;
+
+  constructor(private readonly redis: RedisService) {
+    if (!redis.client) {
+      throw new Error(
+        'RedisMatchmakingRepository requires a live Redis connection. ' +
+        'Set REDIS_URL in the environment.',
+      );
+    }
+    this.rc = redis.client;
+  }
 
   // ── Key helpers ────────────────────────────────────────────────────────────
 
@@ -45,7 +56,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
     const zsetKey = this.zsetKey(entry.timeMs);
 
     // Overwrite any previous entry for this user (re-queue with fresh joinedAt)
-    await this.redis.client
+    await this.rc
       .pipeline()
       .zadd(zsetKey, now, entry.userId)
       .hset(entryKey, {
@@ -96,7 +107,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
     const zsetKey = this.zsetKey(timeMs);
 
     // Fetch up to 50 oldest candidates (plenty for any realistic queue)
-    const candidates: string[] = await this.redis.client.zrangebyscore(
+    const candidates: string[] = await this.rc.zrangebyscore(
       zsetKey,
       '-inf',
       '+inf',
@@ -109,7 +120,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
       if (candidateUserId === excludeUserId) continue;
 
       // Load entry data
-      const raw = await this.redis.client.hgetall(
+      const raw = await this.rc.hgetall(
         this.entryKey(candidateUserId),
       );
       if (!raw || !raw.userId) continue; // entry expired or missing
@@ -167,9 +178,9 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
   async remove(userId: string): Promise<void> {
     // We don't know which timeMs buckets this user is in without a reverse index,
     // so we use the pattern scan approach. In practice, users are in at most one bucket.
-    const entryRaw = await this.redis.client.hgetall(this.entryKey(userId));
+    const entryRaw = await this.rc.hgetall(this.entryKey(userId));
     if (entryRaw?.timeMs) {
-      await this.redis.client
+      await this.rc
         .pipeline()
         .zrem(this.zsetKey(parseInt(entryRaw.timeMs, 10)), userId)
         .del(this.entryKey(userId))
@@ -187,7 +198,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
     const keys: string[] = [];
     let cursor = '0';
     do {
-      const [nextCursor, found] = await this.redis.client.scan(
+      const [nextCursor, found] = await this.rc.scan(
         cursor,
         'MATCH',
         'mmq:zset:*',
@@ -200,13 +211,13 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
 
     for (const zsetKey of keys) {
       // Remove ZSET members with score (joinedAt) older than cutoff
-      const stale: string[] = await this.redis.client.zrangebyscore(
+      const stale: string[] = await this.rc.zrangebyscore(
         zsetKey,
         '-inf',
         cutoffScore,
       );
       if (stale.length > 0) {
-        const pipeline = this.redis.client.pipeline();
+        const pipeline = this.rc.pipeline();
         pipeline.zremrangebyscore(zsetKey, '-inf', cutoffScore);
         for (const userId of stale) {
           pipeline.del(this.entryKey(userId));

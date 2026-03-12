@@ -1,6 +1,6 @@
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
-import { Winner, EndReason } from '../../shared/constants/game.constants';
+import { Winner, EndReason, GameStatus } from '../../shared/constants/game.constants';
 import { RatingService } from './rating.service';
 
 /**
@@ -23,6 +23,9 @@ export class EndGameUseCase {
     const game = await this.gameRepository.findById(gameId);
     if (!game) {
       throw new BadRequestException('Game not found');
+    }
+    if (game.status !== GameStatus.ACTIVE) {
+      throw new BadRequestException('Game is already finished');
     }
     this.ensureParticipant(game, playerId);
 
@@ -48,6 +51,7 @@ export class EndGameUseCase {
     if (!game) {
       throw new BadRequestException('Game not found');
     }
+    if (game.status !== GameStatus.ACTIVE) return;
     this.ensureParticipant(game, playerId);
 
     const winner =
@@ -70,6 +74,9 @@ export class EndGameUseCase {
     const game = await this.gameRepository.findById(gameId);
     if (!game) {
       throw new BadRequestException('Game not found');
+    }
+    if (game.status !== GameStatus.ACTIVE) {
+      throw new BadRequestException('Game is already finished');
     }
     this.ensureParticipant(game, playerId);
 
