@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { IMatchmakingRepository, MatchmakingEntry } from '../../domain/game/repositories/matchmaking.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
@@ -14,6 +14,8 @@ export type JoinQueueResult =
 
 @Injectable()
 export class JoinQueueUseCase {
+  private readonly logger = new Logger(JoinQueueUseCase.name);
+
   constructor(
     @Inject('IMatchmakingRepository')
     private readonly matchmakingRepo: IMatchmakingRepository,
@@ -85,6 +87,8 @@ export class JoinQueueUseCase {
     socketId: string,
     userRating?: number | null,
   ): Promise<JoinQueueResult> {
+    this.logger.log(`[QUEUE] user=${userId} timeMs=${timeMs} rating=${userRating ?? 'null'}`);
+
     // 1. Remove stale entries (Redis TTL handles this automatically, but
     //    we also clean up explicitly to keep queue counts accurate).
     await this.matchmakingRepo.removeStale(STALE_QUEUE_AGE_MS);
@@ -97,10 +101,12 @@ export class JoinQueueUseCase {
     const selfActiveGameCount = await this.prisma.game.count({
       where: {
         status: GameStatus.ACTIVE,
+        gameType: { not: 'AI' },
         OR: [{ whitePlayerId: userId }, { blackPlayerId: userId }],
       },
     });
     if (selfActiveGameCount > 0) {
+      this.logger.warn(`[QUEUE] user=${userId} blocked — already in ACTIVE game`);
       return { status: 'waiting' };
     }
 
@@ -112,6 +118,7 @@ export class JoinQueueUseCase {
       userId,
       userRating,
     );
+    this.logger.log(`[QUEUE] step4 user=${userId} opponent=${opponent?.userId ?? 'null'}`);
 
     if (opponent) {
       // 5. Double-check the opponent is not already in a live game.
@@ -160,10 +167,12 @@ export class JoinQueueUseCase {
         opponent,
         timeMs,
       );
+      this.logger.log(`[QUEUE] step6 matched user=${userId} vs ${opponentUserId} gameId=${gameId}`);
       return { status: 'matched', gameId, opponentUserId };
     }
 
     // 7. No match found — add this user to the queue.
+    this.logger.log(`[QUEUE] step7 user=${userId} upserting into queue`);
     await this.matchmakingRepo.upsert({
       userId,
       timeMs,
@@ -180,6 +189,7 @@ export class JoinQueueUseCase {
       userId,
       userRating,
     );
+    this.logger.log(`[QUEUE] step7b user=${userId} lateOpponent=${lateOpponent?.userId ?? 'null'}`);
 
     if (lateOpponent) {
       const { gameId, opponentUserId } = await this.createMatchedGame(
@@ -190,9 +200,11 @@ export class JoinQueueUseCase {
       // The opponent is waiting in the queue (not making an HTTP call), so we
       // must push the matchFound event to them via the WebSocket gateway.
       // We return the opponent's userId so the controller can do the emit.
+      this.logger.log(`[QUEUE] step7b matched user=${userId} vs ${opponentUserId} gameId=${gameId}`);
       return { status: 'matched', gameId, opponentUserId };
     }
 
+    this.logger.log(`[QUEUE] result user=${userId} => waiting`);
     return { status: 'waiting' };
   }
 
