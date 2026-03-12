@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Clock, Search, X } from "lucide-react";
 import clsx from "clsx";
 import { useTranslations } from "next-intl";
@@ -17,7 +18,20 @@ export default function SetupOnlinePage() {
   const t = useTranslations("setupOnline");
   const { state, error, joinQueue, cancelQueue } = useMatchmaking();
   const { isAuthenticated } = useAuthStore();
-  const [selectedTime, setSelectedTime] = useState<QueueTimeMs>(300000);
+  const searchParams = useSearchParams();
+  const [selectedTime, setSelectedTime] = useState<QueueTimeMs>(() => {
+    const ms = Number(searchParams.get("timeMs"));
+    return (QUEUE_TIME_OPTIONS.find((o) => o.ms === ms)?.ms ?? 300000) as QueueTimeMs;
+  });
+
+  // Auto-search when redirected from an abandoned/aborted game
+  useEffect(() => {
+    if (searchParams.get("autoSearch") === "true" && isAuthenticated && state === "idle") {
+      joinQueue(selectedTime);
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-start px-4 py-8 sm:py-12">

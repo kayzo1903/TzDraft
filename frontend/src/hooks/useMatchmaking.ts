@@ -66,6 +66,7 @@ export function useMatchmaking() {
     const handleMatchFound = ({ gameId }: { gameId: string }) => {
       if (cancelledRef.current) return;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      cancelledRef.current = true;
       setState("matched");
       router.push(`/${locale}/game/${gameId}`);
     };
@@ -112,6 +113,7 @@ export function useMatchmaking() {
         if (res.data.status === "matched" && res.data.gameId) {
           // Immediate match (opponent was already waiting)
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          cancelledRef.current = true;
           setState("matched");
           router.push(`/${locale}/game/${res.data.gameId}`);
         }
@@ -143,7 +145,7 @@ export function useMatchmaking() {
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (state === "searching") {
+      if (state === "searching" && !cancelledRef.current) {
         cancelledRef.current = true;
         gameService.cancelQueue().catch(() => {});
       }

@@ -707,7 +707,20 @@ export default function OnlineGamePage() {
     declineRematch,
     cancelRematch,
     refetch,
+    autoRequeue,
   } = useOnlineGame(gameId);
+
+  // When the server signals the opponent abandoned/aborted, auto-navigate back
+  // to matchmaking after 3 seconds — mimicking chess.com "finding new game" UX.
+  useEffect(() => {
+    if (!autoRequeue) return;
+    const t = setTimeout(() => {
+      router.push(
+        `/${locale}/game/setup-online?autoSearch=true&timeMs=${autoRequeue.timeMs}`,
+      );
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [autoRequeue, router, locale]);
 
   const { user } = useAuthStore();
   const { connected, reconnecting } = useSocket();

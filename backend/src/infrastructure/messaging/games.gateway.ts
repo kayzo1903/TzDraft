@@ -21,8 +21,10 @@ import { CreateGameUseCase } from '../../application/use-cases/create-game.use-c
 import { JwtService } from '@nestjs/jwt';
 import { GameStatus, GameType } from '../../shared/constants/game.constants';
 
-/** Grace period in ms before an abandoned player is auto-resigned. */
-const ABANDON_TIMEOUT_MS = 60_000;
+/** Grace period for a player who has made moves and then disconnects. */
+const ABANDON_TIMEOUT_MS = 40_000;
+/** Grace period for a player who disconnected without ever making a move. */
+const ABORT_TIMEOUT_MS = 20_000;
 /** Tick interval for broadcasting abandon countdown to opponent. */
 const ABANDON_TICK_MS = 1_000;
 
@@ -89,6 +91,18 @@ export class GamesGateway
     string,
     { count: number; windowStart: number }
   >();
+
+  /**
+   * In-memory fallbacks used when Redis (pubClient) is unavailable (dev mode).
+   * In production these are unused — Redis provides the same functionality
+   * cross-instance.
+   */
+  private localUserConnections = new Map<string, number>();
+  private localUserActiveGame = new Map<string, string>();
+  /** gameId → userId who offered draw (dev-mode fallback) */
+  private localDrawOffers = new Map<string, string>();
+  /** gameId → userId who offered rematch (dev-mode fallback) */
+  private localRematchOffers = new Map<string, string>();
 
   /** ioredis clients dedicated to pub/sub for the Socket.IO adapter. */
   private pubClient: Redis;
@@ -157,7 +171,7 @@ export class GamesGateway
       // Join personal room so emitMatchFound works cross-instance
       void client.join(`user:${payload.sub}`);
 
-      // Track connection count in Redis (INCR is atomic, safe cross-instance)
+      // Track connection count — Redis in prod, in-memory Map in dev.
       if (this.pubClient) {
         this.pubClient
           .incr(K_USER_CONNS(payload.sub))
@@ -165,6 +179,11 @@ export class GamesGateway
             this.pubClient.expire(K_USER_CONNS(payload.sub), KEY_TTL_S),
           )
           .catch(() => {});
+      } else {
+        this.localUserConnections.set(
+          payload.sub,
+          (this.localUserConnections.get(payload.sub) ?? 0) + 1,
+        );
       }
 
       this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
@@ -184,26 +203,65 @@ export class GamesGateway
 
     if (!userId) return;
 
-    // Atomically decrement; if result > 0 the user still has other sockets
-    if (!this.pubClient) return;
-    const remaining = await this.pubClient.decr(K_USER_CONNS(userId));
-    if (remaining > 0) return;
+    // Decrement connection count — Redis in prod, in-memory in dev.
+    // If the user still has other open sockets, do nothing.
+    if (this.pubClient) {
+      const remaining = await this.pubClient.decr(K_USER_CONNS(userId));
+      if (remaining > 0) return;
+      await this.pubClient.del(K_USER_CONNS(userId));
+    } else {
+      const prev = this.localUserConnections.get(userId) ?? 1;
+      const next = prev - 1;
+      if (next > 0) {
+        this.localUserConnections.set(userId, next);
+        return;
+      }
+      this.localUserConnections.delete(userId);
+    }
 
-    // Last socket gone — clean up the counter key
-    await this.pubClient.del(K_USER_CONNS(userId));
+    // Resolve which game the user is currently in.
+    const gameId = this.pubClient
+      ? await this.pubClient.get(K_USER_GAME(userId))
+      : (this.localUserActiveGame.get(userId) ?? null);
 
-    const gameId = await this.pubClient.get(K_USER_GAME(userId));
     if (!gameId) return;
+
+    // Fetch the game now to decide: abort (never moved) vs abandon (moved).
+    // This sets the correct countdown duration immediately.
+    const repo = this.moduleRef.get<any>('IGameRepository', { strict: false });
+    const gameSnapshot = await repo.findById(gameId).catch(() => null);
+
+    if (
+      !gameSnapshot ||
+      gameSnapshot.status !== GameStatus.ACTIVE ||
+      gameSnapshot.gameType === GameType.AI
+    ) {
+      return;
+    }
+
+    const moveCount: number = gameSnapshot.getMoveCount
+      ? gameSnapshot.getMoveCount()
+      : 0;
+    const isWhite = gameSnapshot.whitePlayerId === userId;
+    // White has "moved" after move #1; Black after move #2.
+    const hasMoved = isWhite ? moveCount >= 1 : moveCount >= 2;
+    const timerMs = hasMoved ? ABANDON_TIMEOUT_MS : ABORT_TIMEOUT_MS;
+
+    // Identify the opponent who stays in the game.
+    const opponentId =
+      gameSnapshot.whitePlayerId === userId
+        ? gameSnapshot.blackPlayerId
+        : gameSnapshot.whitePlayerId;
 
     // Clear any existing timer/tick for this user
     this.clearUserTimers(userId);
 
     this.server.to(gameId).emit('opponentDisconnected', {
       userId,
-      secondsRemaining: Math.round(ABANDON_TIMEOUT_MS / 1000),
+      secondsRemaining: Math.round(timerMs / 1000),
     });
 
-    let secondsLeft = Math.round(ABANDON_TIMEOUT_MS / 1000);
+    let secondsLeft = Math.round(timerMs / 1000);
     const tickInterval = setInterval(() => {
       secondsLeft -= 1;
       if (secondsLeft > 0) {
@@ -221,38 +279,40 @@ export class GamesGateway
     const timer = setTimeout(async () => {
       this.disconnectTimers.delete(userId);
       this.clearUserTimers(userId);
-      await this.pubClient.del(K_USER_GAME(userId));
+      if (this.pubClient) {
+        await this.pubClient.del(K_USER_GAME(userId));
+      } else {
+        this.localUserActiveGame.delete(userId);
+      }
 
       try {
-        const repo = this.moduleRef.get<any>('IGameRepository', {
-          strict: false,
-        });
-        const game = await repo.findById(gameId);
-
-        if (
-          !game ||
-          game.status !== GameStatus.ACTIVE ||
-          game.gameType === GameType.AI
-        ) {
-          return;
-        }
-
         const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
           strict: false,
         });
-        const { winner } = await endGameUseCase.resign(gameId, userId);
-        this.emitGameOver(gameId, {
-          gameId,
-          winner: winner.toString(),
-          reason: 'abandon',
-        });
-        this.logger.log(
-          `Auto-resigned user ${userId} from game ${gameId} (abandoned)`,
-        );
+        // Re-fetch to confirm the game is still active (player may have reconnected)
+        const game = await repo.findById(gameId);
+        if (!game || game.status !== GameStatus.ACTIVE) return;
+
+        if (!hasMoved) {
+          await endGameUseCase.abort(gameId, userId);
+          this.emitGameOver(gameId, { gameId, winner: 'NONE', reason: 'abort' });
+          this.logger.log(`Auto-aborted game ${gameId} — user ${userId} never moved`);
+        } else {
+          const { winner } = await endGameUseCase.resign(gameId, userId);
+          this.emitGameOver(gameId, { gameId, winner: winner.toString(), reason: 'abandon' });
+          this.logger.log(`Auto-resigned user ${userId} from game ${gameId} (abandoned)`);
+        }
+
+        // Signal the remaining player to search for a new opponent.
+        if (opponentId) {
+          this.server.to(`user:${opponentId}`).emit('autoRequeue', {
+            timeMs: game.initialTimeMs,
+          });
+        }
       } catch (err) {
-        this.logger.error(`Auto-resign failed for game ${gameId}`, err);
+        this.logger.error(`Abandon handler failed for game ${gameId}`, err);
       }
-    }, ABANDON_TIMEOUT_MS);
+    }, timerMs);
 
     this.disconnectTimers.set(userId, timer);
   }
@@ -283,6 +343,8 @@ export class GamesGateway
 
       if (this.pubClient) {
         await this.pubClient.set(K_USER_GAME(userId), gameId, 'EX', KEY_TTL_S);
+      } else {
+        this.localUserActiveGame.set(userId, gameId);
       }
     }
 
@@ -320,12 +382,18 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const existing = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
+    const existing = this.pubClient
+      ? await this.pubClient.get(K_DRAW(data.gameId))
+      : (this.localDrawOffers.get(data.gameId) ?? null);
     if (existing === userId) {
       return { error: 'You already have a pending draw offer' };
     }
 
-    if (this.pubClient) await this.pubClient.set(K_DRAW(data.gameId), userId, 'EX', KEY_TTL_S);
+    if (this.pubClient) {
+      await this.pubClient.set(K_DRAW(data.gameId), userId, 'EX', KEY_TTL_S);
+    } else {
+      this.localDrawOffers.set(data.gameId, userId);
+    }
     this.logger.log(`Draw offered in game ${data.gameId} by ${userId}`);
 
     this.server.to(data.gameId).emit('drawOffered', {
@@ -344,12 +412,18 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
+    const offeredBy = this.pubClient
+      ? await this.pubClient.get(K_DRAW(data.gameId))
+      : (this.localDrawOffers.get(data.gameId) ?? null);
     if (!offeredBy) return { error: 'No pending draw offer' };
     if (offeredBy === userId)
       return { error: 'Cannot accept your own draw offer' };
 
-    if (this.pubClient) await this.pubClient.del(K_DRAW(data.gameId));
+    if (this.pubClient) {
+      await this.pubClient.del(K_DRAW(data.gameId));
+    } else {
+      this.localDrawOffers.delete(data.gameId);
+    }
 
     try {
       const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
@@ -375,12 +449,18 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
+    const offeredBy = this.pubClient
+      ? await this.pubClient.get(K_DRAW(data.gameId))
+      : (this.localDrawOffers.get(data.gameId) ?? null);
     if (!offeredBy) return { error: 'No pending draw offer' };
     if (offeredBy === userId)
       return { error: 'Cannot decline your own draw offer' };
 
-    if (this.pubClient) await this.pubClient.del(K_DRAW(data.gameId));
+    if (this.pubClient) {
+      await this.pubClient.del(K_DRAW(data.gameId));
+    } else {
+      this.localDrawOffers.delete(data.gameId);
+    }
     this.logger.log(`Draw declined in game ${data.gameId} by ${userId}`);
 
     this.server.to(data.gameId).emit('drawDeclined', {
@@ -399,10 +479,16 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = this.pubClient ? await this.pubClient.get(K_DRAW(data.gameId)) : null;
+    const offeredBy = this.pubClient
+      ? await this.pubClient.get(K_DRAW(data.gameId))
+      : (this.localDrawOffers.get(data.gameId) ?? null);
     if (offeredBy !== userId) return { error: 'No draw offer to cancel' };
 
-    if (this.pubClient) await this.pubClient.del(K_DRAW(data.gameId));
+    if (this.pubClient) {
+      await this.pubClient.del(K_DRAW(data.gameId));
+    } else {
+      this.localDrawOffers.delete(data.gameId);
+    }
     this.server.to(data.gameId).emit('drawCancelled', { gameId: data.gameId });
     return {};
   }
@@ -417,12 +503,18 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const existing = this.pubClient ? await this.pubClient.get(K_REMATCH(data.gameId)) : null;
+    const existing = this.pubClient
+      ? await this.pubClient.get(K_REMATCH(data.gameId))
+      : (this.localRematchOffers.get(data.gameId) ?? null);
     if (existing === userId) {
       return { error: 'You already offered a rematch' };
     }
 
-    if (this.pubClient) await this.pubClient.set(K_REMATCH(data.gameId), userId, 'EX', KEY_TTL_S);
+    if (this.pubClient) {
+      await this.pubClient.set(K_REMATCH(data.gameId), userId, 'EX', KEY_TTL_S);
+    } else {
+      this.localRematchOffers.set(data.gameId, userId);
+    }
     this.server
       .to(data.gameId)
       .emit('rematchOffered', { offeredByUserId: userId });
@@ -438,12 +530,18 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = this.pubClient ? await this.pubClient.get(K_REMATCH(data.gameId)) : null;
+    const offeredBy = this.pubClient
+      ? await this.pubClient.get(K_REMATCH(data.gameId))
+      : (this.localRematchOffers.get(data.gameId) ?? null);
     if (!offeredBy) return { error: 'No pending rematch offer' };
     if (offeredBy === userId)
       return { error: 'Cannot accept your own rematch offer' };
 
-    if (this.pubClient) await this.pubClient.del(K_REMATCH(data.gameId));
+    if (this.pubClient) {
+      await this.pubClient.del(K_REMATCH(data.gameId));
+    } else {
+      this.localRematchOffers.delete(data.gameId);
+    }
 
     try {
       const createGameUseCase = this.moduleRef.get(CreateGameUseCase, {
@@ -470,7 +568,11 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    if (this.pubClient) await this.pubClient.del(K_REMATCH(data.gameId));
+    if (this.pubClient) {
+      await this.pubClient.del(K_REMATCH(data.gameId));
+    } else {
+      this.localRematchOffers.delete(data.gameId);
+    }
     this.server
       .to(data.gameId)
       .emit('rematchDeclined', { declinedByUserId: userId });
@@ -485,12 +587,18 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
-    const offeredBy = this.pubClient ? await this.pubClient.get(K_REMATCH(data.gameId)) : null;
+    const offeredBy = this.pubClient
+      ? await this.pubClient.get(K_REMATCH(data.gameId))
+      : (this.localRematchOffers.get(data.gameId) ?? null);
     if (offeredBy !== userId) {
       return { error: 'No rematch offer to cancel' };
     }
 
-    if (this.pubClient) await this.pubClient.del(K_REMATCH(data.gameId));
+    if (this.pubClient) {
+      await this.pubClient.del(K_REMATCH(data.gameId));
+    } else {
+      this.localRematchOffers.delete(data.gameId);
+    }
     this.server.to(data.gameId).emit('rematchCancelled', {});
     return {};
   }
@@ -661,10 +769,13 @@ export class GamesGateway
   }
 
   emitGameOver(gameId: string, result: any) {
-    // Clear transient Redis keys for this game
+    // Clear transient keys for this game
     if (this.pubClient) {
       void this.pubClient.del(K_DRAW(gameId));
       void this.pubClient.del(K_REMATCH(gameId));
+    } else {
+      this.localDrawOffers.delete(gameId);
+      this.localRematchOffers.delete(gameId);
     }
 
     // Cancel local disconnect timers for players in this game (best-effort)
