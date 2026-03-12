@@ -127,7 +127,8 @@ export class JoinQueueUseCase {
 
       if (opponentActiveGameCount > 0) {
         // Opponent slipped into another game between enqueue and claim.
-        // Re-add this user to the queue and return waiting.
+        // Re-add this user to the queue, then run race-condition recovery
+        // in case another user upserted concurrently.
         await this.matchmakingRepo.upsert({
           userId,
           timeMs,
@@ -136,6 +137,19 @@ export class JoinQueueUseCase {
           rd: null,
           volatility: null,
         });
+        const recoveredOpponent = await this.matchmakingRepo.findAndClaimMatch(
+          timeMs,
+          userId,
+          userRating,
+        );
+        if (recoveredOpponent) {
+          const { gameId, opponentUserId } = await this.createMatchedGame(
+            userId,
+            recoveredOpponent,
+            timeMs,
+          );
+          return { status: 'matched', gameId, opponentUserId };
+        }
         return { status: 'waiting' };
       }
 
