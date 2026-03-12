@@ -36,7 +36,6 @@ const WS_RATE_WINDOW_MS = 60_000;
 const K_DRAW = (gameId: string) => `ws:draw:offer:${gameId}`;
 const K_REMATCH = (gameId: string) => `ws:rematch:offer:${gameId}`;
 const K_USER_GAME = (userId: string) => `ws:user:game:${userId}`;
-const K_USER_CONNS = (userId: string) => `ws:user:connections:${userId}`;
 /** TTL (seconds) for transient WS keys — longer than any game duration. */
 const KEY_TTL_S = 24 * 60 * 60; // 24 h
 
@@ -97,7 +96,6 @@ export class GamesGateway
    * In production these are unused — Redis provides the same functionality
    * cross-instance.
    */
-  private localUserConnections = new Map<string, number>();
   private localUserActiveGame = new Map<string, string>();
   /** gameId → userId who offered draw (dev-mode fallback) */
   private localDrawOffers = new Map<string, string>();
@@ -171,21 +169,6 @@ export class GamesGateway
       // Join personal room so emitMatchFound works cross-instance
       void client.join(`user:${payload.sub}`);
 
-      // Track connection count — Redis in prod, in-memory Map in dev.
-      if (this.pubClient) {
-        this.pubClient
-          .incr(K_USER_CONNS(payload.sub))
-          .then(() =>
-            this.pubClient.expire(K_USER_CONNS(payload.sub), KEY_TTL_S),
-          )
-          .catch(() => {});
-      } else {
-        this.localUserConnections.set(
-          payload.sub,
-          (this.localUserConnections.get(payload.sub) ?? 0) + 1,
-        );
-      }
-
       this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
     } catch {
       this.logger.warn(`Socket ${client.id} rejected: invalid token`);
@@ -203,21 +186,18 @@ export class GamesGateway
 
     if (!userId) return;
 
-    // Decrement connection count — Redis in prod, in-memory in dev.
-    // If the user still has other open sockets, do nothing.
-    if (this.pubClient) {
-      const remaining = await this.pubClient.decr(K_USER_CONNS(userId));
-      if (remaining > 0) return;
-      await this.pubClient.del(K_USER_CONNS(userId));
-    } else {
-      const prev = this.localUserConnections.get(userId) ?? 1;
-      const next = prev - 1;
-      if (next > 0) {
-        this.localUserConnections.set(userId, next);
-        return;
-      }
-      this.localUserConnections.delete(userId);
-    }
+    // Check if the user still has other live sockets in their personal room.
+    // fetchSockets() works with the Redis adapter (queries all instances).
+    // This replaces the old INCR/DECR counter which got stale after restarts.
+    const remainingSockets = await this.server
+      .in(`user:${userId}`)
+      .fetchSockets();
+    // The current socket is still in the room during handleDisconnect, so
+    // subtract 1 to get the count of OTHER live sockets.
+    const otherConnections = remainingSockets.filter(
+      (s) => s.id !== client.id,
+    ).length;
+    if (otherConnections > 0) return;
 
     // Resolve which game the user is currently in.
     const gameId = this.pubClient
@@ -415,7 +395,10 @@ export class GamesGateway
     const offeredBy = this.pubClient
       ? await this.pubClient.get(K_DRAW(data.gameId))
       : (this.localDrawOffers.get(data.gameId) ?? null);
-    if (!offeredBy) return { error: 'No pending draw offer' };
+    if (!offeredBy) {
+      this.logger.warn(`acceptDraw: no offer found in state for game ${data.gameId} (userId=${userId})`);
+      return { error: 'No pending draw offer' };
+    }
     if (offeredBy === userId)
       return { error: 'Cannot accept your own draw offer' };
 
@@ -435,8 +418,10 @@ export class GamesGateway
         winner: 'DRAW',
         reason: 'draw_agreement',
       });
+      this.logger.log(`Draw by agreement: game ${data.gameId}`);
       return {};
     } catch (err: any) {
+      this.logger.error(`acceptDraw failed for game ${data.gameId} (userId=${userId}): ${err?.message}`, err?.stack);
       return { error: err?.message || 'Failed to end game as draw' };
     }
   }
