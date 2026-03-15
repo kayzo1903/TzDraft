@@ -12,6 +12,8 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
   const {
     callState,
     isLocalMuted,
+    isRemoteSpeaking,
+    isPttMode,
     error,
     remoteAudioRef,
     startCall,
@@ -19,9 +21,9 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
     declineCall,
     endCall,
     toggleMute,
+    togglePttMode,
   } = useVoiceChat(gameId);
 
-  // Countdown shown to the callee — auto-declines when it reaches 0.
   const [ringSecondsLeft, setRingSecondsLeft] = useState<number | null>(null);
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -33,14 +35,13 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
           if (prev === null || prev <= 1) {
             clearInterval(ringIntervalRef.current!);
             ringIntervalRef.current = null;
-            declineCall(); // auto-decline
+            declineCall();
             return null;
           }
           return prev - 1;
         });
       }, 1000);
     } else {
-      // Call was answered, declined manually, or ended — stop countdown.
       if (ringIntervalRef.current !== null) {
         clearInterval(ringIntervalRef.current);
         ringIntervalRef.current = null;
@@ -57,19 +58,31 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
   }, [callState, declineCall]);
 
   return (
-    <div className="rounded-xl border border-neutral-700/60 bg-neutral-900/60 p-3 flex flex-col gap-2">
+    <div
+      className={clsx(
+        "rounded-xl border bg-neutral-900/60 p-3 flex flex-col gap-2 transition-colors duration-300",
+        // U1: green border pulse when remote peer is speaking
+        callState === "connected" && isRemoteSpeaking
+          ? "border-emerald-500/60"
+          : "border-neutral-700/60",
+      )}
+    >
       {/* Header row */}
       <div className="flex items-center gap-1.5">
         <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold flex-1">
           Voice Chat
         </span>
+        {/* U1: speaking indicator dot */}
+        {callState === "connected" && isRemoteSpeaking && (
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Opponent is speaking" />
+        )}
         {(callState === "ringing" || callState === "calling") && (
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
         )}
         {callState === "incoming" && (
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         )}
-        {callState === "connected" && (
+        {callState === "connected" && !isRemoteSpeaking && (
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
         )}
         {callState === "failed" && (
@@ -93,7 +106,7 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         </button>
       )}
 
-      {/* ringing — caller waiting for answer */}
+      {/* ringing — caller waiting */}
       {callState === "ringing" && (
         <div className="flex flex-col gap-1.5">
           <p className="text-center text-xs text-neutral-400">
@@ -109,7 +122,7 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         </div>
       )}
 
-      {/* incoming — accept / decline + auto-decline countdown */}
+      {/* incoming — accept / decline */}
       {callState === "incoming" && (
         <div className="flex flex-col gap-1.5">
           <p className="text-center text-xs text-emerald-300 font-semibold">
@@ -140,36 +153,54 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         </div>
       )}
 
-      {/* calling — WebRTC being negotiated */}
+      {/* calling — WebRTC negotiating */}
       {callState === "calling" && (
         <p className="text-center text-xs text-neutral-400">Connecting…</p>
       )}
 
-      {/* connected — mute + hang-up */}
+      {/* connected — mute + PTT + hang-up */}
       {callState === "connected" && (
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-2">
+            <button
+              onClick={toggleMute}
+              title={isPttMode ? "PTT active — hold Space to talk" : (isLocalMuted ? "Unmute" : "Mute")}
+              disabled={isPttMode}
+              className={clsx(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition",
+                isPttMode
+                  ? "border-neutral-700 bg-neutral-800/50 text-neutral-600 cursor-not-allowed"
+                  : isLocalMuted
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                    : "border-neutral-600 bg-neutral-800 text-neutral-300 hover:bg-neutral-700",
+              )}
+            >
+              {isLocalMuted ? (
+                <><MicOff className="w-3.5 h-3.5" /> Muted</>
+              ) : (
+                <><Mic className="w-3.5 h-3.5" /> Mute</>
+              )}
+            </button>
+            <button
+              onClick={endCall}
+              title="End call"
+              className="flex items-center justify-center rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition"
+            >
+              <PhoneOff className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* U2: Push-to-talk toggle */}
           <button
-            onClick={toggleMute}
-            title={isLocalMuted ? "Unmute" : "Mute"}
+            onClick={togglePttMode}
             className={clsx(
-              "flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition",
-              isLocalMuted
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
-                : "border-neutral-600 bg-neutral-800 text-neutral-300 hover:bg-neutral-700",
+              "w-full flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition",
+              isPttMode
+                ? "border-violet-500/40 bg-violet-500/15 text-violet-300 hover:bg-violet-500/25"
+                : "border-neutral-700/60 bg-neutral-800/40 text-neutral-500 hover:bg-neutral-700/40",
             )}
           >
-            {isLocalMuted ? (
-              <><MicOff className="w-3.5 h-3.5" /> Unmute</>
-            ) : (
-              <><Mic className="w-3.5 h-3.5" /> Mute</>
-            )}
-          </button>
-          <button
-            onClick={endCall}
-            title="End call"
-            className="flex items-center justify-center rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition"
-          >
-            <PhoneOff className="w-3.5 h-3.5" />
+            {isPttMode ? "PTT ON — Hold Space to talk" : "Push-to-talk: Off"}
           </button>
         </div>
       )}
