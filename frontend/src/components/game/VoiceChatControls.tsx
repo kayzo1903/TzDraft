@@ -1,12 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Phone, PhoneOff, PhoneIncoming, PhoneMissed } from "lucide-react";
+import { Mic, MicOff, Phone, PhoneOff, PhoneIncoming, PhoneMissed, Volume2 } from "lucide-react";
 import clsx from "clsx";
-import { useVoiceChat } from "@/hooks/useVoiceChat";
+import { useVoiceChat, ConnectionQuality } from "@/hooks/useVoiceChat";
 
 /** Seconds before an unanswered incoming call is auto-declined. */
 const RING_TIMEOUT_SECS = 30;
+
+function QualityDot({ quality }: { quality: ConnectionQuality }) {
+  if (quality === "unknown") return null;
+  return (
+    <span
+      title={`Connection: ${quality}`}
+      className={clsx(
+        "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+        quality === "excellent" && "bg-emerald-500/15 text-emerald-400",
+        quality === "good"      && "bg-amber-500/15 text-amber-400",
+        quality === "poor"      && "bg-rose-500/15 text-rose-400",
+      )}
+    >
+      <span className={clsx(
+        "w-1.5 h-1.5 rounded-full",
+        quality === "excellent" && "bg-emerald-400",
+        quality === "good"      && "bg-amber-400",
+        quality === "poor"      && "bg-rose-400",
+      )} />
+      {quality}
+    </span>
+  );
+}
 
 export function VoiceChatControls({ gameId }: { gameId: string }) {
   const {
@@ -14,6 +37,10 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
     isLocalMuted,
     isRemoteSpeaking,
     isPttMode,
+    connectionQuality,
+    audioDevices,
+    selectedDeviceId,
+    remoteVolume,
     error,
     remoteAudioRef,
     startCall,
@@ -22,6 +49,8 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
     endCall,
     toggleMute,
     togglePttMode,
+    setAudioDevice,
+    setRemoteVolume,
   } = useVoiceChat(gameId);
 
   const [ringSecondsLeft, setRingSecondsLeft] = useState<number | null>(null);
@@ -61,7 +90,6 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
     <div
       className={clsx(
         "rounded-xl border bg-neutral-900/60 p-3 flex flex-col gap-2 transition-colors duration-300",
-        // U1: green border pulse when remote peer is speaking
         callState === "connected" && isRemoteSpeaking
           ? "border-emerald-500/60"
           : "border-neutral-700/60",
@@ -72,7 +100,9 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold flex-1">
           Voice Chat
         </span>
-        {/* U1: speaking indicator dot */}
+        {/* Connection quality badge */}
+        {callState === "connected" && <QualityDot quality={connectionQuality} />}
+        {/* State indicator dots */}
         {callState === "connected" && isRemoteSpeaking && (
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Opponent is speaking" />
         )}
@@ -158,7 +188,7 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
         <p className="text-center text-xs text-neutral-400">Connecting…</p>
       )}
 
-      {/* connected — mute + PTT + hang-up */}
+      {/* connected — mute + PTT + hang-up + volume + device selector */}
       {callState === "connected" && (
         <div className="flex flex-col gap-1.5">
           <div className="flex gap-2">
@@ -190,7 +220,7 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
             </button>
           </div>
 
-          {/* U2: Push-to-talk toggle */}
+          {/* Push-to-talk toggle */}
           <button
             onClick={togglePttMode}
             className={clsx(
@@ -202,6 +232,39 @@ export function VoiceChatControls({ gameId }: { gameId: string }) {
           >
             {isPttMode ? "PTT ON — Hold Space to talk" : "Push-to-talk: Off"}
           </button>
+
+          {/* Volume slider */}
+          <div className="flex items-center gap-2 px-0.5">
+            <Volume2 className="w-3 h-3 text-neutral-500 shrink-0" />
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(remoteVolume * 100)}
+              onChange={(e) => setRemoteVolume(Number(e.target.value) / 100)}
+              className="flex-1 h-1 accent-emerald-500 cursor-pointer"
+              title={`Opponent volume: ${Math.round(remoteVolume * 100)}%`}
+            />
+            <span className="text-[10px] text-neutral-600 w-6 text-right tabular-nums">
+              {Math.round(remoteVolume * 100)}
+            </span>
+          </div>
+
+          {/* Microphone selector — only shown when multiple devices available */}
+          {audioDevices.length > 1 && (
+            <select
+              value={selectedDeviceId ?? ""}
+              onChange={(e) => setAudioDevice(e.target.value)}
+              className="w-full rounded-lg border border-neutral-700/60 bg-neutral-800/60 px-2 py-1.5 text-[11px] text-neutral-300 focus:outline-none focus:border-neutral-600"
+            >
+              <option value="" disabled>Select microphone</option>
+              {audioDevices.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `Microphone ${d.deviceId.slice(0, 6)}`}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 

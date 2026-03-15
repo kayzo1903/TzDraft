@@ -1,21 +1,32 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/routing';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlayerStats, usePlayerRank, useGameHistory } from '@/hooks/useGameHistory';
+import { COUNTRIES, REGIONS_BY_COUNTRY, hasRegions } from '@tzdraft/shared-client';
 import {
   Bot,
   BookOpen,
+  History,
+  Loader2,
   LifeBuoy,
   LogOut,
+  Medal,
+  Minus,
+  Pencil,
   Settings,
   ShieldAlert,
   ShieldCheck,
   Star,
   Swords,
+  Trophy,
   User as UserIcon,
+  X,
+  X as XIcon,
 } from 'lucide-react';
 
 function FieldRow({
@@ -29,6 +40,34 @@ function FieldRow({
     <div className="flex items-start justify-between gap-4 border-b border-neutral-800/70 py-3 last:border-b-0">
       <div className="text-sm font-medium text-neutral-400">{label}</div>
       <div className="text-sm text-neutral-100 text-right break-all">{value}</div>
+    </div>
+  );
+}
+
+function RankRow({
+  label,
+  rank,
+  total,
+}: {
+  label: string;
+  rank: number | null;
+  total?: number;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <span className="text-sm font-medium text-neutral-400">{label}</span>
+      <div className="flex items-center gap-2">
+        {rank !== null ? (
+          <>
+            <span className="text-lg font-black text-neutral-100">#{rank}</span>
+            {total !== undefined && (
+              <span className="text-xs text-neutral-600">/ {total}</span>
+            )}
+          </>
+        ) : (
+          <span className="text-sm text-neutral-600">—</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -58,7 +97,21 @@ function SectionCard({
 export default function ProfilePage() {
   const t = useTranslations('profile');
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
+  const { stats: playerStats } = usePlayerStats();
+  const { rank: playerRank, loading: rankLoading } = usePlayerRank();
+  const { items: recentGames, loading: recentLoading } = useGameHistory({}, 5);
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editForm, setEditForm] = useState({
+    displayName: '',
+    email: '',
+    country: 'TZ',
+    region: '',
+  });
+
   const hasVerifiedPhone = Boolean(
     user?.phoneNumber &&
     user.phoneNumber.startsWith('+255') &&
@@ -82,6 +135,54 @@ export default function ProfilePage() {
     if (user.rating && typeof user.rating === 'object') return user.rating;
     return null;
   }, [user]);
+
+  const countryName = React.useMemo(() => {
+    if (!user?.country) return null;
+    return COUNTRIES.find((c) => c.code === user.country)?.name ?? user.country;
+  }, [user]);
+
+  const handleStartEdit = () => {
+    setEditForm({
+      displayName: user?.displayName ?? '',
+      email: user?.email ?? '',
+      country: user?.country ?? 'TZ',
+      region: user?.region ?? '',
+    });
+    setEditError('');
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setEditError('');
+    try {
+      // Strip empty strings — don't send fields the user left blank
+      const payload: Record<string, string> = {};
+      if (editForm.displayName) payload.displayName = editForm.displayName;
+      if (editForm.email) payload.email = editForm.email;
+      if (editForm.country) payload.country = editForm.country;
+      if (editForm.region) payload.region = editForm.region;
+      await updateProfile(payload);
+      setEditing(false);
+    } catch (err: any) {
+      // AllExceptionsFilter wraps ValidationPipe errors:
+      // err.response.data = { statusCode, message: { message: string[], error, statusCode } }
+      // So .message may itself be an object — extract the actual string.
+      const raw = err?.response?.data?.message;
+      let msg: string;
+      if (typeof raw === 'string') {
+        msg = raw;
+      } else if (raw && typeof raw === 'object') {
+        const inner = raw.message;
+        msg = Array.isArray(inner) ? inner.join(', ') : (typeof inner === 'string' ? inner : 'Failed to save changes');
+      } else {
+        msg = 'Failed to save changes';
+      }
+      setEditError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await logout();
@@ -161,17 +262,32 @@ export default function ProfilePage() {
                 </div>
                 <p className="mt-1 text-neutral-400">
                   @{user.username}
-                  {ratingValue !== null ? (
+                  {ratingValue !== null && (
                     <>
                       <span className="mx-2 text-neutral-600">•</span>
                       {t('ratingInline', { rating: ratingValue })}
                     </>
-                  ) : null}
+                  )}
+                  {countryName && (
+                    <>
+                      <span className="mx-2 text-neutral-600">•</span>
+                      {countryName}
+                      {user.region && <span className="text-neutral-500">, {user.region}</span>}
+                    </>
+                  )}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={handleStartEdit}
+                variant="secondary"
+                className="w-full sm:w-auto gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Profile
+              </Button>
               <Link href="/settings" className="w-full sm:w-auto">
                 <Button variant="secondary" className="w-full sm:w-auto gap-2">
                   <Settings className="h-4 w-4" />
@@ -190,16 +306,95 @@ export default function ProfilePage() {
           </div>
         </header>
 
+        {/* Edit Profile Panel */}
+        {editing && (
+          <section className="rounded-2xl border border-[#81b64c]/40 bg-neutral-900/60 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-black text-neutral-100">Edit Profile</h2>
+              <button
+                onClick={() => setEditing(false)}
+                className="text-neutral-500 hover:text-neutral-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {editError && (
+              <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-400">
+                {editError}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs uppercase tracking-[0.4em] text-neutral-500">Display Name</label>
+                <Input
+                  value={editForm.displayName}
+                  onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                  className="bg-[#111] border-neutral-700 focus:border-[#81b64c]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs uppercase tracking-[0.4em] text-neutral-500">Email</label>
+                <Input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="bg-[#111] border-neutral-700 focus:border-[#81b64c]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs uppercase tracking-[0.4em] text-neutral-500">Country</label>
+                <select
+                  value={editForm.country}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, country: e.target.value, region: '' })
+                  }
+                  className="w-full rounded-lg bg-[#111] border border-neutral-700 focus:border-[#81b64c] px-3 py-2 text-sm text-white"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {hasRegions(editForm.country) && (
+                <div className="space-y-1">
+                  <label className="text-xs uppercase tracking-[0.4em] text-neutral-500">Region</label>
+                  <select
+                    value={editForm.region}
+                    onChange={(e) => setEditForm({ ...editForm, region: e.target.value })}
+                    className="w-full rounded-lg bg-[#111] border border-neutral-700 focus:border-[#81b64c] px-3 py-2 text-sm text-white"
+                  >
+                    <option value="">— None —</option>
+                    {REGIONS_BY_COUNTRY[editForm.country].map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="mt-5 flex gap-3">
+              <Button onClick={handleSave} disabled={saving} className="gap-2">
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <Button variant="secondary" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <SectionCard title={t('sections.account')} icon={<UserIcon className="h-5 w-5 text-neutral-300" />}>
               <div className="divide-y divide-neutral-800/70">
-                <FieldRow label={t('fields.displayName')} value={user.displayName || '—'} />
+                <FieldRow label="Name" value={user.displayName || user.username} />
                 <FieldRow label={t('fields.username')} value={user.username} />
-                <FieldRow label={t('fields.phone')} value={phoneDisplay} />
-                <FieldRow label={t('fields.email')} value={user.email || '—'} />
-                <FieldRow label={t('fields.userId')} value={user.id} />
+                <FieldRow label="Country" value={countryName || '—'} />
+                <FieldRow label="Region" value={user.region || '—'} />
               </div>
             </SectionCard>
 
@@ -221,7 +416,7 @@ export default function ProfilePage() {
                     {t('stats.games')}
                   </div>
                   <div className="mt-2 text-3xl font-black text-neutral-100">
-                    {ratingStats?.gamesPlayed ?? '—'}
+                    {playerStats?.total ?? ratingStats?.gamesPlayed ?? '—'}
                   </div>
                 </div>
                 <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-4">
@@ -229,7 +424,7 @@ export default function ProfilePage() {
                     {t('stats.wins')}
                   </div>
                   <div className="mt-2 text-3xl font-black text-neutral-100">
-                    {ratingStats?.wins ?? '—'}
+                    {playerStats?.wins ?? '—'}
                   </div>
                 </div>
                 <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-4">
@@ -237,14 +432,108 @@ export default function ProfilePage() {
                     {t('stats.losses')}
                   </div>
                   <div className="mt-2 text-3xl font-black text-neutral-100">
-                    {ratingStats?.losses ?? '—'}
+                    {playerStats?.losses ?? '—'}
                   </div>
                 </div>
               </div>
 
-              <p className="mt-4 text-sm text-neutral-500">
-                {t('stats.note')}
-              </p>
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-neutral-500">
+                  {t('stats.note')}
+                </p>
+                <Link href="/profile/history">
+                  <Button variant="outline" size="sm" className="gap-2 text-xs">
+                    <History className="h-3.5 w-3.5" />
+                    View Game History
+                  </Button>
+                </Link>
+              </div>
+            </SectionCard>
+
+            {/* Rankings */}
+            <SectionCard
+              title="Rankings"
+              icon={<Medal className="h-5 w-5 text-neutral-300" />}
+            >
+              {rankLoading ? (
+                <div className="py-4 text-center text-sm text-neutral-500">Loading ranks…</div>
+              ) : playerRank ? (
+                <div className="divide-y divide-neutral-800/70">
+                  <RankRow
+                    label="Global"
+                    rank={playerRank.global}
+                    total={playerRank.totalPlayers}
+                  />
+                  {playerRank.country !== null && user.country && (
+                    <RankRow
+                      label={`Country (${countryName ?? user.country})`}
+                      rank={playerRank.country}
+                    />
+                  )}
+                  {playerRank.region !== null && user.region && (
+                    <RankRow
+                      label={`Region (${user.region})`}
+                      rank={playerRank.region}
+                    />
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-500">Play games to earn a rank.</p>
+              )}
+            </SectionCard>
+
+            {/* Recent Games */}
+            <SectionCard
+              title="Recent Games"
+              icon={<History className="h-5 w-5 text-neutral-300" />}
+            >
+              {recentLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+                </div>
+              ) : recentGames.length === 0 ? (
+                <p className="text-sm text-neutral-500 py-2">No games played yet.</p>
+              ) : (
+                <>
+                  <div className="divide-y divide-neutral-800/60">
+                    {recentGames.map((game) => {
+                      const resultStyles = {
+                        WIN:  'bg-green-500/15 text-green-300 border-green-500/30',
+                        LOSS: 'bg-red-500/15 text-red-300 border-red-500/30',
+                        DRAW: 'bg-neutral-500/15 text-neutral-300 border-neutral-500/30',
+                      };
+                      const ResultIcon = game.result === 'WIN' ? Trophy : game.result === 'LOSS' ? XIcon : Minus;
+                      return (
+                        <div key={game.id} className="flex items-center gap-3 py-3">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold border shrink-0 ${resultStyles[game.result]}`}>
+                            <ResultIcon className="h-3 w-3" />
+                            {game.result}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-neutral-200 truncate">
+                              {game.opponent ? game.opponent.displayName : 'AI'}
+                            </p>
+                            <p className="text-xs text-neutral-500">{game.gameType}</p>
+                          </div>
+                          <Link href={`/game/${game.id}/review`} className="shrink-0">
+                            <Button variant="outline" size="sm" className="text-xs px-2 py-1 h-auto">
+                              Review
+                            </Button>
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4">
+                    <Link href="/profile/history">
+                      <Button variant="secondary" size="sm" className="w-full gap-2">
+                        <History className="h-4 w-4" />
+                        More Games
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              )}
             </SectionCard>
           </div>
 
@@ -264,6 +553,12 @@ export default function ProfilePage() {
                   <Button variant="secondary" size="md" className="w-full justify-start gap-2">
                     <Bot className="h-4 w-4" />
                     {t('actions.playAi')}
+                  </Button>
+                </Link>
+                <Link href="/profile/history">
+                  <Button variant="secondary" size="md" className="w-full justify-start gap-2">
+                    <History className="h-4 w-4" />
+                    Game History
                   </Button>
                 </Link>
                 <Link href="/rules">

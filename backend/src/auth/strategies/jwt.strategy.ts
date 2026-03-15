@@ -33,6 +33,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         isVerified: true,
         role: true,
         isBanned: true,
+        country: true,
+        region: true,
         rating: {
           select: {
             rating: true,
@@ -64,6 +66,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       rating: user.rating?.rating ?? 1200,
       role: user.role,
       isBanned: user.isBanned,
+      country: user.country,
+      region: user.region,
     };
   }
 }

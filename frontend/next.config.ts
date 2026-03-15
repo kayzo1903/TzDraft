@@ -31,6 +31,7 @@ const nextConfig = {
   experimental: {
     externalDir: true,
   },
+  transpilePackages: ["@tzdraft/shared-client"],
   turbopack: {
     root: path.resolve(__dirname, ".."),
   },
@@ -41,6 +42,10 @@ const nextConfig = {
       "@tzdraft/cake-engine": path.resolve(
         __dirname,
         "../packages/cake-engine/dist",
+      ),
+      "@tzdraft/shared-client": path.resolve(
+        __dirname,
+        "../packages/shared-client/src/index.ts",
       ),
     };
     return config;
