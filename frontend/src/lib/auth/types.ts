@@ -18,6 +18,8 @@ export interface User {
   rating: number | Rating;
   role?: 'USER' | 'ADMIN';
   isBanned?: boolean;
+  country?: string | null;
+  region?: string | null;
 }
 
 export interface AuthState {

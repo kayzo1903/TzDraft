@@ -1,0 +1,19 @@
+{
+  "name": "@tzdraft/shared-client",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.17",
+    "eslint": "^9.37.0",
+    "typescript": "^5.9.3"
+  }
+}

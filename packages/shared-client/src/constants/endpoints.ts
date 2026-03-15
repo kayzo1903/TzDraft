@@ -5,6 +5,8 @@ export const AUTH_ENDPOINTS = {
   me: "/auth/me",
   refresh: "/auth/refresh",
   register: "/auth/register",
+  updateProfile: "/auth/profile",
+  rank: "/auth/rank",
   forgotPassword: "/auth/forgot-password",
   resetPassword: "/auth/reset-password",
   sendOtp: "/auth/send-otp",
@@ -26,4 +28,10 @@ export const GAME_ENDPOINTS = {
   draw: (gameId: string) => `/games/${gameId}/draw`,
   abort: (gameId: string) => `/games/${gameId}/abort`,
   inviteJoin: (code: string) => `/games/invite/${code}/join`,
+  replay: (gameId: string) => `/games/${gameId}/replay`,
+} as const;
+
+export const HISTORY_ENDPOINTS = {
+  myGames: "/games/history",
+  myStats: "/games/stats",
 } as const;
