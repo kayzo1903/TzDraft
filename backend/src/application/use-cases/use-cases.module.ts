@@ -8,6 +8,8 @@ import { GetLegalMovesUseCase } from './get-legal-moves.use-case';
 import { EndGameUseCase } from './end-game.use-case';
 import { JoinQueueUseCase } from './join-queue.use-case';
 import { RatingService } from './rating.service';
+import { GetGameHistoryUseCase } from './get-game-history.use-case';
+import { GetPlayerStatsUseCase } from './get-player-stats.use-case';
 import { UserModule } from '../../domain/user/user.module';
 
 /**
@@ -24,6 +26,8 @@ import { UserModule } from '../../domain/user/user.module';
     GetLegalMovesUseCase,
     EndGameUseCase,
     JoinQueueUseCase,
+    GetGameHistoryUseCase,
+    GetPlayerStatsUseCase,
   ],
   exports: [
     RatingService,
@@ -33,6 +37,8 @@ import { UserModule } from '../../domain/user/user.module';
     GetLegalMovesUseCase,
     EndGameUseCase,
     JoinQueueUseCase,
+    GetGameHistoryUseCase,
+    GetPlayerStatsUseCase,
   ],
 })
 export class UseCasesModule {}

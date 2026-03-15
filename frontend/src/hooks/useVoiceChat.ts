@@ -14,6 +14,7 @@ import axiosInstance from "@/lib/axios";
  *   failed    – negotiation failed
  */
 export type CallState = "idle" | "ringing" | "incoming" | "calling" | "connected" | "failed";
+export type ConnectionQuality = "unknown" | "poor" | "good" | "excellent";
 
 /** STUN-only fallback used when /turn/credentials is unreachable */
 const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
@@ -29,6 +30,10 @@ export interface UseVoiceChatResult {
   isLocalMuted: boolean;
   isRemoteSpeaking: boolean;
   isPttMode: boolean;
+  connectionQuality: ConnectionQuality;
+  audioDevices: MediaDeviceInfo[];
+  selectedDeviceId: string | null;
+  remoteVolume: number;
   error: string | null;
   remoteAudioRef: React.RefObject<HTMLAudioElement | null>;
   startCall: () => void;
@@ -37,6 +42,8 @@ export interface UseVoiceChatResult {
   endCall: () => void;
   toggleMute: () => void;
   togglePttMode: () => void;
+  setAudioDevice: (deviceId: string) => Promise<void>;
+  setRemoteVolume: (vol: number) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -53,13 +60,14 @@ function micErrorMessage(e: any): string {
 }
 
 /** F1: Remove sampleRate (crashes Safari/some Android). Retry with bare audio on OverconstrainedError. */
-async function getMic(): Promise<MediaStream> {
-  const preferred = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+async function getMic(deviceId?: string | null): Promise<MediaStream> {
+  const preferred: MediaTrackConstraints = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  if (deviceId) preferred.deviceId = { exact: deviceId };
   try {
     return await navigator.mediaDevices.getUserMedia({ audio: preferred });
   } catch (e: any) {
     if (e?.name === "OverconstrainedError") {
-      return await navigator.mediaDevices.getUserMedia({ audio: true });
+      return await navigator.mediaDevices.getUserMedia({ audio: deviceId ? { deviceId: { exact: deviceId } } : true });
     }
     throw e;
   }
@@ -70,15 +78,19 @@ async function getMic(): Promise<MediaStream> {
 export function useVoiceChat(gameId: string): UseVoiceChatResult {
   const { socket } = useSocket();
 
-  const [callState, setCallState]           = useState<CallState>("idle");
-  const [isLocalMuted, setIsLocalMuted]     = useState(false);
-  const [isRemoteSpeaking, setIsRemoteSpeaking] = useState(false);
-  const [isPttMode, setIsPttMode]           = useState(false);
-  const [error, setError]                   = useState<string | null>(null);
+  const [callState, setCallState]                 = useState<CallState>("idle");
+  const [isLocalMuted, setIsLocalMuted]           = useState(false);
+  const [isRemoteSpeaking, setIsRemoteSpeaking]   = useState(false);
+  const [isPttMode, setIsPttMode]                 = useState(false);
+  const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality>("unknown");
+  const [audioDevices, setAudioDevices]           = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId]   = useState<string | null>(null);
+  const [remoteVolume, setRemoteVolumeState]       = useState(1);
+  const [error, setError]                         = useState<string | null>(null);
 
-  const pcRef            = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef   = useRef<MediaStream | null>(null);
-  const remoteAudioRef   = useRef<HTMLAudioElement | null>(null);
+  const pcRef          = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // F7: speaking indicator
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -88,12 +100,17 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
   const iceCandidateQueueRef = useRef<RTCIceCandidateInit[]>([]);
   const remoteDescReadyRef   = useRef(false);
 
+  // Phase 3: quality polling
+  const qualityIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Stable refs for values used inside socket callbacks
-  const callStateRef  = useRef<CallState>("idle");
-  const socketRef     = useRef(socket);
-  const gameIdRef     = useRef(gameId);
-  const isPttModeRef  = useRef(false);
-  const pendingAcceptRef = useRef(false);
+  const callStateRef        = useRef<CallState>("idle");
+  const socketRef           = useRef(socket);
+  const gameIdRef           = useRef(gameId);
+  const isPttModeRef        = useRef(false);
+  const pendingAcceptRef    = useRef(false);
+  const selectedDeviceIdRef = useRef<string | null>(null);
+  const remoteVolumeRef     = useRef(1);
 
   useEffect(() => { callStateRef.current = callState; },   [callState]);
   useEffect(() => { socketRef.current    = socket; },      [socket]);
@@ -134,6 +151,51 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     setIsRemoteSpeaking(false);
   }, []);
 
+  // ── Phase 3: Audio device loading ────────────────────────────────────────
+
+  const loadAudioDevices = useCallback(async () => {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      setAudioDevices(all.filter((d) => d.kind === "audioinput"));
+    } catch {
+      // permissions not yet granted — will reload after getMic() succeeds
+    }
+  }, []);
+
+  // ── Phase 3: Connection quality polling ──────────────────────────────────
+
+  const startQualityPolling = useCallback((pc: RTCPeerConnection) => {
+    qualityIntervalRef.current = setInterval(async () => {
+      try {
+        const stats = await pc.getStats();
+        let rtt: number | null = null;
+        stats.forEach((report) => {
+          if (
+            report.type === "candidate-pair" &&
+            report.state === "succeeded" &&
+            typeof report.currentRoundTripTime === "number"
+          ) {
+            rtt = report.currentRoundTripTime * 1000; // seconds → ms
+          }
+        });
+        if (rtt === null)   setConnectionQuality("unknown");
+        else if (rtt < 100) setConnectionQuality("excellent");
+        else if (rtt < 300) setConnectionQuality("good");
+        else                setConnectionQuality("poor");
+      } catch {
+        setConnectionQuality("unknown");
+      }
+    }, 3000);
+  }, []);
+
+  const stopQualityPolling = useCallback(() => {
+    if (qualityIntervalRef.current !== null) {
+      clearInterval(qualityIntervalRef.current);
+      qualityIntervalRef.current = null;
+    }
+    setConnectionQuality("unknown");
+  }, []);
+
   // ── F10: ICE candidate drain ──────────────────────────────────────────────
 
   const drainCandidateQueue = useCallback(async (pc: RTCPeerConnection) => {
@@ -158,16 +220,17 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
   // ── Teardown ──────────────────────────────────────────────────────────────
 
   const cleanup = useCallback(() => {
-    pendingAcceptRef.current       = false;
-    iceCandidateQueueRef.current   = [];
-    remoteDescReadyRef.current     = false;
+    pendingAcceptRef.current     = false;
+    iceCandidateQueueRef.current = [];
+    remoteDescReadyRef.current   = false;
 
     stopSpeakingIndicator();
+    stopQualityPolling();
 
     if (pcRef.current) {
-      pcRef.current.onicecandidate          = null;
-      pcRef.current.ontrack                 = null;
-      pcRef.current.onconnectionstatechange = null;
+      pcRef.current.onicecandidate            = null;
+      pcRef.current.ontrack                   = null;
+      pcRef.current.onconnectionstatechange   = null;
       pcRef.current.oniceconnectionstatechange = null;
       pcRef.current.close();
       pcRef.current = null;
@@ -183,7 +246,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     setCallState("idle");
     setIsLocalMuted(false);
     setIsPttMode(false);
-  }, [stopSpeakingIndicator]);
+  }, [stopSpeakingIndicator, stopQualityPolling]);
 
   // ── RTCPeerConnection factory ─────────────────────────────────────────────
 
@@ -203,15 +266,16 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     pc.ontrack = ({ streams }) => {
       if (remoteAudioRef.current && streams[0]) {
         remoteAudioRef.current.srcObject = streams[0];
+        remoteAudioRef.current.volume = remoteVolumeRef.current;
         remoteAudioRef.current.play().catch(() => {});
         startSpeakingIndicator(streams[0]);
       }
     };
 
-    // Shared handlers — F3: both events cover Firefox + all modern browsers
     const onConnected = () => {
       setCallState("connected");
       setError(null);
+      startQualityPolling(pc);
     };
 
     const onFailed = () => {
@@ -239,7 +303,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     };
 
     return pc;
-  }, [cleanup, startSpeakingIndicator]);
+  }, [cleanup, startSpeakingIndicator, startQualityPolling]);
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -284,10 +348,35 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     setIsPttMode((prev) => {
       const next = !prev;
       const track = localStreamRef.current?.getAudioTracks()[0];
-      if (track) track.enabled = !next; // mute when PTT enabled, unmute when disabled
+      if (track) track.enabled = !next;
       setIsLocalMuted(next);
       return next;
     });
+  }, []);
+
+  /** Phase 3: Switch active microphone. Replaces track mid-call if connected. */
+  const setAudioDevice = useCallback(async (deviceId: string) => {
+    selectedDeviceIdRef.current = deviceId;
+    setSelectedDeviceId(deviceId);
+    if (callStateRef.current !== "connected" || !pcRef.current) return;
+    try {
+      const newStream = await getMic(deviceId);
+      const newTrack  = newStream.getAudioTracks()[0];
+      const sender    = pcRef.current.getSenders().find((s) => s.track?.kind === "audio");
+      if (sender) await sender.replaceTrack(newTrack);
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = newStream;
+    } catch {
+      // device switch failed — keep current mic
+    }
+  }, []);
+
+  /** Phase 3: Remote volume control (0–1). Applied to <audio> element directly. */
+  const setRemoteVolume = useCallback((vol: number) => {
+    const clamped = Math.max(0, Math.min(1, vol));
+    remoteVolumeRef.current = clamped;
+    setRemoteVolumeState(clamped);
+    if (remoteAudioRef.current) remoteAudioRef.current.volume = clamped;
   }, []);
 
   // ── F9: PTT Space key handler ─────────────────────────────────────────────
@@ -316,26 +405,35 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     };
   }, [callState]);
 
+  // ── Phase 3: Load audio devices on mount + react to device plug/unplug ───
+
+  useEffect(() => {
+    loadAudioDevices();
+    navigator.mediaDevices.addEventListener("devicechange", loadAudioDevices);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", loadAudioDevices);
+    };
+  }, [loadAudioDevices]);
+
   // ── Socket signaling listeners ────────────────────────────────────────────
 
   useEffect(() => {
     if (!socket) return;
 
-    // Callee: opponent is calling
     const onRing = () => {
       if (callStateRef.current !== "idle") return;
       setError(null);
       setCallState("incoming");
     };
 
-    // Caller: callee accepted — fetch ICE servers, get mic, create and send offer
     const onAccept = async () => {
       if (callStateRef.current !== "ringing") return;
       setCallState("calling");
       try {
-        const iceServers = await fetchIceServers();   // F6
-        const stream     = await getMic();             // F1
+        const iceServers = await fetchIceServers();
+        const stream     = await getMic(selectedDeviceIdRef.current);
         localStreamRef.current = stream;
+        loadAudioDevices(); // reload with labels now that permission is granted
         const pc = buildPc(iceServers);
         pcRef.current = pc;
         stream.getTracks().forEach((t) => pc.addTrack(t, stream));
@@ -347,30 +445,29 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
         });
       } catch (err: any) {
         cleanup();
-        setError(micErrorMessage(err));               // F5
+        setError(micErrorMessage(err));
       }
     };
 
-    // Caller: callee declined
     const onDecline = () => {
       if (callStateRef.current !== "ringing") return;
       cleanup();
       setError("Call was declined.");
     };
 
-    // Callee: receives offer — get mic, answer, drain buffered candidates
     const onOffer = async ({ sdp }: { sdp: RTCSessionDescriptionInit }) => {
       if (!pendingAcceptRef.current) return;
       pendingAcceptRef.current = false;
       try {
-        const iceServers = await fetchIceServers();   // F6
-        const stream     = await getMic();             // F1
+        const iceServers = await fetchIceServers();
+        const stream     = await getMic(selectedDeviceIdRef.current);
         localStreamRef.current = stream;
+        loadAudioDevices(); // reload with labels now that permission is granted
         const pc = buildPc(iceServers);
         pcRef.current = pc;
         stream.getTracks().forEach((t) => pc.addTrack(t, stream));
         await pc.setRemoteDescription(sdp);
-        await drainCandidateQueue(pc);                // F10: drain any buffered candidates
+        await drainCandidateQueue(pc);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socketRef.current?.emit("voice:answer", {
@@ -379,17 +476,16 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
         });
       } catch (err: any) {
         cleanup();
-        setError(micErrorMessage(err));               // F5
+        setError(micErrorMessage(err));
       }
     };
 
-    // Caller: receives answer — set remote description, drain buffered candidates
     const onAnswer = async ({ sdp }: { sdp: RTCSessionDescriptionInit }) => {
       const pc = pcRef.current;
       if (!pc) return;
       try {
         await pc.setRemoteDescription(sdp);
-        await drainCandidateQueue(pc);                // F10
+        await drainCandidateQueue(pc);
       } catch {
         // stale answer — ignore
       }
@@ -397,7 +493,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
 
     // F10: buffer candidates until setRemoteDescription completes
     const onIceCandidate = ({ candidate }: { candidate: RTCIceCandidateInit }) => {
-      if (!candidate) return; // null = end-of-candidates signal, ignore
+      if (!candidate) return;
       if (!remoteDescReadyRef.current || !pcRef.current) {
         iceCandidateQueueRef.current.push(candidate);
       } else {
@@ -424,7 +520,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
       socket.off("voice:ice-candidate", onIceCandidate);
       socket.off("voice:hangup",        onHangup);
     };
-  }, [socket, buildPc, cleanup, drainCandidateQueue, fetchIceServers]);
+  }, [socket, buildPc, cleanup, drainCandidateQueue, fetchIceServers, loadAudioDevices]);
 
   // Cleanup on gameId change or unmount
   useEffect(() => {
@@ -436,6 +532,10 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     isLocalMuted,
     isRemoteSpeaking,
     isPttMode,
+    connectionQuality,
+    audioDevices,
+    selectedDeviceId,
+    remoteVolume,
     error,
     remoteAudioRef,
     startCall,
@@ -444,5 +544,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
     endCall,
     toggleMute,
     togglePttMode,
+    setAudioDevice,
+    setRemoteVolume,
   };
 }

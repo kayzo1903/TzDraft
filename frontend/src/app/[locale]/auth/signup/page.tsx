@@ -19,6 +19,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { HeroBoard } from "@/components/hero/HeroBoard";
+import { COUNTRIES, REGIONS_BY_COUNTRY, hasRegions } from "@tzdraft/shared-client";
 import {
   Loader2,
   CheckCircle2,
@@ -48,6 +49,8 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     displayName: "",
+    country: "TZ",
+    region: "",
   });
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
@@ -345,6 +348,45 @@ export default function SignupPage() {
                           className="bg-[#111] border border-neutral-700 focus:border-[#81b64c]"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-[0.5em] text-neutral-500">
+                          Country
+                        </Label>
+                        <select
+                          value={formData.country}
+                          onChange={(e) =>
+                            setFormData({ ...formData, country: e.target.value, region: "" })
+                          }
+                          className="w-full rounded-lg bg-[#111] border border-neutral-700 focus:border-[#81b64c] px-3 py-2 text-sm text-white"
+                        >
+                          {COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {hasRegions(formData.country) && (
+                        <div className="space-y-2">
+                          <Label className="text-xs uppercase tracking-[0.5em] text-neutral-500">
+                            Region
+                          </Label>
+                          <select
+                            value={formData.region}
+                            onChange={(e) =>
+                              setFormData({ ...formData, region: e.target.value })
+                            }
+                            className="w-full rounded-lg bg-[#111] border border-neutral-700 focus:border-[#81b64c] px-3 py-2 text-sm text-white"
+                          >
+                            <option value="">— Select region (optional) —</option>
+                            {REGIONS_BY_COUNTRY[formData.country].map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <PasswordInput
                         value={formData.password}
                         onChange={(value) => setFormData({ ...formData, password: value })}
