@@ -1,7 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
 import { RedisService } from '../cache/redis.service';
-import { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
+import {
+  IGameRepository,
+  GameHistoryFilters,
+  PlayerStats,
+} from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { BoardState, PieceSnapshot } from '../../domain/game/value-objects/board-state.vo';
 import {
@@ -312,6 +316,121 @@ export class PrismaGameRepository implements IGameRepository {
       where: { gameId },
       data: { whiteTimeMs, blackTimeMs, lastMoveAt },
     });
+  }
+
+  async findCompletedGamesByPlayer(
+    playerId: string,
+    skip: number,
+    take: number,
+    filters?: GameHistoryFilters,
+  ): Promise<{ games: Game[]; total: number }> {
+    const where: any = {
+      OR: [{ whitePlayerId: playerId }, { blackPlayerId: playerId }],
+      status: GameStatus.FINISHED,
+    };
+
+    if (filters?.gameType) {
+      where.gameType = filters.gameType;
+    }
+
+    if (filters?.result === 'WIN') {
+      where.OR = [
+        { whitePlayerId: playerId, winner: Winner.WHITE },
+        { blackPlayerId: playerId, winner: Winner.BLACK },
+      ];
+      where.status = GameStatus.FINISHED;
+    } else if (filters?.result === 'LOSS') {
+      where.OR = [
+        { whitePlayerId: playerId, winner: Winner.BLACK },
+        { blackPlayerId: playerId, winner: Winner.WHITE },
+      ];
+      where.status = GameStatus.FINISHED;
+    } else if (filters?.result === 'DRAW') {
+      where.AND = [
+        { OR: [{ whitePlayerId: playerId }, { blackPlayerId: playerId }] },
+        { winner: Winner.DRAW },
+        { status: GameStatus.FINISHED },
+      ];
+      delete where.OR;
+    }
+
+    const [prismaGames, total] = await Promise.all([
+      this.prisma.game.findMany({
+        where,
+        orderBy: { endedAt: 'desc' },
+        skip,
+        take,
+        // No moves needed for history list — saves bandwidth
+        include: { clock: true },
+      }),
+      this.prisma.game.count({ where }),
+    ]);
+
+    return {
+      games: prismaGames.map((g) => this.toDomain(g)),
+      total,
+    };
+  }
+
+  async getPlayerStats(playerId: string): Promise<PlayerStats> {
+    const finished = await this.prisma.game.findMany({
+      where: {
+        OR: [{ whitePlayerId: playerId }, { blackPlayerId: playerId }],
+        status: GameStatus.FINISHED,
+      },
+      select: {
+        gameType: true,
+        winner: true,
+        whitePlayerId: true,
+        blackPlayerId: true,
+      },
+    });
+
+    const empty = { total: 0, wins: 0, losses: 0, draws: 0 };
+    const byType: PlayerStats['byType'] = {
+      AI: { ...empty },
+      RANKED: { ...empty },
+      CASUAL: { ...empty },
+    };
+
+    let wins = 0, losses = 0, draws = 0;
+
+    for (const g of finished) {
+      const isWhite = g.whitePlayerId === playerId;
+      let result: 'win' | 'loss' | 'draw';
+
+      if (g.winner === Winner.DRAW) {
+        result = 'draw';
+        draws++;
+      } else if (
+        (isWhite && g.winner === Winner.WHITE) ||
+        (!isWhite && g.winner === Winner.BLACK)
+      ) {
+        result = 'win';
+        wins++;
+      } else {
+        result = 'loss';
+        losses++;
+      }
+
+      const bucket = byType[g.gameType as keyof typeof byType];
+      if (bucket) {
+        bucket.total++;
+        if (result === 'win') bucket.wins++;
+        else if (result === 'loss') bucket.losses++;
+        else bucket.draws++;
+      }
+    }
+
+    const total = finished.length;
+    return {
+      total,
+      wins,
+      losses,
+      draws,
+      winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
+      byType,
+    };
   }
 
   /**

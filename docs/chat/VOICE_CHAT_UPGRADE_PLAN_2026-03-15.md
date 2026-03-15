@@ -5,7 +5,7 @@
 **Amended:** 2026-03-15 — added P1.4 ICE candidate buffering (missing from v1.0)
 **Branch target:** `feature/voice-chat-pro`
 **Author:** Claude (AI Code Review)
-**Status:** Planning — not yet implemented
+**Status:** Complete — Phase 1, 2, and 3 implemented and deployed 2026-03-15
 
 ---
 
