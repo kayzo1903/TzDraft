@@ -16,5 +16,6 @@ export function useAuth() {
       clearAuth();
     },
     updateUser,
+    updateProfile: authClient.updateProfile,
   };
 }

@@ -101,4 +101,17 @@ export const authClient = {
     });
     return response.data;
   },
+
+  async updateProfile(data: {
+    displayName?: string;
+    email?: string;
+    country?: string;
+    region?: string;
+  }) {
+    const response = await axiosInstance.patch("/auth/profile", data);
+    if (response.data?.data) {
+      useAuthStore.getState().updateUser(response.data.data);
+    }
+    return response.data;
+  },
 };

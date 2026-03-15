@@ -1,9 +1,26 @@
 import { Game } from '../entities/game.entity';
 import {
-  PlayerColor,
   GameStatus,
   GameType,
 } from '../../../shared/constants/game.constants';
+
+export interface GameHistoryFilters {
+  result?: 'WIN' | 'LOSS' | 'DRAW';
+  gameType?: GameType;
+}
+
+export interface PlayerStats {
+  total: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  byType: {
+    AI: { total: number; wins: number; losses: number; draws: number };
+    RANKED: { total: number; wins: number; losses: number; draws: number };
+    CASUAL: { total: number; wins: number; losses: number; draws: number };
+  };
+}
 
 /**
  * Game Repository Interface
@@ -88,4 +105,19 @@ export interface IGameRepository {
    * so stale codes don't pile up.
    */
   expireStaleInvitesByPlayer(creatorId: string): Promise<void>;
+
+  /**
+   * Paginated list of FINISHED games for a player, newest first.
+   */
+  findCompletedGamesByPlayer(
+    playerId: string,
+    skip: number,
+    take: number,
+    filters?: GameHistoryFilters,
+  ): Promise<{ games: Game[]; total: number }>;
+
+  /**
+   * Aggregate win/loss/draw stats for a player across all finished games.
+   */
+  getPlayerStats(playerId: string): Promise<PlayerStats>;
 }
