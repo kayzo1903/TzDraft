@@ -14,6 +14,7 @@ import { EngineModule } from './infrastructure/engine/engine.module';
 import { TasksModule } from './infrastructure/tasks/tasks.module';
 import { HealthModule } from './health/health.module';
 import { AdminModule } from './admin/admin.module';
+import { TurnModule } from './turn/turn.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { AdminModule } from './admin/admin.module';
     TasksModule,  // Scheduled cleanup jobs
     HealthModule,
     AdminModule,
+    TurnModule,
   ],
   controllers: [],
   providers: [
