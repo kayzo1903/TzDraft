@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BoardState,
   CakeEngine,
-  CaptureFindingService,
   Move,
   PlayerColor,
   Position,
@@ -482,71 +481,6 @@ export const useLocalGame = (
 
       if (!match) return;
       if (mustContinueFrom && !match.from.equals(mustContinueFrom)) return;
-      if (match.capturedSquares.length > 0) {
-        const piece = board.getPieceAt(from);
-        if (piece) {
-          const captureService = new CaptureFindingService();
-          const captures = captureService.findCapturesForPiece(board, piece);
-          const captureMatch = captures.find(
-            (capture) => capture.from.equals(from) && capture.to.equals(to),
-          );
-          if (captureMatch) {
-            const capturedSquares = captureMatch.capturedSquares;
-            const notation = Move.generateNotation(from, to, capturedSquares);
-            const rebuilt = new Move(
-              match.id,
-              match.gameId,
-              match.moveNumber,
-              match.player,
-              match.from,
-              match.to,
-              capturedSquares,
-              captureMatch.isPromotion,
-              notation,
-              match.createdAt,
-            );
-            applyMove(rebuilt);
-            return;
-          }
-
-          // Fallback: for flying king single-capture, keep only the jumped piece
-          const fromCoords = from.toRowCol();
-          const toCoords = to.toRowCol();
-          const rowStep = Math.sign(toCoords.row - fromCoords.row);
-          const colStep = Math.sign(toCoords.col - fromCoords.col);
-          if (rowStep !== 0 && colStep !== 0) {
-            const jumped: Position[] = [];
-            let r = fromCoords.row + rowStep;
-            let c = fromCoords.col + colStep;
-            while (r !== toCoords.row && c !== toCoords.col) {
-              const pos = Position.fromRowCol(r, c);
-              const occupant = board.getPieceAt(pos);
-              if (occupant && occupant.color !== piece.color) {
-                jumped.push(pos);
-              }
-              r += rowStep;
-              c += colStep;
-            }
-            if (jumped.length === 1) {
-              const notation = Move.generateNotation(from, to, jumped);
-              const rebuilt = new Move(
-                match.id,
-                match.gameId,
-                match.moveNumber,
-                match.player,
-                match.from,
-                match.to,
-                jumped,
-                match.isPromotion,
-                notation,
-                match.createdAt,
-              );
-              applyMove(rebuilt);
-              return;
-            }
-          }
-        }
-      }
       applyMove(match);
     },
     [
