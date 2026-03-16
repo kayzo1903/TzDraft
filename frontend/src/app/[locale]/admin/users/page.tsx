@@ -2,9 +2,72 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { adminService, AdminUser } from "@/services/admin.service";
-import { Shield, ShieldOff, Trash2, UserX, UserCheck } from "lucide-react";
+import { Shield, ShieldOff, Trash2, UserX, UserCheck, AlertTriangle } from "lucide-react";
 
 const PAGE_LIMIT = 20;
+
+// ── Confirm dialog ────────────────────────────────────────────────────────────
+interface ConfirmDialogProps {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  variant?: "danger" | "warning";
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  variant = "danger",
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  const accentColor = variant === "danger" ? "rose" : "orange";
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden border border-neutral-700/80 bg-neutral-900 shadow-2xl">
+        <div
+          className={`flex items-center gap-3 px-5 py-4 border-b border-neutral-800 bg-${accentColor}-500/8`}
+        >
+          <div
+            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-${accentColor}-500/15 border border-${accentColor}-500/30`}
+          >
+            <AlertTriangle className={`w-5 h-5 text-${accentColor}-400`} />
+          </div>
+          <div className={`text-base font-bold text-neutral-100`}>{title}</div>
+        </div>
+
+        <div className="px-5 py-4 text-sm text-neutral-400">{message}</div>
+
+        <div className="px-5 pb-5 flex flex-col gap-2">
+          <button
+            onClick={onConfirm}
+            className={`w-full py-2 rounded-lg text-sm font-semibold bg-${accentColor}-600 hover:bg-${accentColor}-500 text-white transition-colors`}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full py-2 rounded-lg text-sm font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+interface DialogState {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  variant?: "danger" | "warning";
+  onConfirm: () => void;
+}
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -21,6 +84,11 @@ export default function AdminUsersPage() {
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
+
+  // Dialog state — null = closed
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+
+  const closeDialog = () => setDialog(null);
 
   // Debounce search input
   const handleSearch = (value: string) => {
@@ -51,35 +119,46 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleBan = async (userId: string, isBanned: boolean) => {
-    if (
-      !confirm(
-        isBanned
-          ? "Unban this user?"
-          : "Ban this user? Their sessions will be invalidated."
-      )
-    )
-      return;
-    const updated = await adminService.updateBan(userId, !isBanned);
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, isBanned: updated.isBanned } : u))
-    );
+  const handleBan = (userId: string, isBanned: boolean) => {
+    setDialog({
+      title: isBanned ? "Unban user?" : "Ban user?",
+      message: isBanned
+        ? "This user will regain full access to the platform."
+        : "This user will be blocked and all their active sessions will be invalidated.",
+      confirmLabel: isBanned ? "Yes, unban" : "Yes, ban",
+      variant: isBanned ? "warning" : "danger",
+      onConfirm: async () => {
+        closeDialog();
+        const updated = await adminService.updateBan(userId, !isBanned);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, isBanned: updated.isBanned } : u
+          )
+        );
+      },
+    });
   };
 
-  const handleRole = async (userId: string, currentRole: "USER" | "ADMIN") => {
+  const handleRole = (userId: string, currentRole: "USER" | "ADMIN") => {
     const newRole = currentRole === "ADMIN" ? "USER" : "ADMIN";
-    if (
-      !confirm(
-        `Set role to ${newRole} for this user?`
-      )
-    )
-      return;
-    const updated = await adminService.updateRole(userId, newRole);
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, role: updated.role as "USER" | "ADMIN" } : u
-      )
-    );
+    setDialog({
+      title: newRole === "ADMIN" ? "Grant admin access?" : "Remove admin access?",
+      message:
+        newRole === "ADMIN"
+          ? "This user will gain full admin privileges including the ability to ban and manage other users."
+          : "This user will lose all admin privileges and revert to a standard account.",
+      confirmLabel: `Set role to ${newRole}`,
+      variant: newRole === "ADMIN" ? "warning" : "danger",
+      onConfirm: async () => {
+        closeDialog();
+        const updated = await adminService.updateRole(userId, newRole);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, role: updated.role as "USER" | "ADMIN" } : u
+          )
+        );
+      },
+    });
   };
 
   const handlePreview = async () => {
@@ -93,23 +172,28 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleCleanup = async () => {
+  const handleCleanup = () => {
     if (previewCount === null) return;
-    if (
-      !confirm(
-        `Permanently delete ${previewCount} guest account${previewCount !== 1 ? "s" : ""} older than ${cleanupDays} day${cleanupDays !== 1 ? "s" : ""} with no games? This cannot be undone.`
-      )
-    )
-      return;
-    setCleanupLoading(true);
-    try {
-      const res = await adminService.cleanupGuests(cleanupDays);
-      setCleanupResult(`Deleted ${res.deleted} guest account${res.deleted !== 1 ? "s" : ""}.`);
-      setPreviewCount(null);
-      fetchUsers();
-    } finally {
-      setCleanupLoading(false);
-    }
+    setDialog({
+      title: "Delete guest accounts?",
+      message: `This will permanently delete ${previewCount} guest account${previewCount !== 1 ? "s" : ""} older than ${cleanupDays} day${cleanupDays !== 1 ? "s" : ""} that have never played a game. This cannot be undone.`,
+      confirmLabel: `Delete ${previewCount} guest${previewCount !== 1 ? "s" : ""}`,
+      variant: "danger",
+      onConfirm: async () => {
+        closeDialog();
+        setCleanupLoading(true);
+        try {
+          const res = await adminService.cleanupGuests(cleanupDays);
+          setCleanupResult(
+            `Deleted ${res.deleted} guest account${res.deleted !== 1 ? "s" : ""}.`
+          );
+          setPreviewCount(null);
+          fetchUsers();
+        } finally {
+          setCleanupLoading(false);
+        }
+      },
+    });
   };
 
   const visibleUsers = hideGuests
@@ -122,6 +206,17 @@ export default function AdminUsersPage() {
 
   return (
     <div>
+      {dialog && (
+        <ConfirmDialog
+          title={dialog.title}
+          message={dialog.message}
+          confirmLabel={dialog.confirmLabel}
+          variant={dialog.variant}
+          onConfirm={dialog.onConfirm}
+          onCancel={closeDialog}
+        />
+      )}
+
       <h1 className="text-2xl font-bold mb-6">Users</h1>
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
