@@ -6,6 +6,21 @@ export interface AdminStats {
   gamesPlayedToday: number;
 }
 
+export interface GrowthPoint {
+  date: string;
+  newUsers: number;
+  games: number;
+}
+
+export interface GrowthResponse {
+  points: GrowthPoint[];
+  breakdown: {
+    totalVerified: number;
+    totalGuests: number;
+    totalBanned: number;
+  };
+}
+
 export interface AdminUser {
   id: string;
   username: string;
@@ -73,6 +88,11 @@ export const adminService = {
     const response = await axiosInstance.delete("/admin/guests", {
       params: { olderThanDays },
     });
+    return response.data;
+  },
+
+  async getGrowth(days = 30): Promise<GrowthResponse> {
+    const response = await axiosInstance.get("/admin/growth", { params: { days } });
     return response.data;
   },
 

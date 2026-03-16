@@ -3,6 +3,7 @@
 
 generator client {
     provider = "prisma-client-js"
+    output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -49,6 +50,8 @@ model User {
     passwordResetTokens PasswordResetToken[]
     otpCodes            OtpCode[]
 
+    @@index([country])
+    @@index([country, region])
     @@map("users")
 }
 
@@ -64,6 +67,7 @@ model Rating {
     gamesPlayed Int      @default(0) @map("games_played")
     lastUpdated DateTime @updatedAt @map("last_updated")
 
+    @@index([rating])
     @@map("ratings")
 }
 
