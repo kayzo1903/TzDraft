@@ -7,6 +7,8 @@ export class AuthResponseDto {
     displayName: string;
     isVerified: boolean;
     rating: number;
+    country?: string;
+    region?: string;
   };
   accessToken: string;
   refreshToken: string;
