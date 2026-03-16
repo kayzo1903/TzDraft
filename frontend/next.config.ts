@@ -4,7 +4,16 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin();
 
-if (process.env.NODE_ENV === "production") {
+// `next build` always runs with NODE_ENV=production, even for local verification.
+// Enforce real production URLs only for CI/deployment builds where those env vars
+// should come from the target environment instead of a local `.env`.
+const isDeploymentBuild =
+  process.env.NODE_ENV === "production" &&
+  (process.env.CI === "true" ||
+    process.env.GITHUB_ACTIONS === "true" ||
+    process.env.VERCEL === "1");
+
+if (isDeploymentBuild) {
   const required = ["NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_BETTER_AUTH_URL"];
 
   const missing = required.filter((k) => !process.env[k]);
