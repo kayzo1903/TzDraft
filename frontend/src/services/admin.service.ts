@@ -62,6 +62,20 @@ export const adminService = {
     return response.data;
   },
 
+  async previewGuestCleanup(olderThanDays: number): Promise<{ count: number; olderThanDays: number }> {
+    const response = await axiosInstance.get("/admin/guests/preview", {
+      params: { olderThanDays },
+    });
+    return response.data;
+  },
+
+  async cleanupGuests(olderThanDays: number): Promise<{ deleted: number; olderThanDays: number }> {
+    const response = await axiosInstance.delete("/admin/guests", {
+      params: { olderThanDays },
+    });
+    return response.data;
+  },
+
   async getHealth(): Promise<unknown> {
     const response = await axiosInstance.get("/admin/health");
     return response.data;
