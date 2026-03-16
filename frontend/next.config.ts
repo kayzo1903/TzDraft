@@ -34,6 +34,16 @@ const nextConfig = {
   transpilePackages: ["@tzdraft/shared-client"],
   turbopack: {
     root: path.resolve(__dirname, ".."),
+    resolveAlias: {
+      "@tzdraft/cake-engine": path.resolve(
+        __dirname,
+        "../packages/cake-engine/dist",
+      ),
+      "@tzdraft/shared-client": path.resolve(
+        __dirname,
+        "../packages/shared-client/src/index.ts",
+      ),
+    },
   },
   webpack: (config: any) => {
     config.resolve = config.resolve || {};
