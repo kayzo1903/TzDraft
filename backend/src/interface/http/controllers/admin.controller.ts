@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -15,6 +16,7 @@ import {
   AdminUsersQueryDto,
   UpdateUserRoleDto,
   UpdateUserBanDto,
+  CleanupGuestsQueryDto,
 } from '../dtos/admin.dto';
 
 @Controller('admin')
@@ -109,6 +111,42 @@ export class AdminController {
     }
 
     return user;
+  }
+
+  /** Dry-run: returns how many guest accounts would be deleted. */
+  @Get('guests/preview')
+  async previewGuestCleanup(@Query() query: CleanupGuestsQueryDto) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (query.olderThanDays ?? 7));
+
+    const count = await this.prisma.user.count({
+      where: {
+        phoneNumber: { startsWith: 'GUEST_' },
+        createdAt: { lt: cutoff },
+        gamesAsWhite: { none: {} },
+        gamesAsBlack: { none: {} },
+      },
+    });
+
+    return { count, olderThanDays: query.olderThanDays ?? 7 };
+  }
+
+  /** Permanently deletes stale guest accounts that have never played a game. */
+  @Delete('guests')
+  async cleanupGuests(@Query() query: CleanupGuestsQueryDto) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (query.olderThanDays ?? 7));
+
+    const { count } = await this.prisma.user.deleteMany({
+      where: {
+        phoneNumber: { startsWith: 'GUEST_' },
+        createdAt: { lt: cutoff },
+        gamesAsWhite: { none: {} },
+        gamesAsBlack: { none: {} },
+      },
+    });
+
+    return { deleted: count, olderThanDays: query.olderThanDays ?? 7 };
   }
 
   @Get('health')
