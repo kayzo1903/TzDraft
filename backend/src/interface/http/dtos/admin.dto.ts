@@ -33,3 +33,11 @@ export class UpdateUserBanDto {
   @IsBoolean()
   isBanned: boolean;
 }
+
+export class CleanupGuestsQueryDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  olderThanDays?: number = 7;
+}
