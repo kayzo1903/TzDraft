@@ -122,6 +122,8 @@ export class AdminController {
     const count = await this.prisma.user.count({
       where: {
         phoneNumber: { startsWith: 'GUEST_' },
+        username: { startsWith: 'Guest_' },
+        isVerified: false,
         createdAt: { lt: cutoff },
         gamesAsWhite: { none: {} },
         gamesAsBlack: { none: {} },
@@ -140,6 +142,8 @@ export class AdminController {
     const { count } = await this.prisma.user.deleteMany({
       where: {
         phoneNumber: { startsWith: 'GUEST_' },
+        username: { startsWith: 'Guest_' },
+        isVerified: false,
         createdAt: { lt: cutoff },
         gamesAsWhite: { none: {} },
         gamesAsBlack: { none: {} },
