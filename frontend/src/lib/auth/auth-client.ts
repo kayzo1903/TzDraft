@@ -50,6 +50,16 @@ export const authClient = {
   },
 
   async createGuest(): Promise<AuthResponse> {
+    // Reuse existing guest session if still authenticated — avoids creating a
+    // new DB record on every fresh page load for the same browser session.
+    const state = useAuthStore.getState();
+    if (state.isAuthenticated && state.user?.phoneNumber?.startsWith("GUEST_")) {
+      return {
+        user: state.user!,
+        accessToken: state.accessToken!,
+        refreshToken: state.refreshToken!,
+      };
+    }
     const response = await axiosInstance.post<AuthResponse>("/auth/guest");
     const { user, accessToken, refreshToken } = response.data;
     useAuthStore.getState().setAuth(user, accessToken, refreshToken);
