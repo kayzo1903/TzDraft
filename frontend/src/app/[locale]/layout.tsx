@@ -3,6 +3,7 @@ import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { JsonLd } from "@/components/seo/JsonLd";
 import type { Metadata } from "next";
 import {
   getCanonicalUrl,
@@ -12,8 +13,19 @@ import {
 } from "@/lib/seo";
 
 const SITE_NAME = "TzDraft";
-const DEFAULT_DESCRIPTION =
-  "Play Tanzania Drafti (8x8) online. Learn the rules, practice vs AI, and enjoy the classic game.";
+
+const LOCALE_META = {
+  sw: {
+    title: "TzDraft | Cheza Drafti Mtandaoni Tanzania — Bure Kabisa",
+    description:
+      "Cheza Drafti mtandaoni na marafiki au dhidi ya AI. Jisajili bure leo na jiunge na zaidi ya wachezaji 500 kila siku Tanzania.",
+  },
+  en: {
+    title: "TzDraft | Play Tanzania Drafti Online — Free",
+    description:
+      "Play Tanzania Drafti (8×8) online against AI or friends. Free to join — Tanzania's dedicated online Drafti platform.",
+  },
+} as const;
 
 export async function generateMetadata({
   params,
@@ -27,6 +39,9 @@ export async function generateMetadata({
     return {};
   }
 
+  const { title, description } =
+    LOCALE_META[locale as keyof typeof LOCALE_META] ?? LOCALE_META.en;
+
   const siteUrl = getSiteUrl();
   const canonical = getCanonicalUrl(locale, "", siteUrl);
 
@@ -34,10 +49,10 @@ export async function generateMetadata({
     metadataBase: siteUrl,
     applicationName: SITE_NAME,
     title: {
-      default: `${SITE_NAME} - Tanzania Drafti`,
-      template: `%s - ${SITE_NAME}`,
+      default: title,
+      template: `%s | ${SITE_NAME}`,
     },
-    description: DEFAULT_DESCRIPTION,
+    description,
     alternates: {
       canonical,
       languages: getLanguageAlternates("", siteUrl),
@@ -45,16 +60,16 @@ export async function generateMetadata({
     openGraph: {
       type: "website",
       siteName: SITE_NAME,
-      title: `${SITE_NAME} - Tanzania Drafti`,
-      description: DEFAULT_DESCRIPTION,
+      title,
+      description,
       url: canonical,
       locale,
       images: ["/logo/logo.png"],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${SITE_NAME} - Tanzania Drafti`,
-      description: DEFAULT_DESCRIPTION,
+      title,
+      description,
       images: ["/logo/logo.png"],
     },
     icons: {
@@ -62,6 +77,48 @@ export async function generateMetadata({
     },
   };
 }
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "TzDraft",
+  url: "https://www.tzdraft.co.tz",
+  logo: "https://www.tzdraft.co.tz/logo/logo.png",
+  description:
+    "Tanzania's dedicated online Drafti gaming platform. Play against AI or friends for free.",
+  address: {
+    "@type": "PostalAddress",
+    addressCountry: "TZ",
+    addressRegion: "Dar es Salaam",
+  },
+};
+
+const gameSchema = {
+  "@context": "https://schema.org",
+  "@type": "Game",
+  name: "TzDraft — Drafti Mtandaoni",
+  description:
+    "Cheza Drafti mtandaoni Tanzania. Piga vita AI au marafiki wako bila malipo.",
+  url: "https://www.tzdraft.co.tz",
+  image: "https://www.tzdraft.co.tz/logo/logo.png",
+  numberOfPlayers: {
+    "@type": "QuantitativeValue",
+    minValue: 1,
+    maxValue: 2,
+  },
+  gamePlatform: "Web Browser",
+  inLanguage: ["sw", "en"],
+  countryOfOrigin: {
+    "@type": "Country",
+    name: "Tanzania",
+  },
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "TZS",
+    availability: "https://schema.org/InStock",
+  },
+};
 
 export default async function LocaleLayout({
   children,
@@ -80,6 +137,8 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
+      <JsonLd data={organizationSchema} />
+      <JsonLd data={gameSchema} />
       <Navbar />
       {children}
       <Footer />
