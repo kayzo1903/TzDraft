@@ -1,10 +1,11 @@
-"use client";
-
 import React from "react";
-import { useLocale } from "next-intl";
 
-export default function RulesPage() {
-  const locale = useLocale();
+export default async function RulesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const content = locale === "sw" ? swContent : enContent;
 
   return (

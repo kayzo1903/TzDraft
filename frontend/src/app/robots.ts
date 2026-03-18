@@ -9,7 +9,14 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/sw/auth/", "/en/auth/", "/sw/game/", "/en/game/"],
+        disallow: [
+          "/sw/auth/",
+          "/en/auth/",
+          "/sw/game/",
+          "/en/game/",
+          "/sw/admin/",
+          "/en/admin/",
+        ],
       },
     ],
     sitemap: new URL("/sitemap.xml", siteUrl).toString(),
