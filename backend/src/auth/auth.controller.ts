@@ -4,6 +4,7 @@ import {
   Get,
   Patch,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -193,6 +194,23 @@ export class AuthController {
   async getMyRank(@CurrentUser() user: any) {
     const rank = await this.userService.getPlayerRank(user.id);
     return { success: true, data: rank };
+  }
+
+  @Public()
+  @Get('leaderboard')
+  async getLeaderboard(
+    @Query('skip') skip = '0',
+    @Query('take') take = '50',
+    @Query('country') country?: string,
+    @Query('region') region?: string,
+  ) {
+    const data = await this.userService.getLeaderboard({
+      skip: parseInt(skip, 10),
+      take: Math.min(parseInt(take, 10), 100),
+      country,
+      region,
+    });
+    return { success: true, data };
   }
 
   @UseGuards(JwtAuthGuard)
