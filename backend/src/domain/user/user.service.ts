@@ -117,6 +117,66 @@ export class UserService {
     };
   }
 
+  async getLeaderboard(options: {
+    skip?: number;
+    take?: number;
+    country?: string;
+    region?: string;
+  }): Promise<{
+    items: Array<{
+      rank: number;
+      userId: string;
+      displayName: string;
+      username: string;
+      country: string | null;
+      region: string | null;
+      rating: number;
+      gamesPlayed: number;
+    }>;
+    total: number;
+  }> {
+    const { skip = 0, take = 50, country, region } = options;
+
+    const userFilter: Record<string, any> = {};
+    if (country) userFilter.country = country;
+    if (region) userFilter.region = region;
+    const where = Object.keys(userFilter).length > 0 ? { user: userFilter } : {};
+
+    const [entries, total] = await Promise.all([
+      this.prisma.rating.findMany({
+        where,
+        orderBy: { rating: 'desc' },
+        skip,
+        take,
+        include: {
+          user: {
+            select: {
+              displayName: true,
+              username: true,
+              country: true,
+              region: true,
+            },
+          },
+        },
+      }),
+      this.prisma.rating.count({ where }),
+    ]);
+
+    return {
+      items: entries.map((e, idx) => ({
+        rank: skip + idx + 1,
+        userId: e.userId,
+        displayName: e.user.displayName,
+        username: e.user.username,
+        country: e.user.country,
+        region: e.user.region,
+        rating: e.rating,
+        gamesPlayed: e.gamesPlayed,
+      })),
+      total,
+    };
+  }
+
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
