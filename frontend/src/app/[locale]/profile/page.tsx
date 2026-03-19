@@ -561,6 +561,12 @@ export default function ProfilePage() {
                     Game History
                   </Button>
                 </Link>
+                <Link href="/leaderboard">
+                  <Button variant="secondary" size="md" className="w-full justify-start gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Leaderboard
+                  </Button>
+                </Link>
                 <Link href="/rules">
                   <Button variant="outline" size="md" className="w-full justify-start gap-2">
                     <BookOpen className="h-4 w-4" />
