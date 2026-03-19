@@ -40,6 +40,14 @@ const nextConfig = {
   experimental: {
     externalDir: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cdn.sanity.io",
+      },
+    ],
+  },
   transpilePackages: ["@tzdraft/shared-client"],
   turbopack: {
     root: path.resolve(__dirname, ".."),
