@@ -35,10 +35,19 @@ if (isDeploymentBuild) {
   }
 }
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cdn.sanity.io",
+      },
+    ],
   },
   transpilePackages: ["@tzdraft/shared-client"],
   turbopack: {
