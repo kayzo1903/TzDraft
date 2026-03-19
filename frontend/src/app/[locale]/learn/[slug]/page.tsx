@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { getSiteUrl } from "@/lib/seo";
 import type { Metadata } from "next";
-import type { PortableTextBlock } from "@portabletext/types";
+import type { PortableTextBlock } from "@portabletext/react";
 import { Calendar, ArrowLeft, User, Tag } from "lucide-react";
 import { Link } from "@/i18n/routing";
 
