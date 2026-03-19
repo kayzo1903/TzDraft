@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           "/en/game/",
           "/sw/admin/",
           "/en/admin/",
+          "/studio/",
         ],
       },
     ],
