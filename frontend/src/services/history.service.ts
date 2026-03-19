@@ -37,6 +37,24 @@ export interface HistoryFilters {
   gameType?: "AI" | "RANKED" | "CASUAL" | "ALL";
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  username: string;
+  country: string | null;
+  region: string | null;
+  rating: number;
+  gamesPlayed: number;
+}
+
+export interface LeaderboardFilters {
+  skip?: number;
+  take?: number;
+  country?: string;
+  region?: string;
+}
+
 export const historyService = {
   async getHistory(
     skip = 0,
@@ -66,6 +84,19 @@ export const historyService = {
 
   async getRank(): Promise<PlayerRank> {
     const res = await axiosInstance.get("/auth/rank");
+    return res.data.data;
+  },
+
+  async getLeaderboard(
+    filters: LeaderboardFilters = {},
+  ): Promise<{ items: LeaderboardEntry[]; total: number }> {
+    const params: Record<string, string> = {
+      skip: String(filters.skip ?? 0),
+      take: String(filters.take ?? 50),
+    };
+    if (filters.country) params.country = filters.country;
+    if (filters.region) params.region = filters.region;
+    const res = await axiosInstance.get("/auth/leaderboard", { params });
     return res.data.data;
   },
 };
