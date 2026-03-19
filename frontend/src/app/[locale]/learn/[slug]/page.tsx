@@ -40,34 +40,38 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { locale, slug } = await params;
-  if (!isSanityConfigured) return {};
-
-  let article: Article | null = null;
   try {
-    article = await client.fetch(articleBySlugQuery, { slug });
+    const { locale, slug } = await params;
+    if (!isSanityConfigured) return {};
+
+    let article: Article | null = null;
+    try {
+      article = await client.fetch(articleBySlugQuery, { slug });
+    } catch {
+      return {};
+    }
+    if (!article) return {};
+
+    const title = locale === "sw" ? article.title?.sw : article.title?.en;
+    const description = locale === "sw" ? article.description?.sw : article.description?.en;
+    const keywords = locale === "sw" ? article.keywords?.sw : article.keywords?.en;
+    const siteUrl = getSiteUrl();
+
+    return {
+      title,
+      description,
+      keywords,
+      openGraph: {
+        type: "article",
+        title: title ?? "",
+        description: description ?? "",
+        url: new URL(`/${locale}/learn/${slug}`, siteUrl).toString(),
+        images: article.coverImageUrl ? [article.coverImageUrl] : ["/logo/logo.png"],
+      },
+    };
   } catch {
     return {};
   }
-  if (!article) return {};
-
-  const title = locale === "sw" ? article.title?.sw : article.title?.en;
-  const description = locale === "sw" ? article.description?.sw : article.description?.en;
-  const keywords = locale === "sw" ? article.keywords?.sw : article.keywords?.en;
-  const siteUrl = getSiteUrl();
-
-  return {
-    title,
-    description,
-    keywords,
-    openGraph: {
-      type: "article",
-      title: title ?? "",
-      description: description ?? "",
-      url: new URL(`/${locale}/learn/${slug}`, siteUrl).toString(),
-      images: article.coverImageUrl ? [article.coverImageUrl] : ["/logo/logo.png"],
-    },
-  };
 }
 
 export default async function ArticlePage({
