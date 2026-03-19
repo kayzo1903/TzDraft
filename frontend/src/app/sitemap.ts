@@ -24,7 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Dynamic article routes
+  // Dynamic article routes — skip if Sanity is not configured at build time
+  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return items;
   try {
     const slugs: { slug: string }[] = await client.fetch(allSlugsQuery);
     for (const { slug } of slugs) {
