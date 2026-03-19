@@ -1,7 +1,7 @@
 "use client";
 
 import { PortableText } from "@portabletext/react";
-import type { PortableTextBlock } from "@portabletext/types";
+import type { PortableTextBlock } from "@portabletext/react";
 
 type Locale = "sw" | "en";
 
