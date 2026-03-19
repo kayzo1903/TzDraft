@@ -1,14 +1,17 @@
-"use client";
-
 import React from 'react';
 import { Link } from '@/i18n/routing';
 import { HeroBoard } from '@/components/hero/HeroBoard';
 import { Button } from '@/components/ui/Button';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import { Globe, Cpu, Trophy, BarChart3, BookOpen, ScanSearch, Lock, Users, ArrowRight } from 'lucide-react';
 
-export default function Home() {
-  const t = useTranslations('hero');
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  await params; // locale is handled by the layout; getTranslations resolves from request context
+  const t = await getTranslations('hero');
 
   return (
     <main className="bg-[var(--background)] flex flex-col">
