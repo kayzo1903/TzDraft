@@ -51,7 +51,7 @@ export async function generateMetadata({
   }
   if (!article) return {};
 
-  const title = locale === "sw" ? article.title.sw : article.title.en;
+  const title = locale === "sw" ? article.title?.sw : article.title?.en;
   const description = locale === "sw" ? article.description?.sw : article.description?.en;
   const keywords = locale === "sw" ? article.keywords?.sw : article.keywords?.en;
   const siteUrl = getSiteUrl();
@@ -86,9 +86,9 @@ export default async function ArticlePage({
   }
   if (!article) notFound();
 
-  const title    = locale === "sw" ? (article.title.sw || article.title.en) : (article.title.en || article.title.sw);
+  const title    = locale === "sw" ? (article.title?.sw || article.title?.en) : (article.title?.en || article.title?.sw);
   const body     = locale === "sw" ? article.body?.sw : article.body?.en;
-  const category = locale === "sw" ? article.category?.title.sw : article.category?.title.en;
+  const category = locale === "sw" ? article.category?.title?.sw : article.category?.title?.en;
   const siteUrl = getSiteUrl();
 
   const formattedDate = article.publishedAt
