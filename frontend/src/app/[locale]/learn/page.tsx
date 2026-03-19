@@ -1,4 +1,4 @@
-import { client } from "@/sanity/client";
+import { client, isSanityConfigured } from "@/sanity/client";
 import { allArticlesQuery } from "@/sanity/queries";
 import { ArticleCard } from "@/components/blog/ArticleCard";
 import { BookOpen } from "lucide-react";
@@ -23,11 +23,18 @@ export default async function LearnPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const articles: ArticleSummary[] = await client.fetch(
-    allArticlesQuery,
-    {},
-    { next: { revalidate: 60 } },
-  );
+  let articles: ArticleSummary[] = [];
+  if (isSanityConfigured) {
+    try {
+      articles = await client.fetch(
+        allArticlesQuery,
+        {},
+        { next: { revalidate: 60 } },
+      );
+    } catch {
+      articles = [];
+    }
+  }
 
   const featuredArticle = articles.find((a) => a.featured);
   const restArticles    = articles.filter((a) => !a.featured || a !== featuredArticle);

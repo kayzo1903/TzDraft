@@ -1,4 +1,4 @@
-import { client } from "@/sanity/client";
+import { client, isSanityConfigured } from "@/sanity/client";
 import { articleBySlugQuery, allSlugsQuery } from "@/sanity/queries";
 import { ArticleBody } from "@/components/blog/ArticleBody";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -25,8 +25,14 @@ interface Article {
 export const revalidate = 60;
 
 export async function generateStaticParams() {
-  const slugs: { slug: string }[] = await client.fetch(allSlugsQuery);
-  return slugs.map((s) => ({ slug: s.slug }));
+  if (!isSanityConfigured) return [];
+
+  try {
+    const slugs: { slug: string }[] = await client.fetch(allSlugsQuery);
+    return slugs.map((s) => ({ slug: s.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -35,7 +41,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const article: Article | null = await client.fetch(articleBySlugQuery, { slug });
+  if (!isSanityConfigured) return {};
+
+  let article: Article | null = null;
+  try {
+    article = await client.fetch(articleBySlugQuery, { slug });
+  } catch {
+    return {};
+  }
   if (!article) return {};
 
   const title = locale === "sw" ? article.title.sw : article.title.en;
@@ -63,7 +76,14 @@ export default async function ArticlePage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
-  const article: Article | null = await client.fetch(articleBySlugQuery, { slug });
+  if (!isSanityConfigured) notFound();
+
+  let article: Article | null = null;
+  try {
+    article = await client.fetch(articleBySlugQuery, { slug });
+  } catch {
+    notFound();
+  }
   if (!article) notFound();
 
   const title    = locale === "sw" ? (article.title.sw || article.title.en) : (article.title.en || article.title.sw);

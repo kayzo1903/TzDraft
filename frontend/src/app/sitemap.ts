@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { routing } from "@/i18n/routing";
 import { getSiteUrl } from "@/lib/seo";
-import { client } from "@/sanity/client";
+import { client, isSanityConfigured } from "@/sanity/client";
 import { allSlugsQuery } from "@/sanity/queries";
 
 const publicPaths = ["", "/play", "/rules", "/policy", "/support", "/learn"] as const;
@@ -25,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Dynamic article routes — skip if Sanity is not configured at build time
-  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return items;
+  if (!isSanityConfigured) return items;
   try {
     const slugs: { slug: string }[] = await client.fetch(allSlugsQuery);
     for (const { slug } of slugs) {
