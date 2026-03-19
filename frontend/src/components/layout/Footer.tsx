@@ -25,6 +25,12 @@ export const Footer: React.FC = () => {
                             {t('rules')}
                         </Link>
                         <Link
+                            href="/learn"
+                            className="text-[#999999] hover:text-[var(--primary)] text-sm transition-colors"
+                        >
+                            {t('learn')}
+                        </Link>
+                        <Link
                             href="/policy"
                             className="text-[#999999] hover:text-[var(--primary)] text-sm transition-colors"
                         >
