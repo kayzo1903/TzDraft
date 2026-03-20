@@ -46,7 +46,6 @@ export async function generateMetadata({
   const canonical = getCanonicalUrl(locale, "", siteUrl);
 
   return {
-    metadataBase: siteUrl,
     applicationName: SITE_NAME,
     title: {
       default: title,
