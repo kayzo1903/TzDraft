@@ -30,11 +30,19 @@ export function ArticleCard({
   const d   = locale === "sw" ? description?.sw                : description?.en;
   const cat = locale === "sw" ? category?.title.sw             : category?.title.en;
 
-  const formattedDate = publishedAt
-    ? new Date(publishedAt).toLocaleDateString(locale === "sw" ? "sw-TZ" : "en-TZ", {
+  let formattedDate: string | null = null;
+  if (publishedAt) {
+    try {
+      formattedDate = new Date(publishedAt).toLocaleDateString(
+        locale === "sw" ? "sw-TZ" : "en-TZ",
+        { year: "numeric", month: "long", day: "numeric" },
+      );
+    } catch {
+      formattedDate = new Date(publishedAt).toLocaleDateString("en-US", {
         year: "numeric", month: "long", day: "numeric",
-      })
-    : null;
+      });
+    }
+  }
 
   if (variant === "featured") {
     return (

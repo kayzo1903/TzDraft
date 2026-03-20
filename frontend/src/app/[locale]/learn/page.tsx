@@ -37,7 +37,7 @@ export default async function LearnPage({
   }
 
   const featuredArticle = articles.find((a) => a.featured);
-  const restArticles    = articles.filter((a) => !a.featured || a !== featuredArticle);
+  const restArticles    = articles.filter((a) => a !== featuredArticle);
 
   const ui = {
     heading:    locale === "sw" ? "Makala & Mwongozo"                                                       : "Articles & Guides",
