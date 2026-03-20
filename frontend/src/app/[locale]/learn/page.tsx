@@ -1,7 +1,9 @@
 import { client, isSanityConfigured } from "@/sanity/client";
 import { allArticlesQuery } from "@/sanity/queries";
 import { ArticleCard } from "@/components/blog/ArticleCard";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { BookOpen } from "lucide-react";
+import { isAppLocale } from "@/lib/seo";
 
 // Revalidate every 60 seconds — new posts appear without a redeploy
 export const revalidate = 60;
@@ -48,6 +50,15 @@ export default async function LearnPage({
 
   return (
     <main className="min-h-screen bg-[var(--background)] py-14 px-4 sm:px-6">
+      {isAppLocale(locale) && (
+        <BreadcrumbJsonLd
+          locale={locale}
+          items={[
+            { name: locale === "sw" ? "Nyumbani" : "Home", path: "" },
+            { name: locale === "sw" ? "Makala" : "Articles", path: "/learn" },
+          ]}
+        />
+      )}
       <div className="max-w-5xl mx-auto space-y-12">
 
         {/* Header */}

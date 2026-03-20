@@ -1,6 +1,7 @@
 import { client, isSanityConfigured } from "@/sanity/client";
 import { articleBySlugQuery, allSlugsQuery } from "@/sanity/queries";
 import { ArticleBody } from "@/components/blog/ArticleBody";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { getSiteUrl } from "@/lib/seo";
@@ -141,6 +142,14 @@ export default async function ArticlePage({
 
   return (
     <>
+      <BreadcrumbJsonLd
+        locale={locale as (typeof routing.locales)[number]}
+        items={[
+          { name: locale === "sw" ? "Nyumbani" : "Home", path: "" },
+          { name: locale === "sw" ? "Makala" : "Articles", path: "/learn" },
+          { name: title || (locale === "sw" ? "Makala" : "Article") },
+        ]}
+      />
       <JsonLd data={articleSchema} />
       <main className="min-h-screen bg-background py-12 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
