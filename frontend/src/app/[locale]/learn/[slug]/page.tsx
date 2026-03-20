@@ -4,6 +4,7 @@ import { ArticleBody } from "@/components/blog/ArticleBody";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { getSiteUrl } from "@/lib/seo";
+import { routing } from "@/i18n/routing";
 import type { Metadata } from "next";
 import type { PortableTextBlock } from "@portabletext/react";
 import { Calendar, ArrowLeft, User, Tag } from "lucide-react";
@@ -29,7 +30,12 @@ export async function generateStaticParams() {
 
   try {
     const slugs: { slug: string }[] = await client.fetch(allSlugsQuery);
-    return slugs.map((s) => ({ slug: s.slug }));
+    return slugs.flatMap((s) =>
+      routing.locales.map((locale) => ({
+        locale,
+        slug: s.slug,
+      })),
+    );
   } catch {
     return [];
   }
