@@ -20,12 +20,12 @@ export async function generateMetadata({
 
   const meta = {
     sw: {
-      title: "Makala & Mwongozo | TzDraft",
+      title: "Makala na Mwongozo wa Drafti Tanzania",
       description:
         "Jifunze sheria za Drafti ya Tanzania, mikakati, historia, na jinsi ya kucheza mtandaoni.",
     },
     en: {
-      title: "Articles & Guides | TzDraft",
+      title: "Tanzania Drafti Articles and Guides",
       description:
         "Learn Tanzania Drafti rules, strategy, history, and how to play online.",
     },
