@@ -96,11 +96,25 @@ export default async function ArticlePage({
   const siteUrl = getSiteUrl();
 
   const formattedDate = article.publishedAt
-    ? new Date(article.publishedAt).toLocaleDateString(locale === "sw" ? "sw-TZ" : "en-TZ", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? (() => {
+        const d = new Date(article.publishedAt!);
+        const icuLocale = locale === "sw" ? "sw-TZ" : "en-TZ";
+        try {
+          return d.toLocaleDateString(icuLocale, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        } catch {
+          // Fallback: sw-TZ is not included in the slim Docker Node.js image's
+          // small-icu data. Using en-US prevents a RangeError → 500 in production.
+          return d.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        }
+      })()
     : null;
 
   const articleSchema = {
