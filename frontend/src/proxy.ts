@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 
 const intlMiddleware = createMiddleware(routing);
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   // Skip next-intl for the embedded Sanity Studio
   if (request.nextUrl.pathname.startsWith("/studio")) {
     return;
