@@ -8,6 +8,7 @@ WORKDIR /app
 # Copy workspace manifests for layer caching
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/cake-engine/package.json ./packages/cake-engine/
+COPY packages/shared-client/package.json ./packages/shared-client/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 
@@ -16,6 +17,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source
 COPY packages/cake-engine/ ./packages/cake-engine/
+COPY packages/shared-client/ ./packages/shared-client/
 COPY frontend/ ./frontend/
 
 # Build shared CAKE engine first (frontend imports it via webpack alias)
@@ -27,8 +29,12 @@ WORKDIR /app/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_BETTER_AUTH_URL
+ARG NEXT_PUBLIC_SANITY_PROJECT_ID
+ARG NEXT_PUBLIC_SANITY_DATASET=production
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_BETTER_AUTH_URL=$NEXT_PUBLIC_BETTER_AUTH_URL
+ENV NEXT_PUBLIC_SANITY_PROJECT_ID=$NEXT_PUBLIC_SANITY_PROJECT_ID
+ENV NEXT_PUBLIC_SANITY_DATASET=$NEXT_PUBLIC_SANITY_DATASET
 RUN pnpm build
 
 # ─── Stage 2: Production ──────────────────────────────────────────────────────

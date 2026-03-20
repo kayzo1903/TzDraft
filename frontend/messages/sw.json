@@ -2,6 +2,7 @@
   "nav": {
     "home": "Nyumbani",
     "play": "Cheza",
+    "leaderboard": "Orodha ya Bingwa",
     "support": "Msaada",
     "login": "Ingia",
     "signup": "Jisajili",
@@ -19,7 +20,7 @@
     },
     "featureGrid": {
       "title": "Kila Kitu Mahali Pamoja",
-      "subtitle": "Uzoefu wako kamili wa TzDraft — kutoka michezo ya starehe hadi mashindano ya kweli.",
+      "subtitle": "Uzoefu wako kamili wa TzDraft â€” kutoka michezo ya starehe hadi mashindano ya kweli.",
       "comingSoon": "Inakuja Hivi Karibuni",
       "limited": "Imepunguzwa",
       "playOnline": {
@@ -275,7 +276,8 @@
     "privacyPolicy": "Sera na Faragha",
     "rights": "Haki zote zimehifadhiwa.",
     "madeWith": "Imetengenezwa kwa",
-    "by": "na"
+    "by": "na",
+    "learn": "Makala"
   },
   "notFound": {
     "code": "404",
@@ -298,7 +300,7 @@
       "rule": "Shinda bila kutumia Rudisha ili kufungua bot inayofuata."
     },
     "lockedShort": "Imefungwa",
-    "locked": "Imefungwa — shinda bila Rudisha ili kufungua",
+    "locked": "Imefungwa â€” shinda bila Rudisha ili kufungua",
     "unlockInstruction": {
       "message": "Mshinde {previous} ili kufungua {next} (bila Rudisha).",
       "allUnlocked": "Viwango vyote vya AI vimefunguliwa."
@@ -414,7 +416,7 @@
       "reset": "Anza Upya"
     },
     "progression": {
-      "disabled": "Umetumia Rudisha — mchezo huu hautafungua bot inayofuata."
+      "disabled": "Umetumia Rudisha â€” mchezo huu hautafungua bot inayofuata."
     },
     "resign": {
       "confirmTitle": "Thibitisha Kujisalimisha",

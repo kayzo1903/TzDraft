@@ -1,0 +1,25 @@
+# Local env files — must never enter the Docker build context.
+# Next.js loads .env.local with override:true, which would overwrite the
+# --build-arg values injected by CI and break the production guard in next.config.ts.
+frontend/.env.local
+frontend/.env.*.local
+backend/.env.local
+backend/.env.*.local
+.env.local
+.env.*.local
+
+# Dev/test artefacts
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+**/*.log
+
+# Git & editor noise
+.git
+.gitignore
+.github
+.vscode
+*.md

@@ -1,14 +1,17 @@
-"use client";
-
 import React from 'react';
 import { Link } from '@/i18n/routing';
 import { HeroBoard } from '@/components/hero/HeroBoard';
 import { Button } from '@/components/ui/Button';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import { Globe, Cpu, Trophy, BarChart3, BookOpen, ScanSearch, Lock, Users, ArrowRight } from 'lucide-react';
 
-export default function Home() {
-  const t = useTranslations('hero');
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  await params; // locale is handled by the layout; getTranslations resolves from request context
+  const t = await getTranslations('hero');
 
   return (
     <main className="bg-[var(--background)] flex flex-col">
@@ -131,11 +134,41 @@ export default function Home() {
               </div>
             </Link>
 
+            {/* Leaderboard — Active */}
+            <Link href="/leaderboard">
+              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-(--secondary)/40 hover:bg-secondary hover:border-amber-500/30 p-4 sm:p-5 transition-all duration-200 cursor-pointer">
+                <div className="absolute inset-0 bg-linear-to-br from-amber-500/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">{t('featureGrid.leaderboard.title')}</h3>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{t('featureGrid.leaderboard.desc')}</p>
+                </div>
+              </div>
+            </Link>
+
+            {/* Learn — Active */}
+            <Link href="/learn">
+              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-(--secondary)/40 hover:bg-secondary hover:border-emerald-500/30 p-4 sm:p-5 transition-all duration-200 cursor-pointer">
+                <div className="absolute inset-0 bg-linear-to-br from-emerald-500/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">{t('featureGrid.learn.title')}</h3>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{t('featureGrid.learn.desc')}</p>
+                </div>
+              </div>
+            </Link>
+
             {/* Remaining locked tiles */}
             {([
               { key: 'tournaments',  Icon: Trophy     },
-              { key: 'leaderboard',  Icon: BarChart3  },
-              { key: 'learn',        Icon: BookOpen   },
               { key: 'analysis',     Icon: ScanSearch },
             ] as const).map(({ key, Icon }) => (
               <div

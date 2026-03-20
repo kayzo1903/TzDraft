@@ -2,7 +2,9 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -22,16 +24,19 @@ import {
   SendOtpDto,
   VerifyOtpDto,
   ResetPasswordPhoneDto,
+  UpdateProfileDto,
 } from './dto';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UserService } from '../domain/user/user.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private otpService: OtpService,
+    private userService: UserService,
   ) {}
 
   private getCookie(req: Request, name: string): string | undefined {
@@ -182,6 +187,41 @@ export class AuthController {
       dto.code,
       dto.newPassword,
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('rank')
+  async getMyRank(@CurrentUser() user: any) {
+    const rank = await this.userService.getPlayerRank(user.id);
+    return { success: true, data: rank };
+  }
+
+  @Public()
+  @Get('leaderboard')
+  async getLeaderboard(
+    @Query('skip') skip = '0',
+    @Query('take') take = '50',
+    @Query('country') country?: string,
+    @Query('region') region?: string,
+  ) {
+    const data = await this.userService.getLeaderboard({
+      skip: parseInt(skip, 10),
+      take: Math.min(parseInt(take, 10), 100),
+      country,
+      region,
+    });
+    return { success: true, data };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const updated = await this.userService.updateProfile(user.id, dto);
+    return { success: true, data: updated };
   }
 
   @Public()

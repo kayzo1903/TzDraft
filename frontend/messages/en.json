@@ -2,6 +2,7 @@
   "nav": {
     "home": "Home",
     "play": "Play",
+    "leaderboard": "Leaderboard",
     "support": "Support",
     "login": "Log In",
     "signup": "Sign Up",
@@ -19,7 +20,7 @@
     },
     "featureGrid": {
       "title": "Everything in One Place",
-      "subtitle": "Your complete TzDraft experience — from casual games to serious competition.",
+      "subtitle": "Your complete TzDraft experience â€” from casual games to serious competition.",
       "comingSoon": "Coming Soon",
       "limited": "Limited",
       "playOnline": {
@@ -275,7 +276,8 @@
     "privacyPolicy": "Policy & Privacy",
     "rights": "All rights reserved.",
     "madeWith": "Made with",
-    "by": "by"
+    "by": "by",
+    "learn": "Articles"
   },
   "notFound": {
     "code": "404",
@@ -298,7 +300,7 @@
       "rule": "Win without using Undo to unlock the next bot."
     },
     "lockedShort": "Locked",
-    "locked": "Locked — win without Undo to unlock",
+    "locked": "Locked â€” win without Undo to unlock",
     "unlockInstruction": {
       "message": "Defeat {previous} to unlock {next} (no Undo).",
       "allUnlocked": "All AI levels unlocked."
@@ -414,7 +416,7 @@
       "reset": "Reset Game"
     },
     "progression": {
-      "disabled": "Undo used — this game will not unlock the next bot."
+      "disabled": "Undo used â€” this game will not unlock the next bot."
     },
     "resign": {
       "confirmTitle": "Confirm Resign",
