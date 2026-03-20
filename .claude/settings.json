@@ -15,7 +15,8 @@
       "Bash(timeout 8 bash -c \"echo > /dev/tcp/aws-1-eu-west-1.pooler.supabase.com/5432\")",
       "Bash(pnpm test --testPathPatterns=\"capture-finding|move-validation|game-rules|make-move.use-case\" --no-coverage)",
       "Bash(pnpm test --no-coverage)",
-      "Bash(pnpm test:cov)"
+      "Bash(pnpm test:cov)",
+      "Bash(grep -n \"featured\" src/app/[locale]/learn/page.tsx)"
     ]
   }
 }
