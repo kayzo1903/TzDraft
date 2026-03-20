@@ -5,6 +5,7 @@ import {
   getSiteUrl,
   isAppLocale,
 } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export async function generateMetadata({
   params,
@@ -57,5 +58,21 @@ export default function LeaderboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  const siteUrl = getSiteUrl();
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "TzDraft Leaderboard — Top Tanzania Drafti Players",
+    description:
+      "Rankings of the top Tanzania Drafti (Drafti) players on TzDraft, ordered by rating.",
+    url: `${siteUrl}/sw/leaderboard`,
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+  };
+
+  return (
+    <>
+      <JsonLd data={itemListSchema} />
+      {children}
+    </>
+  );
 }
