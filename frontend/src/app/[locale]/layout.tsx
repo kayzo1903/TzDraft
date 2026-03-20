@@ -94,7 +94,7 @@ const organizationSchema = {
 
 const gameSchema = {
   "@context": "https://schema.org",
-  "@type": "Game",
+  "@type": "VideoGame",
   name: "TzDraft — Drafti Mtandaoni",
   description:
     "Cheza Drafti mtandaoni Tanzania. Piga vita AI au marafiki wako bila malipo.",

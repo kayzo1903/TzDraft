@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import {
   getCanonicalUrl,
   getLanguageAlternates,
@@ -53,11 +54,14 @@ export async function generateMetadata({
   };
 }
 
-export default function LeaderboardLayout({
+export default async function LeaderboardLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }) {
+  const { locale } = await params;
   const siteUrl = getSiteUrl();
   const itemListSchema = {
     "@context": "https://schema.org",
@@ -71,6 +75,18 @@ export default function LeaderboardLayout({
 
   return (
     <>
+      {isAppLocale(locale) && (
+        <BreadcrumbJsonLd
+          locale={locale}
+          items={[
+            { name: locale === "sw" ? "Nyumbani" : "Home", path: "" },
+            {
+              name: locale === "sw" ? "Orodha ya Bingwa" : "Leaderboard",
+              path: "/leaderboard",
+            },
+          ]}
+        />
+      )}
       <JsonLd data={itemListSchema} />
       {children}
     </>
