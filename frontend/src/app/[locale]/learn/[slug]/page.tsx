@@ -95,13 +95,19 @@ export default async function ArticlePage({
   const category = locale === "sw" ? article.category?.title?.sw : article.category?.title?.en;
   const siteUrl = getSiteUrl();
 
-  const formattedDate = article.publishedAt
-    ? new Date(article.publishedAt).toLocaleDateString(locale === "sw" ? "sw-TZ" : "en-TZ", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+  let formattedDate: string | null = null;
+  if (article.publishedAt) {
+    try {
+      formattedDate = new Date(article.publishedAt).toLocaleDateString(
+        locale === "sw" ? "sw-TZ" : "en-TZ",
+        { year: "numeric", month: "long", day: "numeric" },
+      );
+    } catch {
+      formattedDate = new Date(article.publishedAt).toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric",
+      });
+    }
+  }
 
   const articleSchema = {
     "@context": "https://schema.org",
