@@ -20,19 +20,30 @@ export async function generateMetadata({
 
   const siteUrl = getSiteUrl();
   const canonical = getCanonicalUrl(locale, "/rules", siteUrl);
+  const meta = {
+    sw: {
+      title: "Sheria za Drafti | Jinsi ya Kucheza Drafti Tanzania",
+      description:
+        "Soma sheria rasmi za Drafti ya Tanzania: mwendo, kula lazima, kupandishwa kuwa kingi, na masharti ya ushindi.",
+    },
+    en: {
+      title: "Tanzania Drafti Rules | How To Play Drafti",
+      description:
+        "Learn the official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and winning conditions.",
+    },
+  } as const;
+  const { title, description } = meta[locale as keyof typeof meta] ?? meta.en;
 
   return {
-    title: "Rules",
-    description:
-      "Official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and endgame conditions.",
+    title,
+    description,
     alternates: {
       canonical,
       languages: getLanguageAlternates("/rules", siteUrl),
     },
     openGraph: {
-      title: "Rules - TzDraft",
-      description:
-        "Official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and endgame conditions.",
+      title,
+      description,
       url: canonical,
       locale,
       type: "article",

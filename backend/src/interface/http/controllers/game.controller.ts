@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Param,
+  Query,
   Body,
   HttpCode,
   HttpStatus,
@@ -28,6 +29,9 @@ import { JoinQueueDto } from '../dtos/join-queue.dto';
 import { PlayerColor } from '../../../shared/constants/game.constants';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { JoinQueueUseCase } from '../../../application/use-cases/join-queue.use-case';
+import { GetGameHistoryUseCase } from '../../../application/use-cases/get-game-history.use-case';
+import { GetPlayerStatsUseCase } from '../../../application/use-cases/get-player-stats.use-case';
+import { GameType } from '../../../shared/constants/game.constants';
 
 /**
  * Game Controller
@@ -44,6 +48,8 @@ export class GameController {
     private readonly endGameUseCase: EndGameUseCase,
     private readonly gamesGateway: GamesGateway,
     private readonly joinQueueUseCase: JoinQueueUseCase,
+    private readonly getGameHistoryUseCase: GetGameHistoryUseCase,
+    private readonly getPlayerStatsUseCase: GetPlayerStatsUseCase,
   ) {}
 
   /**
@@ -203,6 +209,40 @@ export class GameController {
   }
 
   /**
+   * Get current user's game history (paginated)
+   */
+  @Get('history')
+  @ApiOperation({ summary: 'Get my game history' })
+  async getMyHistory(
+    @CurrentUser() user: any,
+    @Query('skip') skip = '0',
+    @Query('take') take = '20',
+    @Query('result') result?: 'WIN' | 'LOSS' | 'DRAW',
+    @Query('gameType') gameType?: string,
+  ) {
+    const data = await this.getGameHistoryUseCase.execute(
+      user.id,
+      parseInt(skip, 10),
+      parseInt(take, 10),
+      {
+        result,
+        gameType: gameType as GameType | undefined,
+      },
+    );
+    return { success: true, data };
+  }
+
+  /**
+   * Get current user's win/loss/draw stats
+   */
+  @Get('stats')
+  @ApiOperation({ summary: 'Get my game stats' })
+  async getMyStats(@CurrentUser() user: any) {
+    const data = await this.getPlayerStatsUseCase.execute(user.id);
+    return { success: true, data };
+  }
+
+  /**
    * Get game by ID
    */
   @Get(':id')
@@ -292,6 +332,33 @@ export class GameController {
     return {
       success: true,
       data: result,
+    };
+  }
+
+  /**
+   * Get all moves for a game (for replay)
+   */
+  @Get(':id/replay')
+  @ApiOperation({ summary: 'Get all moves for game replay' })
+  async getGameReplay(@Param('id') id: string) {
+    const { game, moves, players } = await this.getGameStateUseCase.execute(id);
+    return {
+      success: true,
+      data: {
+        game,
+        players,
+        moves: moves.map((m) => ({
+          id: m.id,
+          moveNumber: m.moveNumber,
+          player: m.player,
+          fromSquare: m.from.value,
+          toSquare: m.to.value,
+          capturedSquares: m.capturedSquares.map((p) => p.value),
+          isPromotion: m.isPromotion,
+          notation: m.notation,
+          createdAt: m.createdAt,
+        })),
+      },
     };
   }
 }

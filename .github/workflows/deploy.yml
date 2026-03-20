@@ -35,9 +35,12 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_BETTER_AUTH_URL: ${{ vars.NEXT_PUBLIC_BETTER_AUTH_URL }}
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ vars.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+          NEXT_PUBLIC_SANITY_DATASET: ${{ vars.NEXT_PUBLIC_SANITY_DATASET }}
         run: |
           : "${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is not set in GitHub → Environments → production → Variables}"
           : "${NEXT_PUBLIC_BETTER_AUTH_URL:?NEXT_PUBLIC_BETTER_AUTH_URL is not set in GitHub → Environments → production → Variables}"
+          : "${NEXT_PUBLIC_SANITY_PROJECT_ID:?NEXT_PUBLIC_SANITY_PROJECT_ID is not set in GitHub → Environments → production → Variables}"
           echo "✅ Build-time env vars validated"
 
       - name: Set up Docker Buildx
@@ -74,6 +77,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_BETTER_AUTH_URL=${{ vars.NEXT_PUBLIC_BETTER_AUTH_URL }}
+            NEXT_PUBLIC_SANITY_PROJECT_ID=${{ vars.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+            NEXT_PUBLIC_SANITY_DATASET=${{ vars.NEXT_PUBLIC_SANITY_DATASET }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

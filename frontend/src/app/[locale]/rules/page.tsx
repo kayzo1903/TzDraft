@@ -1,13 +1,176 @@
-"use client";
-
 import React from "react";
-import { useLocale } from "next-intl";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { getSiteUrl } from "@/lib/seo";
 
-export default function RulesPage() {
-  const locale = useLocale();
+export default async function RulesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const content = locale === "sw" ? swContent : enContent;
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}/${locale}/rules`;
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: locale === "sw"
+      ? [
+          {
+            "@type": "Question",
+            name: "Kete za kawaida husonga vipi katika Drafti ya Tanzania?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Kete za kawaida husonga sanduku moja mbele kwa ulalo na haziruhusiwi kurudi nyuma. Hupandishwa kuwa Kingi ukifikia mwisho wa adui.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Kingi husonga vipi katika Drafti ya Tanzania?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Kingi ni 'kingi huruka': husonga kwa ulalo umbali wowote na hula mbele au nyuma kwa ulalo kwa umbali.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Je, kula ni lazima katika Drafti ya Tanzania?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Ndiyo, kula ni lazima ikiwa kuna nafasi ya kula. Njia yoyote ya kula inaruhusiwa — hakuna lazima ya kula nyingi zaidi.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Unashinda vipi katika Drafti ya Tanzania?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Unashinda mpinzani hana kete, hana hatua halali, amejisalimisha, au muda wake umekwisha (isipokuwa masharti ya sare).",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Masharti ya sare ni yapi katika Drafti ya Tanzania?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Sare hutokea muda ukimalizika kwa 3 dhidi ya 1 kingi. Kwa 1 kingi dhidi ya 3 kingi, upande wa kingi 3 una hatua 12 kushinda au mchezo ni sare.",
+            },
+          },
+        ]
+      : [
+          {
+            "@type": "Question",
+            name: "How do men move in Tanzania Drafti?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Men move one square diagonally forward and cannot move backward. They promote to kings upon reaching the opponent's back rank.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "How do kings move in Tanzania Drafti?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Kings are flying kings: they can move diagonally any number of squares and capture diagonally forward and backward over distance.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Is capturing mandatory in Tanzania Drafti?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Yes, capturing is mandatory when any capture exists. Any capture route is allowed — there is no maximum-capture requirement.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "How do you win in Tanzania Drafti?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "You win when the opponent has no remaining pieces, has no legal moves, resigns, or runs out of time (except in specific draw situations).",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "What are the draw conditions in Tanzania Drafti?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "A draw occurs when time runs out in 3 vs 1 material. In a 1 king vs 3 kings position, the 3-king side has 12 moves to win or the game is a draw.",
+            },
+          },
+        ],
+  };
+
+  const howToSchema = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: locale === "sw" ? "Jinsi ya Kucheza Drafti Tanzania" : "How to Play Tanzania Drafti",
+    description: locale === "sw"
+      ? "Jifunza sheria rasmi za Drafti ya Tanzania: mwendo, kula lazima, kupandishwa kuwa kingi, na masharti ya ushindi."
+      : "Learn the official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and winning conditions.",
+    url: pageUrl,
+    step: locale === "sw"
+      ? [
+          {
+            "@type": "HowToStep",
+            name: "Panga ubao",
+            text: "Weka kete 12 kila upande kwenye ubao wa 8×8, sanduku nyeusi pekee. Nyeupe huanza kwanza.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Songa kete zako",
+            text: "Kete za kawaida husonga sanduku moja mbele kwa ulalo. Kingi husonga kwa ulalo umbali wowote.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Kula kete za adui",
+            text: "Kula ni lazima ikiwa inapatikana. Ruka juu ya kete ya adui hadi sanduku tupu baada yake. Mnyororo wa kula unaruhusiwa.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Pandisha kuwa Kingi",
+            text: "Kete ya kawaida inayofika mwisho wa adui inakuwa Kingi. Kupandishwa kunamaliza mnyororo wa kula mara moja.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Shinda mchezo",
+            text: "Shinda kwa kukamata kete zote za adui, kumwacha bila hatua halali, au anaposalimu au muda wake kumalizika.",
+          },
+        ]
+      : [
+          {
+            "@type": "HowToStep",
+            name: "Set up the board",
+            text: "Place 12 pieces each on an 8×8 board, dark squares only. White moves first.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Move your pieces",
+            text: "Men move one square diagonally forward. Kings (flying kings) move any number of squares diagonally.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Capture opponent pieces",
+            text: "Capturing is mandatory when available. Jump over an opponent piece to an empty square beyond it. Multi-captures are allowed.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Promote to king",
+            text: "When a man reaches the opponent's back rank, it becomes a king. Promotion ends the capture sequence immediately.",
+          },
+          {
+            "@type": "HowToStep",
+            name: "Win the game",
+            text: "Win by capturing all opponent pieces, leaving them with no legal moves, or when they resign or run out of time.",
+          },
+        ],
+  };
 
   return (
+    <>
+      <JsonLd data={faqSchema} />
+      <JsonLd data={howToSchema} />
     <div className="min-h-screen bg-[var(--background)] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto bg-[#292524] rounded-2xl shadow-xl overflow-hidden border border-[#44403c]">
         <div className="bg-[#1c1917] px-8 py-6 border-b border-[#44403c]">
@@ -113,6 +276,7 @@ export default function RulesPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

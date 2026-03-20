@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard, Trophy } from 'lucide-react';
 import Image from 'next/image';
 
 export const Navbar: React.FC = () => {
@@ -25,6 +25,7 @@ export const Navbar: React.FC = () => {
     const navLinks = [
         { name: t('home'), href: '/' },
         { name: t('play'), href: '/play' },
+        { name: t('leaderboard'), href: '/leaderboard' },
         { name: t('support'), href: '/support' },
     ];
 
@@ -202,6 +203,14 @@ export const Navbar: React.FC = () => {
                                             >
                                                 <User className="w-4 h-4" />
                                                 Profile
+                                            </Link>
+                                            <Link
+                                                href="/leaderboard"
+                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200/90 hover:bg-white/10 hover:text-white transition-colors"
+                                                onClick={() => setIsUserMenuOpen(false)}
+                                            >
+                                                <Trophy className="w-4 h-4" />
+                                                Leaderboard
                                             </Link>
                                             <Link
                                                 href="/settings"

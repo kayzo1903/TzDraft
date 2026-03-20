@@ -5,6 +5,7 @@ node_modules
 .env.local
 .env.*.local
 packages/cake-engine/dist/
+packages/shared-client/dist/
 
 # Visual Studio local files
 .vs/
