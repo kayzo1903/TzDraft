@@ -19,17 +19,17 @@ export async function generateMetadata({
   }
 
   const siteUrl = getSiteUrl();
-  const canonical = getCanonicalUrl(locale, "/rules", siteUrl);
+  const canonical = getCanonicalUrl(locale, "/leaderboard", siteUrl);
   const meta = {
     sw: {
-      title: "Sheria za Drafti | Jinsi ya Kucheza Drafti Tanzania",
+      title: "Orodha ya Bingwa | Wachezaji Bora Tanzania",
       description:
-        "Soma sheria rasmi za Drafti ya Tanzania: mwendo, kula lazima, kupandishwa kuwa kingi, na masharti ya ushindi.",
+        "Tazama viwango vya TzDraft na wachezaji bora wa Drafti Tanzania kwa rating, idadi ya michezo, na nafasi zao.",
     },
     en: {
-      title: "Tanzania Drafti Rules | How To Play Drafti",
+      title: "Leaderboard | Top Tanzania Drafti Players",
       description:
-        "Learn the official Tanzania Drafti (8x8) rules: movement, mandatory capture, promotion, and winning conditions.",
+        "See the TzDraft leaderboard with top Tanzania Drafti players ranked by rating, games played, and position.",
     },
   } as const;
   const { title, description } = meta[locale as keyof typeof meta] ?? meta.en;
@@ -39,20 +39,20 @@ export async function generateMetadata({
     description,
     alternates: {
       canonical,
-      languages: getLanguageAlternates("/rules", siteUrl),
+      languages: getLanguageAlternates("/leaderboard", siteUrl),
     },
     openGraph: {
       title,
       description,
       url: canonical,
       locale,
-      type: "article",
+      type: "website",
       images: ["/logo/logo.png"],
     },
   };
 }
 
-export default function RulesLayout({
+export default function LeaderboardLayout({
   children,
 }: {
   children: React.ReactNode;
