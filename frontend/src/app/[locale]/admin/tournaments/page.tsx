@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { tournamentService, type Tournament, type TournamentStatus } from "@/services/tournament.service";
+import { REPOST_DRAFT_STORAGE_KEY, buildRepostFormState } from "./tournament-admin.utils";
 import { z } from "zod";
 
 type TournamentStyle = "BLITZ" | "RAPID" | "CLASSICAL" | "UNLIMITED";
@@ -65,6 +66,7 @@ const initialState: FormState = {
   minAiLevelBeaten: "",
   requiredAiLevelPlayed: "",
 };
+
 
 const tournamentFormSchema = z
   .object({
@@ -290,6 +292,7 @@ export default function AdminTournamentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [repostSourceName, setRepostSourceName] = useState<string | null>(null);
   const [tournaments, setTournaments] = useState<Tournament[]>(() => {
     try {
       const cached = localStorage.getItem("admin_tournaments_cache");
@@ -374,6 +377,25 @@ export default function AdminTournamentsPage() {
     loadTournaments();
   }, [loadTournaments]);
 
+  useEffect(() => {
+    try {
+      const rawDraft = localStorage.getItem(REPOST_DRAFT_STORAGE_KEY);
+      if (!rawDraft) return;
+      const parsed = JSON.parse(rawDraft) as { sourceTournamentName?: string; form?: FormState };
+      if (parsed.form) {
+        setForm(parsed.form);
+        setFieldErrors({});
+        setError(null);
+        setCreatedId(null);
+        setRepostSourceName(parsed.sourceTournamentName ?? "previous tournament");
+        localStorage.removeItem(REPOST_DRAFT_STORAGE_KEY);
+        window.location.hash = "publish";
+      }
+    } catch {
+      localStorage.removeItem(REPOST_DRAFT_STORAGE_KEY);
+    }
+  }, []);
+
   const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
@@ -383,6 +405,16 @@ export default function AdminTournamentsPage() {
     if (key === "registrationDeadlineDate" || key === "registrationDeadlineTime") {
       setFieldErrors((prev) => ({ ...prev, registrationDeadline: undefined }));
     }
+  };
+
+  const handleRepostTournament = (tournament: Tournament) => {
+    const repostForm = buildRepostFormState(tournament);
+    setForm(repostForm);
+    setFieldErrors({});
+    setError(null);
+    setCreatedId(null);
+    setRepostSourceName(tournament.name);
+    window.location.hash = "publish";
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -443,6 +475,7 @@ export default function AdminTournamentsPage() {
 
       setCreatedId(created.id);
       setForm(initialState);
+      setRepostSourceName(null);
       await loadTournaments();
     } catch (err: any) {
       const message =
@@ -743,8 +776,15 @@ export default function AdminTournamentsPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-800 bg-gray-900/70 p-6">
+          <section id="publish" className="scroll-mt-24 rounded-2xl border border-gray-800 bg-gray-900/70 p-6">
             <h2 className="text-lg font-bold text-white">Publish</h2>
+            {repostSourceName && (
+              <div className="mt-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                Reposting settings from <span className="font-semibold">{repostSourceName}</span>.
+                Pick a new schedule, then publish it as a fresh tournament. Registration deadline
+                and eligibility blockers were cleared so players are not accidentally locked out.
+              </div>
+            )}
             {error && <div className="mt-5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>}
             {createdId && (
               <div className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
@@ -810,14 +850,27 @@ export default function AdminTournamentsPage() {
                     <span className="rounded-full bg-white/5 px-3 py-1.5">{tournament.maxPlayers} players</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <Link href={`/${locale}/admin/tournaments/${tournament.id}`} className="inline-flex items-center justify-center rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-amber-300">
-                    Manage live
-                  </Link>
-                  <Link href={`/${locale}/community/tournament/${tournament.id}`} className="inline-flex items-center justify-center rounded-xl border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:border-gray-500 hover:text-white">
-                    Public page
-                  </Link>
-                </div>
+	                <div className="flex flex-wrap gap-3">
+	                  <Link href={`/${locale}/admin/tournaments/${tournament.id}`} className="inline-flex items-center justify-center rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-amber-300">
+	                    Manage live
+	                  </Link>
+	                  {(tournament.status === "DRAFT" || tournament.status === "REGISTRATION") ? (
+	                    <Link href={`/${locale}/admin/tournaments/${tournament.id}#edit-tournament`} className="inline-flex items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:text-white">
+	                      Edit tournament
+	                    </Link>
+	                  ) : (
+	                    <button
+	                      type="button"
+	                      onClick={() => handleRepostTournament(tournament)}
+	                      className="inline-flex items-center justify-center rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:border-sky-400/50 hover:text-white"
+	                    >
+	                      Repost as new
+	                    </button>
+	                  )}
+	                  <Link href={`/${locale}/community/tournament/${tournament.id}`} className="inline-flex items-center justify-center rounded-xl border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:border-gray-500 hover:text-white">
+	                    Public page
+	                  </Link>
+	                </div>
               </div>
             ))
           )}

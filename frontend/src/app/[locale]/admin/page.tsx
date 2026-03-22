@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   AreaChart,
   Area,
@@ -17,6 +19,7 @@ import {
   Legend,
 } from "recharts";
 import { adminService, AdminStats, GrowthResponse } from "@/services/admin.service";
+import { tournamentService, type Tournament } from "@/services/tournament.service";
 import {
   Users,
   Gamepad2,
@@ -25,6 +28,8 @@ import {
   TrendingDown,
   Minus,
   RefreshCw,
+  Trophy,
+  ArrowRight,
 } from "lucide-react";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -33,14 +38,12 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
-function trend(points: { newUsers: number }[], field: "newUsers" | "games") {
+function trend(points: { newUsers: number; games: number }[], field: "newUsers" | "games") {
   const half = Math.floor(points.length / 2);
-  const recent = points
-    .slice(-half)
-    .reduce((s, p) => s + (field === "newUsers" ? p.newUsers : 0), 0);
-  const prior = points
-    .slice(0, half)
-    .reduce((s, p) => s + (field === "newUsers" ? p.newUsers : 0), 0);
+  const pick = (p: { newUsers: number; games: number }) =>
+    field === "newUsers" ? p.newUsers : p.games;
+  const recent = points.slice(-half).reduce((s, p) => s + pick(p), 0);
+  const prior = points.slice(0, half).reduce((s, p) => s + pick(p), 0);
   if (prior === 0) return null;
   return Math.round(((recent - prior) / prior) * 100);
 }
@@ -116,8 +119,10 @@ const RANGE_OPTIONS = [
 const PIE_COLORS = ["#34d399", "#f87171"];
 
 export default function AdminDashboard() {
+  const { locale } = useParams<{ locale: string }>();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [growth, setGrowth] = useState<GrowthResponse | null>(null);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -125,12 +130,14 @@ export default function AdminDashboard() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, g] = await Promise.all([
+      const [s, g, t] = await Promise.all([
         adminService.getStats(),
         adminService.getGrowth(days),
+        tournamentService.list(),
       ]);
       setStats(s);
       setGrowth(g);
+      setTournaments(t);
       setLastUpdated(new Date());
     } finally {
       setLoading(false);
@@ -154,9 +161,16 @@ export default function AdminDashboard() {
     : [];
 
   const userTrend = growth ? trend(growth.points, "newUsers") : null;
+  const gameTrend = growth ? trend(growth.points, "games") : null;
 
   const totalNewUsers = growth?.points.reduce((s, p) => s + p.newUsers, 0) ?? 0;
   const totalGames = growth?.points.reduce((s, p) => s + p.games, 0) ?? 0;
+  const activeTournaments = tournaments.filter((t) => t.status === "ACTIVE").length;
+  const registrationTournaments = tournaments.filter((t) => t.status === "REGISTRATION").length;
+  const draftTournaments = tournaments.filter((t) => t.status === "DRAFT").length;
+  const latestTournament = [...tournaments].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )[0];
 
   return (
     <div className="space-y-8">
@@ -222,8 +236,90 @@ export default function AdminDashboard() {
           label={`Games (${days}d)`}
           value={totalGames}
           icon={CalendarDays}
+          delta={gameTrend}
           accent="violet"
         />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-white">Tournament Management</p>
+              <p className="mt-1 text-sm text-gray-400">
+                Create tournaments, monitor brackets, and jump straight into the control room.
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-3">
+              <Trophy className="h-5 w-5 text-amber-300" />
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-800 bg-black/20 p-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500">All tournaments</p>
+              <p className="mt-2 text-2xl font-bold text-white">{tournaments.length}</p>
+            </div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-emerald-200/80">Open registration</p>
+              <p className="mt-2 text-2xl font-bold text-white">{registrationTournaments}</p>
+            </div>
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-sky-200/80">Active brackets</p>
+              <p className="mt-2 text-2xl font-bold text-white">{activeTournaments}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href={`/${locale}/admin/tournaments`}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-gray-950 transition hover:bg-amber-300"
+            >
+              Open tournament admin
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            {latestTournament && (
+              <Link
+                href={`/${locale}/admin/tournaments/${latestTournament.id}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:border-gray-500 hover:text-white"
+              >
+                Latest monitor
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+            {latestTournament && (
+              <Link
+                href={`/${locale}/admin/tournaments/${latestTournament.id}#edit-tournament`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:text-white"
+              >
+                Edit latest tournament
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <p className="text-sm font-semibold text-white">Tournament Snapshot</p>
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
+              <span className="text-sm text-gray-400">Draft tournaments</span>
+              <span className="text-sm font-semibold text-white">{draftTournaments}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
+              <span className="text-sm text-gray-400">Newest tournament</span>
+              <span className="max-w-[12rem] truncate text-sm font-semibold text-white">
+                {latestTournament?.name ?? "None yet"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
+              <span className="text-sm text-gray-400">Latest status</span>
+              <span className="text-sm font-semibold text-white">
+                {latestTournament?.status ?? "N/A"}
+              </span>
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* Charts row */}
