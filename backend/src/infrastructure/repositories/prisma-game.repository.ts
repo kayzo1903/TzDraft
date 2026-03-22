@@ -41,7 +41,7 @@ export class PrismaGameRepository implements IGameRepository {
       data: {
         id: game.id,
         status: game.status,
-        gameType: game.gameType,
+        gameType: game.gameType as any,
         ruleVersion: game.ruleVersion,
         initialTimeMs: game.initialTimeMs,
         whitePlayerId: game.whitePlayerId,
@@ -51,6 +51,7 @@ export class PrismaGameRepository implements IGameRepository {
         aiLevel: game.aiLevel,
         inviteCode: game.inviteCode,
         creatorColor: game.creatorColor,
+        tournamentMatchGameId: game.tournamentMatchGameId,
         winner: game.winner,
         endReason: game.endReason,
         createdAt: game.createdAt,
@@ -170,7 +171,7 @@ export class PrismaGameRepository implements IGameRepository {
 
   async findByType(gameType: GameType): Promise<Game[]> {
     const games = await this.prisma.game.findMany({
-      where: { gameType },
+      where: { gameType: gameType as any },
       include: {
         moves: {
           orderBy: { moveNumber: 'asc' },
@@ -472,6 +473,7 @@ export class PrismaGameRepository implements IGameRepository {
       currentTurn, // derived from move history
       prismaGame.inviteCode ?? null,
       (prismaGame.creatorColor as PlayerColor | null) ?? null,
+      prismaGame.tournamentMatchGameId ?? null,
     );
 
     // Restore board state: use the stored snapshot when available (O(1)),

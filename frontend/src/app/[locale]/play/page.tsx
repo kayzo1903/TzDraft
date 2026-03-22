@@ -1,153 +1,296 @@
 "use client";
 
-import React from 'react';
-import { Link } from '@/i18n/routing';
-import { useTranslations } from 'next-intl';
-import { Globe, Bot, Users, Trophy, ArrowRight } from 'lucide-react';
-import clsx from 'clsx';
+import React from "react";
+import { Link } from "@/i18n/routing";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  ArrowRight,
+  Bot,
+  Clock3,
+  Globe,
+  Sparkles,
+  Swords,
+  Trophy,
+  Users,
+} from "lucide-react";
+import clsx from "clsx";
+
+type ModeCard = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  enabled: boolean;
+  action: string;
+  badge?: string;
+  tone: string;
+  glow: string;
+  iconWrap: string;
+  icon: React.ReactNode;
+  highlights: string[];
+};
+
+function QuickStat({
+  value,
+  label,
+}: {
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.2)]">
+      <div className="text-2xl font-black text-white">{value}</div>
+      <div className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-neutral-500">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function ModeCard({
+  mode,
+  locale,
+}: {
+  mode: ModeCard;
+  locale: string;
+}) {
+  return (
+    <article
+      className={clsx(
+        "group relative overflow-hidden rounded-[2rem] border bg-neutral-950/55 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.32)] transition-all duration-300",
+        mode.tone,
+        mode.enabled ? "hover:-translate-y-1 hover:bg-neutral-950/70" : "opacity-80",
+      )}
+    >
+      <div
+        className={clsx(
+          "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100",
+          mode.glow,
+        )}
+      />
+      <div className="relative flex h-full flex-col">
+        <div className="flex items-start justify-between gap-4">
+          <div className={clsx("flex h-14 w-14 items-center justify-center rounded-2xl border", mode.iconWrap)}>
+            {mode.icon}
+          </div>
+          {mode.badge ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-neutral-300">
+              {mode.badge}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <h2 className="text-2xl font-black tracking-tight text-white">{mode.title}</h2>
+          <p className="max-w-[34ch] text-sm leading-7 text-neutral-300">{mode.description}</p>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          {mode.highlights.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-neutral-300"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-8 pt-6">
+          {mode.enabled ? (
+            <Link href={mode.href} className="block">
+              <button
+                className={clsx(
+                  "flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition-all duration-300",
+                  "border-white/10 bg-white/5 text-white hover:bg-white/10",
+                )}
+              >
+                <span className="text-sm font-black uppercase tracking-[0.18em]">
+                  {mode.action}
+                </span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                </span>
+              </button>
+            </Link>
+          ) : (
+            <div className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-neutral-500">
+              <span className="text-sm font-black uppercase tracking-[0.18em]">
+                {locale === "sw" ? "Bado haijafunguliwa" : "Not unlocked yet"}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function PlayPage() {
-    const t = useTranslations('play');
+  const t = useTranslations("play");
+  const locale = useLocale();
 
-    const gameModes = [
-        {
-            id: 'online',
-            title: t('modes.online.title'),
-            description: t('modes.online.description'),
-            icon: <Globe className="w-8 h-8 text-blue-400" />,
-            href: '/game/setup-online',
-            enabled: true,
-            comingSoon: false,
-            comingSoonLabel: '',
-            action: t('modes.online.action'),
-            color: 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/50',
-            buttonColor: 'bg-blue-600 hover:bg-blue-500'
-        },
-        {
-            id: 'ai',
-            title: t('modes.ai.title'),
-            description: t('modes.ai.description'),
-            icon: <Bot className="w-8 h-8 text-emerald-400" />,
-            href: '/game/setup-ai',
-            enabled: true,
-            comingSoon: false,
-            comingSoonLabel: '',
-            action: t('modes.ai.action'),
-            color: 'bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/50',
-            buttonColor: 'bg-emerald-600 hover:bg-emerald-500'
-        },
-        {
-            id: 'friend',
-            title: t('modes.friend.title'),
-            description: t('modes.friend.description'),
-            icon: <Users className="w-8 h-8 text-[#C47A2C]" />,
-            href: '/game/setup-friend',
-            enabled: true,
-            comingSoon: false,
-            comingSoonLabel: '',
-            action: t('modes.friend.action'),
-            color: 'bg-[#C47A2C]/10 border-[#C47A2C]/25 hover:border-[#C47A2C]/55',
-            buttonColor: 'bg-[#C47A2C] hover:bg-[#D48A3A]'
-        },
-        {
-            id: 'tournament',
-            title: t('modes.tournament.title'),
-            description: t('modes.tournament.description'),
-            icon: <Trophy className="w-8 h-8 text-amber-400" />,
-            href: '#',
-            enabled: false,
-            comingSoon: true,
-            comingSoonLabel: t('modes.tournament.comingSoon'),
-            action: t('modes.tournament.unavailable'),
-            color: 'bg-amber-500/10 border-amber-500/20',
-            buttonColor: 'bg-neutral-700'
-        }
-    ];
+  const isSw = locale === "sw";
 
-    return (
-        <main className="min-h-screen bg-[var(--background)] flex flex-col items-center py-20 px-4">
-            <div className="max-w-6xl w-full flex flex-col gap-12">
+  const gameModes: ModeCard[] = [
+    {
+      id: "online",
+      title: t("modes.online.title"),
+      description: t("modes.online.description"),
+      href: "/game/setup-online",
+      enabled: true,
+      action: t("modes.online.action"),
+      badge: isSw ? "Inawaka" : "Most Active",
+      tone: "border-sky-500/20",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_40%)]",
+      iconWrap: "border-sky-400/25 bg-sky-400/10 text-sky-300",
+      icon: <Globe className="h-7 w-7" />,
+      highlights: isSw
+        ? ["Ranked", "Casual", "Haraka kuunganishwa"]
+        : ["Ranked", "Casual", "Fast matchmaking"],
+    },
+    {
+      id: "ai",
+      title: t("modes.ai.title"),
+      description: t("modes.ai.description"),
+      href: "/game/setup-ai",
+      enabled: true,
+      action: t("modes.ai.action"),
+      badge: isSw ? "Mazoezi" : "Training",
+      tone: "border-emerald-500/20",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_40%)]",
+      iconWrap: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+      icon: <Bot className="h-7 w-7" />,
+      highlights: isSw
+        ? ["Ngazi 19", "Fungua hatua", "Cheza muda wowote"]
+        : ["19 levels", "Unlock progression", "Play anytime"],
+    },
+    {
+      id: "friend",
+      title: t("modes.friend.title"),
+      description: t("modes.friend.description"),
+      href: "/game/setup-friend",
+      enabled: true,
+      action: t("modes.friend.action"),
+      badge: isSw ? "Binafsi" : "Private",
+      tone: "border-[rgba(196,122,44,0.35)]",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(196,122,44,0.18),transparent_40%)]",
+      iconWrap: "border-[rgba(196,122,44,0.35)] bg-[rgba(196,122,44,0.12)] text-[#e7b172]",
+      icon: <Users className="h-7 w-7" />,
+      highlights: isSw
+        ? ["Link ya mwaliko", "Code ya haraka", "Cheza na rafiki"]
+        : ["Invite link", "Quick code", "Friend challenge"],
+    },
+    {
+      id: "tournament",
+      title: t("modes.tournament.title"),
+      description: t("modes.tournament.description"),
+      href: "/community/tournament",
+      enabled: true,
+      action: isSw ? "Fungua Mashindano" : "Open Tournaments",
+      badge: isSw ? "Jamii" : "Community",
+      tone: "border-amber-500/20",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.16),transparent_40%)]",
+      iconWrap: "border-amber-400/25 bg-amber-400/10 text-amber-300",
+      icon: <Trophy className="h-7 w-7" />,
+      highlights: isSw
+        ? ["Brackets", "Usimamizi", "Matukio ya jamii"]
+        : ["Brackets", "Moderation", "Community events"],
+    },
+  ];
 
-                {/* Header Section */}
-                <div className="text-center space-y-4">
-                    <h1 className="text-5xl font-black text-[#EDEDED] tracking-tight">
-                        {t('title')}
-                    </h1>
-                    <p className="text-xl text-neutral-400 max-w-2xl mx-auto">
-                        {t('subtitle')}
-                    </p>
+  return (
+    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+      <section className="relative overflow-hidden px-4 pb-16 pt-10 sm:px-6 lg:px-8 lg:pb-24 lg:pt-14">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_55%)]" />
+        <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-10">
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.24em] text-neutral-300">
+                <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" />
+                {isSw ? "Mwanzo wa mechi" : "Match entry"}
+              </div>
+
+              <div className="space-y-4">
+                <h1 className="max-w-3xl text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+                  {t("title")}
+                </h1>
+                <p className="max-w-2xl text-base leading-7 text-neutral-300 sm:text-lg">
+                  {t("subtitle")}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
+                  <Swords className="h-4 w-4 text-sky-300" />
+                  {isSw ? "Cheza mechi ya ushindani au mazoezi" : "Choose ranked, practice, or private play"}
                 </div>
-
-                {/* Game Modes Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {gameModes.map((mode) => (
-                        <div key={mode.id} className="group relative">
-                            {/* Card Background & Border */}
-                            <div className={clsx(
-                                "absolute inset-0 rounded-2xl transition-all duration-300",
-                                mode.color,
-                                mode.enabled ? "opacity-100" : "opacity-50 grayscale"
-                            )} />
-
-                            {/* Content */}
-                            <div className={clsx(
-                                "relative p-8 h-full flex flex-col justify-between rounded-2xl border border-transparent transition-all duration-300",
-                                mode.enabled ? "hover:-translate-y-1 hover:shadow-xl bg-neutral-900/40 hover:bg-neutral-900/60" : "bg-neutral-900/20 cursor-not-allowed"
-                            )}>
-                                <div className="space-y-6">
-                                    <div className="flex items-start justify-between">
-                                        <div className={clsx("p-4 rounded-xl bg-neutral-900/80 border border-neutral-800", mode.enabled && "group-hover:scale-110 transition-transform duration-300")}>
-                                            {mode.icon}
-                                        </div>
-                                        {mode.comingSoon && (
-                                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-neutral-800 text-neutral-400 border border-neutral-700 uppercase tracking-wider">
-                                                {mode.comingSoonLabel}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-white mb-2">{mode.title}</h3>
-                                        <p className="text-neutral-400 leading-relaxed">{mode.description}</p>
-                                    </div>
-                                </div>
-
-                                <div className="mt-8">
-                                    {mode.enabled ? (
-                                        <Link href={mode.href} className="block w-full">
-                                            <button className={clsx(
-                                                "w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all",
-                                                mode.buttonColor,
-                                                "group-hover:shadow-lg group-hover:shadow-black/25"
-                                            )}>
-                                                {mode.action}
-                                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                            </button>
-                                        </Link>
-                                    ) : (
-                                        <button disabled className="w-full py-4 rounded-xl font-bold text-neutral-500 bg-neutral-800 cursor-not-allowed flex items-center justify-center gap-2">
-                                            {mode.action}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
+                  <Clock3 className="h-4 w-4 text-amber-300" />
+                  {isSw ? "Ingia haraka bila kupotea kwenye hatua nyingi" : "Jump in fast without a cluttered flow"}
                 </div>
-
-                {/* Footer / Stats (Optional) */}
-                <div className="flex justify-center gap-12 text-center pt-8 border-t border-neutral-800/50">
-                    <div>
-                        <div className="text-3xl font-black text-white">1,240</div>
-                        <div className="text-sm text-neutral-500 font-medium uppercase tracking-wider">{t('stats.activePlayers')}</div>
-                    </div>
-                    <div>
-                        <div className="text-3xl font-black text-white">54</div>
-                        <div className="text-sm text-neutral-500 font-medium uppercase tracking-wider">{t('stats.matchesNow')}</div>
-                    </div>
-                </div>
-
+              </div>
             </div>
-        </main>
-    );
+
+            <div className="grid grid-cols-2 gap-3">
+              <QuickStat value="4" label={isSw ? "Njia wazi sasa" : "Open modes now"} />
+              <QuickStat value="19" label={isSw ? "Viwango vya AI" : "AI levels"} />
+              <QuickStat value="1v1" label={isSw ? "Mwelekeo wa mchezo" : "Core format"} />
+              <QuickStat value="24/7" label={isSw ? "Mazoezi ya AI" : "AI practice"} />
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {gameModes.map((mode) => (
+              <ModeCard key={mode.id} mode={mode} locale={locale} />
+            ))}
+          </div>
+
+          <section className="grid gap-4 rounded-[2rem] border border-white/10 bg-black/20 p-5 md:grid-cols-3 md:p-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-neutral-500">
+                {isSw ? "Njia ya haraka" : "Fastest route"}
+              </div>
+              <div className="mt-2 text-lg font-black text-white">
+                {t("modes.online.title")}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-neutral-400">
+                {isSw
+                  ? "Kama unataka mpinzani wa kweli haraka, hapa ndipo pa kuanzia."
+                  : "If you want a real opponent quickly, this is the sharpest starting point."}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-neutral-500">
+                {isSw ? "Njia ya kujenga ujuzi" : "Skill-building lane"}
+              </div>
+              <div className="mt-2 text-lg font-black text-white">
+                {t("modes.ai.title")}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-neutral-400">
+                {isSw
+                  ? "Panda ngazi za AI, funga viwango vipya, na jiandae kwa masharti ya mashindano yajayo."
+                  : "Climb AI levels, unlock higher difficulty, and prepare for future tournament requirements."}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-neutral-500">
+                {isSw ? "Njia ya watu wako" : "Bring-your-own rival"}
+              </div>
+              <div className="mt-2 text-lg font-black text-white">
+                {t("modes.friend.title")}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-neutral-400">
+                {isSw
+                  ? "Tengeneza mechi ya binafsi, tuma link, na anzeni mara moja bila kuingia kwenye queue."
+                  : "Create a private match, share the link, and start directly without sitting in queue."}
+              </p>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  );
 }

@@ -14,8 +14,9 @@ export class SupportController {
     const { name, email, subject, message } = createSupportTicketDto;
 
     await this.emailService.sendSupportEmail(
+      name,
       email,
-      `${name}: ${subject}`,
+      subject,
       message,
     );
 

@@ -24,6 +24,8 @@ import {
   CreatePvPGameDto,
   CreatePvEGameDto,
   CreateInviteGameDto,
+  StartAiChallengeSessionDto,
+  CompleteAiChallengeSessionDto,
 } from '../dtos/create-game.dto';
 import { JoinQueueDto } from '../dtos/join-queue.dto';
 import { PlayerColor } from '../../../shared/constants/game.constants';
@@ -32,6 +34,7 @@ import { JoinQueueUseCase } from '../../../application/use-cases/join-queue.use-
 import { GetGameHistoryUseCase } from '../../../application/use-cases/get-game-history.use-case';
 import { GetPlayerStatsUseCase } from '../../../application/use-cases/get-player-stats.use-case';
 import { GameType } from '../../../shared/constants/game.constants';
+import { AiProgressionService } from '../../../application/use-cases/ai-progression.service';
 
 /**
  * Game Controller
@@ -50,6 +53,7 @@ export class GameController {
     private readonly joinQueueUseCase: JoinQueueUseCase,
     private readonly getGameHistoryUseCase: GetGameHistoryUseCase,
     private readonly getPlayerStatsUseCase: GetPlayerStatsUseCase,
+    private readonly aiProgressionService: AiProgressionService,
   ) {}
 
   /**
@@ -92,6 +96,45 @@ export class GameController {
       success: true,
       data: game,
     };
+  }
+
+  @Get('ai/progression')
+  @ApiOperation({ summary: 'Get my AI progression state' })
+  async getAiProgression(@CurrentUser() user: any) {
+    const data = await this.aiProgressionService.getProgression(user.id);
+    return { success: true, data };
+  }
+
+  @Post('ai/sessions')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Start an authenticated AI challenge session' })
+  async startAiSession(
+    @CurrentUser() user: any,
+    @Body() dto: StartAiChallengeSessionDto,
+  ) {
+    const data = await this.aiProgressionService.startSession(
+      user.id,
+      dto.aiLevel,
+      dto.playerColor,
+    );
+    return { success: true, data };
+  }
+
+  @Post('ai/sessions/:sessionId/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete an authenticated AI challenge session' })
+  async completeAiSession(
+    @CurrentUser() user: any,
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CompleteAiChallengeSessionDto,
+  ) {
+    const data = await this.aiProgressionService.completeSession(
+      user.id,
+      sessionId,
+      dto.result,
+      dto.undoUsed,
+    );
+    return { success: true, data };
   }
 
   /**

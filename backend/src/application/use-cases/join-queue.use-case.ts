@@ -53,7 +53,7 @@ export class JoinQueueUseCase {
       data: {
         id: game.id,
         status: game.status,
-        gameType: game.gameType,
+        gameType: game.gameType as any,
         ruleVersion: game.ruleVersion,
         initialTimeMs: game.initialTimeMs,
         whitePlayerId: game.whitePlayerId,

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AccountType } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
@@ -81,10 +82,20 @@ export class UserService {
     if (!myRating) return { global: null, country: null, region: null, totalPlayers: 0 };
 
     const myUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!myUser || myUser.accountType !== AccountType.REGISTERED) {
+      return { global: null, country: null, region: null, totalPlayers: 0 };
+    }
+
+    const registeredWhere = { user: { accountType: AccountType.REGISTERED } };
 
     const [globalRank, totalPlayers] = await Promise.all([
-      this.prisma.rating.count({ where: { rating: { gt: myRating.rating } } }),
-      this.prisma.rating.count(),
+      this.prisma.rating.count({
+        where: {
+          ...registeredWhere,
+          rating: { gt: myRating.rating },
+        },
+      }),
+      this.prisma.rating.count({ where: registeredWhere }),
     ]);
 
     let countryRank: number | null = null;
@@ -93,7 +104,10 @@ export class UserService {
         (await this.prisma.rating.count({
           where: {
             rating: { gt: myRating.rating },
-            user: { country: myUser.country },
+            user: {
+              accountType: AccountType.REGISTERED,
+              country: myUser.country,
+            },
           },
         })) + 1;
     }
@@ -104,7 +118,11 @@ export class UserService {
         (await this.prisma.rating.count({
           where: {
             rating: { gt: myRating.rating },
-            user: { country: myUser.country, region: myUser.region },
+            user: {
+              accountType: AccountType.REGISTERED,
+              country: myUser.country,
+              region: myUser.region,
+            },
           },
         })) + 1;
     }
@@ -137,7 +155,10 @@ export class UserService {
   }> {
     const { skip = 0, take = 50, country, region } = options;
 
-    const userFilter: Record<string, any> = {};
+    const userFilter: Record<string, any> = {
+      accountType: AccountType.REGISTERED,
+      isVerified: true,
+    };
     if (country) userFilter.country = country;
     if (region) userFilter.region = region;
     const where = Object.keys(userFilter).length > 0 ? { user: userFilter } : {};

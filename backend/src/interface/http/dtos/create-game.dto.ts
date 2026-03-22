@@ -4,11 +4,12 @@ import {
   IsEnum,
   IsOptional,
   Min,
+  Max,
+  IsBoolean,
   IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  GameType,
   PlayerColor,
 } from '../../../shared/constants/game.constants';
 
@@ -81,15 +82,43 @@ export class CreatePvEGameDto {
   playerElo?: number;
 
   @ApiProperty({
-    description: 'AI difficulty level (1-7)',
+    description: 'AI difficulty level (1-19)',
     minimum: 1,
-    maximum: 7,
+    maximum: 19,
   })
   @IsNumber()
+  @Min(1)
+  @Max(19)
   aiLevel: number;
 
   @ApiProperty({ description: 'Initial time in milliseconds', required: false })
   @IsNumber()
   @IsOptional()
   initialTimeMs?: number;
+}
+
+export class StartAiChallengeSessionDto {
+  @ApiProperty({
+    description: 'AI difficulty level (1-19)',
+    minimum: 1,
+    maximum: 19,
+  })
+  @IsNumber()
+  @Min(1)
+  @Max(19)
+  aiLevel: number;
+
+  @ApiProperty({ description: 'Player color', enum: PlayerColor })
+  @IsEnum(PlayerColor)
+  playerColor: PlayerColor;
+}
+
+export class CompleteAiChallengeSessionDto {
+  @ApiProperty({ enum: ['WIN', 'LOSS', 'DRAW'] })
+  @IsIn(['WIN', 'LOSS', 'DRAW'])
+  result: 'WIN' | 'LOSS' | 'DRAW';
+
+  @ApiProperty({ description: 'Whether undo was used during the AI challenge' })
+  @IsBoolean()
+  undoUsed: boolean;
 }

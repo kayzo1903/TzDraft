@@ -15,6 +15,7 @@ export enum GameType {
   RANKED = 'RANKED',
   CASUAL = 'CASUAL',
   AI = 'AI',
+  TOURNAMENT = 'TOURNAMENT',
 }
 
 /**
