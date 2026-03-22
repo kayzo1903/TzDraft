@@ -1,7 +1,8 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, forwardRef } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import { Winner, EndReason, GameStatus } from '../../shared/constants/game.constants';
 import { RatingService } from './rating.service';
+import { ReportTournamentResultUseCase } from './tournament/report-tournament-result.use-case';
 
 /**
  * End Game Use Case
@@ -14,6 +15,8 @@ export class EndGameUseCase {
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
     private readonly ratingService: RatingService,
+    @Inject(forwardRef(() => ReportTournamentResultUseCase))
+    private readonly reportTournamentResult: ReportTournamentResultUseCase,
   ) {}
 
   /**
@@ -34,12 +37,8 @@ export class EndGameUseCase {
 
     game.endGame(winner, EndReason.RESIGN);
     await this.gameRepository.update(game);
-    await this.ratingService.updateRatings(
-      game.whitePlayerId,
-      game.blackPlayerId,
-      winner,
-      game.gameType,
-    );
+    await this.ratingService.updateRatings(game.whitePlayerId, game.blackPlayerId, winner, game.gameType);
+    this.reportTournamentResult.execute(gameId, winner, game.whitePlayerId, game.blackPlayerId).catch(() => {});
     return { winner };
   }
 
@@ -59,12 +58,8 @@ export class EndGameUseCase {
 
     game.endGame(winner, EndReason.TIME);
     await this.gameRepository.update(game);
-    await this.ratingService.updateRatings(
-      game.whitePlayerId,
-      game.blackPlayerId,
-      winner,
-      game.gameType,
-    );
+    await this.ratingService.updateRatings(game.whitePlayerId, game.blackPlayerId, winner, game.gameType);
+    this.reportTournamentResult.execute(gameId, winner, game.whitePlayerId, game.blackPlayerId).catch(() => {});
   }
 
   /**
@@ -82,12 +77,8 @@ export class EndGameUseCase {
 
     game.endGame(Winner.DRAW, EndReason.DRAW);
     await this.gameRepository.update(game);
-    await this.ratingService.updateRatings(
-      game.whitePlayerId,
-      game.blackPlayerId,
-      Winner.DRAW,
-      game.gameType,
-    );
+    await this.ratingService.updateRatings(game.whitePlayerId, game.blackPlayerId, Winner.DRAW, game.gameType);
+    this.reportTournamentResult.execute(gameId, Winner.DRAW, game.whitePlayerId, game.blackPlayerId).catch(() => {});
   }
 
   /**

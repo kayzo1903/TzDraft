@@ -53,7 +53,11 @@ export const authClient = {
     // Reuse existing guest session if still authenticated — avoids creating a
     // new DB record on every fresh page load for the same browser session.
     const state = useAuthStore.getState();
-    if (state.isAuthenticated && state.user?.phoneNumber?.startsWith("GUEST_")) {
+    if (
+      state.isAuthenticated &&
+      (state.user?.accountType === "GUEST" ||
+        state.user?.phoneNumber?.startsWith("GUEST_"))
+    ) {
       return {
         user: state.user!,
         accessToken: state.accessToken!,

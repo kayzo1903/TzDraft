@@ -232,6 +232,7 @@ export const useLocalGame = (
   aiLevel: number,
   playerColor: PlayerColor,
   timeSeconds: number,
+  shouldPersistGuestProgress = true,
 ) => {
   // Engine state uses WHITE at the top by default; flip only when the human plays WHITE.
   const flipForPlayer = playerColor === PlayerColor.WHITE;
@@ -628,12 +629,13 @@ export const useLocalGame = (
 
   useEffect(() => {
     if (!result) return;
+    if (!shouldPersistGuestProgress) return;
     if (undoUsed) return;
     if (!didHumanWin(result.winner, playerColor)) return;
 
     // Unlock next bot level only if the user didn't use Undo in this game.
     unlockNextBotLevel(aiLevel);
-  }, [aiLevel, playerColor, result, undoUsed]);
+  }, [aiLevel, playerColor, result, shouldPersistGuestProgress, undoUsed]);
 
   const playWarning = useCallback(() => {
     if (!warningAudioRef.current) return;

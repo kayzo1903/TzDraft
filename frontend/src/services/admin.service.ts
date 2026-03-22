@@ -28,6 +28,7 @@ export interface AdminUser {
   email: string | null;
   phoneNumber: string;
   role: "USER" | "ADMIN";
+  accountType: "REGISTERED" | "GUEST" | "OAUTH_PENDING";
   isBanned: boolean;
   isVerified: boolean;
   createdAt: string;

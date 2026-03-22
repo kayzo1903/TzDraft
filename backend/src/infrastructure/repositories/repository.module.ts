@@ -7,6 +7,7 @@ import { PrismaGameRepository } from './prisma-game.repository';
 import { PrismaMoveRepository } from './prisma-move.repository';
 import { RedisMatchmakingRepository } from './redis-matchmaking.repository';
 import { PrismaMatchmakingRepository } from './prisma-matchmaking.repository';
+import { PrismaTournamentRepository } from './prisma-tournament.repository';
 
 /**
  * Repository Module
@@ -39,7 +40,11 @@ import { PrismaMatchmakingRepository } from './prisma-matchmaking.repository';
           : new PrismaMatchmakingRepository(prisma);
       },
     },
+    {
+      provide: 'ITournamentRepository',
+      useClass: PrismaTournamentRepository,
+    },
   ],
-  exports: ['IGameRepository', 'IMoveRepository', 'IMatchmakingRepository'],
+  exports: ['IGameRepository', 'IMoveRepository', 'IMatchmakingRepository', 'ITournamentRepository'],
 })
 export class RepositoryModule {}

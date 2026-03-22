@@ -850,7 +850,9 @@ export default function OnlineGamePage() {
   };
 
   // Voice chat: registered users only, both players present, PvP game, in-game
-  const isGuest = user?.phoneNumber?.startsWith("GUEST_") ?? true;
+  const isGuest =
+    user?.accountType === "GUEST" ||
+    (user?.phoneNumber?.startsWith("GUEST_") ?? true);
   const isPvP = !topInfo.isAi && !bottomInfo.isAi;
   const showVoiceChat =
     !isGuest && isPvP && state.myColor !== null && !state.isWaiting;

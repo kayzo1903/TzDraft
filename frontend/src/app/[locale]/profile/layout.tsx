@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import {
   getCanonicalUrl,
   getLanguageAlternates,
@@ -43,6 +44,29 @@ export async function generateMetadata({
   };
 }
 
-export default function ProfileLayout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function ProfileLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+
+  if (!isAppLocale(locale)) {
+    return children;
+  }
+
+  return (
+    <>
+      <BreadcrumbJsonLd
+        locale={locale}
+        items={[
+          { name: locale === "sw" ? "Nyumbani" : "Home", path: "" },
+          { name: locale === "sw" ? "Wasifu" : "Profile", path: "/profile" },
+        ]}
+      />
+      {children}
+    </>
+  );
 }

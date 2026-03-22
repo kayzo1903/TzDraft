@@ -5,7 +5,10 @@
 services:
   redis:
     image: redis:7-alpine
-    command: redis-server --save "" --appendonly no
+    # No persistence (game/matchmaking state is ephemeral — safe to lose on restart).
+    # maxmemory 512mb: hard cap so Redis never OOMs the CX33 (8 GB) host.
+    # allkeys-lru: evict least-recently-used keys when cap is reached (safe for caches).
+    command: redis-server --save "" --appendonly no --maxmemory 512mb --maxmemory-policy allkeys-lru
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

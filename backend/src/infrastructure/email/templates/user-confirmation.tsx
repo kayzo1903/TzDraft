@@ -17,9 +17,10 @@ import { emailTheme } from './theme';
 
 interface UserConfirmationProps {
     name: string;
+    subject: string;
 }
 
-export const UserConfirmation = ({ name }: UserConfirmationProps) => (
+export const UserConfirmation = ({ name, subject }: UserConfirmationProps) => (
     <Html>
         <Head />
         <Preview>We received your support request</Preview>
@@ -34,6 +35,9 @@ export const UserConfirmation = ({ name }: UserConfirmationProps) => (
                     <Heading style={h1}>Hello {name},</Heading>
                     <Text style={text}>
                         Thank you for reaching out to <strong>{emailTheme.appName} Support</strong>. We have received your message and our team is already reviewing it.
+                    </Text>
+                    <Text style={text}>
+                        Your request category: <strong>{subject}</strong>.
                     </Text>
                     <Text style={text}>
                         We aim to respond to all inquiries within 24 hours. While you wait, you might find the answer you're looking for in our Help Center.

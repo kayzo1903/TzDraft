@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { AccountType } from '@prisma/client';
 import { AdminGuard } from '../../../auth/guards/admin.guard';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { HealthCheckService } from '@nestjs/terminus';
@@ -35,7 +36,9 @@ export class AdminController {
     today.setHours(0, 0, 0, 0);
 
     const [totalUsers, activeGames, gamesPlayedToday] = await Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({
+        where: { accountType: { not: AccountType.GUEST } },
+      }),
       this.prisma.game.count({ where: { status: 'ACTIVE' } }),
       this.prisma.game.count({
         where: { createdAt: { gte: today } },
@@ -51,15 +54,18 @@ export class AdminController {
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const where = query.search
-      ? {
-          OR: [
-            { username: { contains: query.search, mode: 'insensitive' as const } },
-            { email: { contains: query.search, mode: 'insensitive' as const } },
-            { phoneNumber: { contains: query.search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+    const where = {
+      accountType: { not: AccountType.GUEST },
+      ...(query.search
+        ? {
+            OR: [
+              { username: { contains: query.search, mode: 'insensitive' as const } },
+              { email: { contains: query.search, mode: 'insensitive' as const } },
+              { phoneNumber: { contains: query.search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -74,6 +80,7 @@ export class AdminController {
           email: true,
           phoneNumber: true,
           role: true,
+          accountType: true,
           isBanned: true,
           isVerified: true,
           createdAt: true,
@@ -121,9 +128,7 @@ export class AdminController {
 
     const count = await this.prisma.user.count({
       where: {
-        phoneNumber: { startsWith: 'GUEST_' },
-        username: { startsWith: 'Guest_' },
-        isVerified: false,
+        accountType: AccountType.GUEST,
         createdAt: { lt: cutoff },
         gamesAsWhite: { none: {} },
         gamesAsBlack: { none: {} },
@@ -141,9 +146,7 @@ export class AdminController {
 
     const { count } = await this.prisma.user.deleteMany({
       where: {
-        phoneNumber: { startsWith: 'GUEST_' },
-        username: { startsWith: 'Guest_' },
-        isVerified: false,
+        accountType: AccountType.GUEST,
         createdAt: { lt: cutoff },
         gamesAsWhite: { none: {} },
         gamesAsBlack: { none: {} },
@@ -172,7 +175,7 @@ export class AdminController {
         this.prisma.user.count({
           where: {
             createdAt: { gte: from, lte: to },
-            phoneNumber: { not: { startsWith: 'GUEST_' } },
+            accountType: { not: AccountType.GUEST },
           },
         }),
         this.prisma.game.count({
@@ -189,9 +192,19 @@ export class AdminController {
 
     // Aggregate totals + guest count for pie breakdown
     const [totalVerified, totalGuests, totalBanned] = await Promise.all([
-      this.prisma.user.count({ where: { isVerified: true } }),
-      this.prisma.user.count({ where: { phoneNumber: { startsWith: 'GUEST_' } } }),
-      this.prisma.user.count({ where: { isBanned: true } }),
+      this.prisma.user.count({
+        where: {
+          accountType: AccountType.REGISTERED,
+          isVerified: true,
+        },
+      }),
+      this.prisma.user.count({ where: { accountType: AccountType.GUEST } }),
+      this.prisma.user.count({
+        where: {
+          accountType: { not: AccountType.GUEST },
+          isBanned: true,
+        },
+      }),
     ]);
 
     return { points, breakdown: { totalVerified, totalGuests, totalBanned } };

@@ -2,7 +2,8 @@
   "nav": {
     "home": "Nyumbani",
     "play": "Cheza",
-    "leaderboard": "Orodha ya Bingwa",
+    "leaderboard": "Orodha ya Ubora",
+    "community": "Jamii",
     "support": "Msaada",
     "login": "Ingia",
     "signup": "Jisajili",
@@ -40,7 +41,7 @@
         "desc": "Shindana katika matukio yaliyopangwa na panda chati."
       },
       "leaderboard": {
-        "title": "Orodha ya Bora",
+        "title": "Orodha ya Ubora",
         "desc": "Angalia wachezaji waliofaulu zaidi katika jumuiya."
       },
       "learn": {
@@ -209,19 +210,53 @@
   "support": {
     "title": "Kituo cha Msaada",
     "subtitle": "Una swali au umepata tatizo? Tuko hapa kukusaidia uendelee na mchezo.",
+    "eyebrow": "Msaada wa akaunti, mchezo na usalama wa mashindano",
+    "stats": {
+      "response": "Muda wa majibu",
+      "responseValue": "Ndani ya saa 24-48",
+      "topics": "Mada kuu",
+      "topicsValue": "Akaunti, mechi, ripoti",
+      "languages": "Lugha za msaada",
+      "languagesValue": "Kiingereza na Kiswahili"
+    },
+    "quickHelp": {
+      "title": "Njia za msaada wa haraka",
+      "subtitle": "Chagua mada iliyo karibu zaidi ili ujumbe wako ufike sehemu sahihi kwa haraka.",
+      "accountTitle": "Upatikanaji wa akaunti",
+      "accountBody": "Tumia hii kwa matatizo ya kuingia, uthibitishaji, wasifu, au maendeleo yaliyopotea.",
+      "gameplayTitle": "Matatizo ya mchezo na mechi",
+      "gameplayBody": "Ripoti mechi zilizokwama, shida za mwaliko, mkanganyiko wa muda, au bodi isiyofanya kazi sawa.",
+      "fairPlayTitle": "Uadilifu na usalama",
+      "fairPlayBody": "Wasiliana na msaada kuhusu matusi, tuhuma za udanganyifu, migogoro ya mashindano, au ukiukaji wa sera."
+    },
     "faq": "Maswali Yanayoulizwa Mara kwa Mara",
     "contact": "Wasiliana Nasi",
+    "contactSubtitle": "Tuma maelezo wazi, na jumuisha kitambulisho cha mchezo, msimbo wa mwaliko, au jina la mashindano inapohusika.",
+    "contactMethods": {
+      "title": "Njia nyingine za kutufikia",
+      "email": "Tuma barua pepe kwa msaada",
+      "emailHint": "Nzuri kwa kurejesha akaunti, kuripoti hitilafu, na masuala ya usimamizi.",
+      "policy": "Soma sera na sheria za kuripoti",
+      "policyHint": "Pitia sheria za uadilifu na matumizi ya jukwaa kabla ya kutuma ripoti."
+    },
     "form": {
       "name": "Jina",
       "email": "Barua Pepe",
       "subject": "Mada",
       "message": "Ujumbe",
       "submit": "Tuma Ujumbe",
+      "sending": "Inatuma",
+      "namePlaceholder": "Jina lako",
+      "emailPlaceholder": "wewe@barua.com",
+      "messagePlaceholder": "Eleza kilichotokea, ukurasa uliokuwa nao, na ulichotarajia kutokea.",
+      "privacyNote": "Usijumuishe nenosiri, msimbo wa muda mmoja, au taarifa binafsi za malipo kwenye ujumbe wako.",
       "subjects": {
         "bug": "Ripoti Tatizo",
         "account": "Shida ya Akaunti",
         "general": "Maulizo ya Jumla",
-        "feedback": "Maoni"
+        "feedback": "Maoni",
+        "tournament": "Tatizo la Mashindano",
+        "safety": "Ripoti ya Usalama au Sera"
       },
       "success": "Ujumbe umetumwa kikamilifu!",
       "error": "Imeshindwa kutuma ujumbe. Tafadhali jaribu tena."
@@ -232,7 +267,9 @@
       "q2": "Je, ninaweza kucheza na rafiki zangu?",
       "a2": "Ndio! Bonyeza 'Cheza na Rafiki', unda mwaliko wa mtandaoni, kisha mshirikishe rafiki yako kiungo au msimbo wa mwaliko.",
       "q3": "Nimepata tatizo, ninaliripoti vipi?",
-      "a3": "Tafadhali tumia fomu iliyo hapa chini kuelezea tatizo. Jumuisha Kitambulisho cha Mchezo ikiwa kinafaa."
+      "a3": "Tafadhali tumia fomu iliyo hapa chini kuelezea tatizo. Jumuisha Kitambulisho cha Mchezo ikiwa kinafaa.",
+      "q4": "Niweke nini kwenye ombi la msaada?",
+      "a4": "Jumuisha jina lako la mtumiaji, sehemu uliyokuwa unatumia, muda tatizo lilipotokea, na kitambulisho cha mchezo, msimbo wa mwaliko, au jina la mashindano linalohusiana na tatizo."
     }
   },
   "play": {
@@ -535,5 +572,32 @@
       "policy": "Faragha na sera",
       "rules": "Sheria za mchezo"
     }
+  },
+  "leaderboard": {
+    "badge": "Wachezaji Waliohakikishwa Tu",
+    "title": "Orodha ya Ubora",
+    "subtitle": "Fuatilia wachezaji bora waliohakikishwa wa TzDraft kwa rating na michezo ya hivi karibuni.",
+    "players": "Wachezaji",
+    "scope": "Upeo",
+    "topRating": "Rating ya Juu",
+    "scopeGlobal": "Ulimwengu",
+    "scopeCountry": "Nchi",
+    "scopeRegion": "Mkoa",
+    "rank": "Nafasi",
+    "player": "Mchezaji",
+    "games": "Michezo",
+    "winRate": "Ushindi %",
+    "rating": "Rating",
+    "you": "wewe",
+    "youBadge": "Wewe",
+    "noPlayers": "Hakuna wachezaji waliohakikishwa kwa mwonekano huu bado.",
+    "loadError": "Imeshindwa kupakia orodha ya bingwa",
+    "signInCta": "Ingia, cheza michezo ya ushindani, na upate nafasi iliyohakikishwa kwenye ngazi.",
+    "logIn": "Ingia",
+    "playNow": "Cheza Sasa",
+    "podiumRating": "Rating",
+    "podiumGames": "Michezo",
+    "prev": "Iliyopita",
+    "next": "Inayofuata"
   }
 }

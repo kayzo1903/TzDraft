@@ -2,8 +2,8 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
-  IsOptional,
   IsEnum,
+  MaxLength,
 } from 'class-validator';
 
 export enum SupportSubject {
@@ -11,11 +11,14 @@ export enum SupportSubject {
   ACCOUNT = 'Account Issue',
   GENERAL = 'General Inquiry',
   FEEDBACK = 'Feedback',
+  TOURNAMENT = 'Tournament Issue',
+  SAFETY = 'Safety or Policy Report',
 }
 
 export class CreateSupportTicketDto {
   @IsNotEmpty()
   @IsString()
+  @MaxLength(80)
   name: string;
 
   @IsNotEmpty()
@@ -23,10 +26,11 @@ export class CreateSupportTicketDto {
   email: string;
 
   @IsNotEmpty()
-  @IsString() // OR @IsEnum(SupportSubject) if we want to enforce it strictly
-  subject: string;
+  @IsEnum(SupportSubject)
+  subject: SupportSubject;
 
   @IsNotEmpty()
   @IsString()
+  @MaxLength(5000)
   message: string;
 }
