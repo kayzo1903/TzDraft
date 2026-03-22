@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { TournamentFormat, TournamentStyle, TournamentScope } from '../../../domain/tournament/entities/tournament.entity';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
+import { MatchResult } from '../../../domain/tournament/entities/tournament-match.entity';
 
 export class CreateTournamentDto {
   @IsString() @MinLength(3)
@@ -132,4 +133,10 @@ export class UpdateTournamentDto {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsDateString()
   registrationDeadline?: string | null;
+}
+
+export class AdminResolveTournamentMatchDto {
+  @IsEnum(MatchResult)
+  @IsIn([MatchResult.PLAYER1_WIN, MatchResult.PLAYER2_WIN])
+  result: MatchResult.PLAYER1_WIN | MatchResult.PLAYER2_WIN;
 }

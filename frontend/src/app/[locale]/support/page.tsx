@@ -38,6 +38,14 @@ export default async function SupportPage({
           text: t("faqs.a3"),
         },
       },
+      {
+        "@type": "Question",
+        name: t("faqs.q4"),
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: t("faqs.a4"),
+        },
+      },
     ],
   };
 

@@ -1,6 +1,6 @@
 # TzDraft Tournament System — Full Plan & Vision
 
-> **Status:** Planning
+> **Status:** Hybrid document: live Phase 1 + future roadmap
 > **Date:** 2026-03-20
 > **Scope:** Backend + Frontend + Database + SEO
 
@@ -118,7 +118,7 @@ Player caps are driven entirely by **UX/schedule duration**, not infrastructure.
 
 ---
 
-### 4.1 Single Elimination (Phase 1)
+### 4.1 Single Elimination (Phase 1 - Implemented)
 
 The classic knockout bracket. Lose a match, you're out.
 
@@ -128,7 +128,7 @@ The classic knockout bracket. Lose a match, you're out.
 - Uses **Knockout match format** (Section 5.3) — consecutive loss elimination + extra games.
 - When all matches in a round complete → `AdvanceRoundUseCase` auto-fires.
 
-### 4.2 Round Robin (Phase 1)
+### 4.2 Round Robin (Planned - Not yet implemented)
 
 Every player plays every other player once.
 
@@ -290,6 +290,24 @@ The time control applies per game — each of the 3 games (and any extras) reset
 ---
 
 ## 7. Tournament Lifecycle
+
+### 7.1 Current Phase 1 Lifecycle
+
+The live implementation currently behaves like this:
+
+```
+REGISTRATION -> ACTIVE -> COMPLETED
+      |
+      -> CANCELLED
+```
+
+Notes:
+
+- Tournaments are currently created directly in `REGISTRATION`.
+- `DRAFT` exists in the enum and data model but is not the current create path.
+- Starting is currently admin-driven through the tournament monitor.
+- If the admin starts with fewer than `minPlayers`, the backend cancels immediately.
+- A background scheduler for automatic start/cancel is not implemented yet.
 
 ```
 DRAFT ──► REGISTRATION ──► ACTIVE ──► COMPLETED
@@ -649,7 +667,7 @@ onGameComplete(matchId, gameResult: PLAYER1_WIN | PLAYER2_WIN | DRAW):
 
 | Use Case | Trigger | Key Logic |
 |---|---|---|
-| `CreateTournamentUseCase` | `POST /tournaments` (admin) | Validate bilingual fields, save as DRAFT |
+| `CreateTournamentUseCase` | `POST /tournaments` (admin) | Validate bilingual fields, save directly as REGISTRATION |
 | `RegisterForTournamentUseCase` | `POST /tournaments/:id/register` | Run all 5 eligibility checks, snapshot ELO |
 | `WithdrawFromTournamentUseCase` | `DELETE /tournaments/:id/register` | REGISTRATION status only |
 | `StartTournamentUseCase` | `POST /tournaments/:id/start` (admin) | Lock bracket, seed by ELO, gen round 1 |
@@ -1218,39 +1236,67 @@ Note: Tournament games never affect ladder rating (ELO Impact is always off)
 
 ## 17. Phase Delivery Plan
 
-### Phase 1 — Core Tournament (Single Elim + Round Robin)
+### Phase 1 — Current Delivered Tournament Product
+
+**Product statement:**
+
+Phase 1 currently delivers **admin-run single-elimination tournaments** with public listing/detail pages, registration and withdrawal, eligibility filters, live bracket progression, and manual admin controls for moderation and match resolution.
+
+**What is implemented now:**
+
+- Single Elimination only
+- Public tournament list and detail page
+- Admin create page
+- Admin monitor/manage page
+- Registration and withdrawal during open registration window
+- Scope + ELO + matchmaking wins + AI eligibility filters
+- Seed assignment from signup ELO snapshot
+- Round 1 bracket generation with BYEs
+- Best-of-3 knockout match progression with extra games
+- WebSocket updates for match-ready, match-complete, round-advanced, tournament-completed
+- Manual participant removal before start
+- Manual tournament cancel before start
+- Manual admin result override for stuck matches
+- Tournament games excluded from ladder ELO updates
+
+**Not yet implemented in current code:**
+
+- Round Robin
+- automatic scheduled start/cancel worker
+- dedicated registration route
+- organizer role
+- standings service for points-based formats
 
 **Database:**
-- [ ] `tournament.prisma` — 5 new models + enums (includes bilingual description/rules fields)
-- [ ] Migration: `matchmakingWins/wins/losses/draws/highestAiLevelBeaten` on Rating
-- [ ] Migration: `tournamentMatchGameId` on Game
+- [x] `tournament.prisma` — 5 new models + enums (includes bilingual description/rules fields)
+- [x] Migration: tournament tables + `tournamentMatchGameId` on Game
+- [x] Existing rating data reused for eligibility and tournament ELO isolation
 
 **Backend:**
-- [ ] Tournament domain entities (5 files)
-- [ ] `EligibilityCheckService` — all 5 filters
-- [ ] `BracketGenerationService` — Single Elim + Round Robin
-- [ ] `MatchProgressionService` — 3-game logic, consecutive loss, extra game
+- [x] Tournament domain entities (5 files)
+- [x] `EligibilityCheckService` — scope, ELO, ranked wins, AI checks
+- [x] `BracketGenerationService` — Single Elim
+- [x] `MatchProgressionService` — 3-game logic, consecutive loss, extra game
 - [ ] `StandingsService` — points + tiebreak
-- [ ] `ITournamentRepository` + `PrismaTournamentRepository`
-- [ ] 8 use cases
-- [ ] `TournamentController` — 9 endpoints (bilingual fields in create/update DTOs)
-- [ ] Modify `rating.service.ts` — matchmaking wins + general wins tracking
-- [ ] Modify `end-game.use-case.ts` — `highestAiLevelBeaten` update
-- [ ] Modify `make-move.use-case.ts` — auto-report tournament game result
-- [ ] 4 WebSocket events
+- [x] `ITournamentRepository` + `PrismaTournamentRepository`
+- [x] Tournament use cases for create, list, get, register, withdraw, start, advance round, report result
+- [x] Admin use cases for update, cancel, participant removal, manual result override
+- [x] `TournamentController` endpoints for public, player, and admin flows
+- [x] `rating.service.ts` tournament guard so tournament games do not affect ladder ELO
+- [x] `end-game.use-case.ts` integration with tournament result reporting
+- [x] WebSocket tournament events
 
 **Frontend + SEO:**
-- [ ] Community hub page (`/community`) with `layout.tsx` (metadata + WebPage JSON-LD)
-- [ ] Tournament list page (`/community/tournament`) with `layout.tsx` (ItemList JSON-LD)
-- [ ] Tournament detail page — `generateMetadata` from bilingual fields + `SportsEvent` JSON-LD
-- [ ] Registration page (no SEO — authenticated only)
-- [ ] Admin create + manage pages (bilingual description/rules form fields)
-- [ ] `BracketView`, `StandingsTable`, `TournamentCard`, `MatchScoreChips`, `EligibilityGate` components
-- [ ] `useTournament`, `useTournamentList`, `useTournamentRegistration` hooks
-- [ ] `tournament.service.ts`
-- [ ] Update `sitemap.ts` — add `/community`, `/community/tournament`, dynamic tournament pages
-- [ ] Update `robots.ts` — disallow `/*/community/tournament/*/register`
-- [ ] Add "Community" link to Navbar
+- [x] Tournament list page (`/community/tournament`)
+- [x] Tournament detail page with registration and live updates
+- [ ] Dedicated registration page (current registration lives on the detail page)
+- [x] Admin create + manage pages
+- [ ] `BracketView`, `StandingsTable`, `TournamentCard`, `MatchScoreChips`, `EligibilityGate` extracted component architecture
+- [x] `useTournament`
+- [x] `tournament.service.ts`
+- [ ] Scaled public-list SEO/data-loading pass
+- [ ] Sitemap and robots refinements
+- [ ] Community hub tournament integration polish
 
 ### Phase 2 — Swiss System + Organizer Role
 

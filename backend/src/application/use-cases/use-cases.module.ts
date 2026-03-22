@@ -21,6 +21,8 @@ import { ListTournamentsUseCase } from './tournament/list-tournaments.use-case';
 import { GetTournamentUseCase } from './tournament/get-tournament.use-case';
 import { AdminRemoveTournamentParticipantUseCase } from './tournament/admin-remove-tournament-participant.use-case';
 import { AdminUpdateTournamentUseCase } from './tournament/admin-update-tournament.use-case';
+import { AdminCancelTournamentUseCase } from './tournament/admin-cancel-tournament.use-case';
+import { AdminResolveTournamentMatchUseCase } from './tournament/admin-resolve-tournament-match.use-case';
 import { AiProgressionService } from './ai-progression.service';
 import { EligibilityCheckService } from '../../domain/tournament/services/eligibility-check.service';
 import { BracketGenerationService } from '../../domain/tournament/services/bracket-generation.service';
@@ -59,6 +61,8 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     GetTournamentUseCase,
     AdminRemoveTournamentParticipantUseCase,
     AdminUpdateTournamentUseCase,
+    AdminCancelTournamentUseCase,
+    AdminResolveTournamentMatchUseCase,
   ],
   exports: [
     RatingService,
@@ -81,6 +85,8 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     GetTournamentUseCase,
     AdminRemoveTournamentParticipantUseCase,
     AdminUpdateTournamentUseCase,
+    AdminCancelTournamentUseCase,
+    AdminResolveTournamentMatchUseCase,
   ],
 })
 export class UseCasesModule {}

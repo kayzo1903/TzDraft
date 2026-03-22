@@ -4,10 +4,16 @@ import { Tournament } from '../../../domain/tournament/entities/tournament.entit
 import { TournamentParticipant } from '../../../domain/tournament/entities/tournament-participant.entity';
 import { TournamentRound } from '../../../domain/tournament/entities/tournament-round.entity';
 import { TournamentMatch } from '../../../domain/tournament/entities/tournament-match.entity';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+
+export interface TournamentParticipantView extends TournamentParticipant {
+  displayName: string;
+  username: string;
+}
 
 export interface TournamentDetail {
   tournament: Tournament;
-  participants: TournamentParticipant[];
+  participants: TournamentParticipantView[];
   rounds: TournamentRound[];
   matches: TournamentMatch[];
 }
@@ -17,6 +23,7 @@ export class GetTournamentUseCase {
   constructor(
     @Inject('ITournamentRepository')
     private readonly repo: ITournamentRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async execute(id: string): Promise<TournamentDetail> {
@@ -29,6 +36,25 @@ export class GetTournamentUseCase {
       this.repo.findMatchesByTournament(id),
     ]);
 
-    return { tournament, participants, rounds, matches };
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: participants.map((participant) => participant.userId) } },
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+      },
+    });
+
+    const userMap = new Map(users.map((user) => [user.id, user]));
+    const participantViews: TournamentParticipantView[] = participants.map((participant) => {
+      const user = userMap.get(participant.userId);
+      return {
+        ...participant,
+        displayName: user?.displayName ?? participant.userId.slice(0, 8),
+        username: user?.username ?? participant.userId.slice(0, 8),
+      };
+    });
+
+    return { tournament, participants: participantViews, rounds, matches };
   }
 }

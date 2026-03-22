@@ -41,6 +41,8 @@ export interface TournamentParticipant {
   id: string;
   tournamentId: string;
   userId: string;
+  displayName: string;
+  username: string;
   seed: number | null;
   eloAtSignup: number;
   status: ParticipantStatus;
@@ -168,6 +170,11 @@ export const tournamentService = {
     return response.data;
   },
 
+  async cancel(id: string): Promise<Tournament> {
+    const response = await axiosInstance.post(`/tournaments/${id}/cancel`);
+    return response.data;
+  },
+
   async update(id: string, dto: UpdateTournamentInput): Promise<Tournament> {
     const response = await axiosInstance.patch(`/tournaments/${id}`, dto);
     return response.data;
@@ -175,5 +182,17 @@ export const tournamentService = {
 
   async adminRemoveParticipant(tournamentId: string, userId: string): Promise<void> {
     await axiosInstance.delete(`/tournaments/${tournamentId}/participants/${userId}`);
+  },
+
+  async adminResolveMatch(
+    tournamentId: string,
+    matchId: string,
+    result: "PLAYER1_WIN" | "PLAYER2_WIN"
+  ): Promise<TournamentMatch> {
+    const response = await axiosInstance.post(
+      `/tournaments/${tournamentId}/matches/${matchId}/manual-result`,
+      { result }
+    );
+    return response.data;
   },
 };
