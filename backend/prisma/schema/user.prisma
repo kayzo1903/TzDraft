@@ -7,6 +7,12 @@ enum UserRole {
     ADMIN
 }
 
+enum AccountType {
+    REGISTERED
+    GUEST
+    OAUTH_PENDING
+}
+
 model User {
     id           String    @id @default(uuid())
     phoneNumber  String    @unique @map("phone_number")
@@ -19,6 +25,7 @@ model User {
     country      String?   @default("TZ")
     region       String?
     role         UserRole  @default(USER)
+    accountType  AccountType @default(REGISTERED) @map("account_type")
     isBanned     Boolean   @default(false) @map("is_banned")
     createdAt    DateTime  @default(now()) @map("created_at")
     lastLoginAt  DateTime? @map("last_login_at")
@@ -37,9 +44,11 @@ model User {
     otpCodes               OtpCode[]
     tournamentsCreated     Tournament[]           @relation("TournamentCreator")
     tournamentParticipants TournamentParticipant[] @relation("TournamentParticipants")
+    aiChallengeSessions    AiChallengeSession[]
 
     @@index([country])
     @@index([country, region])
+    @@index([accountType])
     @@map("users")
 }
 
@@ -61,6 +70,8 @@ model Rating {
     draws                Int  @default(0)
     matchmakingWins      Int  @default(0) @map("matchmaking_wins")
     highestAiLevelBeaten Int? @map("highest_ai_level_beaten")
+    highestAiLevelPlayed Int  @default(0) @map("highest_ai_level_played")
+    highestUnlockedAiLevel Int @default(5) @map("highest_unlocked_ai_level")
 
     @@index([rating])
     @@map("ratings")

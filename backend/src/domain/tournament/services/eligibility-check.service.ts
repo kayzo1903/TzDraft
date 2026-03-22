@@ -19,7 +19,7 @@ export interface UserEligibilityData {
   elo: number;
   matchmakingWins: number;
   highestAiLevelBeaten: number | null;
-  hasPlayedAiLevel: boolean; // caller checks requiredAiLevelPlayed
+  highestAiLevelPlayed: number | null;
 }
 
 @Injectable()
@@ -65,11 +65,12 @@ export class EligibilityCheckService {
     }
 
     if (tournament.requiredAiLevelPlayed !== null) {
+      const played = user.highestAiLevelPlayed ?? 0;
       checks.push({
         key: 'requiredAiLevelPlayed',
-        passed: user.hasPlayedAiLevel,
+        passed: played >= tournament.requiredAiLevelPlayed,
         required: tournament.requiredAiLevelPlayed,
-        current: user.hasPlayedAiLevel ? tournament.requiredAiLevelPlayed : 0,
+        current: played,
       });
     }
 

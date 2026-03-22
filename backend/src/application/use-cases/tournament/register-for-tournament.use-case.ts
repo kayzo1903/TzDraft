@@ -36,21 +36,11 @@ export class RegisterForTournamentUseCase {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const elo = user.rating?.rating ?? 1200;
-    const matchmakingWins = user.rating?.matchmakingWins ?? 0;
-    const highestAiLevelBeaten = user.rating?.highestAiLevelBeaten ?? null;
-
-    // Check requiredAiLevelPlayed via DB query
-    let hasPlayedAiLevel = false;
-    if (tournament.requiredAiLevelPlayed !== null) {
-      const aiGameCount = await this.prisma.game.count({
-        where: {
-          aiLevel: tournament.requiredAiLevelPlayed,
-          OR: [{ whitePlayerId: userId }, { blackPlayerId: userId }],
-        },
-      });
-      hasPlayedAiLevel = aiGameCount > 0;
-    }
+    const rating = user.rating as any;
+    const elo = rating?.rating ?? 1200;
+    const matchmakingWins = rating?.matchmakingWins ?? 0;
+    const highestAiLevelBeaten = rating?.highestAiLevelBeaten ?? null;
+    const highestAiLevelPlayed = rating?.highestAiLevelPlayed ?? 0;
 
     const result = this.eligibility.check(tournament, {
       country: user.country,
@@ -58,7 +48,7 @@ export class RegisterForTournamentUseCase {
       elo,
       matchmakingWins,
       highestAiLevelBeaten,
-      hasPlayedAiLevel,
+      highestAiLevelPlayed,
     });
 
     if (!result.eligible) {

@@ -166,32 +166,40 @@ export default async function Home({
               </div>
             </Link>
 
-            {/* Remaining locked tiles */}
-            {([
-              { key: 'tournaments',  Icon: Trophy     },
-              { key: 'analysis',     Icon: ScanSearch },
-            ] as const).map(({ key, Icon }) => (
-              <div
-                key={key}
-                className="relative flex flex-col gap-3 rounded-xl border border-white/5 bg-[var(--secondary)]/40 p-4 sm:p-5 opacity-50 cursor-not-allowed select-none"
-              >
+            {/* Tournaments — Active */}
+            <Link href="/community/tournament">
+              <div className="group relative flex flex-col gap-3 rounded-xl border border-white/10 bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] hover:border-amber-400/30 p-4 sm:p-5 transition-all duration-200 cursor-pointer">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-400/8 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
                 <div className="flex items-start justify-between gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 text-neutral-600 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 shrink-0">
-                    <Lock className="w-2.5 h-2.5 text-neutral-500" />
-                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide hidden sm:inline">
-                      {t('featureGrid.comingSoon')}
-                    </span>
+                  <div className="w-9 h-9 rounded-lg bg-amber-400/10 text-amber-400 flex items-center justify-center shrink-0">
+                    <Trophy className="w-4 h-4" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-neutral-500">{t(`featureGrid.${key}.title`)}</h3>
-                  <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">{t(`featureGrid.${key}.desc`)}</p>
+                  <h3 className="font-bold text-sm text-white">{t('featureGrid.tournaments.title')}</h3>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{t('featureGrid.tournaments.desc')}</p>
                 </div>
               </div>
-            ))}
+            </Link>
+
+            {/* Analysis — Coming soon */}
+            <div className="relative flex flex-col gap-3 rounded-xl border border-white/5 bg-[var(--secondary)]/40 p-4 sm:p-5 opacity-50 cursor-not-allowed select-none">
+              <div className="flex items-start justify-between gap-2">
+                <div className="w-9 h-9 rounded-lg bg-white/5 text-neutral-600 flex items-center justify-center shrink-0">
+                  <ScanSearch className="w-4 h-4" />
+                </div>
+                <div className="flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 shrink-0">
+                  <Lock className="w-2.5 h-2.5 text-neutral-500" />
+                  <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide hidden sm:inline">
+                    {t('featureGrid.comingSoon')}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-neutral-500">{t('featureGrid.analysis.title')}</h3>
+                <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">{t('featureGrid.analysis.desc')}</p>
+              </div>
+            </div>
 
           </div>
 

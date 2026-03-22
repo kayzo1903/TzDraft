@@ -11,6 +11,7 @@ import { PlayerColor, Winner } from "@tzdraft/cake-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS, INITIAL_FREE_LEVELS } from "@/lib/game/bot-progression";
+import { aiChallengeService, type AiChallengeResult } from "@/services/ai-challenge.service";
 import {
   AlertTriangle,
   ArrowRight,
@@ -429,16 +430,19 @@ export default function LocalGamePage() {
   const timeSeconds = useMemo(() => parseTime(params.get("time")), [params]);
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const nextBot = useMemo(() => getBotByLevel(Math.min(level + 1, TOTAL_BOT_LEVELS)), [level]);
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, hasHydrated } = useAuthStore();
   // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of redirect before mount effect runs
   const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(INITIAL_FREE_LEVELS);
   const [maxUnlockedNow, setMaxUnlockedNow] = useState(INITIAL_FREE_LEVELS);
   const [tierUnlockLevel, setTierUnlockLevel] = useState<number | null>(null);
   // true only when this specific game advanced the player's progression (first win of this level)
   const [isNewUnlock, setIsNewUnlock] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionReported, setSessionReported] = useState(false);
+  const [gameRunKey, setGameRunKey] = useState(0);
 
   const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, playWarning, undo, resign, makeMove, reset } =
-    useLocalGame(level, playerColor, timeSeconds);
+    useLocalGame(level, playerColor, timeSeconds, !isAuthenticated);
   const [showResign, setShowResign] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -458,16 +462,70 @@ export default function LocalGamePage() {
   }, []);
 
   useEffect(() => {
-    const max = getMaxUnlockedBotLevel();
-    setMaxUnlockedAtStart(max);
-    setMaxUnlockedNow(max);
-    if (level > max) router.replace(setupAiPath);
-  }, [level, router, setupAiPath]);
+    if (!hasHydrated) return;
+
+    const loadProgression = async () => {
+      if (isAuthenticated && user?.id) {
+        try {
+          const progression = await aiChallengeService.getProgression();
+          const max = progression.highestUnlockedAiLevel;
+          setMaxUnlockedAtStart(max);
+          setMaxUnlockedNow(max);
+          if (level > max) router.replace(setupAiPath);
+          return;
+        } catch (error) {
+          console.warn("Failed to load backend AI progression, falling back to local progress.", error);
+        }
+      }
+
+      const max = getMaxUnlockedBotLevel();
+      setMaxUnlockedAtStart(max);
+      setMaxUnlockedNow(max);
+      if (level > max) router.replace(setupAiPath);
+    };
+
+    void loadProgression();
+  }, [hasHydrated, isAuthenticated, level, router, setupAiPath, user?.id]);
+
+  useEffect(() => {
+    if (!hasHydrated || !isAuthenticated || !user?.id) {
+      setSessionId(null);
+      setSessionReported(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const startSession = async () => {
+      try {
+        const { sessionId: createdSessionId, progression } = await aiChallengeService.startSession({
+          aiLevel: level,
+          playerColor: playerColor === PlayerColor.WHITE ? "WHITE" : "BLACK",
+        });
+        if (cancelled) return;
+        setSessionId(createdSessionId);
+        setSessionReported(false);
+        setMaxUnlockedAtStart(progression.highestUnlockedAiLevel);
+        setMaxUnlockedNow(progression.highestUnlockedAiLevel);
+      } catch (error) {
+        console.warn("Failed to start backend AI session.", error);
+      }
+    };
+
+    void startSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gameRunKey, hasHydrated, isAuthenticated, level, playerColor, user?.id]);
 
   useEffect(() => {
     if (!state.result) {
       // Reset per-game flags when the game resets
       setIsNewUnlock(false);
+      return;
+    }
+    if (isAuthenticated && user?.id) {
       return;
     }
     const newMax = getMaxUnlockedBotLevel();
@@ -485,7 +543,59 @@ export default function LocalGamePage() {
     } else {
       setIsNewUnlock(false);
     }
-  }, [state.result, maxUnlockedAtStart]);
+  }, [isAuthenticated, maxUnlockedAtStart, state.result, user?.id]);
+
+  useEffect(() => {
+    if (!state.result || !sessionId || sessionReported || !isAuthenticated || !user?.id) return;
+
+    let cancelled = false;
+    const completeSession = async () => {
+      const humanWon =
+        state.result?.winner !== Winner.DRAW &&
+        ((state.result?.winner === Winner.WHITE) === (playerColor === PlayerColor.WHITE));
+      const result: AiChallengeResult =
+        state.result?.winner === Winner.DRAW
+          ? "DRAW"
+          : humanWon
+            ? "WIN"
+            : "LOSS";
+
+      try {
+        const progression = await aiChallengeService.completeSession(sessionId, {
+          result,
+          undoUsed: state.undoUsed,
+        });
+        if (cancelled) return;
+        setSessionReported(true);
+        setMaxUnlockedNow(progression.highestUnlockedAiLevel);
+        if (progression.highestUnlockedAiLevel > maxUnlockedAtStart) {
+          setIsNewUnlock(true);
+          setMaxUnlockedAtStart(progression.highestUnlockedAiLevel);
+          const isTierStart = BOT_TIERS.some(([start]) => start === progression.highestUnlockedAiLevel);
+          if (isTierStart) {
+            setTierUnlockLevel(progression.highestUnlockedAiLevel);
+          }
+        } else {
+          setIsNewUnlock(false);
+        }
+      } catch (error) {
+        console.warn("Failed to complete backend AI session.", error);
+      }
+    };
+
+    void completeSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, maxUnlockedAtStart, playerColor, sessionId, sessionReported, state.result, state.undoUsed, user?.id]);
+
+  const handleResetGame = () => {
+    reset();
+    setSessionId(null);
+    setSessionReported(false);
+    setGameRunKey((current) => current + 1);
+  };
 
   if (!mounted) {
     return (
@@ -636,7 +746,7 @@ export default function LocalGamePage() {
           <Button variant="secondary" size="sm" className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base" onClick={() => setShowResign(true)}>
             {t("actions.resign")}
           </Button>
-          <Button variant="secondary" size="sm" className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base" onClick={reset}>
+          <Button variant="secondary" size="sm" className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base" onClick={handleResetGame}>
             {t("actions.reset")}
           </Button>
         </div>
@@ -676,7 +786,7 @@ export default function LocalGamePage() {
           locale={locale}
           timeSeconds={timeSeconds}
           undoUsed={state.undoUsed}
-          onPlayAgain={reset}
+          onPlayAgain={handleResetGame}
           onNextBot={() => { reset(); router.push(`/${locale}/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
           onChangeBots={() => router.push(setupAiPath)}
           t={t}
