@@ -18,7 +18,12 @@ export class EmailService {
     this.resend = new Resend(apiKey);
   }
 
-  async sendSupportEmail(from: string, subject: string, message: string) {
+  async sendSupportEmail(
+    name: string,
+    email: string,
+    subject: string,
+    message: string,
+  ) {
     const supportEmail = this.configService.get<string>('SUPPORT_EMAIL');
 
     if (!supportEmail) {
@@ -38,8 +43,8 @@ export class EmailService {
       // 1. Send Notification to Support Team
       const notificationHtml = await render(
         SupportNotification({
-          name: from,
-          email: from,
+          name,
+          email,
           subject,
           message,
         }),
@@ -50,7 +55,7 @@ export class EmailService {
         to: [supportEmail],
         subject: `[Support Request] ${subject}`,
         html: notificationHtml,
-        replyTo: from,
+        replyTo: email,
       });
 
       if (notificationResponse.error) {
@@ -65,13 +70,14 @@ export class EmailService {
       try {
         const confirmationHtml = await render(
           UserConfirmation({
-            name: from.split('@')[0],
+            name,
+            subject,
           }),
         );
 
         await this.resend.emails.send({
           from: `TzDraft Support <${fromEmail}>`,
-          to: [from],
+          to: [email],
           subject: 'We received your support request',
           html: confirmationHtml,
         });

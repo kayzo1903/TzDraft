@@ -26,8 +26,11 @@ import {
   CreateTournamentDto,
   ListTournamentsQueryDto,
   UpdateTournamentDto,
+  AdminResolveTournamentMatchDto,
 } from '../dtos/tournament.dto';
 import { AdminUpdateTournamentUseCase } from '../../../application/use-cases/tournament/admin-update-tournament.use-case';
+import { AdminResolveTournamentMatchUseCase } from '../../../application/use-cases/tournament/admin-resolve-tournament-match.use-case';
+import { AdminCancelTournamentUseCase } from '../../../application/use-cases/tournament/admin-cancel-tournament.use-case';
 import { TournamentFormat, TournamentScope } from '../../../domain/tournament/entities/tournament.entity';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
 
@@ -42,6 +45,8 @@ export class TournamentController {
     private readonly getTournament: GetTournamentUseCase,
     private readonly adminRemoveParticipant: AdminRemoveTournamentParticipantUseCase,
     private readonly adminUpdateTournament: AdminUpdateTournamentUseCase,
+    private readonly adminCancelTournament: AdminCancelTournamentUseCase,
+    private readonly adminResolveMatch: AdminResolveTournamentMatchUseCase,
   ) {}
 
   @Get()
@@ -94,6 +99,12 @@ export class TournamentController {
     return this.startTournament.execute(id);
   }
 
+  @Post(':id/cancel')
+  @UseGuards(AdminGuard)
+  async cancel(@Param('id') id: string) {
+    return this.adminCancelTournament.execute(id);
+  }
+
   @Patch(':id')
   @UseGuards(AdminGuard)
   async update(@Param('id') id: string, @Body() dto: UpdateTournamentDto) {
@@ -127,5 +138,15 @@ export class TournamentController {
     @Param('userId') userId: string,
   ) {
     await this.adminRemoveParticipant.execute(id, userId);
+  }
+
+  @Post(':id/matches/:matchId/manual-result')
+  @UseGuards(AdminGuard)
+  async manualResult(
+    @Param('id') id: string,
+    @Param('matchId') matchId: string,
+    @Body() dto: AdminResolveTournamentMatchDto,
+  ) {
+    return this.adminResolveMatch.execute(id, matchId, dto.result);
   }
 }

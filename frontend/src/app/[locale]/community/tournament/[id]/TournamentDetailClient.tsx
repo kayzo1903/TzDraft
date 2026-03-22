@@ -602,20 +602,20 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
               </section>
             )}
 
-            {rounds.length > 0 && (
-              <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-black text-white">
-                      {locale === "sw" ? "Raundi na mechi" : "Rounds and matches"}
-                    </h2>
-                    <p className="mt-1 text-sm text-neutral-400">
-                      {locale === "sw"
-                        ? "Fuatilia maendeleo ya bracket kila raundi."
-                        : "Track the bracket as each round develops."}
-                    </p>
-                  </div>
-                </div>
+	            {rounds.length > 0 && (
+	              <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+	                <div className="flex items-center justify-between gap-4">
+	                  <div>
+	                    <h2 className="text-xl font-black text-white">
+	                      {locale === "sw" ? "Raundi na mechi" : "Rounds and matches"}
+	                    </h2>
+	                    <p className="mt-1 text-sm text-neutral-400">
+	                      {locale === "sw"
+	                        ? "Fuatilia maendeleo ya bracket kila raundi hadi fainali."
+	                        : "Track the full bracket live from opening round through the final."}
+	                    </p>
+	                  </div>
+	                </div>
 
                 <div className="mt-6 space-y-6">
                   {rounds.map((round) => {
@@ -623,19 +623,22 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
 
                     return (
                       <div key={round.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <h3 className="text-lg font-bold text-white">
-                              {locale === "sw" ? `Raundi ${round.roundNumber}` : `Round ${round.roundNumber}`}
-                            </h3>
-                            <p className="mt-1 text-sm text-neutral-400">
-                              {roundMatches.length} {locale === "sw" ? "mechi" : "matches"}
-                            </p>
-                          </div>
-                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-neutral-300">
-                            {round.status}
-                          </span>
-                        </div>
+	                          <div className="flex flex-wrap items-center justify-between gap-3">
+	                            <div>
+	                              <h3 className="text-lg font-bold text-white">
+	                                {locale === "sw" ? `Raundi ${round.roundNumber}` : `Round ${round.roundNumber}`}
+	                              </h3>
+	                              <p className="mt-1 text-sm text-neutral-400">
+	                                {roundMatches.length} {locale === "sw" ? "mechi" : "matches"}
+	                              </p>
+                                <p className="mt-1 text-xs text-neutral-500">
+                                  {locale === "sw" ? "Imeanza" : "Started"}: {formatDateTime(round.startedAt, locale)}
+                                </p>
+	                            </div>
+	                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-neutral-300">
+	                              {round.status}
+	                            </span>
+	                          </div>
 
                         <div className="mt-4 space-y-3">
                           {roundMatches.map((match) => {
@@ -651,35 +654,43 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
                                 }`}
                               >
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                  <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-sm text-neutral-300">
-                                      <span className={match.result === "PLAYER1_WIN" ? "font-bold text-white" : ""}>
-                                        {playerLabel(match.player1Id, participantMap, locale)}
-                                      </span>
+	                                  <div className="space-y-2">
+	                                    <div className="flex items-center gap-2 text-sm text-neutral-300">
+	                                      <span className={match.result === "PLAYER1_WIN" ? "font-bold text-white" : ""}>
+	                                        {playerLabel(match.player1Id, participantMap, locale)}
+	                                      </span>
                                       <span className="text-neutral-500">vs</span>
                                       <span className={match.result === "PLAYER2_WIN" ? "font-bold text-white" : ""}>
                                         {playerLabel(match.player2Id, participantMap, locale)}
                                       </span>
                                     </div>
-                                    <div className="text-xs text-neutral-400">
-                                      {locale === "sw" ? "Michezo" : "Games"}: {match.player1Wins}-{match.player2Wins}
-                                    </div>
-                                  </div>
+	                                    <div className="text-xs text-neutral-400">
+	                                      {locale === "sw" ? "Michezo" : "Games"}: {match.player1Wins}-{match.player2Wins}
+	                                    </div>
+                                      <div className="flex flex-wrap gap-2 text-[11px] text-neutral-500">
+                                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+                                          {locale === "sw" ? "Imeanza" : "Started"}: {formatDateTime(match.startedAt, locale)}
+                                        </span>
+                                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+                                          {locale === "sw" ? "Imekamilika" : "Finished"}: {formatDateTime(match.completedAt, locale)}
+                                        </span>
+                                      </div>
+	                                  </div>
 
-                                  <div className="flex items-center gap-3">
-                                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-neutral-300">
-                                      {match.status}
-                                    </span>
-                                    {match.currentGameId && (
-                                      <Link
-                                        href={`/game/${match.currentGameId}`}
-                                        className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-950 transition hover:bg-amber-300"
-                                      >
-                                        {locale === "sw" ? "Jiunge" : "Join game"}
-                                        <ArrowRight className="h-3.5 w-3.5" />
-                                      </Link>
-                                    )}
-                                  </div>
+	                                  <div className="flex items-center gap-3">
+	                                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-neutral-300">
+	                                      {match.status}
+	                                    </span>
+	                                    {match.currentGameId && (
+	                                      <Link
+	                                        href={`/game/${match.currentGameId}`}
+	                                        className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-gray-950 transition hover:bg-amber-300"
+	                                      >
+	                                        {locale === "sw" ? "Tazama live" : "Watch live"}
+	                                        <ArrowRight className="h-3.5 w-3.5" />
+	                                      </Link>
+	                                    )}
+	                                  </div>
                                 </div>
                               </div>
                             );

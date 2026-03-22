@@ -54,9 +54,9 @@
 
 | ID   | Scenario | Expected |
 |------|----------|----------|
-| U25  | Valid payload, admin caller | Tournament created with `DRAFT` status |
+| U25  | Valid payload, admin caller | Tournament created with `REGISTRATION` status |
 | U26  | `maxPlayers > FORMAT_MAX_PLAYERS[SE]` (32) | Throws validation error |
-| U27  | `minPlayers > maxPlayers` | Throws validation error |
+| U27  | Unsupported format in Phase 1 | Throws validation error |
 
 ### RegisterForTournamentUseCase (U28–U32)
 
@@ -64,16 +64,16 @@
 |------|----------|----------|
 | U28  | Eligible player registers | Participant created, `eloAtSignup` snapshot saved |
 | U29  | Tournament not in `REGISTRATION` status | Throws `BadRequestException` |
-| U30  | Player already registered | Throws `ConflictException` |
+| U30  | Player already registered | Throws `BadRequestException` |
 | U31  | Tournament at capacity (`maxPlayers` reached) | Throws `BadRequestException` |
-| U32  | Player fails eligibility check | Throws `ForbiddenException` with reason |
+| U32  | Player fails eligibility check | Throws `UnprocessableEntityException` with checks payload |
 
 ### StartTournamentUseCase (U33–U36)
 
 | ID   | Scenario | Expected |
 |------|----------|----------|
 | U33  | Valid start (≥ `minPlayers` registered) | Status → `ACTIVE`, seeds assigned, R1 matches created, Game 1 spawned per real match |
-| U34  | Fewer than `minPlayers` registered | Throws `BadRequestException` |
+| U34  | Fewer than `minPlayers` registered | Tournament status becomes `CANCELLED` |
 | U35  | BYE matches auto-advance | BYE participant moves to R2 without a game |
 | U36  | Tournament not in `REGISTRATION` | Throws `BadRequestException` |
 
@@ -91,8 +91,8 @@
 | ID   | Scenario | Expected |
 |------|----------|----------|
 | U41  | `TOURNAMENT` game ends | ELO unchanged for both players |
-| U42  | `TOURNAMENT` game ends — winner | Career `wins` counter incremented |
-| U43  | `TOURNAMENT` game ends — loser | Career `losses` counter incremented |
+| U42  | `TOURNAMENT` game ends — winner | Tournament progression continues without ladder update |
+| U43  | `TOURNAMENT` game ends — loser | Tournament progression continues without ladder update |
 | U44  | `RANKED` game ends | ELO updated normally (guard does not fire) |
 
 ---
@@ -128,7 +128,7 @@
 |------|-------|---------|-----------------|
 | W01  | `tournamentMatchGameReady` | New game spawned for a match | `{ matchId, gameId, gameNumber, isExtra }` |
 | W02  | `tournamentMatchCompleted` | Match reaches `END_MATCH` decision | `{ matchId, result, winnerId, score }` |
-| W03  | `tournamentRoundAdvanced` | All matches in round complete | `{ tournamentId, newRoundNumber, matches[] }` |
+| W03  | `tournamentRoundAdvanced` | All matches in round complete | `{ tournamentId, roundNumber }` |
 | W04  | `tournamentCompleted` | Final match completes | `{ tournamentId, winnerId }` |
 | W05  | `autoRequeue` guard | Game of type `TOURNAMENT` ends | `autoRequeue` event must NOT be emitted |
 | W06  | `joinTournament` handler | Client emits `joinTournament` with `{ tournamentId }` | Client socket added to room `tournament:{id}` |

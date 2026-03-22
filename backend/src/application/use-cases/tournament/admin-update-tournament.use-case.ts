@@ -41,8 +41,14 @@ export class AdminUpdateTournamentUseCase {
       throw new NotFoundException('Tournament not found');
     }
 
-    if (tournament.status !== TournamentStatus.REGISTRATION) {
-      throw new BadRequestException('Tournament details can only be edited before the tournament starts');
+    const canEditBeforeStart =
+      tournament.status === TournamentStatus.DRAFT ||
+      tournament.status === TournamentStatus.REGISTRATION;
+
+    if (!canEditBeforeStart) {
+      throw new BadRequestException(
+        'Tournament details can only be edited before the tournament starts',
+      );
     }
 
     const name = dto.name?.trim() ?? tournament.name;
@@ -70,41 +76,43 @@ export class AdminUpdateTournamentUseCase {
       throw new BadRequestException('Tournament descriptions must be at least 10 characters');
     }
 
-    const cap = FORMAT_MAX_PLAYERS[tournament.format];
-    if (maxPlayers > cap) {
-      throw new BadRequestException(
-        `maxPlayers ${maxPlayers} exceeds the hard cap of ${cap} for ${tournament.format}`,
-      );
-    }
+    if (canEditBeforeStart) {
+      const cap = FORMAT_MAX_PLAYERS[tournament.format];
+      if (maxPlayers > cap) {
+        throw new BadRequestException(
+          `maxPlayers ${maxPlayers} exceeds the hard cap of ${cap} for ${tournament.format}`,
+        );
+      }
 
-    if (minPlayers > maxPlayers) {
-      throw new BadRequestException('Minimum players cannot exceed maximum players');
-    }
+      if (minPlayers > maxPlayers) {
+        throw new BadRequestException('Minimum players cannot exceed maximum players');
+      }
 
-    const participantCount = await this.repo.countParticipants(tournament.id);
-    if (maxPlayers < participantCount) {
-      throw new BadRequestException('Maximum players cannot be lower than the current number of registered players');
-    }
+      const participantCount = await this.repo.countParticipants(tournament.id);
+      if (maxPlayers < participantCount) {
+        throw new BadRequestException('Maximum players cannot be lower than the current number of registered players');
+      }
 
-    const now = new Date();
-    if (scheduledStartAt <= now) {
-      throw new BadRequestException('Scheduled start time must be in the future');
-    }
+      const now = new Date();
+      if (scheduledStartAt <= now) {
+        throw new BadRequestException('Scheduled start time must be in the future');
+      }
 
-    if (registrationDeadline && registrationDeadline <= now) {
-      throw new BadRequestException('Registration deadline must be in the future');
-    }
+      if (registrationDeadline && registrationDeadline <= now) {
+        throw new BadRequestException('Registration deadline must be in the future');
+      }
 
-    if (registrationDeadline && registrationDeadline >= scheduledStartAt) {
-      throw new BadRequestException('Registration deadline must be before the scheduled start time');
-    }
+      if (registrationDeadline && registrationDeadline >= scheduledStartAt) {
+        throw new BadRequestException('Registration deadline must be before the scheduled start time');
+      }
 
-    if (scope === TournamentScope.COUNTRY && !country) {
-      throw new BadRequestException('Country is required for country tournaments');
-    }
+      if (scope === TournamentScope.COUNTRY && !country) {
+        throw new BadRequestException('Country is required for country tournaments');
+      }
 
-    if (scope === TournamentScope.REGION && (!country || !region)) {
-      throw new BadRequestException('Country and region are required for regional tournaments');
+      if (scope === TournamentScope.REGION && (!country || !region)) {
+        throw new BadRequestException('Country and region are required for regional tournaments');
+      }
     }
 
     return this.repo.updateDetails(tournament.id, {
