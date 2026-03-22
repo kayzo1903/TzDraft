@@ -26,6 +26,7 @@ import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
 import { BOTS } from "@/lib/game/bots";
 import { getMaxUnlockedBotLevel, getCompletedBotLevels, INITIAL_FREE_LEVELS } from "@/lib/game/bot-progression";
+import { aiChallengeService } from "@/services/ai-challenge.service";
 
 type Bot = (typeof BOTS)[number];
 
@@ -337,7 +338,7 @@ export default function SetupAiPage() {
   const router = useRouter();
   const params = useParams<{ locale: string }>();
   const locale = typeof params?.locale === "string" ? params.locale : "en";
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, hasHydrated } = useAuthStore();
 
   // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of all-locked UI
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(INITIAL_FREE_LEVELS);
@@ -358,15 +359,40 @@ export default function SetupAiPage() {
   const timeMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const max = getMaxUnlockedBotLevel();
-    const completed = new Set<number>(getCompletedBotLevels());
-    setMaxUnlockedLevel(max);
-    setCompletedLevels(completed);
-    // Default to the highest unlocked bot on mount
-    let best = BOTS[0];
-    for (const bot of BOTS) { if (bot.level <= max) best = bot; }
-    setSelectedBot(best);
-  }, []);
+    if (!hasHydrated) return;
+
+    const loadProgression = async () => {
+      if (isAuthenticated && user?.id) {
+        try {
+          const progression = await aiChallengeService.getProgression();
+          const max = progression.highestUnlockedAiLevel;
+          const completed = new Set<number>(progression.completedLevels);
+          setMaxUnlockedLevel(max);
+          setCompletedLevels(completed);
+          let best = BOTS[0];
+          for (const bot of BOTS) {
+            if (bot.level <= max) best = bot;
+          }
+          setSelectedBot(best);
+          return;
+        } catch (error) {
+          console.warn("Failed to load backend AI progression, falling back to local progress.", error);
+        }
+      }
+
+      const max = getMaxUnlockedBotLevel();
+      const completed = new Set<number>(getCompletedBotLevels());
+      setMaxUnlockedLevel(max);
+      setCompletedLevels(completed);
+      let best = BOTS[0];
+      for (const bot of BOTS) {
+        if (bot.level <= max) best = bot;
+      }
+      setSelectedBot(best);
+    };
+
+    void loadProgression();
+  }, [hasHydrated, isAuthenticated, user?.id]);
 
   useEffect(() => {
     if (selectedBot.level > maxUnlockedLevel) setSelectedBot(highestUnlockedBot);

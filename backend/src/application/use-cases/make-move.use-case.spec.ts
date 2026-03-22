@@ -56,6 +56,7 @@ describe('MakeMoveUseCase', () => {
       mockMoveRepository as any,
       mockGamesGateway as any,
       mockRatingService as any,
+      { execute: jest.fn().mockResolvedValue(undefined) } as any,
     );
   });
 

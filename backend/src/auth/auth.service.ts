@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { AccountType } from '@prisma/client';
 import { PrismaService } from '../infrastructure/database/prisma/prisma.service';
 import { UserService } from '../domain/user/user.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
@@ -80,6 +81,7 @@ export class AuthService {
         displayName: dto.displayName || dto.username,
         passwordHash: hashedPassword,
         isVerified: true,
+        accountType: AccountType.REGISTERED,
         country: dto.country,
         region: dto.region,
         rating: {
@@ -112,6 +114,9 @@ export class AuthService {
         rating: user.rating?.rating || 1200,
         country: user.country ?? undefined,
         region: user.region ?? undefined,
+        role: user.role,
+        isBanned: user.isBanned,
+        accountType: user.accountType,
       },
       accessToken,
       refreshToken,
@@ -162,12 +167,25 @@ export class AuthService {
     // OAuth placeholder phone numbers (e.g. "oauth_*") are treated as having no phone and are not verified.
     const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
     let isVerified = user.isVerified;
-    if (hasRealPhoneNumber && !user.isVerified) {
+    let accountType = user.accountType;
+    if (hasRealPhoneNumber && (!user.isVerified || user.accountType !== AccountType.REGISTERED)) {
       await this.prisma.user.update({
         where: { id: user.id },
-        data: { isVerified: true },
+        data: { isVerified: true, accountType: AccountType.REGISTERED },
       });
       isVerified = true;
+      accountType = AccountType.REGISTERED;
+    } else if (
+      !hasRealPhoneNumber &&
+      user.oauthProvider &&
+      user.accountType !== AccountType.OAUTH_PENDING
+    ) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { accountType: AccountType.OAUTH_PENDING, isVerified: false },
+      });
+      isVerified = false;
+      accountType = AccountType.OAUTH_PENDING;
     }
 
     // Generate tokens
@@ -184,6 +202,9 @@ export class AuthService {
         rating: user.rating?.rating || 1200,
         country: user.country ?? undefined,
         region: user.region ?? undefined,
+        role: user.role,
+        isBanned: user.isBanned,
+        accountType,
       },
       accessToken,
       refreshToken,
@@ -372,7 +393,19 @@ export class AuthService {
       if (!user.phoneNumber.startsWith('+255') && user.isVerified) {
         user = await this.prisma.user.update({
           where: { id: user.id },
-          data: { isVerified: false },
+          data: {
+            isVerified: false,
+            accountType: AccountType.OAUTH_PENDING,
+          },
+          include: { rating: true },
+        });
+      } else if (
+        !user.phoneNumber.startsWith('+255') &&
+        user.accountType !== AccountType.OAUTH_PENDING
+      ) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { accountType: AccountType.OAUTH_PENDING },
           include: { rating: true },
         });
       }
@@ -384,6 +417,9 @@ export class AuthService {
           data: {
             googleId: profile.googleId,
             oauthProvider: profile.oauthProvider,
+            accountType: user.phoneNumber.startsWith('+255')
+              ? AccountType.REGISTERED
+              : AccountType.OAUTH_PENDING,
           },
           include: { rating: true },
         });
@@ -405,6 +441,7 @@ export class AuthService {
         oauthProvider: profile.oauthProvider,
         phoneNumber: `oauth_${profile.googleId}`, // Placeholder since phoneNumber is required
         isVerified: false,
+        accountType: AccountType.OAUTH_PENDING,
         passwordHash: null,
         rating: {
           create: {
@@ -487,6 +524,7 @@ export class AuthService {
         username,
         displayName,
         isVerified: false,
+        accountType: AccountType.GUEST,
         rating: { create: { rating: 1200 } },
       },
       include: { rating: true },
@@ -502,6 +540,9 @@ export class AuthService {
         displayName: user.displayName,
         isVerified: user.isVerified,
         rating: user.rating?.rating || 1200,
+        role: user.role,
+        isBanned: user.isBanned,
+        accountType: user.accountType,
       },
       accessToken,
       refreshToken,

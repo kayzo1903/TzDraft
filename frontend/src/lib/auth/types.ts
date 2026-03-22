@@ -15,6 +15,7 @@ export interface User {
   username: string;
   displayName: string;
   isVerified: boolean;
+  accountType: "REGISTERED" | "GUEST" | "OAUTH_PENDING";
   rating: number | Rating;
   role?: 'USER' | 'ADMIN';
   isBanned?: boolean;
@@ -27,9 +28,11 @@ export interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
+  setHasHydrated: (value: boolean) => void;
 }
 
 export interface RegisterData {

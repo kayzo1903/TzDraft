@@ -44,17 +44,37 @@ export async function generateMetadata({
 
   const siteUrl = getSiteUrl();
   const canonical = getCanonicalUrl(locale, "", siteUrl);
+  const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
+  const ogLocaleAlt = locale === "sw" ? "en_TZ" : "sw_TZ";
 
   return {
+    metadataBase: siteUrl,
     applicationName: SITE_NAME,
     title: {
       default: title,
       template: `%s | ${SITE_NAME}`,
     },
     description,
+    authors: [{ name: SITE_NAME, url: siteUrl.toString() }],
+    creator: SITE_NAME,
+    publisher: SITE_NAME,
+    category: "Sports",
+    referrer: "origin-when-cross-origin",
+    formatDetection: { telephone: false },
     alternates: {
       canonical,
       languages: getLanguageAlternates("", siteUrl),
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-snippet": -1,
+        "max-image-preview": "large",
+        "max-video-preview": -1,
+      },
     },
     openGraph: {
       type: "website",
@@ -62,14 +82,22 @@ export async function generateMetadata({
       title,
       description,
       url: canonical,
-      locale,
-      images: ["/logo/logo.png"],
+      locale: ogLocale,
+      alternateLocale: [ogLocaleAlt],
+      images: [
+        {
+          url: new URL("/logo/logo.png", siteUrl).toString(),
+          width: 1200,
+          height: 630,
+          alt: "TzDraft — Tanzania Drafti Online",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: ["/logo/logo.png"],
+      images: [new URL("/logo/logo.png", siteUrl).toString()],
     },
     icons: {
       icon: "/logo/logo.png",
@@ -94,7 +122,7 @@ const organizationSchema = {
 
 const gameSchema = {
   "@context": "https://schema.org",
-  "@type": "Game",
+  "@type": "VideoGame",
   name: "TzDraft — Drafti Mtandaoni",
   description:
     "Cheza Drafti mtandaoni Tanzania. Piga vita AI au marafiki wako bila malipo.",

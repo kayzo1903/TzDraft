@@ -3,6 +3,7 @@
     "home": "Home",
     "play": "Play",
     "leaderboard": "Leaderboard",
+    "community": "Community",
     "support": "Support",
     "login": "Log In",
     "signup": "Sign Up",
@@ -209,19 +210,53 @@
   "support": {
     "title": "Support Center",
     "subtitle": "Have a question or run into a bug? We're here to help you get back to the game.",
+    "eyebrow": "Help for accounts, gameplay and fair play",
+    "stats": {
+      "response": "Typical response",
+      "responseValue": "Within 24-48 hours",
+      "topics": "Main topics",
+      "topicsValue": "Accounts, matches, reports",
+      "languages": "Support languages",
+      "languagesValue": "English and Swahili"
+    },
+    "quickHelp": {
+      "title": "Quick help paths",
+      "subtitle": "Choose the closest topic so your report reaches the right place faster.",
+      "accountTitle": "Account access",
+      "accountBody": "Use this for login issues, verification trouble, profile problems, or missing progress.",
+      "gameplayTitle": "Gameplay and match issues",
+      "gameplayBody": "Report stuck games, invite problems, time-control confusion, or a board that behaves incorrectly.",
+      "fairPlayTitle": "Fair play and safety",
+      "fairPlayBody": "Contact support about abusive behavior, cheating concerns, tournament disputes, or policy violations."
+    },
     "faq": "Frequently Asked Questions",
     "contact": "Contact Us",
+    "contactSubtitle": "Send a clear message and include the game ID, invite code, or tournament name when relevant.",
+    "contactMethods": {
+      "title": "Other ways to reach us",
+      "email": "Email support",
+      "emailHint": "Best for account recovery, bug reports, and moderation concerns.",
+      "policy": "Read policy and reporting rules",
+      "policyHint": "Review the fair-play and platform rules before submitting a report."
+    },
     "form": {
       "name": "Name",
       "email": "Email",
       "subject": "Subject",
       "message": "Message",
       "submit": "Send Message",
+      "sending": "Sending",
+      "namePlaceholder": "Your name",
+      "emailPlaceholder": "your@email.com",
+      "messagePlaceholder": "Tell us what happened, what page you were on, and what you expected to happen.",
+      "privacyNote": "Do not include passwords, one-time codes, or private payment details in your message.",
       "subjects": {
         "bug": "Report a Bug",
         "account": "Account Issue",
         "general": "General Inquiry",
-        "feedback": "Feedback"
+        "feedback": "Feedback",
+        "tournament": "Tournament Issue",
+        "safety": "Safety or Policy Report"
       },
       "success": "Message sent successfully!",
       "error": "Failed to send message. Please try again."
@@ -232,7 +267,9 @@
       "q2": "Can I play against my friends?",
       "a2": "Yes! Click 'Play with Friend', create an online invite, then share the invite link or code with your friend.",
       "q3": "I found a bug, how do I report it?",
-      "a3": "Please use the form below to describe the issue. Include the Game ID if applicable."
+      "a3": "Please use the form below to describe the issue. Include the Game ID if applicable.",
+      "q4": "What should I include in a support request?",
+      "a4": "Include your username, the feature you were using, the time of the issue, and any game ID, invite code, or tournament name connected to the problem."
     }
   },
   "play": {
@@ -535,5 +572,32 @@
       "policy": "Privacy & policy",
       "rules": "Game rules"
     }
+  },
+  "leaderboard": {
+    "badge": "Verified Players Only",
+    "title": "Leaderboard",
+    "subtitle": "Track the strongest verified TzDraft players by rating and recent grind.",
+    "players": "Players",
+    "scope": "Scope",
+    "topRating": "Top Rating",
+    "scopeGlobal": "Global",
+    "scopeCountry": "Country",
+    "scopeRegion": "Region",
+    "rank": "Rank",
+    "player": "Player",
+    "games": "Games",
+    "winRate": "Win %",
+    "rating": "Rating",
+    "you": "you",
+    "youBadge": "You",
+    "noPlayers": "No verified players found for this view yet.",
+    "loadError": "Failed to load leaderboard",
+    "signInCta": "Sign in, play ranked games, and earn a verified place on the ladder.",
+    "logIn": "Log In",
+    "playNow": "Play Now",
+    "podiumRating": "Rating",
+    "podiumGames": "Games",
+    "prev": "Prev",
+    "next": "Next"
   }
 }
