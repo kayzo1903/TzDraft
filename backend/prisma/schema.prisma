@@ -20,6 +20,12 @@ enum UserRole {
     ADMIN
 }
 
+enum AccountType {
+    REGISTERED
+    GUEST
+    OAUTH_PENDING
+}
+
 model User {
     id           String    @id @default(uuid())
     phoneNumber  String    @unique @map("phone_number")
@@ -32,6 +38,7 @@ model User {
     country      String?   @default("TZ")
     region       String?
     role         UserRole  @default(USER)
+    accountType  AccountType @default(REGISTERED) @map("account_type")
     isBanned     Boolean   @default(false) @map("is_banned")
     createdAt    DateTime  @default(now()) @map("created_at")
     lastLoginAt  DateTime? @map("last_login_at")
@@ -50,9 +57,11 @@ model User {
     otpCodes               OtpCode[]
     tournamentsCreated     Tournament[]           @relation("TournamentCreator")
     tournamentParticipants TournamentParticipant[] @relation("TournamentParticipants")
+    aiChallengeSessions    AiChallengeSession[]
 
     @@index([country])
     @@index([country, region])
+    @@index([accountType])
     @@map("users")
 }
 
@@ -74,6 +83,8 @@ model Rating {
     draws                Int  @default(0)
     matchmakingWins      Int  @default(0) @map("matchmaking_wins")
     highestAiLevelBeaten Int? @map("highest_ai_level_beaten")
+    highestAiLevelPlayed Int  @default(0) @map("highest_ai_level_played")
+    highestUnlockedAiLevel Int @default(5) @map("highest_unlocked_ai_level")
 
     @@index([rating])
     @@map("ratings")
@@ -139,6 +150,173 @@ model OtpCode {
     @@index([phoneNumber])
     @@index([userId])
     @@map("otp_codes")
+}
+
+// ============================================
+// GAME DOMAIN (Aggregate Root)
+// ============================================
+
+model Game {
+    id          String     @id @default(uuid())
+    status      GameStatus @default(WAITING)
+    gameType    GameType   @map("game_type")
+    ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
+    initialTimeMs Int      @default(600000) @map("initial_time_ms")
+
+    whitePlayerId String? @map("white_player_id")
+    blackPlayerId String? @map("black_player_id")
+    whitePlayer   User?   @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
+    blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
+
+    whiteElo   Int?    @map("white_elo")
+    blackElo   Int?    @map("black_elo")
+    aiLevel    Int?    @map("ai_level")
+    inviteCode   String? @unique @map("invite_code")
+    creatorColor String? @map("creator_color")
+
+    winner    Winner?    @map("winner")
+    endReason EndReason? @map("end_reason")
+
+    /// Serialized board state after the latest move (array of PieceSnapshot).
+    /// Avoids replaying the full move history on every load.
+    boardSnapshot Json? @map("board_snapshot")
+
+    createdAt DateTime  @default(now()) @map("created_at")
+    startedAt DateTime? @map("started_at")
+    endedAt   DateTime? @map("ended_at")
+
+    // Tournament link — null for regular games
+    tournamentMatchGameId String?             @unique @map("tournament_match_game_id")
+    tournamentMatchGame   TournamentMatchGame? @relation(fields: [tournamentMatchGameId], references: [id])
+
+    moves Move[]
+    clock Clock?
+
+    @@map("games")
+}
+
+model AiChallengeSession {
+    id          String              @id @default(uuid())
+    userId      String              @map("user_id")
+    user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    aiLevel     Int                 @map("ai_level")
+    playerColor String              @map("player_color")
+    result      AiChallengeResult?
+    undoUsed    Boolean             @default(false) @map("undo_used")
+    startedAt   DateTime            @default(now()) @map("started_at")
+    completedAt DateTime?           @map("completed_at")
+
+    @@index([userId, aiLevel])
+    @@index([userId, completedAt])
+    @@map("ai_challenge_sessions")
+}
+
+// ============================================
+// GAME ENUMS
+// ============================================
+
+enum GameStatus {
+    WAITING
+    ACTIVE
+    FINISHED
+    ABORTED
+}
+
+enum GameType {
+    RANKED
+    CASUAL
+    AI
+    TOURNAMENT
+}
+
+enum Winner {
+    WHITE
+    BLACK
+    DRAW
+}
+
+enum EndReason {
+    STALEMATE
+    CHECKMATE
+    RESIGN
+    TIME
+    DISCONNECT
+    DRAW
+}
+
+enum AiChallengeResult {
+    WIN
+    LOSS
+    DRAW
+}
+
+// ============================================
+// MOVES DOMAIN (Immutable, Append-Only)
+// ============================================
+
+model Move {
+    id     String @id @default(uuid())
+    gameId String @map("game_id")
+    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+    moveNumber Int    @map("move_number")
+    player     Player
+
+    fromSquare      Int   @map("from_square") // 1-32 (dark squares only)
+    toSquare        Int   @map("to_square")
+    capturedSquares Int[] @map("captured_squares") // Ordered list for multi-capture
+
+    isPromotion    Boolean @default(false) @map("is_promotion")
+    isMultiCapture Boolean @default(false) @map("is_multi_capture")
+
+    notation   String @map("notation") // e.g., "22x17x10"
+    engineEval Int?   @map("engine_eval") // Centipawn equivalent
+
+    createdAt DateTime @default(now()) @map("created_at")
+
+    @@unique([gameId, moveNumber])
+    @@map("moves")
+}
+
+enum Player {
+    WHITE
+    BLACK
+}
+
+// ============================================
+// CLOCK DOMAIN (Time Control)
+// ============================================
+
+model Clock {
+    gameId String @id @map("game_id")
+    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+    whiteTimeMs BigInt   @map("white_time_ms")
+    blackTimeMs BigInt   @map("black_time_ms")
+    lastMoveAt  DateTime @map("last_move_at")
+
+    @@map("clocks")
+}
+
+// ============================================
+// MATCHMAKING QUEUE
+// ============================================
+
+model MatchmakingQueue {
+    id       String   @id @default(uuid())
+    userId   String   @unique @map("user_id")
+    timeMs   Int      @map("time_ms") // 180000 | 300000 | 600000 | 1800000
+    socketId String   @map("socket_id")
+    joinedAt DateTime @default(now()) @map("joined_at")
+
+    // Future ILO / Glicko-2 fields — nullable, unused until player base grows
+    rating     Int?
+    rd         Float?
+    volatility Float?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("matchmaking_queue")
 }
 
 // ============================================
@@ -337,149 +515,4 @@ enum MatchGameResult {
     PLAYER1_WIN
     PLAYER2_WIN
     DRAW
-}
-
-// ============================================
-// GAME DOMAIN (Aggregate Root)
-// ============================================
-
-model Game {
-    id          String     @id @default(uuid())
-    status      GameStatus @default(WAITING)
-    gameType    GameType   @map("game_type")
-    ruleVersion String     @default("TZ-8x8-v1") @map("rule_version")
-    initialTimeMs Int      @default(600000) @map("initial_time_ms")
-
-    whitePlayerId String? @map("white_player_id")
-    blackPlayerId String? @map("black_player_id")
-    whitePlayer   User?   @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
-    blackPlayer   User?   @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
-
-    whiteElo   Int?    @map("white_elo")
-    blackElo   Int?    @map("black_elo")
-    aiLevel    Int?    @map("ai_level")
-    inviteCode   String? @unique @map("invite_code")
-    creatorColor String? @map("creator_color")
-
-    winner    Winner?    @map("winner")
-    endReason EndReason? @map("end_reason")
-
-    /// Serialized board state after the latest move (array of PieceSnapshot).
-    /// Avoids replaying the full move history on every load.
-    boardSnapshot Json? @map("board_snapshot")
-
-    createdAt DateTime  @default(now()) @map("created_at")
-    startedAt DateTime? @map("started_at")
-    endedAt   DateTime? @map("ended_at")
-
-    // Tournament link — null for regular games
-    tournamentMatchGameId String?             @unique @map("tournament_match_game_id")
-    tournamentMatchGame   TournamentMatchGame? @relation(fields: [tournamentMatchGameId], references: [id])
-
-    moves Move[]
-    clock Clock?
-
-    @@map("games")
-}
-
-// ============================================
-// GAME ENUMS
-// ============================================
-
-enum GameStatus {
-    WAITING
-    ACTIVE
-    FINISHED
-    ABORTED
-}
-
-enum GameType {
-    RANKED
-    CASUAL
-    AI
-    TOURNAMENT
-}
-
-enum Winner {
-    WHITE
-    BLACK
-    DRAW
-}
-
-enum EndReason {
-    STALEMATE
-    CHECKMATE
-    RESIGN
-    TIME
-    DISCONNECT
-    DRAW
-}
-
-// ============================================
-// MOVES DOMAIN (Immutable, Append-Only)
-// ============================================
-
-model Move {
-    id     String @id @default(uuid())
-    gameId String @map("game_id")
-    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
-
-    moveNumber Int    @map("move_number")
-    player     Player
-
-    fromSquare      Int   @map("from_square") // 1-32 (dark squares only)
-    toSquare        Int   @map("to_square")
-    capturedSquares Int[] @map("captured_squares") // Ordered list for multi-capture
-
-    isPromotion    Boolean @default(false) @map("is_promotion")
-    isMultiCapture Boolean @default(false) @map("is_multi_capture")
-
-    notation   String @map("notation") // e.g., "22x17x10"
-    engineEval Int?   @map("engine_eval") // Centipawn equivalent
-
-    createdAt DateTime @default(now()) @map("created_at")
-
-    @@unique([gameId, moveNumber])
-    @@map("moves")
-}
-
-enum Player {
-    WHITE
-    BLACK
-}
-
-// ============================================
-// CLOCK DOMAIN (Time Control)
-// ============================================
-
-model Clock {
-    gameId String @id @map("game_id")
-    game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
-
-    whiteTimeMs BigInt   @map("white_time_ms")
-    blackTimeMs BigInt   @map("black_time_ms")
-    lastMoveAt  DateTime @map("last_move_at")
-
-    @@map("clocks")
-}
-
-// ============================================
-// MATCHMAKING QUEUE
-// ============================================
-
-model MatchmakingQueue {
-    id       String   @id @default(uuid())
-    userId   String   @unique @map("user_id")
-    timeMs   Int      @map("time_ms") // 180000 | 300000 | 600000 | 1800000
-    socketId String   @map("socket_id")
-    joinedAt DateTime @default(now()) @map("joined_at")
-
-    // Future ILO / Glicko-2 fields — nullable, unused until player base grows
-    rating     Int?
-    rd         Float?
-    volatility Float?
-
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@map("matchmaking_queue")
 }

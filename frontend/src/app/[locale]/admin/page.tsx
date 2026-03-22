@@ -113,7 +113,7 @@ const RANGE_OPTIONS = [
   { label: "30d", value: 30 },
 ];
 
-const PIE_COLORS = ["#34d399", "#f59e0b", "#f87171"];
+const PIE_COLORS = ["#34d399", "#f87171"];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -149,7 +149,6 @@ export default function AdminDashboard() {
   const pieData = growth
     ? [
         { name: "Verified", value: growth.breakdown.totalVerified },
-        { name: "Guests", value: growth.breakdown.totalGuests },
         { name: "Banned", value: growth.breakdown.totalBanned },
       ]
     : [];

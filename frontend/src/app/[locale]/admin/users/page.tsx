@@ -75,7 +75,6 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [hideGuests, setHideGuests] = useState(true);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -196,12 +195,6 @@ export default function AdminUsersPage() {
     });
   };
 
-  const visibleUsers = hideGuests
-    ? users.filter((u) => !u.phoneNumber?.startsWith("GUEST_"))
-    : users;
-  const hiddenGuestCount = hideGuests
-    ? users.filter((u) => u.phoneNumber?.startsWith("GUEST_")).length
-    : 0;
   const totalPages = Math.ceil(total / PAGE_LIMIT);
 
   return (
@@ -227,20 +220,9 @@ export default function AdminUsersPage() {
           placeholder="Search by username, email or phone…"
           className="w-full max-w-sm px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-amber-400"
         />
-        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={hideGuests}
-            onChange={(e) => setHideGuests(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-600 bg-gray-800 accent-amber-400"
-          />
-          Hide guests
-          {hiddenGuestCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded text-xs bg-gray-800 text-gray-500">
-              {hiddenGuestCount} hidden
-            </span>
-          )}
-        </label>
+        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+          Registered accounts only
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-800">
@@ -265,19 +247,17 @@ export default function AdminUsersPage() {
                   </td>
                 </tr>
               ))
-            ) : visibleUsers.length === 0 ? (
+            ) : users.length === 0 ? (
               <tr>
                 <td
                   colSpan={7}
                   className="px-4 py-8 text-center text-gray-500"
                 >
-                  {hideGuests && users.length > 0
-                    ? "All users on this page are guests"
-                    : "No users found"}
+                  No users found
                 </td>
               </tr>
             ) : (
-              visibleUsers.map((u) => (
+              users.map((u) => (
                 <tr key={u.id} className="bg-gray-900/20 hover:bg-gray-900/60">
                   <td className="px-4 py-3">
                     <p className="font-medium text-white">{u.displayName}</p>
@@ -411,9 +391,6 @@ export default function AdminUsersPage() {
         <div className="flex items-center justify-between mt-4 text-sm text-gray-400">
           <span>
             {total} user{total !== 1 ? "s" : ""}
-            {hideGuests && (
-              <span className="text-gray-600 ml-1">(guests hidden)</span>
-            )}
           </span>
           <div className="flex gap-2">
             <button

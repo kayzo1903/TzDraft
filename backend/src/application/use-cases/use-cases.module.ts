@@ -21,6 +21,7 @@ import { ListTournamentsUseCase } from './tournament/list-tournaments.use-case';
 import { GetTournamentUseCase } from './tournament/get-tournament.use-case';
 import { AdminRemoveTournamentParticipantUseCase } from './tournament/admin-remove-tournament-participant.use-case';
 import { AdminUpdateTournamentUseCase } from './tournament/admin-update-tournament.use-case';
+import { AiProgressionService } from './ai-progression.service';
 import { EligibilityCheckService } from '../../domain/tournament/services/eligibility-check.service';
 import { BracketGenerationService } from '../../domain/tournament/services/bracket-generation.service';
 import { MatchProgressionService } from '../../domain/tournament/services/match-progression.service';
@@ -42,6 +43,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     JoinQueueUseCase,
     GetGameHistoryUseCase,
     GetPlayerStatsUseCase,
+    AiProgressionService,
     // Tournament domain services
     EligibilityCheckService,
     BracketGenerationService,
@@ -68,6 +70,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     JoinQueueUseCase,
     GetGameHistoryUseCase,
     GetPlayerStatsUseCase,
+    AiProgressionService,
     CreateTournamentUseCase,
     RegisterForTournamentUseCase,
     WithdrawFromTournamentUseCase,

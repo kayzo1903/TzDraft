@@ -9,6 +9,9 @@ export class AuthResponseDto {
     rating: number;
     country?: string;
     region?: string;
+    role?: 'USER' | 'ADMIN';
+    isBanned?: boolean;
+    accountType?: 'REGISTERED' | 'GUEST' | 'OAUTH_PENDING';
   };
   accessToken: string;
   refreshToken: string;
