@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Winner, GameType } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+
+const RATING_FLOOR = 200;
 
 /**
  * RatingService
@@ -9,6 +11,8 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
  */
 @Injectable()
 export class RatingService {
+  private readonly logger = new Logger(RatingService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -36,6 +40,12 @@ export class RatingService {
         create: { userId: whitePlayerId, rating: 1200, gamesPlayed: 0 },
         update: {},
       });
+      // For highestAiLevelBeaten: read current value first so we only update
+      // when the new level is strictly higher than the existing record.
+      const whiteStats = gameType === GameType.AI && whiteWin && aiLevel
+        ? await tx.rating.findUnique({ where: { userId: whitePlayerId }, select: { highestAiLevelBeaten: true } })
+        : null;
+
       await tx.rating.update({
         where: { userId: whitePlayerId },
         data: {
@@ -44,7 +54,7 @@ export class RatingService {
           draws: whiteDraw ? { increment: 1 } : undefined,
           matchmakingWins: gameType === GameType.RANKED && whiteWin ? { increment: 1 } : undefined,
           highestAiLevelBeaten:
-            gameType === GameType.AI && whiteWin && aiLevel
+            whiteStats && aiLevel && aiLevel > (whiteStats.highestAiLevelBeaten ?? 0)
               ? { set: aiLevel }
               : undefined,
         },
@@ -100,7 +110,7 @@ export class RatingService {
     });
   }
 
-  /** Standard Elo formula. K=32 for <30 games, K=16 otherwise. */
+  /** Standard Elo formula. K=32 for <30 games, K=16 otherwise. Rating never drops below RATING_FLOOR. */
   private calculateElo(
     ratingA: number,
     ratingB: number,
@@ -113,8 +123,8 @@ export class RatingService {
     const kB = gamesB < 30 ? 32 : 16;
     const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
     return {
-      newA: Math.round(ratingA + kA * (scoreA - expectedA)),
-      newB: Math.round(ratingB + kB * (scoreB - (1 - expectedA))),
+      newA: Math.max(RATING_FLOOR, Math.round(ratingA + kA * (scoreA - expectedA))),
+      newB: Math.max(RATING_FLOOR, Math.round(ratingB + kB * (scoreB - (1 - expectedA)))),
     };
   }
 }
