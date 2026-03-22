@@ -197,7 +197,10 @@ export class MakeMoveUseCase {
           game.winner,
           game.gameType,
         )
-        .catch(() => { /* non-fatal: ratings are best-effort from MakeMove */ });
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[MakeMove] Rating update failed for game ${gameId}: ${message}`);
+        });
 
       this.reportTournamentResult
         .execute(gameId, game.winner, game.whitePlayerId, game.blackPlayerId)
