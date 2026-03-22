@@ -19,6 +19,7 @@ import {
 } from '../../shared/constants/game.constants';
 import { ValidationError } from '../../domain/game/types/validation-error.type';
 import { RatingService } from './rating.service';
+import { ReportTournamentResultUseCase } from './tournament/report-tournament-result.use-case';
 
 /**
  * Make Move Use Case
@@ -37,6 +38,8 @@ export class MakeMoveUseCase {
     @Inject(forwardRef(() => GamesGateway))
     private readonly gamesGateway: GamesGateway,
     private readonly ratingService: RatingService,
+    @Inject(forwardRef(() => ReportTournamentResultUseCase))
+    private readonly reportTournamentResult: ReportTournamentResultUseCase,
   ) {
     this.moveValidationService = new MoveValidationService();
     this.gameRulesService = new GameRulesService();
@@ -195,6 +198,10 @@ export class MakeMoveUseCase {
           game.gameType,
         )
         .catch(() => { /* non-fatal: ratings are best-effort from MakeMove */ });
+
+      this.reportTournamentResult
+        .execute(gameId, game.winner, game.whitePlayerId, game.blackPlayerId)
+        .catch(() => { /* non-fatal: tournament progression is best-effort */ });
 
       const reasonStr =
         game.endReason === EndReason.TIME

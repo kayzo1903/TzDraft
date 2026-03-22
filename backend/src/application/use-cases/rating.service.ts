@@ -20,21 +20,59 @@ export class RatingService {
     blackPlayerId: string | null,
     winner: Winner,
     gameType: GameType,
+    aiLevel?: number | null,
   ): Promise<void> {
-    if (gameType !== GameType.RANKED || !blackPlayerId) return;
+    // Tournament games never affect ladder — skip entirely
+    if (gameType === GameType.TOURNAMENT) return;
 
     await this.prisma.$transaction(async (tx) => {
+      // Career stats for white
+      const whiteWin = winner === Winner.WHITE;
+      const whiteDraw = winner === Winner.DRAW;
+      const blackWin = winner === Winner.BLACK;
+
+      await tx.rating.upsert({
+        where: { userId: whitePlayerId },
+        create: { userId: whitePlayerId, rating: 1200, gamesPlayed: 0 },
+        update: {},
+      });
+      await tx.rating.update({
+        where: { userId: whitePlayerId },
+        data: {
+          wins: whiteWin ? { increment: 1 } : undefined,
+          losses: blackWin ? { increment: 1 } : undefined,
+          draws: whiteDraw ? { increment: 1 } : undefined,
+          matchmakingWins: gameType === GameType.RANKED && whiteWin ? { increment: 1 } : undefined,
+          highestAiLevelBeaten:
+            gameType === GameType.AI && whiteWin && aiLevel
+              ? { set: aiLevel }
+              : undefined,
+        },
+      });
+
+      if (!blackPlayerId) return;
+
+      await tx.rating.upsert({
+        where: { userId: blackPlayerId },
+        create: { userId: blackPlayerId, rating: 1200, gamesPlayed: 0 },
+        update: {},
+      });
+      await tx.rating.update({
+        where: { userId: blackPlayerId },
+        data: {
+          wins: blackWin ? { increment: 1 } : undefined,
+          losses: whiteWin ? { increment: 1 } : undefined,
+          draws: whiteDraw ? { increment: 1 } : undefined,
+          matchmakingWins: gameType === GameType.RANKED && blackWin ? { increment: 1 } : undefined,
+        },
+      });
+
+      // ELO only for ranked PvP
+      if (gameType !== GameType.RANKED) return;
+
       const [whiteRating, blackRating] = await Promise.all([
-        tx.rating.upsert({
-          where: { userId: whitePlayerId },
-          create: { userId: whitePlayerId, rating: 1200, gamesPlayed: 0 },
-          update: {},
-        }),
-        tx.rating.upsert({
-          where: { userId: blackPlayerId },
-          create: { userId: blackPlayerId, rating: 1200, gamesPlayed: 0 },
-          update: {},
-        }),
+        tx.rating.findUniqueOrThrow({ where: { userId: whitePlayerId } }),
+        tx.rating.findUniqueOrThrow({ where: { userId: blackPlayerId } }),
       ]);
 
       const scoreWhite =

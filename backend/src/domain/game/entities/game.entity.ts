@@ -55,6 +55,7 @@ export class Game {
     currentTurn: PlayerColor = PlayerColor.WHITE,
     public readonly inviteCode: string | null = null,
     public readonly creatorColor: PlayerColor | null = null,
+    public readonly tournamentMatchGameId: string | null = null,
   ) {
     this._status = status;
     this._board = BoardState.createInitialBoard();
@@ -415,7 +416,9 @@ export class Game {
    */
   isPvP(): boolean {
     return (
-      this.gameType === GameType.RANKED || this.gameType === GameType.CASUAL
+      this.gameType === GameType.RANKED ||
+      this.gameType === GameType.CASUAL ||
+      this.gameType === GameType.TOURNAMENT
     );
   }
 

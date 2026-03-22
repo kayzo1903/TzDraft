@@ -27,14 +27,16 @@ model User {
     googleId      String? @unique @map("google_id")
     oauthProvider String? @map("oauth_provider") // 'google', 'facebook', etc.
 
-    gamesAsWhite        Game[]               @relation("WhitePlayer")
-    gamesAsBlack        Game[]               @relation("BlackPlayer")
-    rating              Rating?
-    matchmakingQueue    MatchmakingQueue?
-    refreshTokens       RefreshToken[]
-    verificationTokens  VerificationToken[]
-    passwordResetTokens PasswordResetToken[]
-    otpCodes            OtpCode[]
+    gamesAsWhite           Game[]                 @relation("WhitePlayer")
+    gamesAsBlack           Game[]                 @relation("BlackPlayer")
+    rating                 Rating?
+    matchmakingQueue       MatchmakingQueue?
+    refreshTokens          RefreshToken[]
+    verificationTokens     VerificationToken[]
+    passwordResetTokens    PasswordResetToken[]
+    otpCodes               OtpCode[]
+    tournamentsCreated     Tournament[]           @relation("TournamentCreator")
+    tournamentParticipants TournamentParticipant[] @relation("TournamentParticipants")
 
     @@index([country])
     @@index([country, region])
@@ -52,6 +54,13 @@ model Rating {
     rating      Int      @default(1200)
     gamesPlayed Int      @default(0) @map("games_played")
     lastUpdated DateTime @updatedAt @map("last_updated")
+
+    // Career stats — tracked separately from ELO
+    wins                 Int  @default(0)
+    losses               Int  @default(0)
+    draws                Int  @default(0)
+    matchmakingWins      Int  @default(0) @map("matchmaking_wins")
+    highestAiLevelBeaten Int? @map("highest_ai_level_beaten")
 
     @@index([rating])
     @@map("ratings")
