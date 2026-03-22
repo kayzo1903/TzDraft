@@ -25,26 +25,80 @@ export async function generateMetadata({
 
   const data = await fetchTournament(id);
   const tournament = data?.tournament;
-  if (!tournament) return {};
 
   const siteUrl = getSiteUrl();
   const path = `/community/tournament/${id}`;
   const canonical = getCanonicalUrl(locale, path, siteUrl);
+  const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
+
+  if (!tournament) {
+    // Fallback: still indexable with generic metadata
+    const fallbackTitle = locale === "sw" ? "Mashindano ya Drafti | TzDraft" : "Drafti Tournament | TzDraft";
+    const fallbackDesc = locale === "sw"
+      ? "Tazama maelezo ya mashindano haya ya Drafti ya Tanzania kwenye TzDraft."
+      : "View details for this Tanzania Drafti tournament on TzDraft.";
+    return {
+      metadataBase: siteUrl,
+      title: fallbackTitle,
+      description: fallbackDesc,
+      alternates: { canonical, languages: getLanguageAlternates(path, siteUrl) },
+      robots: { index: true, follow: true },
+    };
+  }
 
   const description = locale === "sw" ? tournament.descriptionSw : tournament.descriptionEn;
   const title = `${tournament.name} | TzDraft`;
 
   return {
+    metadataBase: siteUrl,
     title,
     description,
+    keywords: [
+      tournament.name,
+      tournament.format,
+      locale === "sw" ? "mashindano ya drafti" : "drafti tournament",
+      "tanzania drafti",
+      "TzDraft",
+    ],
+    authors: [{ name: "TzDraft", url: siteUrl.toString() }],
+    creator: "TzDraft",
+    publisher: "TzDraft",
+    category: "Sports",
+    applicationName: "TzDraft",
+    referrer: "origin-when-cross-origin",
+    formatDetection: { telephone: false },
     alternates: { canonical, languages: getLanguageAlternates(path, siteUrl) },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-snippet": -1,
+        "max-image-preview": "large",
+        "max-video-preview": -1,
+      },
+    },
     openGraph: {
       title,
       description,
       url: canonical,
-      locale,
+      siteName: "TzDraft",
+      locale: ogLocale,
+      alternateLocale: [locale === "sw" ? "en_TZ" : "sw_TZ"],
       type: "website",
-      images: ["/logo/logo.png"],
+      images: [{ url: new URL("/logo/logo.png", siteUrl).toString(), width: 1200, height: 630, alt: `${tournament.name} — TzDraft` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [new URL("/logo/logo.png", siteUrl).toString()],
+    },
+    other: {
+      "revisit-after": "1 day",
+      language: locale === "sw" ? "Swahili" : "English",
+      rating: "General",
     },
   };
 }

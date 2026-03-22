@@ -4,7 +4,19 @@ import { getSiteUrl } from "@/lib/seo";
 import { client, isSanityConfigured } from "@/sanity/client";
 import { allSlugsQuery } from "@/sanity/queries";
 
-const publicPaths = ["", "/play", "/rules", "/policy", "/support", "/learn", "/community", "/community/tournament"] as const;
+const publicPaths = [
+  "",
+  "/play",
+  "/leaderboard",
+  "/learn",
+  "/rules",
+  "/policy",
+  "/support",
+  "/community/tournament",
+  "/game/setup-online",
+  "/game/setup-friend",
+  "/game/setup-ai",
+] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
@@ -18,8 +30,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       items.push({
         url: new URL(`/${locale}${path}`, siteUrl).toString(),
         lastModified,
-        changeFrequency: path === "" ? "daily" : path === "/community" || path === "/community/tournament" ? "daily" : "weekly",
-        priority: path === "" ? 1 : path === "/learn" || path === "/community" ? 0.8 : 0.7,
+        changeFrequency:
+          path === "" ? "daily"
+          : path === "/community/tournament" ? "daily"
+          : path === "/leaderboard" ? "hourly"
+          : "weekly",
+        priority:
+          path === "" ? 1
+          : path === "/game/setup-online" ? 0.9
+          : path === "/leaderboard" ? 0.85
+          : path === "/learn" || path === "/community/tournament" ? 0.8
+          : path === "/game/setup-friend" || path === "/game/setup-ai" ? 0.75
+          : 0.7,
       });
     }
   }

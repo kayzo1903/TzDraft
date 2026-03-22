@@ -8,7 +8,15 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: [
+          "/",
+          "/sw/game/setup-online",
+          "/en/game/setup-online",
+          "/sw/game/setup-friend",
+          "/en/game/setup-friend",
+          "/sw/game/setup-ai",
+          "/en/game/setup-ai",
+        ],
         disallow: [
           "/sw/auth/",
           "/en/auth/",
@@ -16,8 +24,9 @@ export default function robots(): MetadataRoute.Robots {
           "/en/game/",
           "/sw/admin/",
           "/en/admin/",
+          "/sw/profile/",
+          "/en/profile/",
           "/studio/",
-          // Tournament registration pages require auth — no SEO value
           "/sw/community/tournament/*/register",
           "/en/community/tournament/*/register",
         ],
