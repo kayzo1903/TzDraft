@@ -31,6 +31,10 @@ model Game {
     startedAt DateTime? @map("started_at")
     endedAt   DateTime? @map("ended_at")
 
+    // Tournament link — null for regular games
+    tournamentMatchGameId String?             @unique @map("tournament_match_game_id")
+    tournamentMatchGame   TournamentMatchGame? @relation(fields: [tournamentMatchGameId], references: [id])
+
     moves Move[]
     clock Clock?
 
@@ -52,6 +56,7 @@ enum GameType {
     RANKED
     CASUAL
     AI
+    TOURNAMENT
 }
 
 enum Winner {

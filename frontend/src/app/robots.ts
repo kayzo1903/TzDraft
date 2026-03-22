@@ -17,6 +17,9 @@ export default function robots(): MetadataRoute.Robots {
           "/sw/admin/",
           "/en/admin/",
           "/studio/",
+          // Tournament registration pages require auth — no SEO value
+          "/sw/community/tournament/*/register",
+          "/en/community/tournament/*/register",
         ],
       },
     ],
