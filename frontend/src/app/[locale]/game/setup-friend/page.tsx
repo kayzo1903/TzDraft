@@ -1,21 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Check,
-  Clock,
+  Clock3,
   Copy,
   Globe,
   Loader2,
   Monitor,
+  QrCode,
   Shuffle,
+  Smartphone,
   Users,
   Wifi,
 } from "lucide-react";
 import clsx from "clsx";
 import QRCode from "react-qr-code";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { authClient } from "@/lib/auth/auth-client";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +27,32 @@ const TIME_OPTIONS = [5, 10, 15] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];
 
 type ColorChoice = "WHITE" | "BLACK" | "RANDOM";
+type Tab = "local" | "online";
+type OnlineView = "choose" | "creating" | "created" | "joining" | "joining-loading";
+
+function SectionCard({
+  title,
+  body,
+  icon,
+}: {
+  title: string;
+  body: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[var(--primary)]">
+          {icon}
+        </div>
+        <div>
+          <div className="text-sm font-black text-white">{title}</div>
+          <p className="mt-1 text-sm leading-6 text-neutral-400">{body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ColorPicker({
   value,
@@ -33,6 +61,7 @@ function ColorPicker({
   whiteLabel,
   randomLabel,
   blackLabel,
+  selectedLabel,
 }: {
   value: ColorChoice;
   onChange: (c: ColorChoice) => void;
@@ -40,55 +69,83 @@ function ColorPicker({
   whiteLabel: string;
   randomLabel: string;
   blackLabel: string;
+  selectedLabel: string;
 }) {
   const options: { value: ColorChoice; icon: React.ReactNode; label: string }[] = [
     {
       value: "WHITE",
-      icon: (
-        <div className="w-5 h-5 rounded-full bg-white border border-neutral-400 shadow-sm" />
-      ),
+      icon: <div className="h-4 w-4 rounded-full border border-neutral-300 bg-white shadow-sm" />,
       label: whiteLabel,
     },
     {
       value: "RANDOM",
-      icon: <Shuffle className="w-4 h-4" />,
+      icon: <Shuffle className="h-3.5 w-3.5" />,
       label: randomLabel,
     },
     {
       value: "BLACK",
-      icon: (
-        <div className="w-5 h-5 rounded-full bg-neutral-900 border border-neutral-600 shadow-sm" />
-      ),
+      icon: <div className="h-4 w-4 rounded-full border border-neutral-600 bg-neutral-900 shadow-sm" />,
       label: blackLabel,
     },
   ];
 
   return (
-    <div>
-      <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-        {label}
-      </div>
-      <div className="flex gap-2">
+    <div className="space-y-3">
+      <div className="text-xs font-black uppercase tracking-[0.22em] text-neutral-500">{label}</div>
+
+      {/* Mobile: compact segmented control */}
+      <div className="flex gap-2 sm:hidden">
         {options.map((opt) => (
           <button
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
             className={clsx(
-              "flex-1 flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-semibold transition-all",
+              "flex flex-1 flex-col items-center gap-2 rounded-2xl border py-3 transition-all duration-200",
               value === opt.value
-                ? "border-[var(--primary)] bg-[var(--primary)]/10 text-white"
-                : "border-neutral-700 bg-neutral-800/40 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200",
+                ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white"
+                : "border-white/10 bg-black/20 text-neutral-400 active:bg-black/30",
             )}
           >
-            <span
-              className={
-                value === opt.value ? "text-white" : "text-neutral-400"
-              }
-            >
+            <div className={clsx(
+              "flex h-8 w-8 items-center justify-center rounded-xl border border-white/10",
+              value === opt.value ? "bg-white/10" : "bg-white/5",
+            )}>
               {opt.icon}
-            </span>
-            {opt.label}
+            </div>
+            <span className="text-[11px] font-bold leading-tight">{opt.label}</span>
+            {value === opt.value && (
+              <span className="h-1 w-4 rounded-full bg-[var(--primary)]" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tablet/Desktop: card grid */}
+      <div className="hidden grid-cols-3 gap-3 sm:grid">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={clsx(
+              "rounded-2xl border p-4 text-left transition-all duration-200",
+              value === opt.value
+                ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white shadow-[0_12px_30px_rgba(249,115,22,0.12)]"
+                : "border-white/10 bg-black/20 text-neutral-300 hover:border-white/15 hover:bg-black/30",
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                {opt.icon}
+              </div>
+              {value === opt.value && (
+                <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-orange-100">
+                  {selectedLabel}
+                </span>
+              )}
+            </div>
+            <div className="mt-4 text-sm font-black">{opt.label}</div>
           </button>
         ))}
       </div>
@@ -108,25 +165,62 @@ function TimePicker({
   getTimeLabel: (minutes: TimeOption) => string;
 }) {
   return (
-    <div>
-      <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-        {label}
-      </div>
-      <div className="flex gap-2">
-        {TIME_OPTIONS.map((t) => (
+    <div className="space-y-3">
+      <div className="text-xs font-black uppercase tracking-[0.22em] text-neutral-500">{label}</div>
+
+      {/* Mobile: horizontal chip row */}
+      <div className="flex gap-2 sm:hidden">
+        {TIME_OPTIONS.map((time) => (
           <button
-            key={t}
+            key={time}
             type="button"
-            onClick={() => onChange(t)}
+            onClick={() => onChange(time)}
             className={clsx(
-              "flex-1 flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold transition-all",
-              value === t
-                ? "border-[var(--primary)] bg-[var(--primary)]/10 text-white"
-                : "border-neutral-700 bg-neutral-800/40 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200",
+              "flex flex-1 flex-col items-center gap-2 rounded-2xl border py-3 transition-all duration-200",
+              value === time
+                ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white"
+                : "border-white/10 bg-black/20 text-neutral-400 active:bg-black/30",
             )}
           >
-            <Clock className="w-3.5 h-3.5 opacity-70" />
-            {getTimeLabel(t)}
+            <div className={clsx(
+              "flex h-8 w-8 items-center justify-center rounded-xl border border-white/10",
+              value === time ? "bg-white/10" : "bg-white/5",
+            )}>
+              <Clock3 className="h-3.5 w-3.5 text-amber-300" />
+            </div>
+            <span className="text-[11px] font-bold leading-tight">{getTimeLabel(time)}</span>
+            {value === time && (
+              <span className="h-1 w-4 rounded-full bg-[var(--primary)]" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tablet/Desktop: card grid */}
+      <div className="hidden grid-cols-3 gap-3 sm:grid">
+        {TIME_OPTIONS.map((time) => (
+          <button
+            key={time}
+            type="button"
+            onClick={() => onChange(time)}
+            className={clsx(
+              "rounded-2xl border p-4 text-left transition-all duration-200",
+              value === time
+                ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white"
+                : "border-white/10 bg-black/20 text-neutral-300 hover:border-white/15 hover:bg-black/30",
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                <Clock3 className="h-4 w-4 text-amber-300" />
+              </div>
+              <div className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
+                {getTimeLabel(time)}
+              </div>
+            </div>
+            <div className="mt-4 text-sm font-black">
+              {getTimeLabel(time)}
+            </div>
           </button>
         ))}
       </div>
@@ -150,12 +244,16 @@ function LocalTab() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start gap-3 rounded-xl border border-neutral-700/50 bg-neutral-800/30 p-4">
-        <Monitor className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
-        <div className="text-sm text-neutral-300">
-          <span className="font-semibold text-white">{t("local.bannerTitle")}</span>{" "}
-          - {t("local.bannerDesc")}
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-400/20 bg-orange-400/10 text-orange-300 sm:h-11 sm:w-11">
+            <Monitor className="h-4 w-4 sm:h-5 sm:w-5" />
+          </div>
+          <div>
+            <div className="text-base font-black text-white sm:text-lg">{t("local.bannerTitle")}</div>
+            <p className="mt-1.5 text-sm leading-6 text-neutral-300 sm:mt-2">{t("local.bannerDesc")}</p>
+          </div>
         </div>
       </div>
 
@@ -166,7 +264,9 @@ function LocalTab() {
         whiteLabel={t("colors.white")}
         randomLabel={t("colors.random")}
         blackLabel={t("colors.black")}
+        selectedLabel={locale === "sw" ? "Imechaguliwa" : "Selected"}
       />
+
       <TimePicker
         value={time}
         onChange={setTime}
@@ -174,49 +274,44 @@ function LocalTab() {
         getTimeLabel={(minutes) => t("minutes", { minutes })}
       />
 
-      <div className="flex items-center justify-between rounded-xl border border-neutral-700/50 bg-neutral-800/30 px-4 py-3">
-        <div>
-          <div className="text-sm font-semibold text-neutral-200">
-            {t("local.passDeviceTitle")}
-          </div>
-          <div className="text-xs text-neutral-500 mt-0.5">
-            {t("local.passDeviceDesc")}
-          </div>
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-black text-white">{t("local.passDeviceTitle")}</div>
+          <div className="mt-1 text-xs leading-5 text-neutral-400 sm:text-sm">{t("local.passDeviceDesc")}</div>
         </div>
         <button
           type="button"
           role="switch"
           aria-checked={passDevice}
-          onClick={() => setPassDevice((v) => !v)}
+          onClick={() => setPassDevice((value) => !value)}
           className={clsx(
-            "relative w-11 h-6 rounded-full border transition-colors duration-200",
+            "relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200",
             passDevice
-              ? "bg-[var(--primary)] border-[var(--primary)]"
-              : "bg-neutral-700 border-neutral-600",
+              ? "border-[var(--primary)] bg-[var(--primary)]"
+              : "border-neutral-600 bg-neutral-700",
           )}
         >
           <span
             className={clsx(
-              "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200",
+              "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
               passDevice ? "translate-x-5" : "translate-x-0",
             )}
           />
         </button>
       </div>
 
-      <Button onClick={handlePlay} className="w-full py-3 text-base font-bold">
+      <Button onClick={handlePlay} size="lg" className="w-full text-base font-black">
         {t("local.playNow")}
       </Button>
     </div>
   );
 }
 
-type OnlineView = "choose" | "creating" | "created" | "joining" | "joining-loading";
-
 function OnlineTab() {
   const t = useTranslations("setupFriend");
+  const locale = useLocale();
   const router = useRouter();
-  const { locale } = useParams<{ locale: string }>();
+  const { locale: routeLocale } = useParams<{ locale: string }>();
   const { isAuthenticated } = useAuthStore();
   const [view, setView] = useState<OnlineView>("choose");
   const [color, setColor] = useState<ColorChoice>("WHITE");
@@ -227,6 +322,13 @@ function OnlineTab() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [ensuringGuest, setEnsuringGuest] = useState(false);
+
+  const isSw = locale === "sw";
+  const shareUrl = useMemo(
+    () =>
+      `${typeof window !== "undefined" ? window.location.origin : ""}/${routeLocale}/game/${gameId}?code=${inviteCode}`,
+    [routeLocale, gameId, inviteCode],
+  );
 
   const ensureGuestSession = async () => {
     if (isAuthenticated) return true;
@@ -259,10 +361,6 @@ function OnlineTab() {
     }
   };
 
-  const handleGoToGame = () => {
-    router.push(`/${locale}/game/${gameId}`);
-  };
-
   const handleJoin = async () => {
     if (joinCode.trim().length < 4) {
       setError(t("online.invalidCodeInput"));
@@ -274,142 +372,135 @@ function OnlineTab() {
     setView("joining-loading");
     try {
       const res = await gameService.joinInvite(joinCode.trim().toUpperCase());
-      router.push(`/${locale}/game/${res.data.gameId}`);
+      router.push(`/${routeLocale}/game/${res.data.gameId}`);
     } catch {
       setError(t("online.invalidOrExpiredCode"));
       setView("joining");
     }
   };
 
+  const handleGoToGame = () => {
+    router.push(`/${routeLocale}/game/${gameId}`);
+  };
+
   const copyLink = () => {
-    const url = `${window.location.origin}/${locale}/game/${gameId}?code=${inviteCode}`;
-    navigator.clipboard.writeText(url).catch(() => { });
+    navigator.clipboard.writeText(shareUrl).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (view === "choose") {
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="flex items-start gap-3 rounded-xl border border-neutral-700/50 bg-neutral-800/30 p-4">
-          <Wifi className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
-          <div className="text-sm text-neutral-300">
-            <span className="font-semibold text-white">{t("online.bannerTitle")}</span>{" "}
-            - {t("online.bannerDesc")}
-          </div>
-        </div>
-
-        {error && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-            {error}
-          </div>
-        )}
-
-        <ColorPicker
-          value={color}
-          onChange={setColor}
-          label={t("online.yourColor")}
-          whiteLabel={t("colors.white")}
-          randomLabel={t("colors.random")}
-          blackLabel={t("colors.black")}
-        />
-        <TimePicker
-          value={time}
-          onChange={setTime}
-          label={t("timeControl")}
-          getTimeLabel={(minutes) => t("minutes", { minutes })}
-        />
-
-        <div className="flex flex-col gap-2">
-          <Button
-            onClick={handleCreate}
-            disabled={ensuringGuest}
-            className="w-full py-3 text-base font-bold"
-          >
-            {ensuringGuest ? <Loader2 className="w-5 h-5 animate-spin" /> : t("online.createGame")}
-          </Button>
-          <button
-            type="button"
-            onClick={() => setView("joining")}
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-800/40 px-4 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition"
-          >
-            {t("online.joinWithCode")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (view === "creating") {
     return (
-      <div className="flex flex-col items-center gap-4 py-10">
-        <Loader2 className="w-10 h-10 text-orange-400 animate-spin" />
-        <div className="text-sm text-neutral-400">{t("online.creatingGame")}</div>
+      <div className="flex flex-col items-center gap-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-10 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[var(--primary)]" />
+        <div className="text-base font-black text-white">{t("online.creatingGame")}</div>
       </div>
     );
   }
 
   if (view === "created") {
-    const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/${locale}/game/${gameId}?code=${inviteCode}`;
     return (
-      <div className="flex flex-col gap-5">
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300 flex items-center gap-2">
-          <Check className="w-4 h-4 shrink-0" />
+      <div className="flex flex-col gap-3 sm:gap-4">
+        {/* Success banner */}
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 sm:px-4 sm:py-3 sm:text-sm">
+          <Check className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
           {t("online.gameCreated")}
         </div>
 
-        <div>
-          <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            {t("online.inviteCode")}
-          </div>
-          <div className="flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3">
-            <span className="flex-1 font-mono text-2xl tracking-[0.3em] text-white font-bold">
-              {inviteCode}
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            {t("online.scanToJoin")}
-          </div>
-          <div className="flex justify-center rounded-xl border border-neutral-700 bg-white p-4">
-            <QRCode value={shareUrl} size={160} />
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
-            {t("online.orCopyLink")}
-          </div>
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={copyLink}
-              className="w-full flex items-center gap-3 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-left hover:border-neutral-600 transition"
-            >
-              <span className="flex-1 text-sm text-neutral-300 truncate">{shareUrl}</span>
+        {/* ── MOBILE: one unified card ── */}
+        <div className="rounded-2xl border border-white/10 bg-black/20 sm:hidden">
+          {/* Code row — code + tap-to-copy */}
+          <button
+            type="button"
+            onClick={copyLink}
+            className="flex w-full items-center justify-between gap-3 border-b border-white/10 px-4 py-3 transition active:bg-white/5"
+          >
+            <div className="text-left">
+              <div className="mb-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                {t("online.inviteCode")}
+              </div>
+              <span className="font-mono text-lg font-black tracking-[0.18em] text-white">
+                {inviteCode}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-neutral-300">
               {copied ? (
-                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <><Check className="h-3.5 w-3.5 text-emerald-400" /><span className="text-emerald-400">Copied</span></>
               ) : (
-                <Copy className="w-4 h-4 text-neutral-500 shrink-0" />
+                <><Copy className="h-3.5 w-3.5" /><span>Copy</span></>
               )}
-            </button>
+            </div>
+          </button>
+
+          {/* QR + WhatsApp in a column */}
+          <div className="flex flex-col items-center gap-3 p-4">
+            <div className="rounded-xl border border-neutral-200 bg-white p-2">
+              <QRCode value={shareUrl} size={96} />
+            </div>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(`🎮 Join my Tanzania Drafti game!\n\nCode: ${inviteCode}\n${shareUrl}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Join my Tanzania Drafti game!\n\nCode: ${inviteCode}\n${shareUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-600/10 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-600/20 transition"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-600/40 bg-emerald-600/10 px-3 py-2.5 text-sm font-bold text-emerald-300 transition active:bg-emerald-600/20"
             >
-              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current shrink-0" aria-hidden>
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-              </svg>
-              Share on WhatsApp
+              <Smartphone className="h-4 w-4" />
+              {isSw ? "Shirikisha kwa WhatsApp" : "Share via WhatsApp"}
             </a>
           </div>
         </div>
 
-        <Button onClick={handleGoToGame} className="w-full py-3 text-base font-bold">
+        {/* ── TABLET+: separate cards ── */}
+        <div className="hidden sm:block">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="text-xs font-black uppercase tracking-[0.22em] text-neutral-500">
+              {t("online.inviteCode")}
+            </div>
+            <div className="mt-3 font-mono text-3xl font-black tracking-[0.28em] text-white">
+              {inviteCode}
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden gap-4 sm:grid sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white p-3">
+            <div className="mb-2.5 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-neutral-700">
+              <QrCode className="h-3.5 w-3.5" />
+              {t("online.scanToJoin")}
+            </div>
+            <div className="flex justify-center">
+              <QRCode value={shareUrl} size={104} />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="text-xs font-black uppercase tracking-[0.22em] text-neutral-500">
+              {t("online.orCopyLink")}
+            </div>
+            <button
+              type="button"
+              onClick={copyLink}
+              className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+            >
+              <span className="flex-1 truncate text-sm text-neutral-300">{shareUrl}</span>
+              {copied ? (
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+              ) : (
+                <Copy className="h-4 w-4 shrink-0 text-neutral-500" />
+              )}
+            </button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Join my Tanzania Drafti game!\n\nCode: ${inviteCode}\n${shareUrl}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-600/40 bg-emerald-600/10 px-4 py-3 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-600/20"
+            >
+              <Smartphone className="h-4 w-4" />
+              {isSw ? "Shirikisha kwa WhatsApp" : "Share on WhatsApp"}
+            </a>
+          </div>
+        </div>
+
+        <Button onClick={handleGoToGame} size="lg" className="w-full text-sm font-black sm:text-base">
           {t("online.goToBoard")}
         </Button>
         <button
@@ -418,8 +509,9 @@ function OnlineTab() {
             setView("choose");
             setInviteCode("");
             setGameId("");
+            setCopied(false);
           }}
-          className="w-full text-sm text-neutral-500 hover:text-neutral-300 transition py-1"
+          className="text-xs text-neutral-500 transition hover:text-neutral-300 sm:text-sm"
         >
           {"<-"} {t("online.startOver")}
         </button>
@@ -436,38 +528,39 @@ function OnlineTab() {
             setView("choose");
             setError("");
           }}
-          className="text-sm text-neutral-500 hover:text-neutral-300 transition text-left"
+          className="text-left text-sm text-neutral-500 transition hover:text-neutral-300"
         >
           {"<-"} {t("online.back")}
         </button>
 
         {error && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
             {error}
           </div>
         )}
 
-        <div>
-          <div className="text-xs uppercase tracking-widest text-neutral-500 font-semibold mb-2">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
+          <div className="text-xs font-black uppercase tracking-[0.22em] text-neutral-500">
             {t("online.enterInviteCode")}
           </div>
           <input
             type="text"
             maxLength={6}
             value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+            onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
             placeholder="ABC123"
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-center font-mono text-2xl tracking-[0.3em] text-white placeholder:text-neutral-600 focus:outline-none focus:border-[var(--primary)]"
+            className="mt-4 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-4 text-center font-mono text-2xl tracking-[0.28em] text-white placeholder:text-neutral-600 focus:border-[var(--primary)] focus:outline-none"
           />
         </div>
 
         <Button
           onClick={handleJoin}
           disabled={view === "joining-loading" || ensuringGuest}
-          className="w-full py-3 text-base font-bold"
+          size="lg"
+          className="w-full text-base font-black"
         >
           {view === "joining-loading" || ensuringGuest ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             t("online.joinGame")
           )}
@@ -476,56 +569,200 @@ function OnlineTab() {
     );
   }
 
-  return null;
-}
+  return (
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-400/20 bg-sky-400/10 text-sky-300 sm:h-11 sm:w-11">
+            <Wifi className="h-4 w-4 sm:h-5 sm:w-5" />
+          </div>
+          <div>
+            <div className="text-base font-black text-white sm:text-lg">{t("online.bannerTitle")}</div>
+            <p className="mt-1.5 text-sm leading-6 text-neutral-300 sm:mt-2">{t("online.bannerDesc")}</p>
+          </div>
+        </div>
+      </div>
 
-type Tab = "local" | "online";
+      {error && (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          {error}
+        </div>
+      )}
+
+      <ColorPicker
+        value={color}
+        onChange={setColor}
+        label={t("online.yourColor")}
+        whiteLabel={t("colors.white")}
+        randomLabel={t("colors.random")}
+        blackLabel={t("colors.black")}
+        selectedLabel={locale === "sw" ? "Imechaguliwa" : "Selected"}
+      />
+
+      <TimePicker
+        value={time}
+        onChange={setTime}
+        label={t("timeControl")}
+        getTimeLabel={(minutes) => t("minutes", { minutes })}
+      />
+
+      <div className="grid gap-2.5 sm:gap-3">
+        <Button
+          onClick={handleCreate}
+          disabled={ensuringGuest}
+          size="lg"
+          className="w-full text-base font-black"
+        >
+          <span className="inline-flex items-center justify-center gap-2">
+            {ensuringGuest && <Loader2 className="h-5 w-5 animate-spin" />}
+            <span>{t("online.createGame")}</span>
+          </span>
+        </Button>
+        <button
+          type="button"
+          onClick={() => setView("joining")}
+          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-200 transition hover:bg-white/10 hover:text-white"
+        >
+          {t("online.joinWithCode")}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function SetupFriendPage() {
   const t = useTranslations("setupFriend");
+  const locale = useLocale();
   const [activeTab, setActiveTab] = useState<Tab>("online");
+  const isSw = locale === "sw";
 
   const tabs = [
-    { value: "online" as const, icon: <Globe className="w-4 h-4" />, label: t("tabs.online") },
-    { value: "local" as const, icon: <Monitor className="w-4 h-4" />, label: t("tabs.local") },
+    { value: "online" as const, icon: <Globe className="h-4 w-4" />, label: t("tabs.online") },
+    { value: "local" as const, icon: <Monitor className="h-4 w-4" />, label: t("tabs.local") },
+  ];
+
+  const sectionCards = [
+    {
+      title: isSw ? "Mtandaoni binafsi" : "Private online",
+      body: isSw
+        ? "Unda mechi, tuma mwaliko, na muingie moja kwa moja bila queue ya random."
+        : "Create a match, share the invite, and jump in directly without random queue.",
+      icon: <Wifi className="h-4 w-4" />,
+    },
+    {
+      title: isSw ? "Ana kwa ana" : "Face-to-face",
+      body: isSw
+        ? "Kama mpo pamoja, local mode inafanya kifaa kimoja kitumike na wachezaji wote wawili."
+        : "If you are together, local mode lets both players use the same device.",
+      icon: <Monitor className="h-4 w-4" />,
+    },
+    {
+      title: isSw ? "Code au QR" : "Code or QR",
+      body: isSw
+        ? "Baada ya kuunda mechi, tumia code, link, au QR ili mwenzako ajiunge kwa haraka."
+        : "After creating a match, use the code, link, or QR so your friend can join quickly.",
+      icon: <QrCode className="h-4 w-4" />,
+    },
   ];
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-start px-4 py-8 sm:py-12">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center">
-            <Users className="w-7 h-7 text-orange-400" />
-          </div>
-          <div className="text-center">
-            <h1 className="text-2xl font-black text-white">{t("title")}</h1>
-            <p className="text-sm text-neutral-500 mt-1">{t("subtitle")}</p>
-          </div>
-        </div>
+    <main className="min-h-screen bg-[var(--background)] px-4 py-8 text-[var(--foreground)] sm:px-6 sm:py-10 lg:px-8 lg:py-14">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 lg:gap-8">
 
-        <div className="flex gap-1 rounded-xl border border-neutral-700/60 bg-neutral-800/40 p-1 mb-6">
-          {tabs.map(({ value, icon, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setActiveTab(value)}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
-                activeTab === value
-                  ? "bg-[var(--primary)] text-white shadow"
-                  : "text-neutral-400 hover:text-neutral-200",
-              )}
-            >
-              {icon}
-              {label}
-            </button>
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.16),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.10),transparent_24%)]" />
+          <div className="relative grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-end">
+            <div className="space-y-4 sm:space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-neutral-300">
+                <Users className="h-3.5 w-3.5 text-[var(--primary)]" />
+                {isSw ? "Cheza na rafiki" : "Play with a friend"}
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
+                  {t("title")}
+                </h1>
+                <p className="hidden max-w-2xl text-base leading-7 text-neutral-300 sm:block sm:text-lg">
+                  {t("subtitle")}
+                </p>
+              </div>
+              <div className="hidden flex-wrap gap-3 lg:flex">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
+                  <Globe className="h-4 w-4 text-sky-300" />
+                  {isSw ? "Tuma link au code kwa mechi ya mtandaoni" : "Send a link or code for an online private match"}
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
+                  <Monitor className="h-4 w-4 text-orange-300" />
+                  {isSw ? "Au tumieni kifaa kimoja kucheza ana kwa ana" : "Or share one device for local face-to-face play"}
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden gap-3 sm:grid-cols-3 lg:grid">
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-2xl font-black text-white">2</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  {isSw ? "Njia za kucheza" : "Play routes"}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-2xl font-black text-white">1v1</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  {isSw ? "Aina ya mechi" : "Match format"}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-2xl font-black text-white">{TIME_OPTIONS.length}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  {isSw ? "Muda wa kawaida" : "Clock presets"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Main content */}
+        <section className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr] lg:gap-6">
+
+          {/* Tab card */}
+          <div className="rounded-[2rem] border border-white/10 bg-[var(--secondary)]/55 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.2)] sm:p-7">
+            <div className="mb-5 flex gap-1 rounded-2xl border border-white/10 bg-black/20 p-1.5 sm:mb-6">
+              {tabs.map(({ value, icon, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setActiveTab(value)}
+                  className={clsx(
+                    "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition-all",
+                    activeTab === value
+                      ? "bg-[var(--primary)] text-white shadow"
+                      : "text-neutral-400 hover:text-neutral-200",
+                  )}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === "local" ? <LocalTab /> : <OnlineTab />}
+          </div>
+
+          {/* Side info — desktop only */}
+          <div className="hidden space-y-4 lg:block">
+            {sectionCards.map((card) => (
+              <SectionCard key={card.title} {...card} />
+            ))}
+          </div>
+        </section>
+
+        {/* Info cards — mobile/tablet only, shown below the main card */}
+        <section className="grid gap-3 sm:grid-cols-3 lg:hidden">
+          {sectionCards.map((card) => (
+            <SectionCard key={card.title} {...card} />
           ))}
-        </div>
+        </section>
 
-        <div className="rounded-2xl border border-neutral-700/50 bg-neutral-900/60 p-5">
-          {activeTab === "local" && <LocalTab />}
-          {activeTab === "online" && <OnlineTab />}
-        </div>
       </div>
     </main>
   );

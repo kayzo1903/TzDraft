@@ -31,10 +31,30 @@ model Game {
     startedAt DateTime? @map("started_at")
     endedAt   DateTime? @map("ended_at")
 
+    // Tournament link — null for regular games
+    tournamentMatchGameId String?             @unique @map("tournament_match_game_id")
+    tournamentMatchGame   TournamentMatchGame? @relation(fields: [tournamentMatchGameId], references: [id])
+
     moves Move[]
     clock Clock?
 
     @@map("games")
+}
+
+model AiChallengeSession {
+    id          String              @id @default(uuid())
+    userId      String              @map("user_id")
+    user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    aiLevel     Int                 @map("ai_level")
+    playerColor String              @map("player_color")
+    result      AiChallengeResult?
+    undoUsed    Boolean             @default(false) @map("undo_used")
+    startedAt   DateTime            @default(now()) @map("started_at")
+    completedAt DateTime?           @map("completed_at")
+
+    @@index([userId, aiLevel])
+    @@index([userId, completedAt])
+    @@map("ai_challenge_sessions")
 }
 
 // ============================================
@@ -52,6 +72,7 @@ enum GameType {
     RANKED
     CASUAL
     AI
+    TOURNAMENT
 }
 
 enum Winner {
@@ -66,5 +87,11 @@ enum EndReason {
     RESIGN
     TIME
     DISCONNECT
+    DRAW
+}
+
+enum AiChallengeResult {
+    WIN
+    LOSS
     DRAW
 }

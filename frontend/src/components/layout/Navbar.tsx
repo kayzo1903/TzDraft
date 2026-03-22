@@ -16,7 +16,9 @@ export const Navbar: React.FC = () => {
     const router = useRouter();
     const locale = useLocale();
     const { user, logout } = useAuth();
-    const isGuest = user?.phoneNumber?.startsWith('GUEST_') ?? false;
+    const isGuest =
+        user?.accountType === 'GUEST' ||
+        (user?.phoneNumber?.startsWith('GUEST_') ?? false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -25,6 +27,7 @@ export const Navbar: React.FC = () => {
     const navLinks = [
         { name: t('home'), href: '/' },
         { name: t('play'), href: '/play' },
+        { name: t('community'), href: '/community' },
         { name: t('leaderboard'), href: '/leaderboard' },
         { name: t('support'), href: '/support' },
     ];

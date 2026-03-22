@@ -284,7 +284,8 @@ export class GamesGateway
         }
 
         // Signal the remaining player to search for a new opponent.
-        if (opponentId) {
+        // Not applicable for tournament games — they wait for the next match game.
+        if (opponentId && game.gameType !== GameType.TOURNAMENT) {
           this.server.to(`user:${opponentId}`).emit('autoRequeue', {
             timeMs: game.initialTimeMs,
           });
@@ -789,6 +790,33 @@ export class GamesGateway
 
     this.server.to(gameId).emit('gameOver', result);
     this.logger.log(`Emitted gameOver for game: ${gameId}`);
+  }
+
+  /* ── Tournament events ────────────────────────────────────────────────── */
+
+  @SubscribeMessage('joinTournament')
+  handleJoinTournament(
+    @MessageBody() tournamentId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`tournament:${tournamentId}`);
+    this.logger.log(`Socket ${client.id} joined tournament room: ${tournamentId}`);
+  }
+
+  emitTournamentMatchGameReady(player1Id: string, player2Id: string, payload: any) {
+    this.server.to(`user:${player1Id}`).to(`user:${player2Id}`).emit('tournamentMatchGameReady', payload);
+  }
+
+  emitTournamentMatchCompleted(player1Id: string, player2Id: string, payload: any) {
+    this.server.to(`user:${player1Id}`).to(`user:${player2Id}`).emit('tournamentMatchCompleted', payload);
+  }
+
+  emitTournamentRoundAdvanced(tournamentId: string, payload: any) {
+    this.server.to(`tournament:${tournamentId}`).emit('tournamentRoundAdvanced', payload);
+  }
+
+  emitTournamentCompleted(tournamentId: string, payload: any) {
+    this.server.to(`tournament:${tournamentId}`).emit('tournamentCompleted', payload);
   }
 
   /* ── Helpers ─────────────────────────────────────────────────────────── */

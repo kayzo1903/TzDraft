@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { AccountType } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         isVerified: true,
         role: true,
         isBanned: true,
+        accountType: true,
         country: true,
         region: true,
         rating: {
@@ -49,23 +51,34 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
 
-    if (hasRealPhoneNumber && !user.isVerified) {
+    if (
+      hasRealPhoneNumber &&
+      (!user.isVerified || user.accountType !== AccountType.REGISTERED)
+    ) {
       await this.prisma.user.update({
         where: { id: user.id },
-        data: { isVerified: true },
+        data: {
+          isVerified: true,
+          accountType: AccountType.REGISTERED,
+        },
       });
     }
 
     return {
       id: user.id,
-      phoneNumber: hasRealPhoneNumber ? user.phoneNumber : '',
-      email: user.email ?? undefined,
+      phoneNumber:
+        user.accountType === AccountType.REGISTERED ? user.phoneNumber : '',
+      email:
+        user.accountType === AccountType.GUEST
+          ? undefined
+          : (user.email ?? undefined),
       username: user.username,
       displayName: user.displayName,
-      isVerified: hasRealPhoneNumber ? true : false,
+      isVerified: user.accountType === AccountType.REGISTERED ? true : false,
       rating: user.rating?.rating ?? 1200,
       role: user.role,
       isBanned: user.isBanned,
+      accountType: user.accountType,
       country: user.country,
       region: user.region,
     };
