@@ -67,7 +67,7 @@ export async function generateMetadata({
     metadataBase: siteUrl,
     title: m.title,
     description: m.description,
-    keywords: m.keywords,
+    keywords: [...m.keywords],
     authors: [{ name: "TzDraft", url: siteUrl.toString() }],
     creator: "TzDraft",
     publisher: "TzDraft",
