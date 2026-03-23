@@ -18,6 +18,7 @@ import type {
 } from "@/components/game/Board";
 import axiosInstance from "@/lib/axios";
 import { unlockNextBotLevel } from "@/lib/game/bot-progression";
+import { playMoveSound } from "@/lib/game/move-sound";
 import { getBestMove } from "@/lib/ai/bot";
 
 export interface LocalGameState {
@@ -275,6 +276,8 @@ export const useLocalGame = (
   const captureGhostIdRef = useRef(0);
   const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const captureAudioRef = useRef<HTMLAudioElement | null>(null);
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
   const warningAudioRef = useRef<HTMLAudioElement | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -392,10 +395,18 @@ export const useLocalGame = (
 
   const applyMove = useCallback(
     (move: Move) => {
-      if (moveAudioRef.current) {
-        moveAudioRef.current.currentTime = 0;
-        moveAudioRef.current.play().catch(() => {});
-      }
+      playMoveSound(
+        {
+          from: move.from,
+          to: move.to,
+          capturedCount: move.capturedSquares.length,
+        },
+        {
+          normal: moveAudioRef.current,
+          long: longMoveAudioRef.current,
+          capture: captureAudioRef.current,
+        },
+      );
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
       setLastMove({ from: fromIndex, to: toIndex });
@@ -580,10 +591,20 @@ export const useLocalGame = (
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const moveAudio = new Audio("/sfx/move1.mp3");
+    const moveAudio = new Audio("/sfx/move-tap.wav");
     moveAudio.preload = "auto";
-    moveAudio.volume = 0.4;
+    moveAudio.volume = 0.48;
     moveAudioRef.current = moveAudio;
+
+    const longMoveAudio = new Audio("/sfx/move-slide.wav");
+    longMoveAudio.preload = "auto";
+    longMoveAudio.volume = 0.52;
+    longMoveAudioRef.current = longMoveAudio;
+
+    const captureAudio = new Audio("/sfx/move-capture.wav");
+    captureAudio.preload = "auto";
+    captureAudio.volume = 0.6;
+    captureAudioRef.current = captureAudio;
 
     const startAudio = new Audio("/sfx/start.mp3");
     startAudio.preload = "auto";
@@ -611,6 +632,8 @@ export const useLocalGame = (
       }
       captureCleanupTimeoutsRef.current = [];
       moveAudioRef.current = null;
+      longMoveAudioRef.current = null;
+      captureAudioRef.current = null;
       startAudioRef.current = null;
       warningAudioRef.current = null;
       victoryAudioRef.current = null;

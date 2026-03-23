@@ -14,6 +14,7 @@ import type {
   CaptureGhost,
   LastMoveState,
 } from "@/components/game/Board";
+import { playMoveSound } from "@/lib/game/move-sound";
 
 export interface LocalPvpGameState {
   board: BoardState;
@@ -96,6 +97,8 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   const captureGhostIdRef = useRef(0);
   const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const captureAudioRef = useRef<HTMLAudioElement | null>(null);
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
   const warningAudioRef = useRef<HTMLAudioElement | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -217,10 +220,18 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
 
   const applyMove = useCallback(
     (move: Move) => {
-      if (moveAudioRef.current) {
-        moveAudioRef.current.currentTime = 0;
-        moveAudioRef.current.play().catch(() => {});
-      }
+      playMoveSound(
+        {
+          from: move.from,
+          to: move.to,
+          capturedCount: move.capturedSquares.length,
+        },
+        {
+          normal: moveAudioRef.current,
+          long: longMoveAudioRef.current,
+          capture: captureAudioRef.current,
+        },
+      );
 
       // Store in board coordinates for correct flip-aware display
       setLastMovePositions({ from: move.from, to: move.to });
@@ -371,10 +382,20 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   // Audio init
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const moveAudio = new Audio("/sfx/move1.mp3");
+    const moveAudio = new Audio("/sfx/move-tap.wav");
     moveAudio.preload = "auto";
-    moveAudio.volume = 0.4;
+    moveAudio.volume = 0.48;
     moveAudioRef.current = moveAudio;
+
+    const longMoveAudio = new Audio("/sfx/move-slide.wav");
+    longMoveAudio.preload = "auto";
+    longMoveAudio.volume = 0.52;
+    longMoveAudioRef.current = longMoveAudio;
+
+    const captureAudio = new Audio("/sfx/move-capture.wav");
+    captureAudio.preload = "auto";
+    captureAudio.volume = 0.6;
+    captureAudioRef.current = captureAudio;
 
     const startAudio = new Audio("/sfx/start.mp3");
     startAudio.preload = "auto";
@@ -403,6 +424,8 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       }
       captureCleanupTimeoutsRef.current = [];
       moveAudioRef.current = null;
+      longMoveAudioRef.current = null;
+      captureAudioRef.current = null;
       startAudioRef.current = null;
       warningAudioRef.current = null;
       victoryAudioRef.current = null;
