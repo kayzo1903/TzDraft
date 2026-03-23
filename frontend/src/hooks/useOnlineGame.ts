@@ -16,6 +16,7 @@ import type {
   LastMoveState,
 } from "@/components/game/Board";
 import { useAuthStore } from "@/lib/auth/auth-store";
+import { playMoveSound } from "@/lib/game/move-sound";
 import { gameService } from "@/services/game.service";
 import { useSocket } from "@/hooks/useSocket";
 
@@ -166,6 +167,8 @@ export const useOnlineGame = (gameId: string) => {
   const captureCleanupRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const captureAudioRef = useRef<HTMLAudioElement | null>(null);
   const prevMoveCountRef = useRef(0);
 
   // Clock refs — WHITE/BLACK stored in milliseconds for sub-second scheduling precision
@@ -376,13 +379,20 @@ export const useOnlineGame = (gameId: string) => {
             }, 240);
             captureCleanupRef.current.push(cleanupId);
           }
+          playMoveSound(
+            {
+              from: new Position(fromVal),
+              to: new Position(toVal),
+              capturedCount: capturedVals.length,
+            },
+            {
+              normal: moveAudioRef.current,
+              long: longMoveAudioRef.current,
+              capture: captureAudioRef.current,
+            },
+          );
         } catch {
           // Ignore ghost errors
-        }
-
-        if (moveAudioRef.current) {
-          moveAudioRef.current.currentTime = 0;
-          moveAudioRef.current.play().catch(() => {});
         }
       }
 
@@ -550,9 +560,19 @@ export const useOnlineGame = (gameId: string) => {
               captureCleanupRef.current.push(cleanupId);
             }
 
-            if (moveAudioRef.current) {
-              moveAudioRef.current.currentTime = 0;
-              moveAudioRef.current.play().catch(() => {});
+            {
+              playMoveSound(
+                {
+                  from: move.from,
+                  to: move.to,
+                  capturedCount: move.capturedSquares.length,
+                },
+                {
+                  normal: moveAudioRef.current,
+                  long: longMoveAudioRef.current,
+                  capture: captureAudioRef.current,
+                },
+              );
             }
 
             return updatedBoard;
@@ -735,12 +755,24 @@ export const useOnlineGame = (gameId: string) => {
   /* ── Audio ─────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const moveAudio = new Audio("/sfx/move1.mp3");
+    const moveAudio = new Audio("/sfx/move-tap.wav");
     moveAudio.preload = "auto";
-    moveAudio.volume = 0.4;
+    moveAudio.volume = 0.48;
     moveAudioRef.current = moveAudio;
+
+    const longMoveAudio = new Audio("/sfx/move-slide.wav");
+    longMoveAudio.preload = "auto";
+    longMoveAudio.volume = 0.52;
+    longMoveAudioRef.current = longMoveAudio;
+
+    const captureAudio = new Audio("/sfx/move-capture.wav");
+    captureAudio.preload = "auto";
+    captureAudio.volume = 0.6;
+    captureAudioRef.current = captureAudio;
     return () => {
       moveAudioRef.current = null;
+      longMoveAudioRef.current = null;
+      captureAudioRef.current = null;
       for (const id of captureCleanupRef.current) window.clearTimeout(id);
       captureCleanupRef.current = [];
     };
@@ -860,12 +892,23 @@ export const useOnlineGame = (gameId: string) => {
         }
 
         // Move sound
-        if (moveAudioRef.current) {
-          moveAudioRef.current.currentTime = 0;
-          moveAudioRef.current.play().catch(() => {});
+        {
+          playMoveSound(
+            {
+              from: matchingMove.from,
+              to: matchingMove.to,
+              capturedCount: matchingMove.capturedSquares.length,
+            },
+            {
+              normal: moveAudioRef.current,
+              long: longMoveAudioRef.current,
+              capture: captureAudioRef.current,
+            },
+          );
         }
-      }
       // ── End optimistic update ───────────────────────────────────────
+
+      }
 
       setError(null);
       setIsSubmitting(true);
