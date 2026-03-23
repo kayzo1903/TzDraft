@@ -8,16 +8,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/sw/game/setup-online",
-          "/en/game/setup-online",
-          "/sw/game/setup-friend",
-          "/en/game/setup-friend",
-          "/sw/game/setup-ai",
-          "/en/game/setup-ai",
-        ],
         disallow: [
+          "/api/",
           "/sw/auth/",
           "/en/auth/",
           "/sw/game/",
@@ -26,12 +18,15 @@ export default function robots(): MetadataRoute.Robots {
           "/en/admin/",
           "/sw/profile/",
           "/en/profile/",
+          "/sw/settings/",
+          "/en/settings/",
           "/studio/",
           "/sw/community/tournament/*/register",
           "/en/community/tournament/*/register",
         ],
       },
     ],
+    host: siteUrl.toString(),
     sitemap: new URL("/sitemap.xml", siteUrl).toString(),
   };
 }
