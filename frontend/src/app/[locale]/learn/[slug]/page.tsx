@@ -4,7 +4,7 @@ import { ArticleBody } from "@/components/blog/ArticleBody";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
-import { getSiteUrl } from "@/lib/seo";
+import { buildPageMetadata, getSiteUrl, isAppLocale } from "@/lib/seo";
 import { routing } from "@/i18n/routing";
 import type { Metadata } from "next";
 import type { PortableTextBlock } from "@portabletext/react";
@@ -49,11 +49,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   try {
     const { locale, slug } = await params;
-    if (!isSanityConfigured) return {};
+    if (!isAppLocale(locale) || !isSanityConfigured) return {};
 
     let article: Article | null = null;
     try {
-      article = await client.fetch(articleBySlugQuery, { slug });
+      article = await client.fetch<Article | null>(articleBySlugQuery, { slug });
     } catch {
       return {};
     }
@@ -62,20 +62,19 @@ export async function generateMetadata({
     const title = locale === "sw" ? article.title?.sw : article.title?.en;
     const description = locale === "sw" ? article.description?.sw : article.description?.en;
     const keywords = locale === "sw" ? article.keywords?.sw : article.keywords?.en;
-    const siteUrl = getSiteUrl();
 
-    return {
-      title,
-      description,
+    return buildPageMetadata({
+      locale,
+      path: `/learn/${slug}`,
+      title: title ?? "",
+      description: description ?? "",
       keywords,
-      openGraph: {
-        type: "article",
-        title: title ?? "",
-        description: description ?? "",
-        url: new URL(`/${locale}/learn/${slug}`, siteUrl).toString(),
-        images: article.coverImageUrl ? [article.coverImageUrl] : ["/logo/logo.png"],
-      },
-    };
+      ogType: "article",
+      ogImageUrl: article.coverImageUrl,
+      ogImageAlt: title ?? "TzDraft article",
+      articlePublishedTime: article.publishedAt,
+      articleAuthors: article.author ? [article.author] : undefined,
+    });
   } catch {
     return {};
   }
@@ -91,7 +90,7 @@ export default async function ArticlePage({
 
   let article: Article | null = null;
   try {
-    article = await client.fetch(articleBySlugQuery, { slug });
+    article = await client.fetch<Article | null>(articleBySlugQuery, { slug });
   } catch {
     notFound();
   }
