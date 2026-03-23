@@ -1,92 +1,64 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  AreaChart,
   Area,
-  BarChart,
+  AreaChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
 } from "recharts";
-import { adminService, AdminStats, GrowthResponse } from "@/services/admin.service";
 import { tournamentService, type Tournament } from "@/services/tournament.service";
 import {
-  Users,
-  Gamepad2,
-  CalendarDays,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  RefreshCw,
-  Trophy,
+  adminService,
+  type AdminAnalyticsResponse,
+  type AnalyticsWindow,
+  type TournamentWinner,
+} from "@/services/admin.service";
+import {
   ArrowRight,
+  Bot,
+  Gamepad2,
+  HandshakeIcon,
+  RefreshCw,
+  Search,
+  TimerReset,
+  Trophy,
+  TrendingUp,
+  UserPlus,
+  Users,
+  Wifi,
+  Zap,
 } from "lucide-react";
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function fmtDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
-function trend(points: { newUsers: number; games: number }[], field: "newUsers" | "games") {
-  const half = Math.floor(points.length / 2);
-  const pick = (p: { newUsers: number; games: number }) =>
-    field === "newUsers" ? p.newUsers : p.games;
-  const recent = points.slice(-half).reduce((s, p) => s + pick(p), 0);
-  const prior = points.slice(0, half).reduce((s, p) => s + pick(p), 0);
-  if (prior === 0) return null;
-  return Math.round(((recent - prior) / prior) * 100);
+function fmtDateFull(iso: string) {
+  return new Date(iso).toLocaleDateString("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-// ── sub-components ────────────────────────────────────────────────────────────
-interface KpiCardProps {
-  label: string;
-  value: number | string;
-  icon: React.ElementType;
-  delta?: number | null;
-  accent?: string;
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US").format(value);
 }
 
-function KpiCard({ label, value, icon: Icon, delta, accent = "amber" }: KpiCardProps) {
-  const DeltaIcon =
-    delta == null ? Minus : delta > 0 ? TrendingUp : TrendingDown;
-  const deltaColor =
-    delta == null ? "text-gray-500" : delta > 0 ? "text-emerald-400" : "text-red-400";
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="relative bg-gray-900 border border-gray-800 rounded-2xl p-6 overflow-hidden group hover:border-gray-700 transition-colors">
-      {/* glow */}
-      <div
-        className={`absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-20 bg-${accent}-400 group-hover:opacity-30 transition-opacity`}
-      />
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-2.5 rounded-xl bg-${accent}-400/10 border border-${accent}-400/20`}>
-          <Icon className={`w-5 h-5 text-${accent}-400`} />
-        </div>
-        {delta != null && (
-          <span className={`flex items-center gap-1 text-xs font-medium ${deltaColor}`}>
-            <DeltaIcon className="w-3.5 h-3.5" />
-            {Math.abs(delta)}%
-          </span>
-        )}
-      </div>
-      <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{label}</p>
-    </div>
-  );
-}
-
-// ── Custom tooltip ────────────────────────────────────────────────────────────
 function ChartTooltip({
   active,
   payload,
@@ -98,156 +70,372 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 shadow-xl text-xs">
-      <p className="text-gray-400 mb-2 font-medium">{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }} className="font-semibold">
-          {p.name}: {p.value}
+    <div className="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-xs shadow-xl">
+      <p className="mb-2 font-medium text-gray-400">{label}</p>
+      {payload.map((entry) => (
+        <p key={entry.name} style={{ color: entry.color }} className="font-semibold">
+          {entry.name}: {formatNumber(entry.value)}
         </p>
       ))}
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-const RANGE_OPTIONS = [
-  { label: "7d", value: 7 },
-  { label: "14d", value: 14 },
-  { label: "30d", value: 30 },
-];
+// ─── KPI Card ────────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ["#34d399", "#f87171"];
+function KpiCard({
+  label,
+  value,
+  icon: Icon,
+  accent = "amber",
+  sub,
+  live = false,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  accent?: string;
+  sub?: string;
+  live?: boolean;
+}) {
+  const colors: Record<string, string> = {
+    amber: "from-amber-500/20 to-amber-500/0 border-amber-500/30",
+    emerald: "from-emerald-500/20 to-emerald-500/0 border-emerald-500/30",
+    sky: "from-sky-500/20 to-sky-500/0 border-sky-500/30",
+    violet: "from-violet-500/20 to-violet-500/0 border-violet-500/30",
+    rose: "from-rose-500/20 to-rose-500/0 border-rose-500/30",
+    orange: "from-orange-500/20 to-orange-500/0 border-orange-500/30",
+  };
+  const iconColors: Record<string, string> = {
+    amber: "text-amber-400 bg-amber-400/10 border-amber-400/20",
+    emerald: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+    sky: "text-sky-400 bg-sky-400/10 border-sky-400/20",
+    violet: "text-violet-400 bg-violet-400/10 border-violet-400/20",
+    rose: "text-rose-400 bg-rose-400/10 border-rose-400/20",
+    orange: "text-orange-400 bg-orange-400/10 border-orange-400/20",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${colors[accent] ?? colors.amber} bg-gray-900 p-5 transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-black/30`}
+    >
+      <div className="mb-3 flex items-start justify-between">
+        <div className={`rounded-xl border p-2.5 ${iconColors[accent] ?? iconColors.amber}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        {live && (
+          <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            LIVE
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold tracking-tight text-white">{value}</p>
+      <p className="mt-0.5 text-sm text-gray-500">{label}</p>
+      {sub && <p className="mt-1.5 text-xs text-gray-600">{sub}</p>}
+    </div>
+  );
+}
+
+// ─── Stat Row ────────────────────────────────────────────────────────────────
+
+function StatRow({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="rounded-lg border border-white/10 bg-white/5 p-2">
+          <Icon className="h-4 w-4 text-amber-300" />
+        </div>
+        <span className="text-sm text-gray-400">{label}</span>
+      </div>
+      <span className="text-sm font-semibold text-white">{value}</span>
+    </div>
+  );
+}
+
+// ─── Window Row ──────────────────────────────────────────────────────────────
+
+function WindowRow({ row }: { row: AnalyticsWindow }) {
+  const matchRate =
+    row.searches > 0 ? Math.round((row.matchedSearches / row.searches) * 100) : 0;
+
+  return (
+    <tr className="bg-gray-900/20 hover:bg-gray-900/50 transition-colors">
+      <td className="px-4 py-3 font-semibold text-white">
+        {row.days === 1 ? "24h" : row.days === 365 ? "1yr" : `${row.days}d`}
+      </td>
+      <td className="px-4 py-3 text-amber-300">{formatNumber(row.newRegisteredUsers)}</td>
+      <td className="px-4 py-3 text-gray-300">{formatNumber(row.gamesPlayed)}</td>
+      <td className="px-4 py-3 text-orange-300">{formatNumber(row.friendGamesPlayed)}</td>
+      <td className="px-4 py-3 text-sky-300">{formatNumber(row.searches)}</td>
+      <td className="px-4 py-3 text-emerald-300">
+        {formatNumber(row.matchedSearches)}
+        <span className="ml-2 text-xs text-gray-500">{matchRate}%</span>
+      </td>
+      <td className="px-4 py-3 text-rose-300">{formatNumber(row.expiredSearches)}</td>
+      <td className="px-4 py-3 text-gray-300">{formatNumber(row.tournamentParticipants)}</td>
+      <td className="px-4 py-3 text-amber-300">{formatNumber(row.tournamentGamesPlayed)}</td>
+    </tr>
+  );
+}
+
+// ─── Tournament Winners ───────────────────────────────────────────────────────
+
+function WinnersSection({ winners }: { winners: TournamentWinner[] }) {
+  if (winners.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center">
+        <Trophy className="mb-3 h-8 w-8 text-gray-700" />
+        <p className="text-sm text-gray-500">No completed tournaments yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {winners.map((w, i) => (
+        <div
+          key={w.tournamentId}
+          className="flex items-center gap-4 rounded-xl border border-gray-800 bg-black/20 px-4 py-3"
+        >
+          <div
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+              i === 0
+                ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                : i === 1
+                ? "bg-gray-400/20 text-gray-300 border border-gray-400/30"
+                : "bg-orange-800/20 text-orange-400 border border-orange-800/30"
+            }`}
+          >
+            {i + 1}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">{w.tournamentName}</p>
+            <p className="text-xs text-gray-500">
+              {w.completedAt ? fmtDateFull(w.completedAt) : "—"}
+            </p>
+          </div>
+          <div className="text-right">
+            {w.winnerName ? (
+              <div className="flex items-center gap-1.5">
+                <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                <span className="text-sm font-semibold text-amber-300">{w.winnerName}</span>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-600">No winner data</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Live Breakdown Tooltip ───────────────────────────────────────────────────
+
+function LiveBreakdown({
+  breakdown,
+}: {
+  breakdown: AdminAnalyticsResponse["liveBreakdown"];
+}) {
+  const items = [
+    { label: "Ranked", value: breakdown.ranked, color: "text-violet-400" },
+    { label: "Casual", value: breakdown.casual, color: "text-sky-400" },
+    { label: "Friend", value: breakdown.friend, color: "text-orange-400" },
+    { label: "Tournament", value: breakdown.tournament, color: "text-amber-400" },
+    { label: "vs AI", value: breakdown.ai, color: "text-emerald-400" },
+  ];
+  return (
+    <div className="mt-2 space-y-1">
+      {items.map((it) => (
+        <div key={it.label} className="flex items-center justify-between text-xs">
+          <span className="text-gray-500">{it.label}</span>
+          <span className={`font-semibold ${it.color}`}>{it.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
+
+const REFRESH_INTERVAL_MS = 30_000;
 
 export default function AdminDashboard() {
   const { locale } = useParams<{ locale: string }>();
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [growth, setGrowth] = useState<GrowthResponse | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const tickRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, g, t] = await Promise.all([
-        adminService.getStats(),
-        adminService.getGrowth(days),
+      const [analyticsResponse, tournamentsResponse] = await Promise.all([
+        adminService.getAnalytics(),
         tournamentService.list(),
       ]);
-      setStats(s);
-      setGrowth(g);
-      setTournaments(t);
-      setLastUpdated(new Date());
+      setAnalytics(analyticsResponse);
+      setTournaments(tournamentsResponse);
+      const updated = new Date(analyticsResponse.generatedAt);
+      setLastUpdated(updated);
+      setSecondsAgo(0);
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, []);
 
+  // Auto-refresh every 30s
   useEffect(() => {
     fetchAll();
+    intervalRef.current = setInterval(fetchAll, REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalRef.current);
   }, [fetchAll]);
 
-  const chartData = growth?.points.map((p) => ({
-    ...p,
-    date: fmtDate(p.date),
-  })) ?? [];
+  // Tick counter (seconds since last update)
+  useEffect(() => {
+    tickRef.current = setInterval(() => {
+      setSecondsAgo((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(tickRef.current);
+  }, []);
 
-  const pieData = growth
-    ? [
-        { name: "Verified", value: growth.breakdown.totalVerified },
-        { name: "Banned", value: growth.breakdown.totalBanned },
-      ]
-    : [];
+  const chartData =
+    analytics?.trend.map((point) => ({
+      ...point,
+      date: fmtDate(point.date),
+    })) ?? [];
 
-  const userTrend = growth ? trend(growth.points, "newUsers") : null;
-  const gameTrend = growth ? trend(growth.points, "games") : null;
-
-  const totalNewUsers = growth?.points.reduce((s, p) => s + p.newUsers, 0) ?? 0;
-  const totalGames = growth?.points.reduce((s, p) => s + p.games, 0) ?? 0;
   const activeTournaments = tournaments.filter((t) => t.status === "ACTIVE").length;
   const registrationTournaments = tournaments.filter((t) => t.status === "REGISTRATION").length;
   const draftTournaments = tournaments.filter((t) => t.status === "DRAFT").length;
   const latestTournament = [...tournaments].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )[0];
+
+  const freshness =
+    secondsAgo < 10
+      ? "Just now"
+      : secondsAgo < 60
+      ? `${secondsAgo}s ago`
+      : `${Math.floor(secondsAgo / 60)}m ago`;
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          {lastUpdated && (
-            <p className="text-xs text-gray-500 mt-0.5">
-              Updated {lastUpdated.toLocaleTimeString()}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Range selector */}
-          <div className="flex rounded-lg border border-gray-800 overflow-hidden text-xs">
-            {RANGE_OPTIONS.map((o) => (
-              <button
-                key={o.value}
-                onClick={() => setDays(o.value)}
-                className={`px-3 py-1.5 font-medium transition-colors ${
-                  days === o.value
-                    ? "bg-amber-400 text-gray-900"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
+          <div className="mt-1 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full ${
+                  secondsAgo < 35 ? "bg-emerald-400 animate-ping opacity-75" : "bg-gray-600"
                 }`}
-              >
-                {o.label}
-              </button>
-            ))}
+              />
+              <span
+                className={`relative inline-flex h-2 w-2 rounded-full ${
+                  secondsAgo < 35 ? "bg-emerald-400" : "bg-gray-600"
+                }`}
+              />
+            </span>
+            <p className="text-xs text-gray-500">
+              {lastUpdated ? `Updated ${freshness} · auto-refreshes every 30s` : "Loading…"}
+            </p>
           </div>
-          <button
-            onClick={fetchAll}
-            disabled={loading}
-            className="p-2 rounded-lg border border-gray-800 text-gray-400 hover:border-gray-600 hover:text-white disabled:opacity-40 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
         </div>
+        <button
+          onClick={fetchAll}
+          disabled={loading}
+          className="rounded-lg border border-gray-800 p-2 text-gray-400 transition-colors hover:border-gray-600 hover:text-white disabled:opacity-40"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        </button>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── KPI Row 1: Users & Total Games ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
           label="Total Users"
-          value={stats?.totalUsers ?? "—"}
+          value={analytics ? formatNumber(analytics.overview.totalUsers) : "—"}
           icon={Users}
           accent="amber"
         />
         <KpiCard
-          label="Active Games"
-          value={stats?.activeGames ?? "—"}
+          label="Registered Users"
+          value={analytics ? formatNumber(analytics.overview.totalRegisteredUsers) : "—"}
+          icon={UserPlus}
+          accent="emerald"
+        />
+        <KpiCard
+          label="Total Games"
+          value={analytics ? formatNumber(analytics.overview.totalGames) : "—"}
           icon={Gamepad2}
           accent="sky"
         />
         <KpiCard
-          label={`New Users (${days}d)`}
-          value={totalNewUsers}
-          icon={TrendingUp}
-          delta={userTrend}
-          accent="emerald"
-        />
-        <KpiCard
-          label={`Games (${days}d)`}
-          value={totalGames}
-          icon={CalendarDays}
-          delta={gameTrend}
-          accent="violet"
+          label="Friend Games Created"
+          value={analytics ? formatNumber(analytics.friendGames.total) : "—"}
+          icon={HandshakeIcon}
+          accent="orange"
+          sub={analytics ? `${analytics.friendGames.active} active now` : undefined}
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+      {/* ── KPI Row 2: Live ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard
+          label="Live Games"
+          value={analytics ? formatNumber(analytics.overview.activeGames) : "—"}
+          icon={Wifi}
+          accent="emerald"
+          live
+        />
+        <KpiCard
+          label="Live Ranked"
+          value={analytics ? formatNumber(analytics.liveBreakdown.ranked) : "—"}
+          icon={TrendingUp}
+          accent="violet"
+          live
+        />
+        <KpiCard
+          label="Live Friend Games"
+          value={analytics ? formatNumber(analytics.liveBreakdown.friend) : "—"}
+          icon={HandshakeIcon}
+          accent="orange"
+          live
+        />
+        <KpiCard
+          label="Live vs AI"
+          value={analytics ? formatNumber(analytics.liveBreakdown.ai) : "—"}
+          icon={Bot}
+          accent="sky"
+          live
+        />
+      </div>
+
+      {/* ── Tournament Management + Winners ── */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
         <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-white">Tournament Management</p>
               <p className="mt-1 text-sm text-gray-400">
-                Create tournaments, monitor brackets, and jump straight into the control room.
+                Create tournaments, monitor brackets, and open the latest control room quickly.
               </p>
             </div>
             <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-3">
@@ -287,52 +475,95 @@ export default function AdminDashboard() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             )}
-            {latestTournament && (
-              <Link
-                href={`/${locale}/admin/tournaments/${latestTournament.id}#edit-tournament`}
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:text-white"
-              >
-                Edit latest tournament
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
+          </div>
+        </section>
+
+        {/* Tournament Winners */}
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Tournament Winners</p>
+              <p className="mt-1 text-xs text-gray-500">Most recently completed</p>
+            </div>
+            <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-2.5">
+              <Zap className="h-4 w-4 text-amber-300" />
+            </div>
+          </div>
+          <WinnersSection winners={analytics?.recentTournamentWinners ?? []} />
+        </section>
+      </div>
+
+      {/* ── Lifetime Totals + Live Breakdown ── */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <p className="mb-5 text-sm font-semibold text-white">Lifetime Totals</p>
+          <div className="space-y-3">
+            <StatRow
+              label="Matchmaking searches"
+              value={analytics ? formatNumber(analytics.overview.totalMatchmakingSearches) : "—"}
+              icon={Search}
+            />
+            <StatRow
+              label="Tournament participants"
+              value={
+                analytics ? formatNumber(analytics.overview.totalTournamentParticipants) : "—"
+              }
+              icon={Users}
+            />
+            <StatRow
+              label="Tournament games played"
+              value={analytics ? formatNumber(analytics.overview.totalTournamentGames) : "—"}
+              icon={Trophy}
+            />
+            <StatRow
+              label="Draft tournaments"
+              value={formatNumber(draftTournaments)}
+              icon={TimerReset}
+            />
           </div>
         </section>
 
         <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-          <p className="text-sm font-semibold text-white">Tournament Snapshot</p>
-          <div className="mt-5 space-y-3">
-            <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
-              <span className="text-sm text-gray-400">Draft tournaments</span>
-              <span className="text-sm font-semibold text-white">{draftTournaments}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
-              <span className="text-sm text-gray-400">Newest tournament</span>
-              <span className="max-w-[12rem] truncate text-sm font-semibold text-white">
-                {latestTournament?.name ?? "None yet"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-black/20 px-4 py-3">
-              <span className="text-sm text-gray-400">Latest status</span>
-              <span className="text-sm font-semibold text-white">
-                {latestTournament?.status ?? "N/A"}
-              </span>
-            </div>
-          </div>
+          <p className="mb-4 text-sm font-semibold text-white">Live Game Breakdown</p>
+          {analytics ? (
+            <>
+              <div className="mb-4 flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-white">
+                  {analytics.overview.activeGames}
+                </span>
+                <span className="text-sm text-gray-400">games active right now</span>
+                <span className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  </span>
+                  LIVE
+                </span>
+              </div>
+              <LiveBreakdown breakdown={analytics.liveBreakdown} />
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">Loading…</p>
+          )}
         </section>
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* User growth — area chart */}
-        <div className="xl:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <p className="text-sm font-semibold text-white mb-5">User Registrations</p>
+      {/* ── Charts ── */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <p className="mb-5 text-sm font-semibold text-white">
+            Daily Registrations & Searches
+          </p>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradUsers" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradSearches" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -350,9 +581,13 @@ export default function AdminDashboard() {
                 allowDecimals={false}
               />
               <Tooltip content={<ChartTooltip />} />
+              <Legend
+                wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
+                formatter={(value) => <span style={{ color: "#9ca3af" }}>{value}</span>}
+              />
               <Area
                 type="monotone"
-                dataKey="newUsers"
+                dataKey="newRegisteredUsers"
                 name="New Users"
                 stroke="#f59e0b"
                 strokeWidth={2}
@@ -360,78 +595,108 @@ export default function AdminDashboard() {
                 dot={false}
                 activeDot={{ r: 4, fill: "#f59e0b" }}
               />
+              <Area
+                type="monotone"
+                dataKey="searches"
+                name="Match Searches"
+                stroke="#38bdf8"
+                strokeWidth={2}
+                fill="url(#gradSearches)"
+                dot={false}
+                activeDot={{ r: 4, fill: "#38bdf8" }}
+              />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </section>
 
-        {/* User breakdown — pie */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
-          <p className="text-sm font-semibold text-white mb-5">User Breakdown</p>
-          <div className="flex-1 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={52}
-                  outerRadius={78}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "#111827",
-                    border: "1px solid #374151",
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  wrapperStyle={{ fontSize: 12, color: "#9ca3af" }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <p className="mb-5 text-sm font-semibold text-white">
+            Daily Games — Regular, Friend & Tournament
+          </p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend
+                wrapperStyle={{ fontSize: "11px", paddingTop: "12px" }}
+                formatter={(value) => <span style={{ color: "#9ca3af" }}>{value}</span>}
+              />
+              <Bar
+                dataKey="gamesPlayed"
+                name="All Games"
+                fill="#818cf8"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={22}
+              />
+              <Bar
+                dataKey="friendGamesPlayed"
+                name="Friend Games"
+                fill="#fb923c"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={22}
+              />
+              <Bar
+                dataKey="tournamentGamesPlayed"
+                name="Tournament Games"
+                fill="#f59e0b"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={22}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </section>
+      </div>
+
+      {/* ── Window Summary ── */}
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-white">Window Summary</p>
+            <p className="mt-1 text-sm text-gray-400">
+              Rolling totals for 24h, 3d, 7d, 30d, 90d and 1yr.
+            </p>
+          </div>
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-200">
+            Timeout searches included
           </div>
         </div>
-      </div>
 
-      {/* Games activity — bar chart */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <p className="text-sm font-semibold text-white mb-5">Games Activity</p>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: "#6b7280", fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fill: "#6b7280", fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip content={<ChartTooltip />} />
-            <Bar
-              dataKey="games"
-              name="Games"
-              fill="#818cf8"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={32}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+        <div className="overflow-x-auto rounded-xl border border-gray-800">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-800 bg-black/20 text-gray-400">
+              <tr>
+                <th className="px-4 py-3">Window</th>
+                <th className="px-4 py-3 text-amber-400">New Users</th>
+                <th className="px-4 py-3">Games</th>
+                <th className="px-4 py-3 text-orange-400">Friend Games</th>
+                <th className="px-4 py-3 text-sky-400">Searches</th>
+                <th className="px-4 py-3 text-emerald-400">Matched</th>
+                <th className="px-4 py-3 text-rose-400">Expired</th>
+                <th className="px-4 py-3">Tournament Users</th>
+                <th className="px-4 py-3 text-amber-400">Tournament Games</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {(analytics?.windows ?? []).map((row) => (
+                <WindowRow key={row.days} row={row} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

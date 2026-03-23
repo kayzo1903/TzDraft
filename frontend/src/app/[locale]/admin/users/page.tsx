@@ -1,12 +1,70 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { adminService, AdminUser } from "@/services/admin.service";
-import { Shield, ShieldOff, Trash2, UserX, UserCheck, AlertTriangle } from "lucide-react";
+import {
+  adminService,
+  AdminUser,
+  GrowthPoint,
+} from "@/services/admin.service";
+import {
+  Shield,
+  ShieldOff,
+  Trash2,
+  UserX,
+  UserCheck,
+  AlertTriangle,
+  Users,
+  TrendingUp,
+  Calendar,
+} from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const PAGE_LIMIT = 20;
 
-// ── Confirm dialog ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Period = "today" | "7d" | "30d" | "3m" | "12m" | "all";
+
+const PERIODS: { key: Period; label: string; days: number | null }[] = [
+  { key: "today", label: "Today", days: 1 },
+  { key: "7d", label: "7 Days", days: 7 },
+  { key: "30d", label: "30 Days", days: 30 },
+  { key: "3m", label: "3 Months", days: 90 },
+  { key: "12m", label: "12 Months", days: 365 },
+  { key: "all", label: "All Time", days: null },
+];
+
+function getPeriodRange(days: number | null): { from?: string; to?: string } {
+  if (!days) return {};
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+  from.setHours(0, 0, 0, 0);
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+  };
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+function fmtDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+}
+
+// ─── Confirm Dialog ───────────────────────────────────────────────────────────
+
 interface ConfirmDialogProps {
   title: string;
   message: string;
@@ -60,7 +118,32 @@ function ConfirmDialog({
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ─── Growth Chart Tooltip ─────────────────────────────────────────────────────
+
+function GrowthTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { name: string; value: number; color: string }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1 font-medium text-gray-400">{label}</p>
+      {payload.map((entry) => (
+        <p key={entry.name} style={{ color: entry.color }} className="font-semibold">
+          {entry.name}: {formatNumber(entry.value)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 interface DialogState {
   title: string;
   message: string;
@@ -78,18 +161,24 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Period filter
+  const [period, setPeriod] = useState<Period>("all");
+  const [growthPoints, setGrowthPoints] = useState<GrowthPoint[]>([]);
+  const [periodTotal, setPeriodTotal] = useState<number | null>(null);
+  const [periodGames, setPeriodGames] = useState<number | null>(null);
+  const [growthLoading, setGrowthLoading] = useState(false);
+
   // Guest cleanup state
   const [cleanupDays, setCleanupDays] = useState(7);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
 
-  // Dialog state — null = closed
+  // Dialog state
   const [dialog, setDialog] = useState<DialogState | null>(null);
-
   const closeDialog = () => setDialog(null);
 
-  // Debounce search input
+  // Debounce search
   const handleSearch = (value: string) => {
     setSearch(value);
     clearTimeout(debounceRef.current);
@@ -99,24 +188,58 @@ export default function AdminUsersPage() {
     }, 400);
   };
 
+  // Fetch users — respects period filter
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    const selectedPeriod = PERIODS.find((p) => p.key === period);
+    const range = getPeriodRange(selectedPeriod?.days ?? null);
     try {
       const res = await adminService.getUsers({
         page,
         limit: PAGE_LIMIT,
         search: debouncedSearch || undefined,
+        from: range.from,
+        to: range.to,
       });
       setUsers(res.data);
       setTotal(res.total);
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, period]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Fetch growth points when period changes (not "all")
+  useEffect(() => {
+    const selectedPeriod = PERIODS.find((p) => p.key === period);
+    if (!selectedPeriod?.days) {
+      setGrowthPoints([]);
+      setPeriodTotal(null);
+      setPeriodGames(null);
+      return;
+    }
+    setGrowthLoading(true);
+    adminService
+      .getGrowth(Math.min(selectedPeriod.days, 90))
+      .then((res) => {
+        setGrowthPoints(res.points);
+        const totalNew = res.points.reduce((acc, p) => acc + p.newUsers, 0);
+        const totalGames = res.points.reduce((acc, p) => acc + p.games, 0);
+        setPeriodTotal(totalNew);
+        setPeriodGames(totalGames);
+      })
+      .finally(() => setGrowthLoading(false));
+  }, [period]);
+
+  const selectedPeriodLabel = PERIODS.find((p) => p.key === period)?.label ?? "All Time";
+  const chartData = growthPoints.map((p) => ({
+    date: fmtDate(p.date),
+    "New Users": p.newUsers,
+    Games: p.games,
+  }));
 
   const handleBan = (userId: string, isBanned: boolean) => {
     setDialog({
@@ -198,7 +321,7 @@ export default function AdminUsersPage() {
   const totalPages = Math.ceil(total / PAGE_LIMIT);
 
   return (
-    <div>
+    <div className="space-y-6">
       {dialog && (
         <ConfirmDialog
           title={dialog.title}
@@ -210,9 +333,119 @@ export default function AdminUsersPage() {
         />
       )}
 
-      <h1 className="text-2xl font-bold mb-6">Users</h1>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white">Users</h1>
+        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+          Registered accounts only
+        </span>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      {/* ── Period Filter Tabs ── */}
+      <div className="flex flex-wrap gap-1.5">
+        {PERIODS.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => {
+              setPeriod(p.key);
+              setPage(1);
+            }}
+            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+              period === p.key
+                ? "bg-amber-400 text-gray-950 shadow-sm shadow-amber-400/30"
+                : "border border-gray-800 text-gray-400 hover:border-gray-600 hover:text-white"
+            }`}
+          >
+            <Calendar className="h-3 w-3" />
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Period KPIs + Mini Chart ── */}
+      {period !== "all" && (
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+          <p className="mb-4 text-sm font-semibold text-white">
+            Growth · {selectedPeriodLabel}
+          </p>
+
+          {growthLoading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-amber-400" />
+              Loading…
+            </div>
+          ) : (
+            <>
+              {/* Mini KPI row */}
+              <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="h-4 w-4 text-amber-400" />
+                    <span className="text-xs text-gray-500">New Users</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white">
+                    {periodTotal !== null ? formatNumber(periodTotal) : "—"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-sky-400/20 bg-sky-400/5 p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-sky-400" />
+                    <span className="text-xs text-gray-500">Games Played</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white">
+                    {periodGames !== null ? formatNumber(periodGames) : "—"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-violet-400" />
+                    <span className="text-xs text-gray-500">Table matches</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white">{formatNumber(total)}</p>
+                </div>
+              </div>
+
+              {/* Mini bar chart */}
+              {chartData.length > 0 && (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={chartData} margin={{ top: 2, right: 2, left: -24, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#6b7280", fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{ fill: "#6b7280", fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip content={<GrowthTooltip />} />
+                    <Bar
+                      dataKey="New Users"
+                      fill="#f59e0b"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={20}
+                    />
+                    <Bar
+                      dataKey="Games"
+                      fill="#818cf8"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={20}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Search ── */}
+      <div className="flex flex-wrap items-center gap-3">
         <input
           type="text"
           value={search}
@@ -220,11 +453,14 @@ export default function AdminUsersPage() {
           placeholder="Search by username, email or phone…"
           className="w-full max-w-sm px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-amber-400"
         />
-        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-          Registered accounts only
-        </span>
+        {total > 0 && (
+          <span className="text-xs text-gray-500">
+            {formatNumber(total)} user{total !== 1 ? "s" : ""} in {selectedPeriodLabel.toLowerCase()}
+          </span>
+        )}
       </div>
 
+      {/* ── Users Table ── */}
       <div className="overflow-x-auto rounded-xl border border-gray-800">
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-900 text-gray-400 border-b border-gray-800">
@@ -251,14 +487,19 @@ export default function AdminUsersPage() {
               <tr>
                 <td
                   colSpan={7}
-                  className="px-4 py-8 text-center text-gray-500"
+                  className="px-4 py-10 text-center text-gray-500"
                 >
                   No users found
+                  {period !== "all" && (
+                    <span className="block text-xs mt-1 text-gray-600">
+                      within the selected period
+                    </span>
+                  )}
                 </td>
               </tr>
             ) : (
               users.map((u) => (
-                <tr key={u.id} className="bg-gray-900/20 hover:bg-gray-900/60">
+                <tr key={u.id} className="bg-gray-900/20 hover:bg-gray-900/60 transition-colors">
                   <td className="px-4 py-3">
                     <p className="font-medium text-white">{u.displayName}</p>
                     <p className="text-xs text-gray-500">@{u.username}</p>
@@ -310,9 +551,7 @@ export default function AdminUsersPage() {
                       </button>
                       <button
                         onClick={() => handleRole(u.id, u.role)}
-                        title={
-                          u.role === "ADMIN" ? "Remove Admin" : "Make Admin"
-                        }
+                        title={u.role === "ADMIN" ? "Remove Admin" : "Make Admin"}
                         className="p-1.5 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
                       >
                         {u.role === "ADMIN" ? (
@@ -330,8 +569,36 @@ export default function AdminUsersPage() {
         </table>
       </div>
 
-      {/* Guest Cleanup */}
-      <div className="mt-8 rounded-xl border border-gray-800 bg-gray-900/40 p-5">
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-400">
+          <span>
+            {formatNumber(total)} user{total !== 1 ? "s" : ""}
+          </span>
+          <div className="flex gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1 rounded border border-gray-700 disabled:opacity-40 hover:border-gray-500"
+            >
+              Prev
+            </button>
+            <span className="px-3 py-1">
+              {page} / {totalPages}
+            </span>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1 rounded border border-gray-700 disabled:opacity-40 hover:border-gray-500"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Guest Cleanup ── */}
+      <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-5">
         <div className="flex items-center gap-2 mb-1">
           <Trash2 className="w-4 h-4 text-red-400" />
           <h2 className="text-sm font-semibold text-white">Guest Cleanup</h2>
@@ -385,34 +652,6 @@ export default function AdminUsersPage() {
           <p className="mt-3 text-xs text-green-400">{cleanupResult}</p>
         )}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-gray-400">
-          <span>
-            {total} user{total !== 1 ? "s" : ""}
-          </span>
-          <div className="flex gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1 rounded border border-gray-700 disabled:opacity-40 hover:border-gray-500"
-            >
-              Prev
-            </button>
-            <span className="px-3 py-1">
-              {page} / {totalPages}
-            </span>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1 rounded border border-gray-700 disabled:opacity-40 hover:border-gray-500"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
