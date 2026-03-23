@@ -1,17 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Clock3, Search, ShieldCheck, Swords, TimerReset, X } from "lucide-react";
 import clsx from "clsx";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
-import {
-  useMatchmaking,
-  QUEUE_TIME_OPTIONS,
-  type QueueTimeMs,
-} from "@/hooks/useMatchmaking";
+import { useMatchmaking, QUEUE_TIME_OPTIONS } from "@/hooks/useMatchmaking";
 import { Link } from "@/i18n/routing";
 
 function InfoStrip({
@@ -44,20 +40,13 @@ export default function SetupOnlinePage() {
   const { state, error, joinQueue, cancelQueue } = useMatchmaking();
   const { isAuthenticated } = useAuthStore();
   const searchParams = useSearchParams();
-  const [selectedTime, setSelectedTime] = useState<QueueTimeMs>(() => {
-    const ms = Number(searchParams.get("timeMs"));
-    return (QUEUE_TIME_OPTIONS.find((o) => o.ms === ms)?.ms ?? 300000) as QueueTimeMs;
-  });
+  const selectedOption = QUEUE_TIME_OPTIONS.find((o) => o.ms === 300000) ?? QUEUE_TIME_OPTIONS[1];
 
   const isSw = locale === "sw";
-  const selectedOption = useMemo(
-    () => QUEUE_TIME_OPTIONS.find((o) => o.ms === selectedTime) ?? QUEUE_TIME_OPTIONS[1],
-    [selectedTime],
-  );
 
   useEffect(() => {
     if (searchParams.get("autoSearch") === "true" && isAuthenticated && state === "idle") {
-      joinQueue(selectedTime);
+      joinQueue(300000);
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,84 +188,71 @@ export default function SetupOnlinePage() {
 
                       {/* Mobile: compact 2×2 segmented grid */}
                       <div className="grid grid-cols-2 gap-2 sm:hidden">
-                        {QUEUE_TIME_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.ms}
-                            type="button"
-                            onClick={() => setSelectedTime(opt.ms)}
-                            className={clsx(
-                              "flex flex-col items-center gap-2 rounded-2xl border py-3 transition-all duration-200",
-                              selectedTime === opt.ms
-                                ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white"
-                                : "border-white/10 bg-black/20 text-neutral-400 active:bg-black/30",
-                            )}
-                          >
-                            <div className={clsx(
-                              "flex h-8 w-8 items-center justify-center rounded-xl border border-white/10",
-                              selectedTime === opt.ms ? "bg-white/10" : "bg-white/5",
-                            )}>
-                              <Clock3 className="h-3.5 w-3.5 text-amber-300" />
+                        {QUEUE_TIME_OPTIONS.map((opt) => {
+                          const isActive = opt.ms === 300000;
+                          return (
+                            <div
+                              key={opt.ms}
+                              className={clsx(
+                                "flex flex-col items-center gap-2 rounded-2xl border py-3",
+                                isActive
+                                  ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white"
+                                  : "cursor-not-allowed border-white/5 bg-black/10 text-neutral-600 opacity-40",
+                              )}
+                            >
+                              <div className={clsx(
+                                "flex h-8 w-8 items-center justify-center rounded-xl border border-white/10",
+                                isActive ? "bg-white/10" : "bg-white/5",
+                              )}>
+                                <Clock3 className="h-3.5 w-3.5 text-amber-300" />
+                              </div>
+                              <span className="text-xs font-black">{opt.name}</span>
+                              <span className="text-[10px] text-neutral-500">{opt.label}</span>
+                              {isActive && (
+                                <span className="h-1 w-4 rounded-full bg-[var(--primary)]" />
+                              )}
                             </div>
-                            <span className="text-xs font-black">{opt.name}</span>
-                            <span className="text-[10px] text-neutral-500">{opt.label}</span>
-                            {selectedTime === opt.ms && (
-                              <span className="h-1 w-4 rounded-full bg-[var(--primary)]" />
-                            )}
-                          </button>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Tablet+: card grid */}
                       <div className="hidden gap-3 sm:grid sm:grid-cols-2 xl:grid-cols-4">
-                        {QUEUE_TIME_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.ms}
-                            type="button"
-                            onClick={() => setSelectedTime(opt.ms)}
-                            className={clsx(
-                              "rounded-2xl border p-4 text-left transition-all duration-200",
-                              selectedTime === opt.ms
-                                ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white shadow-[0_12px_30px_rgba(249,115,22,0.12)]"
-                                : "border-white/10 bg-black/20 text-neutral-300 hover:border-white/15 hover:bg-black/30",
-                            )}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5">
-                                <Clock3 className="h-4 w-4 text-amber-300" />
+                        {QUEUE_TIME_OPTIONS.map((opt) => {
+                          const isActive = opt.ms === 300000;
+                          return (
+                            <div
+                              key={opt.ms}
+                              className={clsx(
+                                "rounded-2xl border p-4 text-left",
+                                isActive
+                                  ? "border-[var(--primary)]/50 bg-[var(--primary)]/10 text-white shadow-[0_12px_30px_rgba(249,115,22,0.12)]"
+                                  : "cursor-not-allowed border-white/5 bg-black/10 text-neutral-600 opacity-40",
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                                  <Clock3 className="h-4 w-4 text-amber-300" />
+                                </div>
+                                <div className={clsx(
+                                  "rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]",
+                                  isActive ? "bg-white/10 text-orange-100" : "bg-white/5 text-neutral-500",
+                                )}>
+                                  {opt.label}
+                                </div>
                               </div>
-                              <div className={clsx(
-                                "rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]",
-                                selectedTime === opt.ms ? "bg-white/10 text-orange-100" : "bg-white/5 text-neutral-500",
-                              )}>
-                                {opt.label}
+                              <div className="mt-4 text-base font-black">{opt.name}</div>
+                              <div className="mt-1 text-xs text-neutral-500">
+                                {isSw ? `Mchezo wa ${opt.label} kwa kila upande` : `${opt.label} per side game`}
                               </div>
                             </div>
-                            <div className="mt-4 text-base font-black">{opt.name}</div>
-                            <div className="mt-1 text-xs text-neutral-500">
-                              {isSw ? `Mchezo wa ${opt.label} kwa kila upande` : `${opt.label} per side game`}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Selected summary */}
-                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 sm:py-4">
-                      <div className="text-xs font-black uppercase tracking-[0.22em] text-neutral-500">
-                        {isSw ? "Uchaguzi wako" : "Your queue choice"}
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-3 sm:gap-3">
-                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white sm:px-4 sm:py-2">
-                          {selectedOption.name}
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-neutral-300 sm:px-4 sm:py-2">
-                          {selectedOption.label}
-                        </span>
+                          );
+                        })}
                       </div>
                     </div>
 
                     <Button
-                      onClick={() => joinQueue(selectedTime)}
+                      onClick={() => joinQueue(300000)}
                       size="lg"
                       className="w-full text-sm font-black sm:text-base"
                     >
