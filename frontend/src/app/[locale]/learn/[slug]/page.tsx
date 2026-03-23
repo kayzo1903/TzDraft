@@ -53,7 +53,7 @@ export async function generateMetadata({
 
     let article: Article | null = null;
     try {
-      article = await client.fetch(articleBySlugQuery, { slug });
+      article = await client.fetch<Article | null>(articleBySlugQuery, { slug });
     } catch {
       return {};
     }
@@ -90,7 +90,7 @@ export default async function ArticlePage({
 
   let article: Article | null = null;
   try {
-    article = await client.fetch(articleBySlugQuery, { slug });
+    article = await client.fetch<Article | null>(articleBySlugQuery, { slug });
   } catch {
     notFound();
   }
