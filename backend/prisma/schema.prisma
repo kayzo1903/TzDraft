@@ -319,6 +319,26 @@ model MatchmakingQueue {
     @@map("matchmaking_queue")
 }
 
+model MatchmakingSearch {
+    id           String   @id
+    userId       String   @map("user_id")
+    timeMs       Int      @map("time_ms")
+    status       String
+    startedAt    DateTime @default(now()) @map("started_at")
+    endedAt      DateTime? @map("ended_at")
+    matchedAt    DateTime? @map("matched_at")
+    gameId       String?  @map("game_id")
+    cancelReason String?  @map("cancel_reason")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId, status])
+    @@index([status])
+    @@index([startedAt])
+    @@index([gameId])
+    @@map("matchmaking_searches")
+}
+
 // ============================================
 // TOURNAMENT DOMAIN — Phase 1: Single Elimination
 // ============================================

@@ -93,7 +93,17 @@ describe('JoinQueueUseCase', () => {
         }),
       };
 
-      const useCase = new JoinQueueUseCase(matchmakingRepo as any, prisma as any);
+      const matchmakingAnalytics = {
+        startSearch: jest.fn().mockResolvedValue(undefined),
+        markMatchedUsers: jest.fn().mockResolvedValue(undefined),
+        closeSearch: jest.fn().mockResolvedValue(undefined),
+      };
+
+      const useCase = new JoinQueueUseCase(
+        matchmakingRepo as any,
+        prisma as any,
+        matchmakingAnalytics as any,
+      );
 
       const [resB, resC] = await Promise.all([
         useCase.execute('B', 300000, 'socket-b', 1200),
@@ -122,6 +132,7 @@ describe('JoinQueueUseCase', () => {
   describe('normal flows', () => {
     let prisma: FakePrismaService;
     let matchmakingRepo: any;
+    let matchmakingAnalytics: any;
     let useCase: JoinQueueUseCase;
 
     beforeEach(() => {
@@ -133,7 +144,16 @@ describe('JoinQueueUseCase', () => {
         findOldestMatch: jest.fn().mockResolvedValue(null),
         findAndClaimMatch: jest.fn().mockResolvedValue(null),
       };
-      useCase = new JoinQueueUseCase(matchmakingRepo, prisma as any);
+      matchmakingAnalytics = {
+        startSearch: jest.fn().mockResolvedValue(undefined),
+        markMatchedUsers: jest.fn().mockResolvedValue(undefined),
+        closeSearch: jest.fn().mockResolvedValue(undefined),
+      };
+      useCase = new JoinQueueUseCase(
+        matchmakingRepo,
+        prisma as any,
+        matchmakingAnalytics,
+      );
     });
 
     it('returns waiting when no opponent is available', async () => {
@@ -194,6 +214,7 @@ describe('JoinQueueUseCase', () => {
 
     it('cancels queue for a user', async () => {
       await useCase.cancelQueue('user1');
+      expect(matchmakingAnalytics.closeSearch).toHaveBeenCalledWith('user1');
       expect(matchmakingRepo.remove).toHaveBeenCalledWith('user1');
     });
   });

@@ -28,6 +28,7 @@ import { EligibilityCheckService } from '../../domain/tournament/services/eligib
 import { BracketGenerationService } from '../../domain/tournament/services/bracket-generation.service';
 import { MatchProgressionService } from '../../domain/tournament/services/match-progression.service';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
+import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matchmaking-analytics.service';
 
 /**
  * Use Cases Module
@@ -50,6 +51,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     EligibilityCheckService,
     BracketGenerationService,
     MatchProgressionService,
+    MatchmakingAnalyticsService,
     // Tournament use cases
     CreateTournamentUseCase,
     RegisterForTournamentUseCase,
@@ -75,6 +77,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
     GetGameHistoryUseCase,
     GetPlayerStatsUseCase,
     AiProgressionService,
+    MatchmakingAnalyticsService,
     CreateTournamentUseCase,
     RegisterForTournamentUseCase,
     WithdrawFromTournamentUseCase,

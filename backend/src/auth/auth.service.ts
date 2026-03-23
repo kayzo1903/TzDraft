@@ -96,7 +96,7 @@ export class AuthService {
     });
 
     // Delete OTP to prevent reuse
-    await this.prisma.otpCode.delete({
+    await this.prisma.otpCode.deleteMany({
       where: { id: verifiedOtp.id },
     });
 
@@ -225,7 +225,7 @@ export class AuthService {
     }
 
     // Delete old refresh token
-    await this.prisma.refreshToken.delete({
+    await this.prisma.refreshToken.deleteMany({
       where: { id: tokenRecord.id },
     });
 
@@ -256,7 +256,7 @@ export class AuthService {
       data: { isVerified: true },
     });
 
-    await this.prisma.verificationToken.delete({
+    await this.prisma.verificationToken.deleteMany({
       where: { id: verificationToken.id },
     });
 
@@ -319,7 +319,7 @@ export class AuthService {
       data: { passwordHash },
     });
 
-    await this.prisma.passwordResetToken.delete({
+    await this.prisma.passwordResetToken.deleteMany({
       where: { id: resetToken.id },
     });
 
@@ -369,7 +369,7 @@ export class AuthService {
     });
 
     // 4. Delete OTP to prevent reuse
-    await this.prisma.otpCode.delete({
+    await this.prisma.otpCode.deleteMany({
       where: { id: otpRecord.id },
     });
 
