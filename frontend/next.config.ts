@@ -41,6 +41,20 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  async headers() {
+    return [
+      {
+        // Private user/admin areas should never be indexed, even if linked.
+        source: "/(sw|en)/(auth|game|admin|profile|settings)/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        // API responses should not appear as indexed documents.
+        source: "/api/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
