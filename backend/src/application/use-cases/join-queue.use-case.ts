@@ -4,6 +4,7 @@ import type { IMatchmakingRepository, MatchmakingEntry } from '../../domain/game
 import { Game } from '../../domain/game/entities/game.entity';
 import { GameStatus, GameType } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matchmaking-analytics.service';
 
 /** Stale queue entries older than this are removed on each enqueue. */
 const STALE_QUEUE_AGE_MS = 1 * 60 * 1000; // 1 minute
@@ -20,6 +21,7 @@ export class JoinQueueUseCase {
     @Inject('IMatchmakingRepository')
     private readonly matchmakingRepo: IMatchmakingRepository,
     private readonly prisma: PrismaService,
+    private readonly matchmakingAnalytics: MatchmakingAnalyticsService,
   ) {}
 
   /**
@@ -110,6 +112,8 @@ export class JoinQueueUseCase {
       return { status: 'waiting' };
     }
 
+    await this.matchmakingAnalytics.startSearch(userId, timeMs);
+
     // 4. Atomically find and claim an opponent from the queue.
     //    RedisMatchmakingRepository uses a Lua script; PrismaMatchmakingRepository
     //    uses a Postgres $transaction — both guarantee only one worker claims each entry.
@@ -156,6 +160,10 @@ export class JoinQueueUseCase {
             recoveredOpponent,
             timeMs,
           );
+          await this.matchmakingAnalytics.markMatchedUsers(
+            [userId, opponentUserId],
+            gameId,
+          );
           return { status: 'matched', gameId, opponentUserId };
         }
         return { status: 'waiting' };
@@ -166,6 +174,10 @@ export class JoinQueueUseCase {
         userId,
         opponent,
         timeMs,
+      );
+      await this.matchmakingAnalytics.markMatchedUsers(
+        [userId, opponentUserId],
+        gameId,
       );
       this.logger.log(`[QUEUE] step6 matched user=${userId} vs ${opponentUserId} gameId=${gameId}`);
       return { status: 'matched', gameId, opponentUserId };
@@ -197,6 +209,10 @@ export class JoinQueueUseCase {
         lateOpponent,
         timeMs,
       );
+      await this.matchmakingAnalytics.markMatchedUsers(
+        [userId, opponentUserId],
+        gameId,
+      );
       // The opponent is waiting in the queue (not making an HTTP call), so we
       // must push the matchFound event to them via the WebSocket gateway.
       // We return the opponent's userId so the controller can do the emit.
@@ -209,6 +225,7 @@ export class JoinQueueUseCase {
   }
 
   async cancelQueue(userId: string): Promise<void> {
+    await this.matchmakingAnalytics.closeSearch(userId);
     await this.matchmakingRepo.remove(userId);
   }
 }

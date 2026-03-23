@@ -6,6 +6,64 @@ export interface AdminStats {
   gamesPlayedToday: number;
 }
 
+export interface AnalyticsWindow {
+  days: number;
+  gamesPlayed: number;
+  searches: number;
+  matchedSearches: number;
+  expiredSearches: number;
+  newRegisteredUsers: number;
+  tournamentParticipants: number;
+  tournamentGamesPlayed: number;
+  friendGamesPlayed: number;
+}
+
+export interface AnalyticsTrendPoint {
+  date: string;
+  newRegisteredUsers: number;
+  gamesPlayed: number;
+  searches: number;
+  matchedSearches: number;
+  tournamentParticipants: number;
+  tournamentGamesPlayed: number;
+  friendGamesPlayed: number;
+}
+
+export interface TournamentWinner {
+  tournamentId: string;
+  tournamentName: string;
+  winnerId: string | null;
+  winnerName: string | null;
+  completedAt: string | null;
+}
+
+export interface AdminAnalyticsResponse {
+  generatedAt: string;
+  overview: {
+    totalUsers: number;
+    totalRegisteredUsers: number;
+    activeGames: number;
+    totalGames: number;
+    totalMatchmakingSearches: number;
+    totalTournamentParticipants: number;
+    totalTournamentGames: number;
+  };
+  liveBreakdown: {
+    ranked: number;
+    casual: number;
+    ai: number;
+    tournament: number;
+    friend: number;
+  };
+  friendGames: {
+    active: number;
+    total: number;
+  };
+  recentTournamentWinners: TournamentWinner[];
+  windows: AnalyticsWindow[];
+  trend: AnalyticsTrendPoint[];
+}
+
 export interface GrowthPoint {
   date: string;
   newUsers: number;
@@ -53,6 +111,8 @@ export const adminService = {
     page?: number;
     limit?: number;
     search?: string;
+    from?: string;
+    to?: string;
   }): Promise<AdminUsersResponse> {
     const response = await axiosInstance.get("/admin/users", { params });
     return response.data;
@@ -94,6 +154,11 @@ export const adminService = {
 
   async getGrowth(days = 30): Promise<GrowthResponse> {
     const response = await axiosInstance.get("/admin/growth", { params: { days } });
+    return response.data;
+  },
+
+  async getAnalytics(): Promise<AdminAnalyticsResponse> {
+    const response = await axiosInstance.get("/admin/analytics");
     return response.data;
   },
 
