@@ -5,6 +5,8 @@ import {
   MatchmakingEntry,
 } from '../../domain/game/repositories/matchmaking.repository.interface';
 
+const MATCHMAKING_WINDOW_MS = 60_000;
+
 @Injectable()
 export class PrismaMatchmakingRepository implements IMatchmakingRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -38,10 +40,12 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
     timeMs: number,
     excludeUserId: string,
   ): Promise<MatchmakingEntry | null> {
+    const cutoff = new Date(Date.now() - MATCHMAKING_WINDOW_MS);
     const row = await this.prisma.matchmakingQueue.findFirst({
       where: {
         timeMs,
         userId: { not: excludeUserId },
+        joinedAt: { gte: cutoff },
       },
       orderBy: { joinedAt: 'asc' },
     });
@@ -54,6 +58,7 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
     userRating?: number | null,
   ): Promise<MatchmakingEntry | null> {
     const MAX_ELO_GAP = 200;
+    const cutoff = new Date(Date.now() - MATCHMAKING_WINDOW_MS);
     const ratingFilter =
       userRating != null
         ? {
@@ -71,7 +76,12 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
 
     return this.prisma.$transaction(async (tx) => {
       const row = await tx.matchmakingQueue.findFirst({
-        where: { timeMs, userId: { not: excludeUserId }, ...ratingFilter },
+        where: {
+          timeMs,
+          userId: { not: excludeUserId },
+          joinedAt: { gte: cutoff },
+          ...ratingFilter,
+        },
         orderBy: { joinedAt: 'asc' },
       });
       if (!row) return null;
