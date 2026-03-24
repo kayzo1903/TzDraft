@@ -64,7 +64,11 @@ export function useMatchmaking() {
     if (!socket) return;
 
     const handleMatchFound = ({ gameId }: { gameId: string }) => {
-      if (cancelledRef.current) return;
+      if (cancelledRef.current) {
+        // Already cancelled — abort so the waiting opponent isn't stranded
+        gameService.abort(gameId).catch(() => {});
+        return;
+      }
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       cancelledRef.current = true;
       setState("matched");
@@ -108,7 +112,12 @@ export function useMatchmaking() {
         const socketId = socket.id;
         const res = await gameService.joinQueue(timeMs, socketId);
 
-        if (cancelledRef.current) return;
+        if (cancelledRef.current) {
+          if (res.data.status === "matched" && res.data.gameId) {
+            gameService.abort(res.data.gameId).catch(() => {});
+          }
+          return;
+        }
 
         if (res.data.status === "matched" && res.data.gameId) {
           // Immediate match (opponent was already waiting)
