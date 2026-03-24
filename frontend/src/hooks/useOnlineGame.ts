@@ -16,6 +16,7 @@ import type {
   LastMoveState,
 } from "@/components/game/Board";
 import { useAuthStore } from "@/lib/auth/auth-store";
+import { authClient } from "@/lib/auth/auth-client";
 import { playMoveSound } from "@/lib/game/move-sound";
 import { gameService } from "@/services/game.service";
 import { useSocket } from "@/hooks/useSocket";
@@ -632,6 +633,15 @@ export const useOnlineGame = (gameId: string) => {
           reason: (d?.reason as string | undefined) ?? "aborted",
         });
       }
+      // Refresh player ratings (ELO is committed before this event fires)
+      // and update the auth store so the navbar shows the new rating.
+      fetchGameState();
+      authClient
+        .getCurrentUser()
+        .then((fresh) =>
+          useAuthStore.getState().updateUser({ rating: (fresh as any).rating }),
+        )
+        .catch(() => {});
     };
 
     const handleDrawOffered = (data: { offeredByUserId: string }) => {
