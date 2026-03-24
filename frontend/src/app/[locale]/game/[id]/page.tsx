@@ -51,6 +51,22 @@ const formatTimeMs = (ms: number): string => {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
+const getNumericRating = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (
+    value &&
+    typeof value === "object" &&
+    "rating" in value &&
+    typeof (value as { rating?: unknown }).rating === "number"
+  ) {
+    return (value as { rating: number }).rating;
+  }
+  return null;
+};
+
+const formatEloDelta = (delta: number): string =>
+  delta > 0 ? `+${delta}` : `${delta}`;
+
 /* ─── Waiting Banner ────────────────────────────────────────────────────── */
 
 function WaitingBanner({
@@ -216,6 +232,9 @@ function OnlineResultCard({
   reason,
   myColor,
   moveCount,
+  myRatingBefore,
+  myRatingAfter,
+  locale,
   myUserId,
   rematchOffer,
   onOfferRematch,
@@ -228,6 +247,9 @@ function OnlineResultCard({
   reason?: string;
   myColor: PlayerColor | null;
   moveCount: number;
+  myRatingBefore: number | null;
+  myRatingAfter: number | null;
+  locale: string;
   myUserId: string | null;
   rematchOffer: { offeredByUserId: string | null };
   onOfferRematch: () => void;
@@ -255,9 +277,15 @@ function OnlineResultCard({
           ? "win"
           : "loss";
 
+  const eloDelta =
+    myRatingBefore !== null && myRatingAfter !== null
+      ? myRatingAfter - myRatingBefore
+      : null;
+  const isSw = locale === "sw";
+
   const cfg = {
     win: {
-      label: "Victory!",
+      label: isSw ? "Umeshinda!" : "Victory!",
       icon: <Crown className="w-8 h-8" />,
       borderColor: "border-amber-500/40",
       iconBg: "bg-amber-500/20 border-amber-500/40",
@@ -265,10 +293,10 @@ function OnlineResultCard({
       accentText: "text-amber-300",
       glow: "shadow-[0_0_40px_rgba(251,191,36,0.15)]",
       headerBg: "bg-gradient-to-br from-amber-950/80 via-neutral-900 to-neutral-900",
-      sub: "You win",
+      sub: isSw ? "Umeshinda mchezo" : "You win",
     },
     loss: {
-      label: "Defeated",
+      label: isSw ? "Umeshindwa" : "Defeated",
       icon: <Skull className="w-8 h-8" />,
       borderColor: "border-rose-500/30",
       iconBg: "bg-rose-500/15 border-rose-500/30",
@@ -276,10 +304,10 @@ function OnlineResultCard({
       accentText: "text-rose-400",
       glow: "shadow-[0_0_40px_rgba(244,63,94,0.10)]",
       headerBg: "bg-gradient-to-br from-rose-950/80 via-neutral-900 to-neutral-900",
-      sub: "Better luck next time",
+      sub: isSw ? "Bahati njema wakati mwingine" : "Better luck next time",
     },
     draw: {
-      label: "Draw",
+      label: isSw ? "Sare" : "Draw",
       icon: <Handshake className="w-8 h-8" />,
       borderColor: "border-sky-500/30",
       iconBg: "bg-sky-500/15 border-sky-500/30",
@@ -287,10 +315,10 @@ function OnlineResultCard({
       accentText: "text-sky-400",
       glow: "shadow-[0_0_40px_rgba(56,189,248,0.10)]",
       headerBg: "bg-gradient-to-br from-sky-950/80 via-neutral-900 to-neutral-900",
-      sub: "The game ended in a draw",
+      sub: isSw ? "Mchezo umeisha kwa sare" : "The game ended in a draw",
     },
     aborted: {
-      label: "Game Aborted",
+      label: isSw ? "Mchezo Umesitishwa" : "Game Aborted",
       icon: <X className="w-8 h-8" />,
       borderColor: "border-neutral-600/60",
       iconBg: "bg-neutral-700/40 border-neutral-600/60",
@@ -298,7 +326,7 @@ function OnlineResultCard({
       accentText: "text-neutral-300",
       glow: "",
       headerBg: "bg-gradient-to-br from-neutral-800/80 via-neutral-900 to-neutral-900",
-      sub: "The game was cancelled before it started",
+      sub: isSw ? "Mchezo ulisitishwa kabla haujaanza" : "The game was cancelled before it started",
     },
   }[outcome];
 
@@ -331,14 +359,38 @@ function OnlineResultCard({
         {!isAborted && (
           <div className="grid grid-cols-2 divide-x divide-neutral-800 border-b border-neutral-800">
             {[
-              { label: "Moves", value: moveCount },
-              { label: "Mode", value: "Online PvP" },
+              { label: isSw ? "Michezo" : "Moves", value: moveCount },
+              { label: isSw ? "Aina" : "Mode", value: isSw ? "PvP Mtandaoni" : "Online PvP" },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col items-center py-3 px-2">
                 <div className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</div>
                 <div className="text-base font-bold text-white mt-0.5">{value}</div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!isAborted && myColor !== null && myRatingAfter !== null && (
+          <div className="grid grid-cols-2 divide-x divide-neutral-800 border-b border-neutral-800">
+            <div className="flex flex-col items-center py-3 px-2">
+              <div className="text-[10px] uppercase tracking-widest text-neutral-500">ELO</div>
+              <div className="text-base font-bold text-white mt-0.5">{myRatingAfter}</div>
+            </div>
+            <div className="flex flex-col items-center py-3 px-2">
+              <div className="text-[10px] uppercase tracking-widest text-neutral-500">{isSw ? "Mabadiliko" : "Change"}</div>
+              <div
+                className={clsx(
+                  "text-base font-bold mt-0.5",
+                  eloDelta === null || eloDelta === 0
+                    ? "text-neutral-300"
+                    : eloDelta > 0
+                      ? "text-emerald-400"
+                      : "text-rose-400",
+                )}
+              >
+                {eloDelta === null ? "--" : formatEloDelta(eloDelta)}
+              </div>
+            </div>
           </div>
         )}
 
@@ -354,20 +406,20 @@ function OnlineResultCard({
                 <div className="flex flex-col gap-2 rounded-xl border border-orange-500/30 bg-orange-500/8 p-3">
                   <div className="text-xs text-orange-300 text-center font-semibold">
                     <RotateCcw className="inline w-3.5 h-3.5 mr-1 mb-0.5" />
-                    Opponent wants a rematch!
+                    {isSw ? "Mpinzani anataka marudiano!" : "Opponent wants a rematch!"}
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={onAcceptRematch}
                       className="flex-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
                     >
-                      Accept
+                      {isSw ? "Kubali" : "Accept"}
                     </button>
                     <button
                       onClick={onDeclineRematch}
                       className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-bold text-neutral-300 hover:bg-neutral-700 transition"
                     >
-                      Decline
+                      {isSw ? "Kataa" : "Decline"}
                     </button>
                   </div>
                 </div>
@@ -378,13 +430,13 @@ function OnlineResultCard({
               return (
                 <div className="flex flex-col gap-2 rounded-xl border border-neutral-700 bg-neutral-800/40 p-3">
                   <div className="text-xs text-neutral-400 text-center">
-                    Rematch offered — waiting for opponent…
+                    {isSw ? "Ombi la marudiano limetumwa - unasubiri mpinzani..." : "Rematch offered - waiting for opponent..."}
                   </div>
                   <button
                     onClick={onCancelRematch}
                     className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-bold text-neutral-300 hover:bg-neutral-700 transition"
                   >
-                    Cancel
+                    {isSw ? "Ghairi" : "Cancel"}
                   </button>
                 </div>
               );
@@ -393,23 +445,23 @@ function OnlineResultCard({
             return (
               <button
                 onClick={onOfferRematch}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/8 px-4 py-2.5 text-sm font-semibold text-orange-300 hover:bg-orange-500/15 transition"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Rematch
-              </button>
-            );
-          })()}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/8 px-4 py-2.5 text-sm font-semibold text-orange-300 hover:bg-orange-500/15 transition"
+            >
+              <RotateCcw className="w-4 h-4" />
+              {isSw ? "Marudiano" : "Rematch"}
+            </button>
+          );
+        })()}
 
           <button
             onClick={onSetupFriend}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800/60 px-4 py-2.5 text-sm font-semibold text-neutral-100 hover:bg-neutral-800 transition"
-          >
-            <Users className="w-4 h-4 text-neutral-400" />
-            Back
-          </button>
-        </div>
+          className="w-full flex items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800/60 px-4 py-2.5 text-sm font-semibold text-neutral-100 hover:bg-neutral-800 transition"
+        >
+          <Users className="w-4 h-4 text-neutral-400" />
+          {isSw ? "Rudi" : "Back"}
+        </button>
       </div>
+    </div>
     </div>
   );
 }
@@ -684,6 +736,9 @@ export default function OnlineGamePage() {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
+  const defeatAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playedResultSoundRef = useRef<string | null>(null);
   const joinAttemptedRef = useRef(false);
 
   const {
@@ -727,6 +782,7 @@ export default function OnlineGamePage() {
   const drawOfferPending = state.drawOffer.offeredByUserId !== null;
   const iAmOffering = state.drawOffer.offeredByUserId === user?.id;
   const game = gameData as Record<string, unknown> | null;
+  const initialMyRatingRef = useRef<number | null>(getNumericRating(user?.rating));
 
   // Dynamic back path based on game type
   const backPath = useMemo(() => {
@@ -758,6 +814,34 @@ export default function OnlineGamePage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const victoryAudio = new Audio("/sfx/victory.mp3");
+    victoryAudio.preload = "auto";
+    victoryAudio.volume = 0.6;
+    victoryAudioRef.current = victoryAudio;
+
+    // Reuse an existing shipped non-mock effect for defeat until a dedicated
+    // defeat asset is added to /public/sfx.
+    const defeatAudio = new Audio("/sfx/warning.wav");
+    defeatAudio.preload = "auto";
+    defeatAudio.volume = 0.58;
+    defeatAudioRef.current = defeatAudio;
+
+    return () => {
+      victoryAudioRef.current = null;
+      defeatAudioRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const currentRating = getNumericRating(user?.rating);
+    if (initialMyRatingRef.current === null && currentRating !== null) {
+      initialMyRatingRef.current = currentRating;
+    }
+  }, [user?.rating]);
 
   // Auto-join when friend opens the invite link (?code=XXXXXX)
   // If not authenticated, auto-create a guest account first
@@ -836,6 +920,41 @@ export default function OnlineGamePage() {
   const topColor = bottomColor === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
   const bottomInfo = bottomColor === PlayerColor.WHITE ? whiteInfo : blackInfo;
   const topInfo = topColor === PlayerColor.WHITE ? whiteInfo : blackInfo;
+  const myCurrentRating =
+    state.myColor === PlayerColor.WHITE
+      ? whiteInfo.rating
+      : state.myColor === PlayerColor.BLACK
+        ? blackInfo.rating
+        : null;
+  const myRatingBefore = initialMyRatingRef.current;
+
+  useEffect(() => {
+    if (!state.result || state.isWaiting) {
+      playedResultSoundRef.current = null;
+      return;
+    }
+
+    const soundKey = `${state.result.winner}:${state.result.reason ?? ""}:${state.moveCount}`;
+    if (playedResultSoundRef.current === soundKey) return;
+
+    const iWon =
+      state.myColor !== null &&
+      ((state.result.winner === Winner.WHITE && state.myColor === PlayerColor.WHITE) ||
+        (state.result.winner === Winner.BLACK && state.myColor === PlayerColor.BLACK));
+    const isLoss =
+      state.myColor !== null &&
+      state.result.winner !== Winner.DRAW &&
+      !iWon &&
+      state.result.reason !== "aborted";
+
+    if (iWon) {
+      victoryAudioRef.current?.play().catch(() => {});
+    } else if (isLoss) {
+      defeatAudioRef.current?.play().catch(() => {});
+    }
+
+    playedResultSoundRef.current = soundKey;
+  }, [state.result, state.isWaiting, state.myColor, state.moveCount]);
 
   const timeFor = (color: PlayerColor): string => {
     if (!state.timeLeft) return "–";
@@ -1059,6 +1178,9 @@ export default function OnlineGamePage() {
           reason={state.result.reason}
           myColor={state.myColor}
           moveCount={state.moveCount}
+          myRatingBefore={myRatingBefore}
+          myRatingAfter={myCurrentRating}
+          locale={locale}
           myUserId={user?.id ?? null}
           rematchOffer={state.rematchOffer}
           onOfferRematch={offerRematch}

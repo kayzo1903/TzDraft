@@ -79,7 +79,9 @@ export const authClient = {
   },
 
   async getCurrentUser() {
-    const response = await axiosInstance.get("/auth/me");
+    const response = await axiosInstance.get("/auth/me", {
+      headers: { "Cache-Control": "no-cache" },
+    });
     return response.data;
   },
 

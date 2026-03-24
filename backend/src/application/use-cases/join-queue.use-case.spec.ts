@@ -1,11 +1,12 @@
 import { JoinQueueUseCase } from './join-queue.use-case';
-import { GameStatus } from '../../shared/constants/game.constants';
+import { GameStatus, GameType } from '../../shared/constants/game.constants';
 
 // ─── Minimal Prisma fake ──────────────────────────────────────────────────────
 
 type GameRow = {
   id: string;
   status: GameStatus;
+  gameType?: GameType;
   whitePlayerId: string | null;
   blackPlayerId: string | null;
 };
@@ -41,6 +42,7 @@ class FakePrismaService {
       this.gameRows.push({
         id: data.id,
         status: data.status,
+        gameType: data.gameType,
         whitePlayerId: data.whitePlayerId,
         blackPlayerId: data.blackPlayerId,
       });
@@ -181,6 +183,7 @@ describe('JoinQueueUseCase', () => {
       expect(result.status).toBe('matched');
       expect((result as any).opponentUserId).toBe('opponent');
       expect(prisma.getGames()).toHaveLength(1);
+      expect(prisma.getGames()[0]?.gameType).toBe(GameType.RANKED);
     });
 
     it('matches even when opponent has a WAITING invite game', async () => {
