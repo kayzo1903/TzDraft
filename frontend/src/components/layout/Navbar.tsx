@@ -106,8 +106,8 @@ export const Navbar: React.FC = () => {
             className={clsx(
                 'sticky top-0 z-50 w-full transition-all duration-300',
                 isScrolled
-                    ? 'border-b border-white/5 bg-[rgb(28_25_23/0.78)] backdrop-blur-md supports-[backdrop-filter]:bg-[rgb(28_25_23/0.6)] shadow-[0_12px_40px_rgba(0,0,0,0.35)]'
-                    : 'border-b border-transparent bg-transparent'
+                    ? 'border-b border-white/5 bg-[rgb(28,25,23)] shadow-[0_12px_40px_rgba(0,0,0,0.35)]'
+                    : 'border-b border-white/5 bg-[rgb(28,25,23)]'
             )}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
