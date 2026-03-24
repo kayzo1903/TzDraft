@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma/prisma.service';
 import {
   IMatchmakingRepository,
@@ -74,33 +75,52 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
           }
         : {};
 
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.matchmakingQueue.findFirst({
-        where: {
-          timeMs,
-          userId: { not: excludeUserId },
-          joinedAt: { gte: cutoff },
-          ...ratingFilter,
-        },
-        orderBy: { joinedAt: 'asc' },
-      });
-      if (!row) return null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const row = await tx.matchmakingQueue.findFirst({
+              where: {
+                timeMs,
+                userId: { not: excludeUserId },
+                joinedAt: { gte: cutoff },
+                ...ratingFilter,
+              },
+              orderBy: { joinedAt: 'asc' },
+            });
+            if (!row) return null;
 
-      const deleted = await tx.matchmakingQueue.deleteMany({
-        where: { id: row.id },
-      });
-      // If another worker already deleted this row, abort and return null
-      if (deleted.count !== 1) return null;
+            const deleted = await tx.matchmakingQueue.deleteMany({
+              where: { id: row.id },
+            });
+            // If another worker already deleted this row, abort and return null
+            if (deleted.count !== 1) return null;
 
-      // Remove the caller from the queue too — prevents symmetric step-7b
-      // race where both concurrent callers each claim the other and create
-      // two separate games.
-      await tx.matchmakingQueue.deleteMany({
-        where: { userId: excludeUserId },
-      });
+            // Remove the caller from the queue too — prevents symmetric step-7b
+            // race where both concurrent callers each claim the other and create
+            // two separate games.
+            await tx.matchmakingQueue.deleteMany({
+              where: { userId: excludeUserId },
+            });
 
-      return this.toDomain(row);
-    });
+            return this.toDomain(row);
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (err) {
+        // P2034: serialization failure — one side of the race lost; retry so
+        // this player stays in queue and gets matched by the winner's step-7b.
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2034' &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        return null;
+      }
+    }
+    return null;
   }
 
   async remove(userId: string): Promise<void> {
