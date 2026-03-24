@@ -215,12 +215,12 @@ export default function PlayPage() {
                 <h1 className="max-w-3xl text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
                   {t("title")}
                 </h1>
-                <p className="max-w-2xl text-base leading-7 text-neutral-300 sm:text-lg">
+                <p className="hidden max-w-2xl text-base leading-7 text-neutral-300 sm:block sm:text-lg">
                   {t("subtitle")}
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="hidden flex-wrap gap-3 lg:flex">
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
                   <Swords className="h-4 w-4 text-sky-300" />
                   {isSw ? "Cheza mechi ya ushindani au mazoezi" : "Choose ranked, practice, or private play"}
@@ -232,7 +232,7 @@ export default function PlayPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="hidden grid-cols-2 gap-3 lg:grid">
               <QuickStat value="4" label={isSw ? "Njia wazi sasa" : "Open modes now"} />
               <QuickStat value="19" label={isSw ? "Viwango vya AI" : "AI levels"} />
               <QuickStat value="1v1" label={isSw ? "Mwelekeo wa mchezo" : "Core format"} />
@@ -246,7 +246,7 @@ export default function PlayPage() {
             ))}
           </div>
 
-          <section className="grid gap-4 rounded-[2rem] border border-white/10 bg-black/20 p-5 md:grid-cols-3 md:p-6">
+          <section className="hidden gap-4 rounded-[2rem] border border-white/10 bg-black/20 p-5 md:grid md:grid-cols-3 md:p-6">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="text-xs font-black uppercase tracking-[0.2em] text-neutral-500">
                 {isSw ? "Njia ya haraka" : "Fastest route"}
