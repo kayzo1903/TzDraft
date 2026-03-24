@@ -21,7 +21,7 @@
     },
     "featureGrid": {
       "title": "Kila Kitu Mahali Pamoja",
-      "subtitle": "Uzoefu wako kamili wa TzDraft â€” kutoka michezo ya starehe hadi mashindano ya kweli.",
+      "subtitle": "Uzoefu wako kamili wa TzDraft — kutoka michezo ya starehe hadi mashindano ya kweli.",
       "comingSoon": "Inakuja Hivi Karibuni",
       "limited": "Imepunguzwa",
       "playOnline": {
@@ -337,7 +337,7 @@
       "rule": "Shinda bila kutumia Rudisha ili kufungua bot inayofuata."
     },
     "lockedShort": "Imefungwa",
-    "locked": "Imefungwa â€” shinda bila Rudisha ili kufungua",
+    "locked": "Imefungwa — shinda bila Rudisha ili kufungua",
     "unlockInstruction": {
       "message": "Mshinde {previous} ili kufungua {next} (bila Rudisha).",
       "allUnlocked": "Viwango vyote vya AI vimefunguliwa."
@@ -453,7 +453,7 @@
       "reset": "Anza Upya"
     },
     "progression": {
-      "disabled": "Umetumia Rudisha â€” mchezo huu hautafungua bot inayofuata."
+      "disabled": "Umetumia Rudisha — mchezo huu hautafungua bot inayofuata."
     },
     "resign": {
       "confirmTitle": "Thibitisha Kujisalimisha",

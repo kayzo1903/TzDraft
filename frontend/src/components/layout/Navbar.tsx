@@ -130,7 +130,7 @@ export const Navbar: React.FC = () => {
                             </span>
                         </Link>
 
-                        <div className="hidden md:flex items-center gap-1 rounded-2xl border border-white/5 bg-white/5 p-1">
+                        <div className="hidden lg:flex items-center gap-1 rounded-2xl border border-white/5 bg-white/5 p-1">
                             {navLinks.map((link) => (
                                 <Link
                                     key={link.name}
@@ -158,7 +158,7 @@ export const Navbar: React.FC = () => {
                     </div>
 
                     {/* Right: Auth Buttons or User Menu */}
-                    <div className="hidden md:flex items-center gap-3">
+                    <div className="hidden lg:flex items-center gap-3">
                         {user && !isGuest ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button
@@ -259,7 +259,7 @@ export const Navbar: React.FC = () => {
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <div className="md:hidden">
+                    <div className="lg:hidden">
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-2 text-neutral-200 transition-colors"
@@ -274,7 +274,7 @@ export const Navbar: React.FC = () => {
             {/* Mobile Menu (Full-page slide-in) */}
             <div
                 className={clsx(
-                    'md:hidden fixed inset-0 z-[80] transition-opacity duration-500 ease-out',
+                    'lg:hidden fixed inset-0 z-[80] transition-opacity duration-500 ease-out',
                     isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 )}
                 aria-hidden={!isMenuOpen}

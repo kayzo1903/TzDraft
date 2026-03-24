@@ -1,6 +1,5 @@
 import path from "node:path";
 import createNextIntlPlugin from "next-intl/plugin";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin();
 
@@ -41,6 +40,20 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  async headers() {
+    return [
+      {
+        // Private user/admin areas should never be indexed, even if linked.
+        source: "/(sw|en)/(auth|game|admin|profile|settings)/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        // API responses should not appear as indexed documents.
+        source: "/api/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
@@ -75,13 +88,34 @@ const nextConfig: NextConfig = {
 // sentry.client.config.ts / sentry.server.config.ts — no build-time wrapping needed.
 const baseConfig = withNextIntl(nextConfig);
 
-export default process.env.SENTRY_AUTH_TOKEN
-  ? withSentryConfig(baseConfig, {
+function withOptionalSentry(config: NextConfig): NextConfig {
+  if (!process.env.SENTRY_AUTH_TOKEN) {
+    return config;
+  }
+
+  try {
+    // Keep Sentry integration optional at build time so missing dependency
+    // does not break production deploys.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { withSentryConfig } = require("@sentry/nextjs") as {
+      withSentryConfig: (cfg: NextConfig, options: Record<string, unknown>) => NextConfig;
+    };
+
+    return withSentryConfig(config, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       silent: !process.env.CI,
       widenClientFileUpload: true,
       hideSourceMaps: true,
       disableLogger: true,
-    })
-  : baseConfig;
+    });
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "SENTRY_AUTH_TOKEN is set, but @sentry/nextjs is unavailable. Continuing without Sentry build wrapping.",
+    );
+    return config;
+  }
+}
+
+export default withOptionalSentry(baseConfig);

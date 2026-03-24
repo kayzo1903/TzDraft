@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { routing } from "@/i18n/routing";
+import { getAbsoluteUrl, getSiteUrl, SITE_NAME } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,6 +16,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
+  applicationName: SITE_NAME,
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
+  publisher: SITE_NAME,
+  creator: SITE_NAME,
+  category: "Sports",
+  referrer: "origin-when-cross-origin",
+  formatDetection: { telephone: false },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    images: [
+      {
+        url: getAbsoluteUrl("/logo/logo.png"),
+        width: 1200,
+        height: 630,
+        alt: `${SITE_NAME} logo`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [getAbsoluteUrl("/logo/logo.png")],
+  },
   icons: {
     icon: "/logo/logo.png",
   },
