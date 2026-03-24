@@ -1,10 +1,11 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { IMatchmakingRepository, MatchmakingEntry } from '../../domain/game/repositories/matchmaking.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GameStatus, GameType } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matchmaking-analytics.service';
+import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
 
 /** Stale queue entries older than this are removed on each enqueue. */
 const STALE_QUEUE_AGE_MS = 1 * 60 * 1000; // 1 minute
@@ -22,6 +23,8 @@ export class JoinQueueUseCase {
     private readonly matchmakingRepo: IMatchmakingRepository,
     private readonly prisma: PrismaService,
     private readonly matchmakingAnalytics: MatchmakingAnalyticsService,
+    @Inject(forwardRef(() => GamesGateway))
+    private readonly gateway: GamesGateway,
   ) {}
 
   /**
@@ -80,7 +83,35 @@ export class JoinQueueUseCase {
       },
     });
 
+    this.scheduleNoShowCheck(game.id);
     return { gameId: game.id, opponentUserId: opponent.userId };
+  }
+
+  /**
+   * 30-second server-side safety net: if neither player makes a move after
+   * matchmaking, auto-abort the game so the waiting player isn't stranded.
+   * The frontend abort (on cancel/timeout) covers the normal case; this
+   * covers tab-close and network drop at the exact moment of matching.
+   */
+  private scheduleNoShowCheck(gameId: string): void {
+    setTimeout(async () => {
+      try {
+        const game = await this.prisma.game.findUnique({
+          where: { id: gameId },
+          include: { moves: { take: 1 } },
+        });
+        if (!game || game.status !== GameStatus.ACTIVE || game.moves.length > 0) return;
+
+        await this.prisma.game.update({
+          where: { id: gameId },
+          data: { status: GameStatus.ABORTED, endedAt: new Date() },
+        });
+        this.gateway.emitGameOver(gameId, { gameId, winner: 'NONE', reason: 'no_show' });
+        this.logger.log(`[NO-SHOW] Auto-aborted game ${gameId} — no moves after 30s`);
+      } catch (err) {
+        this.logger.error(`[NO-SHOW] Check failed for game ${gameId}`, err);
+      }
+    }, 30_000);
   }
 
   async execute(
