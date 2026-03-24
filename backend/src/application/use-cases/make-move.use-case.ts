@@ -189,22 +189,24 @@ export class MakeMoveUseCase {
     // (stalemate, draw rules, timeout) so both players see the result card
     // even when the moving player's optimistic-update path would skip it.
     if (game.isGameOver() && game.winner !== null) {
-      // Fire-and-forget: rating update must not block the move response
-      this.ratingService
-        .updateRatings(
-          game.whitePlayerId,
-          game.blackPlayerId,
-          game.winner,
-          game.gameType,
-        )
-        .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err);
-          console.error(`[MakeMove] Rating update failed for game ${gameId}: ${message}`);
-        });
-
-      this.reportTournamentResult
-        .execute(gameId, game.winner, game.whitePlayerId, game.blackPlayerId)
-        .catch(() => { /* non-fatal: tournament progression is best-effort */ });
+      // Await both updates before emitting gameOver so the client's
+      // subsequent fetchGameState receives already-committed ELO values.
+      await Promise.all([
+        this.ratingService
+          .updateRatings(
+            game.whitePlayerId,
+            game.blackPlayerId,
+            game.winner,
+            game.gameType,
+          )
+          .catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`[MakeMove] Rating update failed for game ${gameId}: ${message}`);
+          }),
+        this.reportTournamentResult
+          .execute(gameId, game.winner, game.whitePlayerId, game.blackPlayerId)
+          .catch(() => { /* non-fatal: tournament progression is best-effort */ }),
+      ]);
 
       const reasonStr =
         game.endReason === EndReason.TIME

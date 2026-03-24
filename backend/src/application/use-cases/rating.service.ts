@@ -29,47 +29,59 @@ export class RatingService {
     // Tournament games never affect ladder — skip entirely
     if (gameType === GameType.TOURNAMENT) return;
 
+    const whiteWin = winner === Winner.WHITE;
+    const whiteDraw = winner === Winner.DRAW;
+    const blackWin = winner === Winner.BLACK;
+
+    // Timeout raised to 30 s — Supabase pooler latency makes the default 5 s
+    // too tight when several roundtrips are needed.
     await this.prisma.$transaction(async (tx) => {
-      // Career stats for white
-      const whiteWin = winner === Winner.WHITE;
-      const whiteDraw = winner === Winner.DRAW;
-      const blackWin = winner === Winner.BLACK;
-
-      await tx.rating.upsert({
+      // Single upsert per player: creates the record on first game, or increments
+      // career stats on subsequent games. The returned record carries the current
+      // rating and gamesPlayed values needed for the ELO calculation below,
+      // avoiding a separate findUniqueOrThrow read (saves 2 roundtrips).
+      const whiteRecord = await tx.rating.upsert({
         where: { userId: whitePlayerId },
-        create: { userId: whitePlayerId, rating: 1200, gamesPlayed: 0 },
-        update: {},
-      });
-      // For highestAiLevelBeaten: read current value first so we only update
-      // when the new level is strictly higher than the existing record.
-      const whiteStats = gameType === GameType.AI && whiteWin && aiLevel
-        ? await tx.rating.findUnique({ where: { userId: whitePlayerId }, select: { highestAiLevelBeaten: true } })
-        : null;
-
-      await tx.rating.update({
-        where: { userId: whitePlayerId },
-        data: {
+        create: {
+          userId: whitePlayerId,
+          rating: 1200,
+          gamesPlayed: 0,
+          wins: whiteWin ? 1 : 0,
+          losses: blackWin ? 1 : 0,
+          draws: whiteDraw ? 1 : 0,
+          matchmakingWins: gameType === GameType.RANKED && whiteWin ? 1 : 0,
+        },
+        update: {
           wins: whiteWin ? { increment: 1 } : undefined,
           losses: blackWin ? { increment: 1 } : undefined,
           draws: whiteDraw ? { increment: 1 } : undefined,
           matchmakingWins: gameType === GameType.RANKED && whiteWin ? { increment: 1 } : undefined,
-          highestAiLevelBeaten:
-            whiteStats && aiLevel && aiLevel > (whiteStats.highestAiLevelBeaten ?? 0)
-              ? { set: aiLevel }
-              : undefined,
         },
       });
 
+      // highestAiLevelBeaten: only relevant for AI wins; the upsert return value
+      // gives us the pre-update field so the comparison is correct.
+      if (gameType === GameType.AI && whiteWin && aiLevel && aiLevel > (whiteRecord.highestAiLevelBeaten ?? 0)) {
+        await tx.rating.update({
+          where: { userId: whitePlayerId },
+          data: { highestAiLevelBeaten: aiLevel },
+        });
+      }
+
       if (!blackPlayerId) return;
 
-      await tx.rating.upsert({
+      const blackRecord = await tx.rating.upsert({
         where: { userId: blackPlayerId },
-        create: { userId: blackPlayerId, rating: 1200, gamesPlayed: 0 },
-        update: {},
-      });
-      await tx.rating.update({
-        where: { userId: blackPlayerId },
-        data: {
+        create: {
+          userId: blackPlayerId,
+          rating: 1200,
+          gamesPlayed: 0,
+          wins: blackWin ? 1 : 0,
+          losses: whiteWin ? 1 : 0,
+          draws: whiteDraw ? 1 : 0,
+          matchmakingWins: gameType === GameType.RANKED && blackWin ? 1 : 0,
+        },
+        update: {
           wins: blackWin ? { increment: 1 } : undefined,
           losses: whiteWin ? { increment: 1 } : undefined,
           draws: whiteDraw ? { increment: 1 } : undefined,
@@ -80,21 +92,16 @@ export class RatingService {
       // ELO only for ranked PvP
       if (gameType !== GameType.RANKED) return;
 
-      const [whiteRating, blackRating] = await Promise.all([
-        tx.rating.findUniqueOrThrow({ where: { userId: whitePlayerId } }),
-        tx.rating.findUniqueOrThrow({ where: { userId: blackPlayerId } }),
-      ]);
-
       const scoreWhite =
         winner === Winner.WHITE ? 1 : winner === Winner.BLACK ? 0 : 0.5;
 
       const { newA: newWhite, newB: newBlack } = this.calculateElo(
-        whiteRating.rating,
-        blackRating.rating,
+        whiteRecord.rating,
+        blackRecord.rating,
         scoreWhite,
         1 - scoreWhite,
-        whiteRating.gamesPlayed,
-        blackRating.gamesPlayed,
+        whiteRecord.gamesPlayed,
+        blackRecord.gamesPlayed,
       );
 
       await Promise.all([
@@ -107,7 +114,7 @@ export class RatingService {
           data: { rating: newBlack, gamesPlayed: { increment: 1 } },
         }),
       ]);
-    });
+    }, { timeout: 30000 });
   }
 
   /** Standard Elo formula. K=32 for <30 games, K=16 otherwise. Rating never drops below RATING_FLOOR. */

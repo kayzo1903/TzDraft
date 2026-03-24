@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
+import { buildPageMetadata, getCanonicalUrl, getSiteUrl, isAppLocale } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -11,27 +11,29 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isAppLocale(locale)) return {};
 
-  const siteUrl = getSiteUrl();
-  const canonical = getCanonicalUrl(locale, "/community", siteUrl);
-
   const meta = {
     sw: {
       title: "Jamii | Mashindano ya Drafti Tanzania | TzDraft",
-      description: "Jiunge na jamii ya Drafti Tanzania. Shiriki katika mashindano, angalia jedwali la bingwa, na pinga wachezaji kutoka kote Tanzania.",
+      description:
+        "Jiunge na jamii ya Drafti Tanzania. Shiriki katika mashindano, angalia jedwali la bingwa, na pinga wachezaji kutoka kote Tanzania.",
     },
     en: {
       title: "Community | Tanzania Drafti Tournaments | TzDraft",
-      description: "Join the TzDraft community. Compete in Tanzania Drafti tournaments, view the leaderboard, and challenge players from across Tanzania.",
+      description:
+        "Join the TzDraft community. Compete in Tanzania Drafti tournaments, view the leaderboard, and challenge players from across Tanzania.",
     },
   } as const;
+
   const { title, description } = meta[locale as keyof typeof meta] ?? meta.en;
 
-  return {
+  return buildPageMetadata({
+    locale,
+    path: "/community",
     title,
     description,
-    alternates: { canonical, languages: getLanguageAlternates("/community", siteUrl) },
-    openGraph: { title, description, url: canonical, locale, type: "website", images: ["/logo/logo.png"] },
-  };
+    ogImageAlt: "TzDraft community",
+    revisitAfter: "2 days",
+  });
 }
 
 export default async function CommunityLayout({
@@ -48,10 +50,13 @@ export default async function CommunityLayout({
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: locale === "sw" ? "Jamii ya TzDraft" : "TzDraft Community",
-    description: locale === "sw"
-      ? "Jamii ya wachezaji wa Drafti Tanzania"
-      : "Tanzania Drafti players community hub",
-    url: `${siteUrl}/${locale}/community`,
+    description:
+      locale === "sw"
+        ? "Jamii ya wachezaji wa Drafti Tanzania"
+        : "Tanzania Drafti players community hub",
+    url: isAppLocale(locale)
+      ? getCanonicalUrl(locale, "/community", siteUrl)
+      : siteUrl.toString(),
   };
 
   return (

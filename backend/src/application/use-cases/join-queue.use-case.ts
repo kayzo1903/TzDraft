@@ -42,7 +42,7 @@ export class JoinQueueUseCase {
       randomUUID(),
       whiteId,
       blackId,
-      GameType.CASUAL,
+      GameType.RANKED,
       null,
       null,
       null,

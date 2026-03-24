@@ -21,7 +21,7 @@
     },
     "featureGrid": {
       "title": "Everything in One Place",
-      "subtitle": "Your complete TzDraft experience â€” from casual games to serious competition.",
+      "subtitle": "Your complete TzDraft experience — from casual games to serious competition.",
       "comingSoon": "Coming Soon",
       "limited": "Limited",
       "playOnline": {
@@ -337,7 +337,7 @@
       "rule": "Win without using Undo to unlock the next bot."
     },
     "lockedShort": "Locked",
-    "locked": "Locked â€” win without Undo to unlock",
+    "locked": "Locked — win without Undo to unlock",
     "unlockInstruction": {
       "message": "Defeat {previous} to unlock {next} (no Undo).",
       "allUnlocked": "All AI levels unlocked."
@@ -453,7 +453,7 @@
       "reset": "Reset Game"
     },
     "progression": {
-      "disabled": "Undo used â€” this game will not unlock the next bot."
+      "disabled": "Undo used — this game will not unlock the next bot."
     },
     "resign": {
       "confirmTitle": "Confirm Resign",
