@@ -8,6 +8,7 @@ import { AiController } from './controllers/ai.controller';
 import { EmailModule } from '../../infrastructure/email/email.module';
 import { GetAiMoveUseCase } from '../../application/use-cases/get-ai-move.use-case';
 import { TournamentController } from './controllers/tournament.controller';
+import { NotificationController } from './controllers/notification.controller';
 
 /**
  * HTTP Module
@@ -21,6 +22,7 @@ import { TournamentController } from './controllers/tournament.controller';
     SupportController,
     AiController,
     TournamentController,
+    NotificationController,
   ],
   providers: [GetAiMoveUseCase],
 })

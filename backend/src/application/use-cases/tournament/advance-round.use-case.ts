@@ -7,6 +7,7 @@ import { TournamentRound, RoundStatus } from '../../../domain/tournament/entitie
 import { TournamentMatch, MatchStatus, MatchResult } from '../../../domain/tournament/entities/tournament-match.entity';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { StartTournamentUseCase } from './start-tournament.use-case';
+import { TournamentNotificationService } from '../../services/tournament-notification.service';
 
 @Injectable()
 export class AdvanceRoundUseCase {
@@ -18,6 +19,7 @@ export class AdvanceRoundUseCase {
     private readonly gateway: GamesGateway,
     @Inject(forwardRef(() => StartTournamentUseCase))
     private readonly startUseCase: StartTournamentUseCase,
+    private readonly notificationService: TournamentNotificationService,
   ) {}
 
   async execute(tournamentId: string, completedRoundId: string): Promise<void> {
@@ -49,10 +51,15 @@ export class AdvanceRoundUseCase {
     if (winners.length <= 1) {
       tournament.status = TournamentStatus.COMPLETED;
       await this.repo.update(tournament);
-      this.gateway.emitTournamentCompleted(tournamentId, {
-        tournamentId,
-        winnerId: winners[0]?.userId ?? null,
-      });
+      const winnerId = winners[0]?.userId ?? null;
+      this.gateway.emitTournamentCompleted(tournamentId, { tournamentId, winnerId });
+
+      const allParticipants = await this.repo.findParticipantsByTournament(tournamentId);
+      void this.notificationService.notifyTournamentCompleted(
+        allParticipants.map((p) => p.userId),
+        winnerId,
+        tournament,
+      );
       return;
     }
 
@@ -83,6 +90,7 @@ export class AdvanceRoundUseCase {
           1,
           stub.player1Id,
           stub.player2Id,
+          nextRoundNumber,
         );
       }
     }

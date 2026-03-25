@@ -4,6 +4,10 @@ import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import { SupportNotification } from './templates/support-notification';
 import { UserConfirmation } from './templates/user-confirmation';
+import { TournamentRegistered } from './templates/tournament-registered';
+import { TournamentStarted } from './templates/tournament-started';
+import { MatchAssigned } from './templates/match-assigned';
+import { TournamentResult } from './templates/tournament-result';
 
 @Injectable()
 export class EmailService {
@@ -96,5 +100,87 @@ export class EmailService {
       this.logger.error('Failed to send support email', error);
       throw error;
     }
+  }
+
+  private get fromEmail(): string {
+    const authDomain =
+      this.configService.get<string>('RESEND_AUTH_DOMAIN') || 'onboarding@resend.dev';
+    return authDomain === 'onboarding@resend.dev'
+      ? authDomain
+      : `noreply@${authDomain}`;
+  }
+
+  /** Fire-and-forget helper — logs error but never throws. */
+  private async sendQuiet(to: string, subject: string, html: string): Promise<void> {
+    try {
+      await this.resend.emails.send({
+        from: `TzDraft <${this.fromEmail}>`,
+        to: [to],
+        subject,
+        html,
+      });
+    } catch (err) {
+      this.logger.warn(`Email to ${to} (${subject}) failed: ${err?.message}`);
+    }
+  }
+
+  async sendTournamentRegistered(
+    userEmail: string,
+    name: string,
+    tournamentName: string,
+    scheduledStartAt: string,
+    format: string,
+    style: string,
+  ): Promise<void> {
+    const html = await render(TournamentRegistered({ name, tournamentName, scheduledStartAt, format, style }));
+    await this.sendQuiet(userEmail, `You're registered for ${tournamentName}!`, html);
+  }
+
+  async sendTournamentStarted(
+    userEmail: string,
+    name: string,
+    tournamentName: string,
+    roundNumber: number,
+    matchesCount: number,
+  ): Promise<void> {
+    const html = await render(TournamentStarted({ name, tournamentName, roundNumber, matchesCount }));
+    await this.sendQuiet(userEmail, `${tournamentName} has started — Round ${roundNumber} is live!`, html);
+  }
+
+  async sendMatchAssigned(
+    userEmail: string,
+    name: string,
+    opponentDisplayName: string,
+    tournamentName: string,
+    roundNumber: number,
+    style: string,
+  ): Promise<void> {
+    const html = await render(MatchAssigned({ name, opponentDisplayName, tournamentName, roundNumber, style }));
+    await this.sendQuiet(userEmail, `Your Round ${roundNumber} match vs ${opponentDisplayName} is ready!`, html);
+  }
+
+  async sendMatchResult(
+    userEmail: string,
+    name: string,
+    tournamentName: string,
+    outcome: 'winner' | 'eliminated',
+    score?: string,
+    roundNumber?: number,
+  ): Promise<void> {
+    const html = await render(TournamentResult({ name, tournamentName, outcome, score, roundNumber }));
+    const subject = outcome === 'winner'
+      ? `You won your Round ${roundNumber} match in ${tournamentName}!`
+      : `You've been eliminated from ${tournamentName}`;
+    await this.sendQuiet(userEmail, subject, html);
+  }
+
+  async sendTournamentCompleted(
+    userEmail: string,
+    name: string,
+    tournamentName: string,
+    winnerDisplayName: string,
+  ): Promise<void> {
+    const html = await render(TournamentResult({ name, tournamentName, outcome: 'completed', winnerDisplayName }));
+    await this.sendQuiet(userEmail, `${tournamentName} is over — see the results!`, html);
   }
 }
