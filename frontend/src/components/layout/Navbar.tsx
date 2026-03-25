@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard, Trophy } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard, Trophy, Bell } from 'lucide-react';
 import Image from 'next/image';
+import { useTournamentNotifications } from '@/hooks/useTournamentNotifications';
 
 export const Navbar: React.FC = () => {
     const t = useTranslations('nav');
@@ -21,8 +22,13 @@ export const Navbar: React.FC = () => {
         (user?.phoneNumber?.startsWith('GUEST_') ?? false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [isBellOpen, setIsBellOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const userMenuRef = useRef<HTMLDivElement | null>(null);
+    const bellRef = useRef<HTMLDivElement | null>(null);
+
+    const { notifications, unreadCount, markRead, markAllRead } =
+        useTournamentNotifications();
 
     const navLinks = [
         { name: t('home'), href: '/' },
@@ -60,7 +66,20 @@ export const Navbar: React.FC = () => {
     useEffect(() => {
         setIsMenuOpen(false);
         setIsUserMenuOpen(false);
+        setIsBellOpen(false);
     }, [pathname]);
+
+    useEffect(() => {
+        if (!isBellOpen) return;
+        const onPointerDown = (event: PointerEvent) => {
+            const target = event.target as Node | null;
+            if (!target) return;
+            if (bellRef.current?.contains(target)) return;
+            setIsBellOpen(false);
+        };
+        document.addEventListener('pointerdown', onPointerDown);
+        return () => document.removeEventListener('pointerdown', onPointerDown);
+    }, [isBellOpen]);
 
     useEffect(() => {
         if (!isUserMenuOpen) return;
@@ -159,6 +178,69 @@ export const Navbar: React.FC = () => {
 
                     {/* Right: Auth Buttons or User Menu */}
                     <div className="hidden lg:flex items-center gap-3">
+                        {/* Notification Bell — shown only for logged-in non-guest users */}
+                        {user && !isGuest && (
+                            <div className="relative" ref={bellRef}>
+                                <button
+                                    onClick={() => { setIsBellOpen((v) => !v); setIsUserMenuOpen(false); }}
+                                    className="relative p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-neutral-300 hover:text-white"
+                                    aria-label="Notifications"
+                                >
+                                    <Bell className="w-5 h-5" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--primary)] text-black text-[10px] font-black px-1">
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {isBellOpen && (
+                                    <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-white/10 bg-[rgb(20_19_18/0.96)] backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-white">Notifications</p>
+                                            {unreadCount > 0 && (
+                                                <button
+                                                    onClick={() => markAllRead()}
+                                                    className="text-xs text-[var(--primary)] hover:text-amber-300 transition-colors"
+                                                >
+                                                    Mark all read
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto divide-y divide-white/5">
+                                            {notifications.length === 0 ? (
+                                                <p className="px-4 py-6 text-sm text-neutral-400 text-center">No notifications yet</p>
+                                            ) : (
+                                                notifications.slice(0, 10).map((n) => (
+                                                    <button
+                                                        key={n.id}
+                                                        onClick={() => { if (!n.read) markRead(n.id); }}
+                                                        className={clsx(
+                                                            'w-full text-left px-4 py-3 hover:bg-white/5 transition-colors',
+                                                            !n.read && 'bg-[var(--primary)]/5',
+                                                        )}
+                                                    >
+                                                        <div className="flex items-start gap-2">
+                                                            {!n.read && (
+                                                                <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-[var(--primary)]" />
+                                                            )}
+                                                            <div className={clsx(!n.read ? '' : 'pl-4')}>
+                                                                <p className="text-sm font-semibold text-white leading-snug">{n.title}</p>
+                                                                <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">{n.body}</p>
+                                                                <p className="text-[10px] text-neutral-500 mt-1">
+                                                                    {new Date(n.createdAt).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {user && !isGuest ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button
@@ -358,6 +440,14 @@ export const Navbar: React.FC = () => {
 
                             {user && !isGuest ? (
                                 <div className="space-y-2">
+                                    {unreadCount > 0 && (
+                                        <div className="rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-4 py-3 flex items-center gap-3">
+                                            <Bell className="w-4 h-4 text-[var(--primary)] shrink-0" />
+                                            <p className="text-sm text-[var(--primary)] font-semibold">
+                                                {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                                         <p className="text-xs uppercase tracking-[0.4em] text-neutral-400">Signed in</p>
                                         <div className="mt-1 flex items-center justify-between gap-2">

@@ -11,6 +11,7 @@ import { TournamentParticipant, ParticipantStatus } from '../../../domain/tourna
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { Game } from '../../../domain/game/entities/game.entity';
 import { GameType, GameStatus, PlayerColor } from '../../../shared/constants/game.constants';
+import { TournamentNotificationService } from '../../services/tournament-notification.service';
 
 const STYLE_TIME_MS: Record<TournamentStyle, number> = {
   [TournamentStyle.BLITZ]: 5 * 60 * 1000,
@@ -29,6 +30,7 @@ export class StartTournamentUseCase {
     private readonly bracket: BracketGenerationService,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gateway: GamesGateway,
+    private readonly notificationService: TournamentNotificationService,
   ) {}
 
   async execute(tournamentId: string): Promise<Tournament> {
@@ -72,6 +74,10 @@ export class StartTournamentUseCase {
       tournamentId,
     });
 
+    // Notify all participants
+    const participantIds = seeded.map((p) => p.userId);
+    void this.notificationService.notifyTournamentStarted(participantIds, saved, stubs.length);
+
     return saved;
   }
 
@@ -81,6 +87,7 @@ export class StartTournamentUseCase {
     gameNumber: number,
     player1Id: string,
     player2Id: string,
+    roundNumber = 1,
   ): Promise<void> {
     const isExtra = gameNumber > 3;
     // Colors rotate each game: odd gameNumber → p1=WHITE, even → p1=BLACK
@@ -121,7 +128,7 @@ export class StartTournamentUseCase {
     if (!match.startedAt) match.startedAt = new Date();
     await this.repo.updateMatch(match);
 
-    // Notify both players
+    // Notify both players via WS
     this.gateway.emitTournamentMatchGameReady(player1Id, player2Id, {
       matchId: match.id,
       gameId: savedGame.id,
@@ -129,6 +136,17 @@ export class StartTournamentUseCase {
       isExtra,
       tournamentId: match.tournamentId,
     });
+
+    // Notify match assigned (only on game 1 — first game of the match)
+    if (gameNumber === 1) {
+      void this.notificationService.notifyMatchAssigned(
+        player1Id,
+        player2Id,
+        match,
+        tournament,
+        roundNumber,
+      );
+    }
   }
 
   private async createMatchFromStub(
@@ -165,7 +183,7 @@ export class StartTournamentUseCase {
     const savedMatch = await this.repo.createMatch(match);
 
     if (stub.player1Id && stub.player2Id) {
-      await this.spawnGameForMatch(savedMatch, tournament, 1, stub.player1Id, stub.player2Id);
+      await this.spawnGameForMatch(savedMatch, tournament, 1, stub.player1Id, stub.player2Id, 1);
     }
   }
 }

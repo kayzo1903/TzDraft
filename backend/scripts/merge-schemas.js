@@ -18,6 +18,7 @@ const schemaFiles = [
   'clock.prisma',
   'matchmaking.prisma',
   'tournament.prisma',
+  'notification.prisma',
 ];
 
 console.log('🔄 Merging Prisma schemas...\n');

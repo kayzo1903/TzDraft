@@ -10,6 +10,7 @@ import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { StartTournamentUseCase } from './start-tournament.use-case';
 import { AdvanceRoundUseCase } from './advance-round.use-case';
 import { Winner } from '../../../shared/constants/game.constants';
+import { TournamentNotificationService } from '../../services/tournament-notification.service';
 
 @Injectable()
 export class ReportTournamentResultUseCase {
@@ -23,6 +24,7 @@ export class ReportTournamentResultUseCase {
     private readonly startUseCase: StartTournamentUseCase,
     @Inject(forwardRef(() => AdvanceRoundUseCase))
     private readonly advanceRound: AdvanceRoundUseCase,
+    private readonly notificationService: TournamentNotificationService,
   ) {}
 
   /**
@@ -118,6 +120,17 @@ export class ReportTournamentResultUseCase {
       score: decision.score,
       tournamentId: match.tournamentId,
     });
+
+    // Notify match result
+    const score = `${match.player1Wins}-${match.player2Wins}`;
+    void this.notificationService.notifyMatchResult(
+      decision.winnerId ?? null,
+      decision.loserId ?? null,
+      match,
+      tournament,
+      score,
+      0, // round number not available here; notification service will omit it gracefully
+    );
 
     // Check if whole round is complete
     const allMatches = await this.repo.findMatchesByRound(match.roundId);
