@@ -10,9 +10,11 @@ import {
   Min,
   Max,
   ValidateNested,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { GetAiMoveUseCase } from '../../../application/use-cases/get-ai-move.use-case';
+import { MkaguziAdapter } from '../../../infrastructure/engine/mkaguzi.adapter';
 
 class BoardPieceDto {
   @IsIn(['MAN', 'KING'])
@@ -48,17 +50,36 @@ export class AiMoveRequestDto {
   @IsOptional()
   @IsInt()
   mustContinueFrom?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(40)
+  history?: string[];
+}
+
+export class AiAnalyzeRequestDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BoardPieceDto)
+  pieces: BoardPieceDto[];
+
+  @IsIn(['WHITE', 'BLACK'])
+  currentPlayer: 'WHITE' | 'BLACK';
 }
 
 /**
  * AI Controller
- * Exposes stateless engine connections (CAKE, SiDra).
- * This endpoint is public for local play.
+ * Exposes stateless engine connections (CAKE, SiDra, Mkaguzi).
+ * These endpoints are public for local play and analysis.
  */
 @ApiTags('ai')
 @Controller('ai')
 export class AiController {
-  constructor(private readonly getAiMoveUseCase: GetAiMoveUseCase) {}
+  constructor(
+    private readonly getAiMoveUseCase: GetAiMoveUseCase,
+    private readonly mkaguziAdapter: MkaguziAdapter,
+  ) {}
 
   @Post('move')
   @HttpCode(HttpStatus.OK)
@@ -71,11 +92,24 @@ export class AiController {
       aiLevel: dto.aiLevel,
       timeLimitMs: dto.timeLimitMs || 3000,
       mustContinueFrom: dto.mustContinueFrom ?? null,
+      history: dto.history ?? [],
     });
 
     return {
       success: true,
       data: move,
+    };
+  }
+
+  @Post('analyze')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Return Mkaguzi eval trace (material, mobility, structure, patterns, kingSafety, tempo) for a position' })
+  @ApiResponse({ status: 200, description: 'Eval trace returned' })
+  async analyzePosition(@Body() dto: AiAnalyzeRequestDto) {
+    const result = await this.mkaguziAdapter.analyze(dto.pieces, dto.currentPlayer);
+    return {
+      success: true,
+      data: result,
     };
   }
 }

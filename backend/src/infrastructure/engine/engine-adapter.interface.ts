@@ -22,6 +22,18 @@ export interface EngineThinkRequest {
   aiLevel?: number;
   /** If set, the engine must restrict candidate moves to continuations from this square (multi-jump). */
   mustContinueFrom?: number | null;
+  /** PDN FEN strings of prior positions in this game (oldest first). Used for game-level repetition detection. */
+  history?: string[];
+}
+
+export interface EngineAnalysis {
+  material: number;
+  mobility: number;
+  structure: number;
+  patterns: number;
+  kingSafety: number;
+  tempo: number;
+  total: number;
 }
 
 export interface IEngineAdapter {
@@ -35,6 +47,12 @@ export interface IEngineAdapter {
    * Returns null if the engine returns no move (e.g., game over).
    */
   getBestMove(request: EngineThinkRequest): Promise<EngineMove | null>;
+
+  /**
+   * Return a static eval breakdown for the given position.
+   * Optional — returns null if the adapter does not support analysis.
+   */
+  analyze?(pieces: EnginePiece[], currentPlayer: 'WHITE' | 'BLACK'): Promise<EngineAnalysis | null>;
 
   /**
    * Clean up any persistent resources (processes, DLLs, etc.).
