@@ -1,15 +1,16 @@
-# Mkaguzi-v0.1 Engine Plan
+# Mkaguzi Engine v0.1 Plan
 
 ## 1. Purpose
 
-`mkaguzi-v0.1` is our first fully owned draughts engine track for the TzDraft platform.
+`mkaguzi-engine v0.1` is our first fully owned draughts engine track for the TzDraft platform.
 
 It is not meant to replace every existing engine on day one. Its first goal is narrower and more valuable:
 
-- become a correct Tanzania-first analysis engine
+- become a correct Tanzania-first analysis engine on a variant-ready core
 - expose understandable engine output to the app
 - give us full control over rules, evaluation, and future tuning
 - create the foundation for later stronger versions without depending on external engine internals
+- make later adaptation to other draughts variants cheap and safe
 
 Version `0.1` is therefore a correctness-and-foundation release, not a peak-strength release.
 
@@ -17,14 +18,15 @@ Version `0.1` is therefore a correctness-and-foundation release, not a peak-stre
 
 ## 2. Product Position
 
-### What Mkaguzi-v0.1 is
+### What Mkaguzi Engine v0.1 is
 
 - a native engine we control end-to-end
 - optimized first for Tanzania draughts rule fidelity
+- structured so additional variants can be added without search rewrites
 - designed to integrate cleanly with the TypeScript app
 - able to return best move, principal variation, and eval breakdown
 
-### What Mkaguzi-v0.1 is not
+### What Mkaguzi Engine v0.1 is not
 
 - not a final replacement for stronger mature engines yet
 - not an opening-book-heavy or tablebase-heavy release
@@ -32,7 +34,7 @@ Version `0.1` is therefore a correctness-and-foundation release, not a peak-stre
 
 ### Honest target for v0.1
 
-If `Sidra` is currently our practical medium engine, then `mkaguzi-v0.1` should initially aim to be:
+If `Sidra` is currently our practical medium engine, then `mkaguzi-engine v0.1` should initially aim to be:
 
 - more transparent than Sidra
 - easier to adapt than Sidra
@@ -47,7 +49,7 @@ Raw playing strength can improve after the core is stable.
 
 Long term, `mkaguzi` should become the platform's primary owned engine family:
 
-- `mkaguzi-v0.1`: correctness, search foundation, analysis protocol
+- `mkaguzi-engine v0.1`: correctness, search foundation, analysis protocol
 - `mkaguzi-v0.2`: stronger evaluation, opening knowledge, better ordering
 - `mkaguzi-v0.3`: tablebase support, tuning pipeline, stronger Multi-PV
 - `mkaguzi-v1.0`: production-grade primary engine for analysis and computer play
@@ -58,21 +60,23 @@ Long term, `mkaguzi` should become the platform's primary owned engine family:
 
 1. Rule correctness before strength
 2. Tanzania-first implementation
-3. Rule changes isolated in one rule layer
-4. Search layer stays variant-agnostic
+3. Variant adaptability is a non-negotiable architecture goal
+4. Rule changes isolated in one rule layer
+5. Search layer stays variant-agnostic
 5. Engine output must be explainable to the UI
 6. Make/unmake only inside search, no per-node cloning
 7. Perft and regression tests are mandatory before tuning
 
 ---
 
-## 5. Mkaguzi-v0.1 Scope
+## 5. Mkaguzi Engine v0.1 Scope
 
 ### In scope
 
 - 32-square bitboard board model
 - Tanzania rules as the primary variant
-- optional Russian variant hooks only where architecture requires it
+- variant-ready interfaces from day one
+- one fully implemented variant in `v0.1`, with at least one second variant proving the abstraction as soon as practical
 - legal move generation
 - mandatory capture handling
 - majority-capture filtering if confirmed by official rule interpretation
@@ -100,43 +104,45 @@ Long term, `mkaguzi` should become the platform's primary owned engine family:
 
 ---
 
-## 6. Proposed Repo Placement
+## 6. Blueprint File Structure
 
-Mkaguzi should fit the current monorepo instead of creating a disconnected project.
+We should follow the blueprint file structure directly and name the project `mkaguzi-engine`.
 
-### Engine source
-
-```text
-engines/
-  mkaguzi/
-    CMakeLists.txt
-    README.md
-    src/
-    tests/
-    tools/
-```
-
-### Documentation
+### Canonical project tree
 
 ```text
-docs/
-  README/
-    MKAGUZI_V0_1_ENGINE_PLAN.md
-    MKAGUZI_RULE_DECISIONS.md
-    MKAGUZI_PROTOCOL_SPEC.md
-```
-
-### TypeScript integration
-
-```text
-apps/ or frontend/
+mkaguzi-engine/
   engine/
-    MkaguziProcess.ts
-    MkaguziManager.ts
-    mkaguziMessages.ts
+    src/
+      core/
+      rules/
+      board/
+      search/
+      eval/
+      endgame/
+      book/
+      protocol/
+      main.cpp
+    tables/
+      tanzania/
+      russian/
+    CMakeLists.txt
+  app/
+    engine/
+    analysis/
+    game/
+    ui/
+    main.tsx
+  tuning/
+    selfplay.cpp
+    texel.py
+    gauntlet.sh
+  tests/
+    perft/
+    eval/
 ```
 
-This keeps the owned engine beside `engines/sidra/` while preserving the current product structure.
+This is now the intended `mkaguzi-engine` structure for implementation planning.
 
 ---
 
@@ -145,7 +151,7 @@ This keeps the owned engine beside `engines/sidra/` while preserving the current
 ### 7.1 High-level modules
 
 ```text
-mkaguzi
+mkaguzi-engine
   core       -> types, constants, square maps, bitboard helpers
   rules      -> movegen, captures, promotion, repetition policy
   board      -> position, make/unmake, hashing
@@ -162,6 +168,33 @@ mkaguzi
 - `search/` decides what is best
 - `eval/` explains why a position is good or bad
 - `protocol/` translates engine state to the app
+
+### 7.3 Variant adaptation contract
+
+The engine must be easy to adapt to other draughts variants without changing the search core.
+
+The intended rule is:
+
+- adding a new variant should mainly require a new rule pack
+- search code should not branch on variant names
+- UI code should not encode legality rules
+- notation, movegen, promotion, repetition, and eval assets should depend on the active variant config
+
+### 7.4 Variant package model
+
+Each variant should be represented as a package of data and policies rather than scattered conditionals.
+
+Each variant package should provide:
+
+- `RuleConfig`
+- board metadata if numbering or promotion rows differ
+- notation adapter if import/export differs
+- pattern set and evaluation weights
+- perft reference positions
+- draw-rule policy
+- optional book and tablebase paths
+
+This means a future variant should mostly be "add data plus targeted rule logic," not "edit every subsystem."
 
 ---
 
@@ -188,6 +221,23 @@ All rule-sensitive logic must flow through:
 - repetition policy
 - notation parsing and serialization
 
+### Adaptation rule
+
+When we add a new draughts variant later, we should expect changes primarily in:
+
+- `rules/variant.h`
+- move generation rule branches driven by `RuleConfig`
+- variant-specific eval assets
+- notation adapter
+- tests and perft data
+
+We should not expect core rewrites in:
+
+- transposition table
+- alpha-beta search
+- IPC protocol
+- TypeScript analysis UI
+
 ---
 
 ## 9. Evaluation Strategy for v0.1
@@ -210,6 +260,7 @@ The first release should not try to be "smart everywhere." It should be stable a
 - start with small weights and few features
 - every new term must have a regression test position
 - avoid expensive pattern systems until baseline speed is known
+- keep evaluation datasets variant-scoped so new variants can ship their own weights without touching the evaluator core
 
 ### Eval trace support
 
@@ -257,7 +308,7 @@ This gives us a serious engine foundation without taking on too much instability
 
 ## 11. IPC and App Integration
 
-`mkaguzi-v0.1` should be designed as an analysis service process from the beginning.
+`mkaguzi-engine v0.1` should be designed as an analysis service process from the beginning.
 
 ### Engine input
 
@@ -282,6 +333,7 @@ This gives us a serious engine foundation without taking on too much instability
 - streamed search updates for the UI
 - Multi-PV ready root reporting
 - stable message schema shared between engine and app
+- variant selection as a first-class protocol concern
 
 ---
 
@@ -297,9 +349,11 @@ Freeze rules and contracts so move generation does not get rewritten later.
 
 - `MKAGUZI_RULE_DECISIONS.md`
 - `MKAGUZI_PROTOCOL_SPEC.md`
+- `MKAGUZI_VARIANT_ADAPTATION_GUIDE.md`
 - confirmed square numbering policy
 - confirmed move notation policy
 - confirmed Tanzania capture policy
+- confirmed variant package contract
 
 ### Exit criteria
 
@@ -319,6 +373,7 @@ Make the engine produce exactly legal Tanzania moves.
 - square maps and directional lookup tables
 - `Position`
 - `Move`
+- variant registry and rule-pack loader
 - quiet move generation
 - recursive capture generation
 - majority-capture filtering if required
@@ -333,6 +388,7 @@ Make the engine produce exactly legal Tanzania moves.
 ### Exit criteria
 
 - perft matches references exactly
+- variant plumbing does not require search changes
 
 ---
 
@@ -428,6 +484,7 @@ Make `mkaguzi` usable inside TzDraft for analysis and later play.
 - `MkaguziProcess.ts`
 - `MkaguziManager.ts`
 - typed message contracts
+- variant switching support
 - `EvalBreakdown`
 - `MultiPV` support
 - engine status and error handling
@@ -458,6 +515,7 @@ Improve strength only after the core is reliable.
 - pattern evaluation expansion
 - tuning scripts
 - self-play runner
+- second-variant validation pass
 
 ### Exit criteria
 
@@ -468,59 +526,89 @@ Improve strength only after the core is reliable.
 ## 13. Recommended v0.1 File Layout
 
 ```text
-engines/mkaguzi/
-  CMakeLists.txt
-  README.md
-  src/
-    core/
-      types.h
-      constants.h
-      bitboard.cpp
-      square_map.cpp
-    rules/
-      variant.h
-      movegen.cpp
-      capturegen.cpp
-      promotion.cpp
-      repetition.cpp
-    board/
-      position.cpp
-      makemove.cpp
-      hash.cpp
-    search/
-      search.cpp
-      qsearch.cpp
-      ordering.cpp
-      tt.cpp
-      history.cpp
-      killers.cpp
-      time.cpp
-    eval/
-      eval.cpp
-      material.cpp
-      mobility.cpp
-      structure.cpp
-      patterns.cpp
-      king_safety.cpp
-      tempo.cpp
-    protocol/
-      ipc.cpp
-      messages.h
-    main.cpp
+mkaguzi-engine/
+  engine/
+    src/
+      core/
+        types.h
+        constants.h
+        bitboard.cpp
+        square_map.cpp
+      rules/
+        variant.h
+        movegen.cpp
+        capturegen.cpp
+        promotion.cpp
+        repetition.cpp
+      board/
+        position.cpp
+        makemove.cpp
+        hash.cpp
+      search/
+        search.cpp
+        qsearch.cpp
+        ordering.cpp
+        tt.cpp
+        history.cpp
+        killers.cpp
+        reductions.cpp
+        time.cpp
+      eval/
+        eval.cpp
+        material.cpp
+        mobility.cpp
+        structure.cpp
+        patterns.cpp
+        king_safety.cpp
+        tempo.cpp
+      endgame/
+        bitbase.cpp
+        solver.cpp
+      book/
+        book.cpp
+        format.md
+      protocol/
+        ipc.cpp
+        messages.h
+      main.cpp
+    tables/
+      tanzania/
+      russian/
+    CMakeLists.txt
+  app/
+    engine/
+      EngineProcess.ts
+      EngineManager.ts
+      messages.ts
+    analysis/
+      AnalysisController.ts
+      EvalBreakdown.ts
+      MultiPV.ts
+    game/
+      GameState.ts
+      RulesAdapter.ts
+      RepetitionTracker.ts
+    ui/
+      Board.tsx
+      ArrowOverlay.tsx
+      EvalPanel.tsx
+      PVExplorer.tsx
+      BookPanel.tsx
+    main.tsx
   tests/
     perft/
     eval/
-    rules/
-  tools/
+  tuning/
     selfplay.cpp
     texel.py
+    gauntlet.sh
 ```
 
 ---
 
 ## 14. Success Metrics for v0.1
 
-`mkaguzi-v0.1` is successful if:
+`mkaguzi-engine v0.1` is successful if:
 
 - move generation is rule-correct
 - perft is trustworthy
@@ -530,6 +618,8 @@ engines/mkaguzi/
 - we can improve it without touching unrelated platform code
 
 It is not necessary for `v0.1` to be our strongest engine.
+
+It is necessary for `v0.1` to prove that the architecture can absorb another variant without invasive refactoring.
 
 ---
 
@@ -551,6 +641,10 @@ If C++ and TypeScript message schemas evolve independently, integration bugs wil
 
 Too many handcrafted features too early can reduce speed before we know which features matter.
 
+### Risk 5: Fake adaptability
+
+If we say the engine is variant-ready but still branch on variant names across search, UI, and protocol code, adaptation will become expensive later.
+
 ---
 
 ## 16. Recommended Team Working Order
@@ -563,6 +657,7 @@ Too many handcrafted features too early can reduce speed before we know which fe
 6. wire frontend analysis
 7. add stronger evaluation
 8. tune and benchmark against Sidra
+9. validate adding a second variant with minimal core changes
 
 This order keeps us honest and prevents us from celebrating engine output that is still built on wrong move generation.
 
@@ -570,7 +665,7 @@ This order keeps us honest and prevents us from celebrating engine output that i
 
 ## 17. Definition of Done for Mkaguzi-v0.1
 
-`mkaguzi-v0.1` is done when all of the following are true:
+`mkaguzi-engine v0.1` is done when all of the following are true:
 
 - Tanzania move legality is validated by tests
 - engine process can be launched from the app reliably
@@ -579,12 +674,13 @@ This order keeps us honest and prevents us from celebrating engine output that i
 - no make/unmake corruption is found in regression tests
 - baseline search is stable under repeated runs
 - project docs define the engine contract clearly enough for the next version to extend it safely
+- adding another draughts variant is a bounded extension task, not a redesign
 
 ---
 
 ## 18. Final Direction
 
-`mkaguzi-v0.1` should be treated as the foundation of our owned engine family.
+`mkaguzi-engine v0.1` should be treated as the foundation of our owned engine family.
 
 Sidra can still remain useful during the transition period as:
 
