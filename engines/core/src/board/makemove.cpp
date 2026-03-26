@@ -87,12 +87,14 @@ void makeMove(Position& pos, const Move& m, Undo& undo, const RuleConfig& rules)
     h ^= ZOBRIST_SIDE;
     pos.sideToMove ^= 1;
     pos.ply++;
+    pos.fullMove = pos.ply / 2 + 1;
     pos.fiftyMove = (m.capLen > 0 || m.promote) ? 0 : pos.fiftyMove + 1;
 }
 
 void unmakeMove(Position& pos, const Move& m, const Undo& undo) {
     pos.sideToMove ^= 1;
     pos.ply--;
+    pos.fullMove = pos.ply / 2 + 1;
 
     Bitboard fromMask = (1U << m.from);
     Bitboard toMask   = (1U << m.to);
