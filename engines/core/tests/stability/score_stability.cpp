@@ -82,6 +82,58 @@ int main() {
             "Two kings each — symmetric draw",
             "W:WK5,K18:BK14,K27"
         },
+        {
+            "White four men vs black two — dominant",
+            "W:W22,25,26,27:B9,10"
+        },
+        {
+            "White king dominates center",
+            "W:WK18,25,26,27:B5,7,9,11"
+        },
+        {
+            "Two kings vs one king",
+            "W:WK5,K18:BK14"
+        },
+        {
+            "White up two men — clear advantage",
+            "W:W18,22,23,24,25:B5,7,9"
+        },
+        {
+            "King and man vs lone king",
+            "W:WK14,22:BK10"
+        },
+        {
+            "Three vs three men endgame",
+            "W:W18,22,26:B9,13,16"
+        },
+        {
+            "White promotion threat",
+            "W:W13,22,24,26:B5,7,10,11"
+        },
+        {
+            "Two men vs one man",
+            "W:W22,24:B9"
+        },
+        {
+            "Two black kings vs two white men",
+            "W:W22,24:BK10,K14"
+        },
+        {
+            "King each — open board",
+            "W:WK16:BK9"
+        },
+        {
+            "Three vs three — symmetric",
+            "W:W23,24,25:B8,9,10"
+        },
+        {
+            "White five men vs black three — winning",
+            "W:W22,23,24,25,26:B9,10,11"
+        },
+        {
+            "Two men each — symmetric endgame",
+            "W:W22,24:B9,11"
+        },
     };
     // ---------------------------------------------------------------
 
