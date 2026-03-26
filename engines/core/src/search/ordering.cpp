@@ -9,6 +9,18 @@ static const int SCORE_CAPTURE   = 10000;
 static const int SCORE_PROMOTION = 8000;
 static const int SCORE_KILLER    = 5000;
 
+// Static quiet-move bonus: advancement + center control (PDF Stage 6).
+// Square bit index 0-31: sq/4 → row 0 (PDN 1-4, black back) … row 7 (PDN 29-32, white back).
+// White advances toward row 0; Black advances toward row 7.
+// Center squares: bits 12-19 (PDN 13-20, two middle rows).
+static int staticQuietBonus(const Position& pos, const Move& m) {
+    int toRow    = m.to / 4;
+    int advBonus = (pos.sideToMove == 0) ? (7 - toRow)   // white → lower row
+                                         :  toRow;        // black → higher row
+    int centerBonus = (m.to >= 12 && m.to <= 19) ? 2 : 0;
+    return advBonus + centerBonus;
+}
+
 void scoreMoves(Move* moves, int count, const Move& ttMove,
                 const Position& pos, int ply) {
     bool hasTT = (ttMove.from != 0xFF);
@@ -35,8 +47,8 @@ void scoreMoves(Move* moves, int count, const Move& ttMove,
         } else if (isKiller(ply, m)) {
             s = SCORE_KILLER;
         } else {
-            // History heuristic
-            s = getHistory(pos.sideToMove, m.from, m.to);
+            // History heuristic + static advancement/center bonus (PDF Stage 6)
+            s = getHistory(pos.sideToMove, m.from, m.to) + staticQuietBonus(pos, m);
         }
 
         m.score = (int16_t)std::min(s, 32767);

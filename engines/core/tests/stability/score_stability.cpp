@@ -75,8 +75,8 @@ int main() {
             "W:WK14,K26:BK10,K20"
         },
         {
-            "White king vs three black men",
-            "W:WK16:B1,2,3"
+            "White five vs two — dominant",
+            "W:W21,22,23,25,26:B9,10"
         },
         {
             "Two kings each — symmetric draw",
@@ -103,8 +103,8 @@ int main() {
             "W:WK14,22:BK10"
         },
         {
-            "Three vs three men endgame",
-            "W:W18,22,26:B9,13,16"
+            "Four vs two — edge advantage",
+            "W:W22,23,26,27:B9,10"
         },
         {
             "White promotion threat",
