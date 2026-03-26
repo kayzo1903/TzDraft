@@ -24,8 +24,10 @@ void generateMoves(const Position& pos, const RuleConfig& rules, Move* out, int&
         generateQuiets(pos, rules, out, count);
     }
 
-    // If Tanzania/Rule config requires MAXIMUM capture
-    if (count > 0 && out[0].capLen > 0 && rules.majorityCaptureMandatory) {
+    // Keep only maximum-length capture sequences when the active rule pack
+    // requires it. Tanzania and Russian can both use this through config.
+    if (count > 0 && out[0].capLen > 0 &&
+        (rules.maxCaptureRequired || rules.majorityCaptureMandatory)) {
         int maxCaps = 0;
         for (int i = 0; i < count; i++) {
             maxCaps = std::max(maxCaps, (int)out[i].capLen);

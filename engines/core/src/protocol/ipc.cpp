@@ -5,14 +5,20 @@
 #include "rules/variant.h"
 #include "board/position.h"
 #include "board/hash.h"
+#include "board/makemove.h"
 #include "search/search.h"
+#include "search/tt.h"
 #include "eval/eval.h"
+#include "endgame/bitbase.h"
+#include "rules/repetition.h"
 
 #include <iostream>
 #include <string>
 #include <cstring>
 #include <cctype>
 #include <cstdio>
+#include <thread>
+#include <atomic>
 
 // ============================================================
 // Minimal hand-rolled JSON parser
@@ -23,6 +29,34 @@ static std::string trim(const std::string& s) {
     size_t b = s.find_last_not_of(" \t\r\n");
     if (a == std::string::npos) return "";
     return s.substr(a, b - a + 1);
+}
+
+// Extract a JSON array of strings for a key.
+// Handles: "key": ["a","b","c"]
+static std::vector<std::string> jsonGetStringArray(const std::string& json, const std::string& key) {
+    std::vector<std::string> result;
+    std::string search = "\"" + key + "\"";
+    size_t pos = json.find(search);
+    if (pos == std::string::npos) return result;
+    pos = json.find(':', pos + search.size());
+    if (pos == std::string::npos) return result;
+    pos = json.find_first_not_of(" \t", pos + 1);
+    if (pos == std::string::npos || json[pos] != '[') return result;
+    pos++;  // skip '['
+    while (pos < json.size()) {
+        pos = json.find_first_not_of(" \t\r\n,", pos);
+        if (pos == std::string::npos) break;
+        if (json[pos] == ']') break;
+        if (json[pos] == '"') {
+            size_t end = json.find('"', pos + 1);
+            if (end == std::string::npos) break;
+            result.push_back(json.substr(pos + 1, end - pos - 1));
+            pos = end + 1;
+        } else {
+            pos++;
+        }
+    }
+    return result;
 }
 
 // Extract a string value for a key in a flat JSON object.
@@ -172,8 +206,9 @@ static IncomingMsg parseMessage(const std::string& line) {
         msg.type    = MsgType::SetVariant;
         msg.variant = jsonGetString(line, "variant");
     } else if (type == "setPosition") {
-        msg.type = MsgType::SetPosition;
-        msg.fen  = jsonGetString(line, "fen");
+        msg.type    = MsgType::SetPosition;
+        msg.fen     = jsonGetString(line, "fen");
+        msg.history = jsonGetStringArray(line, "history");
     } else if (type == "go") {
         msg.type          = MsgType::Go;
         msg.go.depth      = jsonGetInt(line, "depth",   20);
@@ -181,6 +216,9 @@ static IncomingMsg parseMessage(const std::string& line) {
         msg.go.multiPV    = jsonGetInt(line, "multiPV", 1);
     } else if (type == "stop") {
         msg.type = MsgType::Stop;
+    } else if (type == "probe") {
+        msg.type = MsgType::Probe;
+        msg.fen  = jsonGetString(line, "fen");
     } else if (type == "evalTrace") {
         msg.type = MsgType::EvalTrace;
         msg.fen  = jsonGetString(line, "fen");
@@ -200,6 +238,11 @@ void runIpcLoop() {
     Position pos;
     initPosition(pos);
     pos.zobrist = computeHash(pos);
+    clearHashHistory();
+    pushHash(pos.zobrist);
+
+    std::thread searchThread;
+    std::atomic<bool> searchRunning{false};
 
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -210,6 +253,11 @@ void runIpcLoop() {
 
         switch (msg.type) {
             case MsgType::SetVariant: {
+                if (searchRunning.load()) {
+                    std::cout << "{\"type\":\"error\",\"message\":\"Search already running\"}\n";
+                    std::cout.flush();
+                    break;
+                }
                 if (msg.variant == "tanzania" || msg.variant == "Tanzania") {
                     rules = &TANZANIA;
                 } else if (msg.variant == "russian" || msg.variant == "Russian") {
@@ -222,33 +270,107 @@ void runIpcLoop() {
             }
 
             case MsgType::SetPosition: {
+                if (searchRunning.load()) {
+                    std::cout << "{\"type\":\"error\",\"message\":\"Search already running\"}\n";
+                    std::cout.flush();
+                    break;
+                }
                 pos = parseFen(msg.fen);
+                clearHashHistory();
+                // Push game history hashes so the search can detect game-level repetitions.
+                // The gauntlet sends the FENs of all prior positions in the game.
+                for (const auto& histFen : msg.history) {
+                    Position hpos = parseFen(histFen);
+                    pushHash(hpos.zobrist);
+                }
+                pushHash(pos.zobrist);
                 break;
             }
 
             case MsgType::Go: {
-                SearchInfo info;
-                info.rules       = rules;
-                info.maxDepth    = msg.go.depth;
-                info.timeLimitMs = msg.go.timeMs;
-                info.stop        = false;
-                info.nodes       = 0;
+                if (searchRunning.load()) {
+                    std::cout << "{\"type\":\"error\",\"message\":\"Search already running\"}\n";
+                    std::cout.flush();
+                    break;
+                }
 
-                BestResult res = searchRoot(pos, info, msg.go.multiPV);
+                if (searchThread.joinable()) {
+                    searchThread.join();
+                }
 
-                std::string moveStr = moveToStr(res.bestMove);
-                std::cout << "{\"type\":\"bestmove\",\"move\":\"" << moveStr
-                          << "\",\"score\":" << res.score
-                          << ",\"depth\":" << res.depth
-                          << ",\"nodes\":" << res.nodes
-                          << "}\n";
-                std::cout.flush();
+                const RuleConfig* goRules = rules;
+                Position goPos = pos;
+                int goDepth = msg.go.depth;
+                int goTimeMs = msg.go.timeMs;
+                int goMultiPV = msg.go.multiPV;
+
+                searchRunning.store(true);
+                searchThread = std::thread([goRules, goPos, goDepth, goTimeMs, goMultiPV, &searchRunning]() mutable {
+                    SearchInfo info;
+                    info.rules       = goRules;
+                    info.maxDepth    = goDepth;
+                    info.timeLimitMs = goTimeMs;
+                    info.stop        = false;
+                    info.nodes       = 0;
+
+                    BestResult res = searchRoot(goPos, info, goMultiPV);
+                    Position pvPos = goPos;
+                    std::string ponder = "0000";
+                    if (res.bestMove.from != 0xFF) {
+                        Undo undo;
+                        makeMove(pvPos, res.bestMove, undo, *goRules);
+                        int dummy = 0;
+                        Move ponderMove;
+                        ponderMove.from = 0xFF;
+                        ponderMove.to = 0xFF;
+                        probeTT(pvPos.zobrist, 0, -INF, INF, dummy, ponderMove);
+                        if (ponderMove.from != 0xFF) {
+                            ponder = moveToStr(ponderMove);
+                        }
+                    }
+
+                    std::string moveStr = moveToStr(res.bestMove);
+                    std::cout << "{\"type\":\"bestmove\",\"move\":\"" << moveStr
+                              << "\",\"ponder\":\"" << ponder
+                              << "\",\"score\":" << res.score
+                              << ",\"depth\":" << res.depth
+                              << ",\"nodes\":" << res.nodes
+                              << ",\"capturedSquares\":[";
+                    for (int ci = 0; ci < (int)res.bestMove.capLen; ci++) {
+                        if (ci > 0) std::cout << ",";
+                        std::cout << ((int)res.bestMove.captures[ci] + 1);
+                    }
+                    std::cout << "],\"isPromotion\":"
+                              << (res.bestMove.promote ? "true" : "false")
+                              << "}\n";
+                    std::cout.flush();
+                    searchRunning.store(false);
+                });
                 break;
             }
 
             case MsgType::Stop: {
-                // Stop is handled inside search via info.stop flag
-                // Here we just acknowledge
+                if (searchRunning.load()) {
+                    requestSearchStop();
+                }
+                break;
+            }
+
+            case MsgType::Probe: {
+                Position ppos = parseFen(msg.fen);
+                BitbaseResult probe = probeBitbase(ppos);
+                const char* wdl = "unknown";
+                switch (probe) {
+                    case BitbaseResult::WIN:  wdl = "win"; break;
+                    case BitbaseResult::DRAW: wdl = "draw"; break;
+                    case BitbaseResult::LOSS: wdl = "loss"; break;
+                    case BitbaseResult::UNKNOWN:
+                    default:                  wdl = "unknown"; break;
+                }
+
+                std::cout << "{\"type\":\"probe\",\"wdl\":\"" << wdl
+                          << "\",\"dtm\":0,\"bestMove\":\"0000\"}\n";
+                std::cout.flush();
                 break;
             }
 
@@ -269,6 +391,12 @@ void runIpcLoop() {
             }
 
             case MsgType::Quit:
+                if (searchRunning.load()) {
+                    requestSearchStop();
+                }
+                if (searchThread.joinable()) {
+                    searchThread.join();
+                }
                 return;
 
             case MsgType::Unknown:
@@ -277,5 +405,12 @@ void runIpcLoop() {
                 std::cout.flush();
                 break;
         }
+    }
+
+    if (searchRunning.load()) {
+        requestSearchStop();
+    }
+    if (searchThread.joinable()) {
+        searchThread.join();
     }
 }

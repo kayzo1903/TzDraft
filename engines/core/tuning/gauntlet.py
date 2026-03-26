@@ -213,8 +213,12 @@ class MkaguziProcess:
         self.proc.stdin.write(json.dumps(msg) + '\n')
         self.proc.stdin.flush()
 
-    def get_move(self, fen: str, depth: int, time_ms: int) -> Optional[str]:
-        self._send({"type": "setPosition", "fen": fen})
+    def get_move(self, fen: str, depth: int, time_ms: int,
+                 history: list = None) -> Optional[str]:
+        msg = {"type": "setPosition", "fen": fen}
+        if history:
+            msg["history"] = history
+        self._send(msg)
         self._send({"type": "go", "depth": depth, "timeMs": time_ms, "multiPV": 1})
         while True:
             line = self.proc.stdout.readline().strip()
@@ -270,6 +274,8 @@ def play_game(mkaguzi: MkaguziProcess, sidra_path: str,
     board = starting_board()
     turn = 'w'
     no_progress = 0
+    position_history: dict = {}   # FEN -> count, for 3-fold repetition
+    fen_log: list = []            # ordered list of all FENs seen (for mkaguzi history)
 
     for _ in range(MAX_HALFMOVES):
         if not has_legal_moves(board, turn):
@@ -278,9 +284,15 @@ def play_game(mkaguzi: MkaguziProcess, sidra_path: str,
             return 'draw'
 
         fen = board_to_fen(board, turn)
+        # 3-fold repetition: same position (including side-to-move) seen 3 times
+        position_history[fen] = position_history.get(fen, 0) + 1
+        if position_history[fen] >= 3:
+            return 'draw'
 
         if turn == mkaguzi_side:
-            move_str = mkaguzi.get_move(fen, depth, time_ms)
+            # Pass prior FENs so mkaguzi can detect game-level repetitions.
+            # Keep up to 20 prior positions (sufficient to detect all relevant repetitions).
+            move_str = mkaguzi.get_move(fen, depth, time_ms, history=fen_log[-20:])
             if not move_str or len(move_str) < 4:
                 return 'b' if turn == 'w' else 'w'
             fp = int(move_str[:2])
@@ -296,6 +308,7 @@ def play_game(mkaguzi: MkaguziProcess, sidra_path: str,
         if verbose:
             print(f"    {engine_label} ({turn}): {fp:02d}--{tp:02d}")
 
+        fen_log.append(fen)
         enemy_before = sum(1 for c, _ in board.values() if c != turn)
         apply_move(board, fp, tp, turn)
         enemy_after  = sum(1 for c, _ in board.values() if c != turn)

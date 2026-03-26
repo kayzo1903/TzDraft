@@ -4,6 +4,7 @@
 #include "core/types.h"
 #include "rules/variant.h"
 #include "search/time.h"
+#include <string>
 
 constexpr int WIN       = 30000;
 constexpr int INF       = 32000;
@@ -24,6 +25,10 @@ struct BestResult {
     int   depth;
     long long nodes;
 };
+
+void requestSearchStop();
+void clearSearchStop();
+bool searchStopRequested();
 
 // Root search: iterative deepening, returns best result
 BestResult searchRoot(Position& pos, SearchInfo& info, int multiPV);

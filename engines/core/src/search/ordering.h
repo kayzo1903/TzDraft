@@ -4,10 +4,12 @@
 #include "core/types.h"
 
 // Score all moves in the array for ordering purposes.
+// pos: current position (used to value captured piece types)
 // ttMove: the best move from the TT (from==0xFF means none)
 // side: 0=white, 1=black
 // ply: current search ply
-void scoreMoves(Move* moves, int count, const Move& ttMove, int side, int ply);
+void scoreMoves(Move* moves, int count, const Move& ttMove,
+                const Position& pos, int ply);
 
 // Sort moves in descending order by score (simple insertion sort — count is small)
 void sortMoves(Move* moves, int count);
