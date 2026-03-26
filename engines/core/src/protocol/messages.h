@@ -4,6 +4,7 @@
 #include "core/types.h"
 #include "rules/variant.h"
 #include <string>
+#include <vector>
 
 // Message types received from client
 enum class MsgType {
@@ -11,6 +12,7 @@ enum class MsgType {
     SetPosition,
     Go,
     Stop,
+    Probe,
     EvalTrace,
     Quit,
     Unknown
@@ -26,8 +28,10 @@ struct IncomingMsg {
     MsgType  type;
     // SetVariant
     std::string variant;
-    // SetPosition / EvalTrace
+    // SetPosition / EvalTrace / Probe
     std::string fen;
+    // SetPosition: optional prior game FENs for repetition detection
+    std::vector<std::string> history;
     // Go
     GoParams go;
 };

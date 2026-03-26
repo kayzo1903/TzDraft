@@ -5,19 +5,20 @@
 #include <chrono>
 
 struct TimeManager {
-    int64_t startMs;      // when search started (ms since epoch)
-    int     timeLimitMs;  // 0 = no limit
-    int     maxDepth;     // 0 = no limit
-    bool    infinite;     // true = search until stop command
+    int64_t startMs;      // when search started
+    int     timeLimitMs;  // original budget (0 = no limit)
+    int     softLimitMs;  // current soft limit — may be extended on instability
+    int     maxDepth;
+    bool    infinite;
+    int     prevScore;    // score from last completed iteration (for instability check)
 };
 
-// Initialize the time manager
 void initTimeManager(TimeManager& tm, int timeLimitMs, int maxDepth, bool infinite);
-
-// Returns elapsed time in ms
 int64_t elapsedMs(const TimeManager& tm);
+bool    timeUp(const TimeManager& tm);
 
-// Returns true if the search should stop due to time
-bool timeUp(const TimeManager& tm);
+// Call after each completed depth iteration. Extends softLimitMs if the score
+// changed significantly (position is unstable; more depth is likely to matter).
+void extendIfUnstable(TimeManager& tm, int score);
 
 #endif // SEARCH_TIME_H

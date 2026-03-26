@@ -13,6 +13,7 @@ struct TTEntry {
     int16_t  score;
     uint8_t  depth;
     uint8_t  flag;      // TT_EXACT / TT_LOWERBOUND / TT_UPPERBOUND
+    uint8_t  age;       // search generation — stale entries are replaced first
     Move     bestMove;
 };
 
@@ -24,7 +25,10 @@ bool probeTT(uint64_t key, int depth, int alpha, int beta,
 // Store an entry in the TT.
 void storeTT(uint64_t key, int depth, int score, uint8_t flag, const Move& bestMove);
 
-// Clear the entire transposition table (call at start of each search if needed).
+// Clear the entire transposition table.
 void clearTT();
+
+// Increment the global generation counter (call once at the start of each root search).
+void incrementTTAge();
 
 #endif // SEARCH_TT_H

@@ -2,6 +2,10 @@
 #include "core/square_map.h"
 #include "core/bitboard.h"
 
+constexpr int CENTER_CTRL_BONUS  = 8;   // cp per piece on center 4 — Texel-tunable
+constexpr int ADVANCE_BONUS      = 8;   // cp per rank advanced
+constexpr int ISOLATION_PENALTY  = 10;  // cp per isolated advanced man
+
 // Board layout reference:
 // Row 7 (black back rank):  sq 0(col1)  sq 1(col3)  sq 2(col5)  sq 3(col7)
 // Row 6:                    sq 4(col0)  sq 5(col2)  sq 6(col4)  sq 7(col6)
@@ -18,22 +22,11 @@ static const Bitboard CENTER_4 = (1U<<13)|(1U<<14)|(1U<<17)|(1U<<18);
 int evalStructure(const Position& pos) {
     int score = 0;
 
-    // --- Back-rank integrity ---
-    // White back rank: sqs 28-31 (row 0)
-    static const Bitboard WHITE_BACK = (1U<<28)|(1U<<29)|(1U<<30)|(1U<<31);
-    // Black back rank: sqs 0-3 (row 7)
-    static const Bitboard BLACK_BACK = (1U<<0)|(1U<<1)|(1U<<2)|(1U<<3);
-
-    Bitboard wb = pos.whiteMen & WHITE_BACK;
-    while (wb) { wb &= wb-1; score += 15; }
-    Bitboard bb = pos.blackMen & BLACK_BACK;
-    while (bb) { bb &= bb-1; score -= 15; }
-
     // --- Center control ---
     Bitboard wc = (pos.whiteMen | pos.whiteKings) & CENTER_4;
-    while (wc) { wc &= wc-1; score += 8; }
+    while (wc) { wc &= wc-1; score += CENTER_CTRL_BONUS; }
     Bitboard bc = (pos.blackMen | pos.blackKings) & CENTER_4;
-    while (bc) { bc &= bc-1; score -= 8; }
+    while (bc) { bc &= bc-1; score -= CENTER_CTRL_BONUS; }
 
     // --- Advancement bonus for men ---
     // White men advance toward row 7 (lower sq numbers), so row_advanced = row(sq) - 0
@@ -44,7 +37,7 @@ int evalStructure(const Position& pos) {
             int sq = bsf(wm); wm &= wm-1;
             int row = sqRow(sq);
             int advance = row; // white home row = 0, target = 7
-            score += advance * 3;
+            score += advance * ADVANCE_BONUS;
         }
     }
     {
@@ -53,7 +46,7 @@ int evalStructure(const Position& pos) {
             int sq = bsf(bm); bm &= bm-1;
             int row = sqRow(sq);
             int advance = 7 - row; // black home row = 7, target = 0
-            score -= advance * 3;
+            score -= advance * ADVANCE_BONUS;
         }
     }
 
@@ -78,7 +71,7 @@ int evalStructure(const Position& pos) {
                         }
                     }
                 }
-                if (!hasBehind) score -= 10;
+                if (!hasBehind) score -= ISOLATION_PENALTY;
             }
         }
     }
@@ -101,7 +94,7 @@ int evalStructure(const Position& pos) {
                         }
                     }
                 }
-                if (!hasBehind) score -= 10;
+                if (!hasBehind) score += ISOLATION_PENALTY;  // bad for black = good for white
             }
         }
     }

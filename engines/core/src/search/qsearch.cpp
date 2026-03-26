@@ -8,18 +8,18 @@
 int qsearch(Position& pos, int alpha, int beta, int ply, SearchInfo& info) {
     info.nodes++;
 
-    // Stand-pat: evaluate the current position
-    int standPat = eval(pos, *info.rules);
-    if (standPat >= beta) return beta;
-    if (standPat > alpha) alpha = standPat;
-
     // Generate captures only
     Move moves[256];
     int count = 0;
     generateCaptures(pos, *info.rules, moves, count);
 
+    if (count == 0) {
+        // No captures available. Position is quiet.
+        return eval(pos, *info.rules);
+    }
+
     // Apply majority-capture filter
-    if (count > 0 && info.rules->majorityCaptureMandatory) {
+    if (info.rules->maxCaptureRequired || info.rules->majorityCaptureMandatory) {
         int maxCaps = 0;
         for (int i = 0; i < count; i++) {
             if (moves[i].capLen > maxCaps) maxCaps = moves[i].capLen;
@@ -33,8 +33,10 @@ int qsearch(Position& pos, int alpha, int beta, int ply, SearchInfo& info) {
 
     // Score and sort
     Move noTT; noTT.from = 0xFF; noTT.to = 0xFF;
-    scoreMoves(moves, count, noTT, pos.sideToMove, ply);
+    scoreMoves(moves, count, noTT, pos, ply);
     sortMoves(moves, count);
+
+    int bestScore = -INF;
 
     for (int i = 0; i < count; i++) {
         Undo undo;
@@ -42,9 +44,10 @@ int qsearch(Position& pos, int alpha, int beta, int ply, SearchInfo& info) {
         int score = -qsearch(pos, -beta, -alpha, ply + 1, info);
         unmakeMove(pos, moves[i], undo);
 
-        if (score >= beta) return beta;
+        if (score > bestScore) bestScore = score;
         if (score > alpha) alpha = score;
+        if (alpha >= beta) break;
     }
 
-    return alpha;
+    return bestScore;
 }

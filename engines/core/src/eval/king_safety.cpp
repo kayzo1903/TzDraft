@@ -3,6 +3,10 @@
 #include "core/square_map.h"
 #include "core/constants.h"
 
+constexpr int KING_CENTER_BONUS    = 20;  // cp per king on center 4 — Texel-tunable
+constexpr int KING_EDGE_PENALTY    = 25;  // cp per king on edge
+constexpr int KING_TRAPPED_PENALTY = 60;  // cp for trapped king on back rank
+
 // Center 4 squares: 13,14,17,18
 static const Bitboard CENTER_4_KS = (1U<<13)|(1U<<14)|(1U<<17)|(1U<<18);
 
@@ -25,9 +29,9 @@ int evalKingSafety(const Position& pos, const RuleConfig& rules) {
             int sq = bsf(wk); wk &= wk-1;
             Bitboard sqMask = (1U << sq);
             if (CENTER_4_KS & sqMask) {
-                score += 20;  // king on center 4 squares
+                score += KING_CENTER_BONUS;
             } else if (EDGE_MASK_KS & sqMask) {
-                score -= 10;  // king on edge
+                score -= KING_EDGE_PENALTY;
             }
         }
     }
@@ -39,9 +43,9 @@ int evalKingSafety(const Position& pos, const RuleConfig& rules) {
             int sq = bsf(bk); bk &= bk-1;
             Bitboard sqMask = (1U << sq);
             if (CENTER_4_KS & sqMask) {
-                score -= 20;
+                score -= KING_CENTER_BONUS;
             } else if (EDGE_MASK_KS & sqMask) {
-                score += 10;
+                score += KING_EDGE_PENALTY;
             }
         }
     }
@@ -66,7 +70,7 @@ int evalKingSafety(const Position& pos, const RuleConfig& rules) {
                 }
                 if (adj && !((occ >> bsf(adj)) & 1)) { trapped = false; break; }
             }
-            if (trapped) score -= 30;
+            if (trapped) score -= KING_TRAPPED_PENALTY;
         }
     }
     {
@@ -86,7 +90,7 @@ int evalKingSafety(const Position& pos, const RuleConfig& rules) {
                 }
                 if (adj && !((occ >> bsf(adj)) & 1)) { trapped = false; break; }
             }
-            if (trapped) score += 30;
+            if (trapped) score += KING_TRAPPED_PENALTY;
         }
     }
 

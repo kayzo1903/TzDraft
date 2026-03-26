@@ -4,6 +4,7 @@
 #include "core/types.h"
 #include <cstdint>
 
+void clearHashHistory();
 void pushHash(uint64_t h);
 void popHash();
 bool isRepetitionHash(uint64_t hash, int threshold);
