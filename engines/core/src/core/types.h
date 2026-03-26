@@ -23,6 +23,7 @@ struct Position {
     uint64_t zobrist;
     int ply;
     int fiftyMove;
+    int fullMove;     // 1-based full-move counter (increments after each black move)
 };
 
 // Derived board properties

@@ -15,6 +15,7 @@ void initPosition(Position& pos) {
     pos.sideToMove = 0; // 0 = White, 1 = Black
     pos.ply = 0;
     pos.fiftyMove = 0;
+    pos.fullMove = 1;
     pos.zobrist = 0; // Set up hash after init
 }
 

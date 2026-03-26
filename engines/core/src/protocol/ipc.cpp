@@ -6,6 +6,7 @@
 #include "board/position.h"
 #include "board/hash.h"
 #include "board/makemove.h"
+#include "board/fen.h"
 #include "search/search.h"
 #include "search/tt.h"
 #include "eval/eval.h"
@@ -98,79 +99,6 @@ static int jsonGetInt(const std::string& json, const std::string& key, int defau
         pos++;
     }
     return sign * val;
-}
-
-// ============================================================
-// FEN parser
-// FEN format: W:W21,22,23,24:B9,10,11,12
-// W/B at start = side to move
-// W... = white pieces (K prefix for kings)
-// B... = black pieces
-// PDN 1-based → internal 0-based (subtract 1)
-// ============================================================
-
-static Position parseFen(const std::string& fen) {
-    Position pos;
-    pos.whiteMen = pos.whiteKings = pos.blackMen = pos.blackKings = 0;
-    pos.sideToMove = 0;
-    pos.ply = 0;
-    pos.fiftyMove = 0;
-    pos.zobrist = 0;
-
-    if (fen.empty()) {
-        initPosition(pos);
-        pos.zobrist = computeHash(pos);
-        return pos;
-    }
-
-    const char* p = fen.c_str();
-
-    // Side to move
-    if (*p == 'W' || *p == 'w') { pos.sideToMove = 0; p++; }
-    else if (*p == 'B' || *p == 'b') { pos.sideToMove = 1; p++; }
-
-    // Consume ':'
-    while (*p && *p != ':') p++;
-
-    // Parse color sections
-    while (*p == ':') {
-        p++;  // skip ':'
-        int pieceColor = -1;  // 0=white, 1=black
-        if (*p == 'W' || *p == 'w') { pieceColor = 0; p++; }
-        else if (*p == 'B' || *p == 'b') { pieceColor = 1; p++; }
-        else continue;
-
-        // Parse comma-separated square numbers
-        while (*p && *p != ':') {
-            bool isKing = false;
-            if (*p == 'K' || *p == 'k') { isKing = true; p++; }
-
-            // Read integer
-            if (!isdigit((unsigned char)*p)) { p++; continue; }
-            int sq = 0;
-            while (*p && isdigit((unsigned char)*p)) {
-                sq = sq * 10 + (*p - '0');
-                p++;
-            }
-            sq--;  // PDN 1-based to 0-based
-
-            if (sq >= 0 && sq < 32) {
-                Bitboard mask = (1U << sq);
-                if (pieceColor == 0) {
-                    if (isKing) pos.whiteKings |= mask;
-                    else        pos.whiteMen   |= mask;
-                } else {
-                    if (isKing) pos.blackKings |= mask;
-                    else        pos.blackMen   |= mask;
-                }
-            }
-
-            if (*p == ',') p++;
-        }
-    }
-
-    pos.zobrist = computeHash(pos);
-    return pos;
 }
 
 // ============================================================
