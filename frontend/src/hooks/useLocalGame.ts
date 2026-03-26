@@ -11,6 +11,21 @@ import {
   PieceType,
   Winner,
 } from "@tzdraft/cake-engine";
+
+// Build a PDN FEN string from a board state — used to send game history to
+// the Mkaguzi engine so it can detect game-level repetitions.
+function boardToFen(board: BoardState, player: PlayerColor): string {
+  const stm = player === PlayerColor.WHITE ? "W" : "B";
+  const w = board
+    .getPiecesByColor(PlayerColor.WHITE)
+    .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .join(",");
+  const b = board
+    .getPiecesByColor(PlayerColor.BLACK)
+    .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .join(",");
+  return `${stm}:W${w}:B${b}`;
+}
 import type {
   BoardState as UiBoardState,
   CaptureGhost,
@@ -271,6 +286,9 @@ export const useLocalGame = (
   );
   const [lastMove, setLastMove] = useState<LastMoveState>(null);
   const [capturedGhosts, setCapturedGhosts] = useState<CaptureGhost[]>([]);
+  const fenHistoryRef = useRef<string[]>([
+    boardToFen(loaded ? loaded.board : CakeEngine.createInitialState(), PlayerColor.WHITE),
+  ]);
   const aiTimeoutRef = useRef<number | null>(null);
   const captureCleanupTimeoutsRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
@@ -447,6 +465,9 @@ export const useLocalGame = (
       const nextBoard = CakeEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
 
+      // Track FEN history for Mkaguzi game-level repetition detection
+      fenHistoryRef.current.push(boardToFen(nextBoard, nextPlayer));
+
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
       setMoveCount((prev) => prev + 1);
@@ -509,6 +530,7 @@ export const useLocalGame = (
 
   const reset = useCallback(() => {
     initialBoardRef.current = CakeEngine.createInitialState();
+    fenHistoryRef.current = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     setBoard(initialBoardRef.current);
     setCurrentPlayer(PlayerColor.WHITE);
     setMoveCount(0);
@@ -561,9 +583,13 @@ export const useLocalGame = (
     }
 
     let nextBoard = initialBoardRef.current;
+    const rebuiltFens: string[] = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     for (const move of newMoves) {
       nextBoard = CakeEngine.applyMove(nextBoard, move);
+      const nextP = getOpponent(move.player);
+      rebuiltFens.push(boardToFen(nextBoard, nextP));
     }
+    fenHistoryRef.current = rebuiltFens;
 
     const nextPlayer =
       newMoves.length === 0
@@ -707,7 +733,7 @@ export const useLocalGame = (
       };
     }
 
-    // ── Backend engine for levels 10+ (SiDra / Kallisto) ─────────────────
+    // ── Backend engine for levels 10+ (SiDra 10-14 / Mkaguzi 15-19) ──────
     const fetchMove = async () => {
       try {
         const payloadPieces = board.getAllPieces().map((p) => ({
@@ -719,12 +745,20 @@ export const useLocalGame = (
         const currentPlayerStr =
           currentPlayer === PlayerColor.WHITE ? "WHITE" : "BLACK";
 
+        // Send the last 20 prior FENs (excluding current position) so
+        // Mkaguzi can detect game-level repetitions.
+        const priorFens = fenHistoryRef.current.slice(
+          Math.max(0, fenHistoryRef.current.length - 21),
+          fenHistoryRef.current.length - 1,
+        );
+
         const { data } = await axiosInstance.post("/ai/move", {
           boardStatePieces: payloadPieces,
           currentPlayer: currentPlayerStr,
           aiLevel,
           timeLimitMs: 2500,
           mustContinueFrom: mustContinueFrom?.value ?? null,
+          history: priorFens,
         });
 
         const aiMoveData = data.data;

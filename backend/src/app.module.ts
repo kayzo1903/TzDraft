@@ -50,7 +50,7 @@ import { TurnModule } from './turn/turn.module';
     AuthModule,
     UserModule,
     HttpModule,
-    EngineModule, // Provides SidraAdapter globally
+    EngineModule, // Provides SidraAdapter + MkaguziAdapter globally
     TasksModule,  // Scheduled cleanup jobs
     HealthModule,
     AdminModule,
