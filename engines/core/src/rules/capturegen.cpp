@@ -100,7 +100,7 @@ static void genCaptureFrom(
                            side, newRemoved, partial, out, count);
         } else {
             // Promotion stops the sequence — commit this partial move now
-            if (partial.capLen > 0 && count < 256) {
+            if (partial.capLen > 0 && count < MAX_MOVES) {
                 partial.to = (uint8_t)land;
                 out[count++] = partial;
             }
@@ -135,14 +135,12 @@ void generateCaptures(const Position& pos, const RuleConfig& rules, Move* out, i
 
         bool isKing = (myKings >> sq) & 1;
 
-        // Build an initial partial move
+        // Build an initial partial move; zero the whole struct so no stale
+        // capture/path data from a previous branch can leak into committed moves.
         Move partial;
+        memset(&partial, 0, sizeof(partial));
         partial.from    = (uint8_t)sq;
         partial.to      = (uint8_t)sq;
-        partial.pathLen = 0;
-        partial.capLen  = 0;
-        partial.promote = false;
-        partial.score   = 0;
 
         genCaptureFrom(pos, rules, (uint8_t)sq, isKing, side,
                        0, partial, out, count);

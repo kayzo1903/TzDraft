@@ -6,6 +6,9 @@
 // 32-bit bitboard for 8x8 draughts
 using Bitboard = uint32_t;
 
+// Maximum number of moves in any legal position
+constexpr int MAX_MOVES = 256;
+
 // Engine variant interface
 enum class Variant {
     Tanzania,
@@ -38,8 +41,8 @@ inline Bitboard emptyCount(const Position& p) {
 struct Move {
     uint8_t from;
     uint8_t to;
-    uint8_t path[12];      // multi-jump path
-    uint8_t captures[6];   // captured square indices
+    uint8_t path[12];      // multi-jump path (up to 12 landing squares)
+    uint8_t captures[12];  // captured square indices (must match path size)
     uint8_t pathLen;
     uint8_t capLen;
     bool promote;
