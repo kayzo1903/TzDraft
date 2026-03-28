@@ -7,7 +7,11 @@ import {
   Max,
   IsBoolean,
   IsIn,
+  IsArray,
+  ValidateNested,
+  IsInt,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   PlayerColor,
@@ -121,4 +125,20 @@ export class CompleteAiChallengeSessionDto {
   @ApiProperty({ description: 'Whether undo was used during the AI challenge' })
   @IsBoolean()
   undoUsed: boolean;
+}
+
+export class RecordMoveDto {
+  @IsInt() @Min(1) @Max(32) fromSquare: number;
+  @IsInt() @Min(1) @Max(32) toSquare: number;
+  @IsIn(['WHITE', 'BLACK']) player: 'WHITE' | 'BLACK';
+  @IsArray() @IsInt({ each: true }) capturedSquares: number[];
+  @IsBoolean() isPromotion: boolean;
+  @IsString() notation: string;
+  @IsOptional() @IsInt() engineEval?: number;
+}
+
+export class RecordGameDto {
+  @IsIn(['WHITE', 'BLACK', 'DRAW']) winner: 'WHITE' | 'BLACK' | 'DRAW';
+  @IsOptional() @IsIn(['STALEMATE', 'CHECKMATE', 'RESIGN', 'TIME', 'DISCONNECT', 'DRAW']) endReason?: string;
+  @IsArray() @ValidateNested({ each: true }) @Type(() => RecordMoveDto) moves: RecordMoveDto[];
 }

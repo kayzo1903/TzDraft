@@ -26,7 +26,9 @@ import {
   CreateInviteGameDto,
   StartAiChallengeSessionDto,
   CompleteAiChallengeSessionDto,
+  RecordGameDto,
 } from '../dtos/create-game.dto';
+import { Winner, EndReason, GameStatus } from '../../../shared/constants/game.constants';
 import { JoinQueueDto } from '../dtos/join-queue.dto';
 import { PlayerColor } from '../../../shared/constants/game.constants';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
@@ -96,6 +98,40 @@ export class GameController {
       success: true,
       data: game,
     };
+  }
+
+  /**
+   * Record all moves of a completed AI game for later analysis/replay.
+   * Frontend calls this once when the game ends, sending the full move list.
+   */
+  @Post(':id/record')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record completed AI game moves for replay' })
+  async recordGame(
+    @CurrentUser() user: any,
+    @Param('id') gameId: string,
+    @Body() dto: RecordGameDto,
+  ) {
+    const game = await this.getGameStateUseCase.getGame(gameId);
+    if (!game) return { success: false, error: 'Game not found' };
+
+    // Verify the caller is a participant
+    const userId = user.id;
+    if (game.whitePlayerId !== userId && game.blackPlayerId !== userId) {
+      return { success: false, error: 'Not a participant' };
+    }
+
+    // Only record once (skip if already finished)
+    if (game.status === GameStatus.FINISHED) {
+      return { success: true, data: { gameId } };
+    }
+
+    // Save moves + finalise game in one call
+    const winner = dto.winner as Winner;
+    const endReason = (dto.endReason as EndReason) ?? EndReason.STALEMATE;
+    await this.endGameUseCase.finaliseGame(gameId, winner, endReason, dto.moves);
+
+    return { success: true, data: { gameId } };
   }
 
   @Get('ai/progression')
