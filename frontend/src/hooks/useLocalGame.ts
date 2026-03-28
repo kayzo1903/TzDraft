@@ -11,6 +11,21 @@ import {
   PieceType,
   Winner,
 } from "@tzdraft/cake-engine";
+
+// Build a PDN FEN string from a board state — used to send game history to
+// the Mkaguzi engine so it can detect game-level repetitions.
+function boardToFen(board: BoardState, player: PlayerColor): string {
+  const stm = player === PlayerColor.WHITE ? "W" : "B";
+  const w = board
+    .getPiecesByColor(PlayerColor.WHITE)
+    .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .join(",");
+  const b = board
+    .getPiecesByColor(PlayerColor.BLACK)
+    .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .join(",");
+  return `${stm}:W${w}:B${b}`;
+}
 import type {
   BoardState as UiBoardState,
   CaptureGhost,
@@ -238,6 +253,7 @@ export const useLocalGame = (
   // Engine state uses WHITE at the top by default; flip only when the human plays WHITE.
   const flipForPlayer = playerColor === PlayerColor.WHITE;
   const loaded = loadSavedGame(aiLevel, playerColor);
+  const gameLoggedRef = useRef(false);
   const [board, setBoard] = useState<BoardState>(() =>
     loaded ? loaded.board : CakeEngine.createInitialState(),
   );
@@ -271,6 +287,9 @@ export const useLocalGame = (
   );
   const [lastMove, setLastMove] = useState<LastMoveState>(null);
   const [capturedGhosts, setCapturedGhosts] = useState<CaptureGhost[]>([]);
+  const fenHistoryRef = useRef<string[]>([
+    boardToFen(loaded ? loaded.board : CakeEngine.createInitialState(), PlayerColor.WHITE),
+  ]);
   const aiTimeoutRef = useRef<number | null>(null);
   const captureCleanupTimeoutsRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
@@ -447,6 +466,9 @@ export const useLocalGame = (
       const nextBoard = CakeEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
 
+      // Track FEN history for Mkaguzi game-level repetition detection
+      fenHistoryRef.current.push(boardToFen(nextBoard, nextPlayer));
+
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
       setMoveCount((prev) => prev + 1);
@@ -509,6 +531,7 @@ export const useLocalGame = (
 
   const reset = useCallback(() => {
     initialBoardRef.current = CakeEngine.createInitialState();
+    fenHistoryRef.current = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     setBoard(initialBoardRef.current);
     setCurrentPlayer(PlayerColor.WHITE);
     setMoveCount(0);
@@ -561,9 +584,13 @@ export const useLocalGame = (
     }
 
     let nextBoard = initialBoardRef.current;
+    const rebuiltFens: string[] = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     for (const move of newMoves) {
       nextBoard = CakeEngine.applyMove(nextBoard, move);
+      const nextP = getOpponent(move.player);
+      rebuiltFens.push(boardToFen(nextBoard, nextP));
     }
+    fenHistoryRef.current = rebuiltFens;
 
     const nextPlayer =
       newMoves.length === 0
@@ -678,36 +705,7 @@ export const useLocalGame = (
     const thinkDelayMs = 320 + Math.floor(Math.random() * 260);
     setIsAiThinking(true);
 
-    // ── Local CAKE engine for levels 1-9 ─────────────────────────────────
-    // Runs synchronously in a setTimeout to avoid blocking React render.
-    if (aiLevel < 10) {
-      aiTimeoutRef.current = window.setTimeout(() => {
-        aiTimeoutRef.current = null;
-        try {
-          const move = getBestMove(board, currentPlayer, aiLevel);
-          if (move) {
-            applyMove(move);
-          } else {
-            const gameResult = CakeEngine.evaluateGameResult(
-              board,
-              currentPlayer,
-            );
-            if (gameResult) setResult({ winner: gameResult.winner });
-          }
-        } finally {
-          setIsAiThinking(false);
-        }
-      }, thinkDelayMs);
-
-      return () => {
-        if (aiTimeoutRef.current !== null) {
-          window.clearTimeout(aiTimeoutRef.current);
-          aiTimeoutRef.current = null;
-        }
-      };
-    }
-
-    // ── Backend engine for levels 10+ (SiDra / Kallisto) ─────────────────
+    // ── Backend Mkaguzi engine for all levels 1-19 ───────────────────────
     const fetchMove = async () => {
       try {
         const payloadPieces = board.getAllPieces().map((p) => ({
@@ -719,12 +717,20 @@ export const useLocalGame = (
         const currentPlayerStr =
           currentPlayer === PlayerColor.WHITE ? "WHITE" : "BLACK";
 
+        // Send the last 20 prior FENs (excluding current position) so
+        // Mkaguzi can detect game-level repetitions.
+        const priorFens = fenHistoryRef.current.slice(
+          Math.max(0, fenHistoryRef.current.length - 21),
+          fenHistoryRef.current.length - 1,
+        );
+
         const { data } = await axiosInstance.post("/ai/move", {
           boardStatePieces: payloadPieces,
           currentPlayer: currentPlayerStr,
           aiLevel,
           timeLimitMs: 2500,
           mustContinueFrom: mustContinueFrom?.value ?? null,
+          history: priorFens,
         });
 
         const aiMoveData = data.data;
@@ -886,6 +892,40 @@ export const useLocalGame = (
     aiLevel,
     playerColor,
   ]);
+
+  // ── Console-log full game record when game ends (for analysis) ────────────
+  useEffect(() => {
+    if (!result || gameLoggedRef.current || moves.length === 0) return;
+    gameLoggedRef.current = true;
+
+    const winner =
+      result.winner === Winner.WHITE ? "WHITE"
+      : result.winner === Winner.BLACK ? "BLACK"
+      : "DRAW";
+
+    const humanSide = playerColor === PlayerColor.WHITE ? "WHITE" : "BLACK";
+    const engineSide = humanSide === "WHITE" ? "BLACK" : "WHITE";
+
+    const moveLog = moves.map((m, i) => ({
+      "#": i + 1,
+      player: m.player === PlayerColor.WHITE ? "WHITE" : "BLACK",
+      role: m.player === playerColor ? "HUMAN" : "ENGINE",
+      from: m.from.value,
+      to: m.to.value,
+      captures: m.capturedSquares.map((p) => p.value),
+      promotion: m.isPromotion,
+      notation: m.notation,
+    }));
+
+    console.group(
+      `%c[Mkaguzi] Game Record — Level ${aiLevel} | Human: ${humanSide} | Engine: ${engineSide} | Result: ${winner} | Moves: ${moves.length}`,
+      "color: #4ade80; font-weight: bold; font-size: 13px",
+    );
+    console.table(moveLog);
+    console.log("Raw moves JSON (copy for analysis):");
+    console.log(JSON.stringify(moveLog, null, 2));
+    console.groupEnd();
+  }, [result, moves, playerColor, aiLevel]);
 
   return {
     state: {

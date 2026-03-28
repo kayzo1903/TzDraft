@@ -88,8 +88,7 @@ export class CreateGameUseCase {
     );
 
     game.start();
-    // AI games are ephemeral — state is managed client-side; nothing is persisted.
-    return game;
+    return this.gameRepository.create(game);
   }
 
   /**

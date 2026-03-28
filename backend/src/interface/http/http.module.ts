@@ -8,19 +8,22 @@ import { AiController } from './controllers/ai.controller';
 import { EmailModule } from '../../infrastructure/email/email.module';
 import { GetAiMoveUseCase } from '../../application/use-cases/get-ai-move.use-case';
 import { TournamentController } from './controllers/tournament.controller';
+import { NotificationController } from './controllers/notification.controller';
+import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
 
 /**
  * HTTP Module
  * Provides REST API controllers
  */
 @Module({
-  imports: [UseCasesModule, MessagingModule, EmailModule],
+  imports: [UseCasesModule, MessagingModule, EmailModule, RepositoryModule],
   controllers: [
     GameController,
     MoveController,
     SupportController,
     AiController,
     TournamentController,
+    NotificationController,
   ],
   providers: [GetAiMoveUseCase],
 })

@@ -96,6 +96,35 @@ export class BeamAfricaService {
   }
 
   /**
+   * Send a tournament alert SMS (non-OTP). Fire-and-forget — never throws.
+   */
+  async sendTournamentAlert(phoneNumber: string, message: string): Promise<void> {
+    try {
+      await axios.post(
+        `${this.baseUrl}/v1/send`,
+        {
+          source_addr: this.senderId,
+          schedule_time: '',
+          encoding: 0,
+          message,
+          recipients: [{ recipient_id: '1', dest_addr: phoneNumber }],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${Buffer.from(`${this.apiKey}:${this.secretKey}`).toString('base64')}`,
+          },
+        },
+      );
+    } catch (err) {
+      this.logger.warn(`Tournament SMS to ${phoneNumber} failed: ${err?.message}`);
+      if (this.config.get('NODE_ENV') === 'development') {
+        this.logger.log(`[DEV] Tournament SMS to ${phoneNumber}: ${message}`);
+      }
+    }
+  }
+
+  /**
    * Check account balance (optional utility)
    */
   async getBalance(): Promise<number | null> {

@@ -1,6 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
 import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
+import { EmailModule } from '../../infrastructure/email/email.module';
+import { BeamAfricaService } from '../../infrastructure/sms/beam-africa.service';
+import { TournamentNotificationService } from '../services/tournament-notification.service';
 import { CreateGameUseCase } from './create-game.use-case';
 import { MakeMoveUseCase } from './make-move.use-case';
 import { GetGameStateUseCase } from './get-game-state.use-case';
@@ -35,7 +38,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
  * Provides all application use cases
  */
 @Module({
-  imports: [RepositoryModule, forwardRef(() => MessagingModule), UserModule, PrismaModule],
+  imports: [RepositoryModule, forwardRef(() => MessagingModule), UserModule, PrismaModule, EmailModule],
   providers: [
     RatingService,
     CreateGameUseCase,
@@ -47,6 +50,9 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     GetGameHistoryUseCase,
     GetPlayerStatsUseCase,
     AiProgressionService,
+    // Notification infrastructure
+    BeamAfricaService,
+    TournamentNotificationService,
     // Tournament domain services
     EligibilityCheckService,
     BracketGenerationService,
@@ -78,6 +84,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     GetPlayerStatsUseCase,
     AiProgressionService,
     MatchmakingAnalyticsService,
+    TournamentNotificationService,
     CreateTournamentUseCase,
     RegisterForTournamentUseCase,
     WithdrawFromTournamentUseCase,
