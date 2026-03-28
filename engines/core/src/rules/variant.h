@@ -16,8 +16,8 @@ const RuleConfig TANZANIA = {
   /* menCaptureBackward */       false,
   /* kingsFly */                 false,
   /* menPromoteAndContinue */    false,
-  /* maxCaptureRequired */       true,
-  /* majorityCaptureMandatory */ true,
+  /* maxCaptureRequired */       false,  // TZD: free choice — no max-capture requirement
+  /* majorityCaptureMandatory */ false,  // TZD: free choice — no majority requirement
   /* kingLandingFlexible */      false,
   /* drawByRepetition */         true,
   /* repetitionThreshold */      3

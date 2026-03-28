@@ -142,6 +142,8 @@ static IncomingMsg parseMessage(const std::string& line) {
         msg.go.depth      = jsonGetInt(line, "depth",   20);
         msg.go.timeMs     = jsonGetInt(line, "timeMs",  0);
         msg.go.multiPV    = jsonGetInt(line, "multiPV", 1);
+        msg.go.level      = jsonGetInt(line, "level", 19);
+        msg.go.randomness = jsonGetInt(line, "randomness", 0);
     } else if (type == "stop") {
         msg.type = MsgType::Stop;
     } else if (type == "probe") {
@@ -229,15 +231,19 @@ void runIpcLoop() {
                 const RuleConfig* goRules = rules;
                 Position goPos = pos;
                 int goDepth = msg.go.depth;
-                int goTimeMs = msg.go.timeMs;
-                int goMultiPV = msg.go.multiPV;
+                int goTimeMs    = msg.go.timeMs;
+                int goMultiPV   = msg.go.multiPV;
+                int goLevel     = msg.go.level;
+                int goRandomness = msg.go.randomness;
 
                 searchRunning.store(true);
-                searchThread = std::thread([goRules, goPos, goDepth, goTimeMs, goMultiPV, &searchRunning]() mutable {
+                searchThread = std::thread([goRules, goPos, goDepth, goTimeMs, goMultiPV, goLevel, goRandomness, &searchRunning]() mutable {
                     SearchInfo info;
                     info.rules       = goRules;
                     info.maxDepth    = goDepth;
                     info.timeLimitMs = goTimeMs;
+                    info.level       = goLevel;
+                    info.randomness  = goRandomness;
                     info.stop        = false;
                     info.nodes       = 0;
 

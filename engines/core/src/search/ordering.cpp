@@ -6,7 +6,7 @@
 
 static const int SCORE_TT_MOVE   = 30000;
 static const int SCORE_CAPTURE   = 10000;
-static const int SCORE_PROMOTION = 8000;
+static const int SCORE_PROMOTION = 1000;
 static const int SCORE_KILLER    = 5000;
 
 // Static quiet-move bonus: advancement + center control (PDF Stage 6).
@@ -49,6 +49,12 @@ void scoreMoves(Move* moves, int count, const Move& ttMove,
         } else {
             // History heuristic + static advancement/center bonus (PDF Stage 6)
             s = getHistory(pos.sideToMove, m.from, m.to) + staticQuietBonus(pos, m);
+
+            // Man-move ordering bonus: king moves accumulate history scores faster
+            // (they cause more cutoffs at high depth), creating a self-reinforcing
+            // ordering bias. This flat bonus ensures man moves compete fairly.
+            Bitboard ownMen = (pos.sideToMove == 0) ? pos.whiteMen : pos.blackMen;
+            if ((ownMen >> m.from) & 1) s += 30;
         }
 
         m.score = (int16_t)std::min(s, 32767);

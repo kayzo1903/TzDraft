@@ -1,163 +1,140 @@
 #!/usr/bin/env python3
 """
-Texel tuning for Mkaguzi engine.
+texel_tune.py -- Texel eval tuner for Mkaguzi (2026 eval structure)
+====================================================================
+Loads positions from dataset.epd, gets per-component eval scores via
+evalTrace IPC, then fits 6 scale factors (one per eval component) that
+minimise the Texel MSE loss against the stored depth-8 search scores.
 
-Pipeline:
-  1. Generate ~N positions from mkaguzi self-play (depth 4, --games games)
-  2. Extract 19-feature vector per position (matches C++ eval exactly)
-  3. Minimise MSE(sigmoid(w·f / K), outcome) via L-BFGS-B
-  4. Patch the 18 named C++ constants with rounded tuned values
-  5. Rebuild the engine with the new weights
+Tuned scale factors map to C++ constants:
+  w_material  -> MAN_VALUE, KING_VALUE            (eval.h)
+  w_mobility  -> MAN_MOBILITY_SCALE, KING_MOBILITY_SCALE  (mobility.cpp)
+  w_tempo     -> TEMPO_BONUS                      (eval.h)
+  w_structure -> CENTER_CTRL_BONUS, ISOLATION_PENALTY,
+                 SUPPORT_BONUS, EXCHANGE_BONUS,
+                 PST_MEN[32], PST_KINGS[32]        (structure.cpp)
+  w_kingSafety-> KING_EDGE_PENALTY, KING_TRAPPED_PENALTY (king_safety.cpp)
+  w_patterns  -> DOUBLE_CORNER_BONUS, BACK_RANK_BONUS, CHAIN_BONUS,
+                 PROMO_THREAT_BONUS, CENTER_CLUSTER_BONUS,
+                 BLOCKED_MAN_PENALTY, KING_TRAP_EDGE_PENALTY,
+                 WINDOW_COHESION_BONUS             (patterns.cpp)
 
 Usage:
-  python texel_tune.py [--games 80] [--depth 4] [--time 200] [--rebuild]
+  python texel_tune.py                        # tune, print results (no changes)
+  python texel_tune.py --apply                # tune + patch C++ files
+  python texel_tune.py --apply --rebuild      # tune + patch + rebuild engine
+  python texel_tune.py --positions 20000      # use 20k positions (faster)
+  python texel_tune.py --K 250               # custom sigmoid scale
 
-Requirements:  numpy  scipy
+Requirements: numpy, scipy
 """
 
-import subprocess, json, os, sys, math, re, time, argparse
-from typing import Optional
+import subprocess, json, os, sys, math, re, time, argparse, random
 import numpy as np
 from scipy.optimize import minimize
 
-# =============================================================================
-# Board geometry (identical to gauntlet.py)
-# =============================================================================
+# ── Constants that map scale factors to file locations ────────────────────────
 
-DR = [1,  1, -1, -1]   # NE, NW, SE, SW  row deltas
-DC = [1, -1,  1, -1]   # column deltas
+COMPONENT_NAMES = ['material', 'mobility', 'tempo', 'structure', 'kingSafety', 'patterns']
 
-def sq_row(sq: int) -> int: return 7 - (sq >> 2)
+# Current baseline values (must match C++ source)
+BASELINE = {
+    # eval.h
+    'MAN_VALUE':               100,
+    'KING_VALUE':              185,
+    'TEMPO_BONUS':              10,
+    # mobility.cpp
+    'MAN_MOBILITY_SCALE':        4,
+    'KING_MOBILITY_SCALE':       2,
+    # structure.cpp
+    'CENTER_CTRL_BONUS':         8,
+    'ISOLATION_PENALTY':        12,
+    'SUPPORT_BONUS':             7,
+    'EXCHANGE_BONUS':            6,
+    # king_safety.cpp
+    'KING_EDGE_PENALTY':        12,
+    'KING_TRAPPED_PENALTY':     36,
+    # patterns.cpp
+    'DOUBLE_CORNER_BONUS':      18,
+    'BACK_RANK_BONUS':          12,
+    'CHAIN_BONUS':              12,
+    'PROMO_THREAT_BONUS':        5,
+    'CENTER_CLUSTER_BONUS':      8,
+    'BLOCKED_MAN_PENALTY':       8,
+    'KING_TRAP_EDGE_PENALTY':   18,
+    'WINDOW_COHESION_BONUS':     8,
+}
 
-def sq_col(sq: int) -> int:
-    r = sq_row(sq)
-    return (sq & 3) * 2 + (1 if r % 2 == 1 else 0)
+# Which component each constant belongs to
+COMPONENT_MAP = {
+    'material':   ['MAN_VALUE', 'KING_VALUE'],
+    'tempo':      ['TEMPO_BONUS'],
+    'mobility':   ['MAN_MOBILITY_SCALE', 'KING_MOBILITY_SCALE'],
+    'structure':  ['CENTER_CTRL_BONUS', 'ISOLATION_PENALTY', 'SUPPORT_BONUS', 'EXCHANGE_BONUS'],
+    'kingSafety': ['KING_EDGE_PENALTY', 'KING_TRAPPED_PENALTY'],
+    'patterns':   ['DOUBLE_CORNER_BONUS', 'BACK_RANK_BONUS', 'CHAIN_BONUS',
+                   'PROMO_THREAT_BONUS', 'CENTER_CLUSTER_BONUS', 'BLOCKED_MAN_PENALTY',
+                   'KING_TRAP_EDGE_PENALTY', 'WINDOW_COHESION_BONUS'],
+}
 
-def rc_to_sq(r: int, c: int) -> int:
-    if r < 0 or r > 7 or c < 0 or c > 7: return -1
-    if (r + c) % 2 != 0: return -1
-    return (7 - r) * 4 + c // 2
+# C++ file that contains each constant (relative to engines/core/)
+CONST_FILE = {
+    'MAN_VALUE':               'src/eval/eval.h',
+    'KING_VALUE':              'src/eval/eval.h',
+    'TEMPO_BONUS':             'src/eval/eval.h',
+    'MAN_MOBILITY_SCALE':      'src/eval/mobility.cpp',
+    'KING_MOBILITY_SCALE':     'src/eval/mobility.cpp',
+    'CENTER_CTRL_BONUS':       'src/eval/structure.cpp',
+    'ISOLATION_PENALTY':       'src/eval/structure.cpp',
+    'SUPPORT_BONUS':           'src/eval/structure.cpp',
+    'EXCHANGE_BONUS':          'src/eval/structure.cpp',
+    'KING_EDGE_PENALTY':       'src/eval/king_safety.cpp',
+    'KING_TRAPPED_PENALTY':    'src/eval/king_safety.cpp',
+    'DOUBLE_CORNER_BONUS':     'src/eval/patterns.cpp',
+    'BACK_RANK_BONUS':         'src/eval/patterns.cpp',
+    'CHAIN_BONUS':             'src/eval/patterns.cpp',
+    'PROMO_THREAT_BONUS':      'src/eval/patterns.cpp',
+    'CENTER_CLUSTER_BONUS':    'src/eval/patterns.cpp',
+    'BLOCKED_MAN_PENALTY':     'src/eval/patterns.cpp',
+    'KING_TRAP_EDGE_PENALTY':  'src/eval/patterns.cpp',
+    'WINDOW_COHESION_BONUS':   'src/eval/patterns.cpp',
+}
 
-# Precompute adjacency tables
-_STEP = [[rc_to_sq(sq_row(s) + DR[d], sq_col(s) + DC[d])        for d in range(4)] for s in range(32)]
-_OVER = [[rc_to_sq(sq_row(s) + DR[d], sq_col(s) + DC[d])        for d in range(4)] for s in range(32)]
-_LAND = [[rc_to_sq(sq_row(s) + 2*DR[d], sq_col(s) + 2*DC[d])   for d in range(4)] for s in range(32)]
+# PST arrays in structure.cpp (also scaled by w_structure)
+PST_ARRAYS = ['PST_MEN', 'PST_KINGS']
 
-def pdn(sq): return sq + 1
-def sq_(p):  return p - 1
+# ── Engine IPC ─────────────────────────────────────────────────────────────────
 
-def starting_board() -> dict:
-    b = {}
-    for s in range(12):      b[s] = ('b', 'm')
-    for s in range(20, 32):  b[s] = ('w', 'm')
-    return b
+class TraceEngine:
+    """Single engine process used only for evalTrace (no search)."""
 
-def board_to_fen(board: dict, side: str) -> str:
-    wp, bp = [], []
-    for s in sorted(board):
-        c, t = board[s]
-        p = ('K' if t == 'k' else '') + str(pdn(s))
-        (wp if c == 'w' else bp).append(p)
-    sc = 'W' if side == 'w' else 'B'
-    return f"{sc}:W{','.join(wp)}:B{','.join(bp)}"
-
-def _cap_dirs(is_king: bool, side: str) -> list:
-    if is_king: return [0, 1, 2, 3]
-    return [0, 1] if side == 'w' else [2, 3]
-
-def _find_path(board, cur, target, side, is_king, removed=frozenset()):
-    if cur == target: return []
-    enemy = 'b' if side == 'w' else 'w'
-    for d in _cap_dirs(is_king, side):
-        over = _OVER[cur][d];  land = _LAND[cur][d]
-        if over < 0 or land < 0: continue
-        if over in removed: continue
-        if over not in board or board[over][0] != enemy: continue
-        if land in board: continue
-        new_removed = removed | {over}
-        if land == target: return [over]
-        rest = _find_path(board, land, target, side, is_king, new_removed)
-        if rest is not None: return [over] + rest
-    return None
-
-def apply_move(board: dict, from_pdn: int, to_pdn: int, side: str) -> list:
-    fs = sq_(from_pdn);  ts = sq_(to_pdn)
-    piece = board.pop(fs)
-    is_king = piece[1] == 'k'
-    captured_sq = []
-    if abs(sq_row(ts) - sq_row(fs)) >= 2:
-        path = _find_path(board, fs, ts, side, is_king)
-        if path:
-            captured_sq = path
-            for cap in path: board.pop(cap, None)
-    row_to = sq_row(ts)
-    if piece[1] == 'm':
-        if (side == 'w' and row_to == 7) or (side == 'b' and row_to == 0):
-            piece = (piece[0], 'k')
-    board[ts] = piece
-    return [pdn(c) for c in captured_sq]
-
-def _has_any_capture(board, side) -> bool:
-    enemy = 'b' if side == 'w' else 'w'
-    for s, (c, t) in board.items():
-        if c != side: continue
-        for d in _cap_dirs(t == 'k', side):
-            over = _OVER[s][d];  land = _LAND[s][d]
-            if over >= 0 and land >= 0 and over in board \
-               and board[over][0] == enemy and land not in board: return True
-    return False
-
-def has_legal_moves(board, side) -> bool:
-    if _has_any_capture(board, side): return True
-    for s, (c, t) in board.items():
-        if c != side: continue
-        is_king = t == 'k'
-        dirs = [0, 1, 2, 3] if is_king else ([0, 1] if side == 'w' else [2, 3])
-        r, col = sq_row(s), sq_col(s)
-        for d in dirs:
-            ns = rc_to_sq(r + DR[d], col + DC[d])
-            if ns >= 0 and ns not in board: return True
-    return False
-
-# =============================================================================
-# Mkaguzi IPC process
-# =============================================================================
-
-class MkaguziProcess:
     def __init__(self, binary: str):
         self.proc = subprocess.Popen(
-            [binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True
+            [binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, text=True, bufsize=1
         )
-        self._drain_init()
+        self.proc.stdout.readline()  # drain startup line
         self._send({"type": "setVariant", "variant": "tanzania"})
-
-    def _drain_init(self):
-        import platform
-        if platform.system() == 'Windows':
-            self.proc.stdout.readline()
-        else:
-            import select
-            while True:
-                r, _, _ = select.select([self.proc.stdout], [], [], 0.1)
-                if not r: break
-                line = self.proc.stdout.readline()
-                if not line: break
 
     def _send(self, msg: dict):
         self.proc.stdin.write(json.dumps(msg) + '\n')
         self.proc.stdin.flush()
 
-    def get_move(self, fen: str, depth: int, time_ms: int) -> Optional[str]:
-        self._send({"type": "setPosition", "fen": fen})
-        self._send({"type": "go", "depth": depth, "timeMs": time_ms, "multiPV": 1})
-        while True:
+    def get_trace(self, fen: str) -> dict:
+        """Returns dict with keys: material, mobility, tempo, structure, kingSafety, patterns."""
+        self._send({"type": "evalTrace", "fen": fen})
+        deadline = time.time() + 5
+        while time.time() < deadline:
             line = self.proc.stdout.readline().strip()
-            if not line: return None
+            if not line:
+                continue
             try:
-                msg = json.loads(line)
-                if msg.get("type") == "bestmove": return msg.get("move")
+                obj = json.loads(line)
+                if obj.get("type") == "evalTrace":
+                    return obj
             except json.JSONDecodeError:
                 continue
+        return None
 
     def close(self):
         try:
@@ -166,606 +143,396 @@ class MkaguziProcess:
         except Exception:
             self.proc.kill()
 
-# =============================================================================
-# Feature extraction  (must exactly match C++ eval, white-relative)
-# =============================================================================
+# ── Dataset loading ────────────────────────────────────────────────────────────
 
-# Named constant indices:
-# 0  man_diff          MAN_VALUE          100
-# 1  king_diff         KING_VALUE         300
-# 2  tempo             TEMPO_BONUS         10
-# 3  mobility          MOBILITY_SCALE       3
-# 4  center_ctrl       CENTER_CTRL_BONUS    8
-# 5  advancement       ADVANCE_BONUS        3
-# 6  isolation         ISOLATION_PENALTY   10
-# 7  double_corner     DOUBLE_CORNER_BONUS 20
-# 8  back_rank         BACK_RANK_BONUS     15
-# 9  chains            CHAIN_BONUS         12
-# 10 promo_threat      PROMO_THREAT_BONUS  25
-# 11 center_cluster    CENTER_CLUSTER_BONUS 10
-# 12 supp_promo        SUPP_PROMO_BONUS    20
-# 13 blocked_men       BLOCKED_MAN_PENALTY  8
-# 14 king_trap_p8      KING_TRAP_EDGE_PENALTY 25
-# 15 king_center       KING_CENTER_BONUS   20
-# 16 king_edge         KING_EDGE_PENALTY   10
-# 17 king_trap_ks      KING_TRAPPED_PENALTY 30
-# 18 window_coh        WINDOW_COHESION_BONUS 6
-
-FEATURE_NAMES = [
-    'man_diff', 'king_diff', 'tempo', 'mobility',
-    'center_ctrl', 'advancement', 'isolation',
-    'double_corner', 'back_rank', 'chains', 'promo_threat',
-    'center_cluster', 'supp_promo', 'blocked_men', 'king_trap_p8',
-    'king_center', 'king_edge', 'king_trap_ks', 'window_coh',
-]
-
-INIT_WEIGHTS = np.array([100, 300, 10, 3, 8, 3, 10, 20, 15, 12, 25, 10, 20, 8, 25, 20, 10, 30, 6],
-                        dtype=float)
-
-# Board squares for reference
-CENTER_4    = {13, 14, 17, 18}
-WBACK       = {28, 29, 30, 31}
-BBACK       = {0,  1,  2,  3}
-CENTER8     = set(range(12, 20))
-EDGE_SET    = {0,1,2,3,28,29,30,31,4,8,12,16,20,24,7,11,15,19,23,27}
-ROW1W       = {24,25,26,27}   # white row 1 (just before promotion)
-ROW6W       = {4, 5, 6, 7}   # white row 6 (one step from promotion)
-ROW6B       = {4, 5, 6, 7}   # black row 6 (just before promotion — same sqs, mirrored)
-ROW1B       = {24,25,26,27}  # black row 1 (one step from promotion)
-
-# 3x3 windows
-WINDOWS_LIST = [
-    [28,24,21],[24,21,17],[31,26,22],[26,22,17],
-    [0, 5, 9],[5, 9,14],[3, 7,10],[7,10,14],
-    [13,14,17],[13,17,18],[14,17,18],[13,14,18],
-]
-
-def _ne(sq):
-    return _STEP[sq][0]  # direction 0 = NE
-
-def _nw(sq):
-    return _STEP[sq][1]  # direction 1 = NW
-
-def _se(sq):
-    return _STEP[sq][2]  # direction 2 = SE
-
-def _sw(sq):
-    return _STEP[sq][3]  # direction 3 = SW
-
-def extract_features(board: dict, side: str) -> np.ndarray:
-    """Extract 19 white-relative features from a board position."""
-    wm = {s for s,(c,t) in board.items() if c=='w' and t=='m'}
-    wk = {s for s,(c,t) in board.items() if c=='w' and t=='k'}
-    bm = {s for s,(c,t) in board.items() if c=='b' and t=='m'}
-    bk = {s for s,(c,t) in board.items() if c=='b' and t=='k'}
-    occ = wm | wk | bm | bk
-
-    f = np.zeros(19, dtype=float)
-
-    # 0: man_diff
-    f[0] = len(wm) - len(bm)
-
-    # 1: king_diff
-    f[1] = len(wk) - len(bk)
-
-    # 2: tempo  (white-relative: +1 if white to move, -1 if black)
-    f[2] = 1.0 if side == 'w' else -1.0
-
-    # 3: mobility  (white_open - black_open)
-    empty = set(range(32)) - occ
-    wmob = sum(1 for s in wm for d in [0,1] if _STEP[s][d] is not None and _STEP[s][d] >= 0 and _STEP[s][d] in empty)
-    wmob += sum(1 for s in wk for d in range(4) if _STEP[s][d] is not None and _STEP[s][d] >= 0 and _STEP[s][d] in empty)
-    bmob = sum(1 for s in bm for d in [2,3] if _STEP[s][d] is not None and _STEP[s][d] >= 0 and _STEP[s][d] in empty)
-    bmob += sum(1 for s in bk for d in range(4) if _STEP[s][d] is not None and _STEP[s][d] >= 0 and _STEP[s][d] in empty)
-    f[3] = wmob - bmob
-
-    # 4: center_ctrl  (pieces on CENTER_4)
-    f[4] = len((wm|wk) & CENTER_4) - len((bm|bk) & CENTER_4)
-
-    # 5: advancement  Σrow_wm - Σ(7-row)_bm
-    f[5] = sum(sq_row(s) for s in wm) - sum(7 - sq_row(s) for s in bm)
-
-    # 6: isolation  — isolated advanced men (bad for the isolated side)
-    #   white man on row>=5 with no friendly behind = penalty for white → feature contribution negative
-    #   black man on row<=2 with no friendly behind = penalty for black → feature contribution positive
-    wiso = 0
-    for s in wm:
-        if sq_row(s) >= 5:
-            r, c = sq_row(s), sq_col(s)
-            has_behind = any(
-                rc_to_sq(r - dr, c + dc) in wm
-                for dr in [1, 2] for dc in [-1, 1]
-                if 0 <= r - dr <= 7 and 0 <= c + dc <= 7
-            )
-            if not has_behind: wiso += 1
-    biso = 0
-    for s in bm:
-        if sq_row(s) <= 2:
-            r, c = sq_row(s), sq_col(s)
-            has_behind = any(
-                rc_to_sq(r + dr, c + dc) in bm
-                for dr in [1, 2] for dc in [-1, 1]
-                if 0 <= r + dr <= 7 and 0 <= c + dc <= 7
-            )
-            if not has_behind: biso += 1
-    f[6] = biso - wiso  # positive = more isolated black → good for white
-
-    # 7: double_corner  (sqs 28+29 or 30+31 for white; 0+1 or 2+3 for black)
-    wdc = int((28 in wm and 29 in wm) or (30 in wm and 31 in wm))
-    bdc = int((0  in bm and 1  in bm) or (2  in bm and 3  in bm))
-    f[7] = wdc - bdc
-
-    # 8: back_rank  (all 4 back-rank squares occupied by own men)
-    f[8] = int(WBACK <= wm) - int(BBACK <= bm)
-
-    # 9: chains  (3-connected men on same diagonal)
-    def count_chains(men):
-        n = 0
-        for s in men:
-            ne1 = _ne(s)
-            if ne1 >= 0 and ne1 in men:
-                ne2 = _ne(ne1)
-                if ne2 >= 0 and ne2 in men: n += 1
-            nw1 = _nw(s)
-            if nw1 >= 0 and nw1 in men:
-                nw2 = _nw(nw1)
-                if nw2 >= 0 and nw2 in men: n += 1
-        return n
-    f[9] = count_chains(wm) - count_chains(bm)
-
-    # 10: promo_threat  (man on penultimate row with empty promotion square)
-    wpt = 0
-    for s in wm & ROW1W:
-        ne, nw = _ne(s), _nw(s)
-        ne_blocked = ne < 0 or ne in occ
-        nw_blocked = nw < 0 or nw in occ
-        if not ne_blocked or not nw_blocked: wpt += 1
-    bpt = 0
-    for s in bm & ROW6B:
-        se, sw_ = _se(s), _sw(s)
-        se_blocked = se < 0 or se in occ
-        sw_blocked = sw_ < 0 or sw_ in occ
-        if not se_blocked or not sw_blocked: bpt += 1
-    f[10] = wpt - bpt
-
-    # 11: center_cluster  (2+ men in center 8 squares)
-    f[11] = int(len(wm & CENTER8) >= 2) - int(len(bm & CENTER8) >= 2)
-
-    # 12: supp_promo  (white on row6 with SE/SW friendly; black on row1 with NE/NW friendly)
-    wsp = 0
-    for s in wm & ROW6W:
-        se, sw_ = _se(s), _sw(s)
-        if (se >= 0 and se in wm) or (sw_ >= 0 and sw_ in wm): wsp += 1
-    bsp = 0
-    for s in bm & ROW1B:
-        ne, nw = _ne(s), _nw(s)
-        if (ne >= 0 and ne in bm) or (nw >= 0 and nw in bm): bsp += 1
-    f[12] = wsp - bsp
-
-    # 13: blocked_men  (both forward squares occupied by own pieces)
-    wfr = wm | wk;  bfr = bm | bk
-    wblk = sum(1 for s in wm if
-               (_ne(s) < 0 or _ne(s) in wfr) and
-               (_nw(s) < 0 or _nw(s) in wfr))
-    bblk = sum(1 for s in bm if
-               (_se(s) < 0 or _se(s) in bfr) and
-               (_sw(s) < 0 or _sw(s) in bfr))
-    f[13] = bblk - wblk  # positive = more blocked black = good for white
-
-    # 14: king_trap_p8  (king on EDGE with >=2 enemy adj)
-    wall_dirs = [0,1,2,3]
-    def king_trapped_edge(kings, enemy):
-        n = 0
-        for s in kings & EDGE_SET:
-            adj_enemy = sum(1 for d in wall_dirs
-                           if _STEP[s][d] >= 0 and _STEP[s][d] in enemy)
-            if adj_enemy >= 2: n += 1
-        return n
-    wenemy = bm | bk;  benemy = wm | wk
-    f[14] = king_trapped_edge(bk, benemy) - king_trapped_edge(wk, wenemy)
-
-    # 15: king_center  (kings on CENTER_4)
-    f[15] = len(wk & CENTER_4) - len(bk & CENTER_4)
-
-    # 16: king_edge  (kings on EDGE — penalty for own, bonus vs opponent)
-    f[16] = len(bk & EDGE_SET) - len(wk & EDGE_SET)  # positive = more bk on edge = good for white
-
-    # 17: king_trap_ks  (king on back rank with all neighbors occupied)
-    def king_trapped_backrow(kings):
-        n = 0
-        for s in kings:
-            adj = [_STEP[s][d] for d in wall_dirs if _STEP[s][d] >= 0]
-            if adj and all(a in occ for a in adj): n += 1
-        return n
-    wkt_back = king_trapped_backrow(wk & WBACK)
-    bkt_back = king_trapped_backrow(bk & BBACK)
-    f[17] = bkt_back - wkt_back
-
-    # 18: window_coh  (number of all-white windows minus all-black windows)
-    wc_windows = 0
-    bc_windows = 0
-    for w in WINDOWS_LIST:
-        states = []
-        for sq in w:
-            if sq in wm:    states.append(1)
-            elif sq in wk:  states.append(2)
-            elif sq in bm:  states.append(3)
-            elif sq in bk:  states.append(4)
-            else:           states.append(0)
-        wCnt = sum(1 for s in states if s in (1, 2))
-        bCnt = sum(1 for s in states if s in (3, 4))
-        if wCnt == 3: wc_windows += 1
-        if bCnt == 3: bc_windows += 1
-    f[18] = wc_windows - bc_windows
-
-    return f
-
-# =============================================================================
-# Position generator (mkaguzi vs sidra for outcome diversity)
-# =============================================================================
-
-MAX_HALFMOVES    = 200
-DRAW_NO_PROGRESS = 80
-
-def ask_sidra(sidra_path: str, board: dict, side: str, time_ms: int) -> Optional[dict]:
-    """One-shot Sidra call. Returns parsed JSON or None."""
-    pieces = [
-        {"type": "KING" if t == 'k' else "MAN",
-         "color": "WHITE" if c == 'w' else "BLACK",
-         "position": pdn(s)}
-        for s, (c, t) in board.items()
-    ]
-    payload = json.dumps({
-        "currentPlayer": "WHITE" if side == 'w' else "BLACK",
-        "timeLimitMs": time_ms,
-        "pieces": pieces
-    })
-    try:
-        r = subprocess.run([sidra_path], input=payload, capture_output=True,
-                           text=True, timeout=time_ms / 1000 + 10)
-        if r.returncode != 0: return None
-        lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
-        if not lines: return None
-        return json.loads(lines[-1])
-    except Exception:
-        return None
-
-
-def _play_one_game(mkaguzi: MkaguziProcess, sidra_path: str,
-                   mk_side: str, depth: int, time_ms: int,
-                   sample_every: int, verbose: bool):
+def load_positions(dataset_path: str, n_sample: int, seed: int = 42):
     """
-    Play one game (mkaguzi vs sidra), returning (result, game_positions).
-    result: 'w' | 'b' | 'draw'.
-    game_positions: list of (board_dict, side_to_move) sampled every sample_every half-moves.
+    Read dataset.epd (FEN | score | depth) and return up to n_sample entries.
+    Returns list of (fen, score_stm) where score_stm is side-to-move centipawns.
     """
-    board = starting_board()
-    turn = 'w'
-    no_progress = 0
-    position_history: dict = {}
-    game_positions = []
-    result = None
+    if not os.path.exists(dataset_path):
+        print(f"ERROR: Dataset not found: {dataset_path}")
+        sys.exit(1)
 
-    for half in range(MAX_HALFMOVES):
-        if not has_legal_moves(board, turn):
-            result = 'b' if turn == 'w' else 'w'
-            break
-        if no_progress >= DRAW_NO_PROGRESS:
-            result = 'draw'
-            break
+    entries = []
+    with open(dataset_path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            parts = line.strip().split('|')
+            if len(parts) < 2:
+                continue
+            fen   = parts[0].strip()
+            try:
+                score = int(parts[1].strip())
+            except ValueError:
+                continue
+            entries.append((fen, score))
 
-        fen = board_to_fen(board, turn)
-        position_history[fen] = position_history.get(fen, 0) + 1
-        if position_history[fen] >= 3:
-            result = 'draw'
-            break
+    total = len(entries)
+    if n_sample < total:
+        rng = random.Random(seed)
+        entries = rng.sample(entries, n_sample)
 
-        # Collect position (skip opening 8 half-moves; skip tiny endgame)
-        if half >= 8 and half % sample_every == 0 and len(board) >= 4:
-            game_positions.append((dict(board), turn))
+    print(f"  Loaded {n_sample if n_sample < total else total:,} / {total:,} positions")
+    return entries
 
-        if turn == mk_side:
-            move_str = mkaguzi.get_move(fen, depth, time_ms)
-            if not move_str or len(move_str) < 4:
-                result = 'b' if turn == 'w' else 'w'
-                break
-            fp, tp = int(move_str[:2]), int(move_str[2:4])
-        else:
-            res = ask_sidra(sidra_path, board, turn, time_ms)
-            if not res or res.get('from', -1) < 0:
-                result = 'b' if turn == 'w' else 'w'
-                break
-            fp, tp = res['from'], res['to']
+# ── Feature collection via evalTrace ──────────────────────────────────────────
 
-        if verbose:
-            mover = 'mkaguzi' if turn == mk_side else 'sidra  '
-            print(f"    {mover} ({turn}): {fp:02d}--{tp:02d}")
-
-        enemy_before = sum(1 for c, _ in board.values() if c != turn)
-        apply_move(board, fp, tp, turn)
-        enemy_after  = sum(1 for c, _ in board.values() if c != turn)
-        no_progress = 0 if enemy_after < enemy_before else no_progress + 1
-        turn = 'b' if turn == 'w' else 'w'
-
-    if result is None:
-        result = 'draw'
-    return result, game_positions
-
-
-def collect_positions(mkaguzi: MkaguziProcess, sidra_path: str,
-                      n_games: int, depth: int, time_ms: int,
-                      sample_every: int = 3, verbose: bool = False,
-                      weak_depth: int = 1):
+def collect_features(engine: TraceEngine, positions: list, verbose: bool = True):
     """
-    Play n_games of mkaguzi vs sidra (alternating colours), collecting
-    (feature_vec, outcome) pairs labelled with the game result.
-    outcome: 1.0 = white wins, 0.5 = draw, 0.0 = black wins.
-
-    To ensure balanced outcome distribution (wins/draws/losses), every other
-    game is a 'handicap' game where mkaguzi plays at weak_depth (default 1-ply).
-    This generates positions where sidra wins, providing 0.0 outcome examples.
+    For each (fen, score_stm), get evalTrace and convert to white-relative.
+    Returns (features, targets):
+      features: (N, 6) float32 array — [mat, mob, tempo, struct, ks, pat] white-relative
+      targets:  (N,)   float32 array — score_white_relative (centipawns)
     """
-    positions = []
-    wins = draws = losses = 0
-    wdl_counts = {1.0: 0, 0.5: 0, 0.0: 0}
+    n  = len(positions)
+    features = np.zeros((n, 6), dtype=np.float32)
+    targets  = np.zeros(n,      dtype=np.float32)
 
-    for g in range(n_games):
-        mk_side  = 'w' if g % 2 == 1 else 'b'      # alternate colours
-        # Alternate full-strength and handicap games for outcome diversity
-        use_depth = weak_depth if g % 4 < 2 else depth   # 2 handicap, 2 full per cycle
+    t0       = time.time()
+    bad      = 0
 
-        result, game_positions = _play_one_game(
-            mkaguzi, sidra_path, mk_side, use_depth, time_ms, sample_every, verbose)
+    for i, (fen, score_stm) in enumerate(positions):
+        if verbose and i % 5000 == 0 and i > 0:
+            elapsed = time.time() - t0
+            rate    = i / elapsed
+            eta     = (n - i) / rate if rate > 0 else 0
+            print(f"\r  evalTrace {i:>7,}/{n:,}  {rate:.0f}/s  ETA {eta:.0f}s   ",
+                  end='', flush=True)
 
-        outcome = 1.0 if result == 'w' else (0.0 if result == 'b' else 0.5)
-        wdl_counts[outcome] += len(game_positions)
-        for brd, side in game_positions:
-            positions.append((extract_features(brd, side), outcome))
+        tr = engine.get_trace(fen)
+        if tr is None:
+            bad += 1
+            continue
 
-        if   result == mk_side:  wins   += 1; tag = 'W'
-        elif result == 'draw':   draws  += 1; tag = 'D'
-        else:                    losses += 1; tag = 'L'
+        # evalTrace components are white-relative
+        mat  = float(tr.get('material',   0))
+        mob  = float(tr.get('mobility',   0))
+        tmp  = float(tr.get('tempo',      0))
+        strc = float(tr.get('structure',  0))
+        ks   = float(tr.get('kingSafety', 0))
+        pat  = float(tr.get('patterns',   0))
 
-        depth_tag = f'd={use_depth}'
-        if verbose or (g + 1) % 10 == 0:
-            print(f"  Game {g+1:3}/{n_games} [{tag}][{depth_tag}]  "
-                  f"{wins}W {draws}D {losses}L  "
-                  f"1.0:{wdl_counts[1.0]}  0.5:{wdl_counts[0.5]}  0.0:{wdl_counts[0.0]}  "
-                  f"total:{len(positions)}")
+        # score_stm is side-to-move. Convert to white-relative.
+        side = fen.strip()[0].upper()  # 'W' or 'B'
+        score_white = float(score_stm) if side == 'W' else -float(score_stm)
 
-    return positions
+        # Clamp extreme scores (drawn/won games shouldn't overwhelm gradient)
+        score_white = max(-1200.0, min(1200.0, score_white))
 
-# =============================================================================
-# Texel loss and optimiser
-# =============================================================================
+        features[i] = [mat, mob, tmp, strc, ks, pat]
+        targets[i]  = score_white
 
-TEXEL_K = 400.0   # sigmoid scale (centipawns)
-LAMBDA  = 1e-4    # L2 regularization: keeps weights near INIT_WEIGHTS
+    if verbose:
+        elapsed = time.time() - t0
+        print(f"\r  evalTrace {n:,}/{n:,}  done in {elapsed:.0f}s ({n/elapsed:.0f}/s)   ")
+        if bad:
+            print(f"  Warning: {bad} positions had no trace response (skipped)")
 
-# Features whose weights are FIXED (not tuned).
-# Material values (0=man_diff, 1=king_diff) are well-established by game theory
-# and must not be changed by Texel tuning — small datasets cannot reliably tune them.
-FIXED_FEATURES = {0, 1}   # MAN_VALUE, KING_VALUE
+    return features, targets
 
-def _bounds_for(i, w0):
-    if i in FIXED_FEATURES:
-        return (float(w0), float(w0))   # pinned — no movement
-    # Positional: [25% of init, 600% of init], floored at 1
-    return (max(1.0, 0.25 * w0), max(10.0, 6.0 * w0))
+# ── Texel loss ─────────────────────────────────────────────────────────────────
 
-WEIGHT_BOUNDS = [_bounds_for(i, w0) for i, w0 in enumerate(INIT_WEIGHTS)]
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-x))
 
-def sigmoid(x):
-    return np.where(x >= 0,
-                    1.0 / (1.0 + np.exp(-x)),
-                    np.exp(x) / (1.0 + np.exp(x)))
+def texel_loss_and_grad(w: np.ndarray, features: np.ndarray,
+                         targets_sig: np.ndarray, K: float):
+    """
+    Texel MSE loss + gradient.
+    w:            (6,)   scale factors
+    features:     (N,6)  white-relative eval components
+    targets_sig:  (N,)   sigmoid(oracle_white / K)
+    """
+    predicted = features @ w          # (N,) white-relative weighted sum
+    pred_sig  = sigmoid(predicted / K)
+    residual  = pred_sig - targets_sig                    # (N,)
 
-def mse_loss(w, F, y):
-    """MSE + L2 penalty anchoring weights near INIT_WEIGHTS."""
-    pred  = sigmoid(F @ w / TEXEL_K)
-    diff  = pred - y
-    mse   = float(np.mean(diff * diff))
-    # Normalise penalty by typical weight magnitude so it's scale-invariant
-    delta = (w - INIT_WEIGHTS) / (INIT_WEIGHTS + 1.0)
-    reg   = LAMBDA * float(np.mean(delta * delta))
-    return mse + reg
+    loss = float(np.mean(residual ** 2))
 
-def mse_grad(w, F, y):
-    pred  = sigmoid(F @ w / TEXEL_K)
-    diff  = pred - y
-    scale = (2.0 / len(y)) * diff * pred * (1.0 - pred) / TEXEL_K
-    grad_mse = F.T @ scale
-    # Gradient of L2 penalty
-    grad_reg = (2.0 * LAMBDA / len(INIT_WEIGHTS)) * (w - INIT_WEIGHTS) / (INIT_WEIGHTS + 1.0) ** 2
-    return grad_mse + grad_reg
+    # d(loss)/d(w_j) = mean(2 * residual * pred_sig * (1-pred_sig) * features[:,j] / K)
+    dsig = pred_sig * (1.0 - pred_sig)
+    grad = 2.0 * np.mean(residual[:, None] * dsig[:, None] * features / K, axis=0)
 
-def tune_weights(positions, init_weights):
-    F = np.array([f for f, _ in positions])
-    y = np.array([o for _, o in positions])
+    return loss, grad
 
-    print(f"\n  Dataset:      {len(positions)} positions, {F.shape[1]} features")
-    print(f"  Outcome dist: {np.sum(y==1.0):.0f} white-wins  "
-          f"{np.sum(y==0.5):.0f} draws  {np.sum(y==0.0):.0f} black-wins")
-    print(f"  Initial loss: {mse_loss(init_weights, F, y):.6f}")
+# ── Tuning ─────────────────────────────────────────────────────────────────────
+
+def tune(features: np.ndarray, targets: np.ndarray, K: float):
+    """
+    Fit 6 scale factors via L-BFGS-B.
+    Returns (w_opt, initial_loss, final_loss).
+    """
+    targets_sig = sigmoid(targets / K)
+
+    def fn(w):
+        loss, grad = texel_loss_and_grad(w, features, targets_sig, K)
+        return loss, grad
+
+    w0     = np.ones(6, dtype=np.float64)
+    bounds = [(0.2, 5.0)] * 6  # don't let any component collapse to 0 or explode
+
+    init_loss, _ = fn(w0)
 
     result = minimize(
-        fun=mse_loss,
-        x0=init_weights.copy(),
-        args=(F, y),
-        jac=mse_grad,
-        method='L-BFGS-B',
-        bounds=WEIGHT_BOUNDS,
-        options={'maxiter': 3000, 'ftol': 1e-12, 'gtol': 1e-9, 'disp': False},
+        fn, w0, method='L-BFGS-B', jac=True,
+        bounds=bounds,
+        options={'maxiter': 500, 'ftol': 1e-12, 'gtol': 1e-8}
     )
 
-    tuned = result.x
-    print(f"  Final   loss: {mse_loss(tuned, F, y):.6f}  (iters={result.nit})")
-    return tuned
+    final_loss = float(result.fun)
+    return result.x, init_loss, final_loss
 
-# =============================================================================
-# C++ source patching
-# =============================================================================
+def auto_tune_K(features: np.ndarray, targets: np.ndarray) -> float:
+    """Find K that minimises loss with unit weights (quick grid search)."""
+    best_K, best_loss = 300.0, 1e18
+    for K in [100, 150, 200, 250, 300, 400, 500]:
+        targets_sig = sigmoid(targets / K)
+        w0 = np.ones(6)
+        loss = float(np.mean((sigmoid(features @ w0 / K) - targets_sig) ** 2))
+        if loss < best_loss:
+            best_loss, best_K = loss, K
+    return best_K
 
-# Maps feature index → (relative path from engines/core/src, constant name)
-PATCHES = [
-    (0,  'eval/eval.h',          'MAN_VALUE'),
-    (1,  'eval/eval.h',          'KING_VALUE'),
-    (2,  'eval/eval.h',          'TEMPO_BONUS'),
-    (3,  'eval/mobility.cpp',    'MOBILITY_SCALE'),
-    (4,  'eval/structure.cpp',   'CENTER_CTRL_BONUS'),
-    (5,  'eval/structure.cpp',   'ADVANCE_BONUS'),
-    (6,  'eval/structure.cpp',   'ISOLATION_PENALTY'),
-    (7,  'eval/patterns.cpp',    'DOUBLE_CORNER_BONUS'),
-    (8,  'eval/patterns.cpp',    'BACK_RANK_BONUS'),
-    (9,  'eval/patterns.cpp',    'CHAIN_BONUS'),
-    (10, 'eval/patterns.cpp',    'PROMO_THREAT_BONUS'),
-    (11, 'eval/patterns.cpp',    'CENTER_CLUSTER_BONUS'),
-    (12, 'eval/patterns.cpp',    'SUPP_PROMO_BONUS'),
-    (13, 'eval/patterns.cpp',    'BLOCKED_MAN_PENALTY'),
-    (14, 'eval/patterns.cpp',    'KING_TRAP_EDGE_PENALTY'),
-    (15, 'eval/king_safety.cpp', 'KING_CENTER_BONUS'),
-    (16, 'eval/king_safety.cpp', 'KING_EDGE_PENALTY'),
-    (17, 'eval/king_safety.cpp', 'KING_TRAPPED_PENALTY'),
-    (18, 'eval/patterns.cpp',    'WINDOW_COHESION_BONUS'),
-]
+# ── File patching ──────────────────────────────────────────────────────────────
 
-def patch_source(src_root: str, tuned_weights: np.ndarray, dry_run: bool = False):
-    """Replace constexpr int NAME = OLD; with NAME = NEW; in C++ sources."""
-    for idx, rel_path, const_name in PATCHES:
-        new_val = max(1, int(round(float(tuned_weights[idx]))))  # floor at 1
-        full_path = os.path.join(src_root, rel_path)
-        if not os.path.exists(full_path):
-            print(f"  WARN: {full_path} not found — skipping {const_name}")
-            continue
+def patch_constexpr(text: str, name: str, new_val: int) -> str:
+    """Replace `constexpr int NAME = OLD;` with new value."""
+    pattern = rf'(constexpr\s+int\s+{re.escape(name)}\s*=\s*)(\d+)(\s*;)'
+    def repl(m):
+        return m.group(1) + str(new_val) + m.group(3)
+    return re.sub(pattern, repl, text)
 
-        with open(full_path, 'r') as fh:
-            text = fh.read()
+def scale_pst_array(text: str, array_name: str, scale: float) -> str:
+    """Scale all integer values inside a `static const int NAME[32] = { ... };` block."""
+    pattern = rf'(static\s+const\s+int\s+{re.escape(array_name)}\s*\[\s*32\s*\]\s*=\s*\{{)([^}}]+)(\}}\s*;)'
 
-        # Match:  constexpr int NAME = NUMBER;
-        pattern = rf'(constexpr\s+int\s+{re.escape(const_name)}\s*=\s*)(\d+)(\s*;)'
-        m = re.search(pattern, text)
-        if not m:
-            print(f"  WARN: {const_name} not found in {rel_path}")
-            continue
+    def repl(m):
+        # Strip C++ line comments before extracting numbers to avoid
+        # picking up numbers from comment text (e.g. "// Row 7")
+        body_no_comments = re.sub(r'//[^\n]*', '', m.group(2))
+        nums = [int(x) for x in re.findall(r'-?\d+', body_no_comments)]
+        if len(nums) != 32:
+            return m.group(0)  # safety: don't corrupt if parse failed
+        scaled = [max(1, round(n * scale)) for n in nums]
+        # Rebuild with 4-per-row formatting, no comments (clean)
+        rows = []
+        for r in range(8):
+            row_vals = scaled[r*4:(r+1)*4]
+            rows.append('    ' + ', '.join(f'{v:3d}' for v in row_vals) + ',')
+        body = '\n' + '\n'.join(rows) + '\n'
+        return m.group(1) + body + m.group(3)
 
-        old_val = int(m.group(2))
-        new_text = re.sub(pattern, rf'\g<1>{new_val}\3', text)
-        delta = new_val - old_val
-        sign = '+' if delta >= 0 else ''
-        print(f"  {const_name:30s}  {old_val:4d} -> {new_val:4d}  ({sign}{delta})")
+    return re.sub(pattern, repl, text, flags=re.DOTALL)
 
-        if not dry_run:
-            with open(full_path, 'w') as fh:
-                fh.write(new_text)
+def patch_files(weights: np.ndarray, core_dir: str, dry_run: bool = False):
+    """
+    Apply scale factors to all relevant C++ files.
+    weights: [w_material, w_mobility, w_tempo, w_structure, w_kingSafety, w_patterns]
+    """
+    w = dict(zip(COMPONENT_NAMES, weights))
 
-# =============================================================================
-# Rebuild helper
-# =============================================================================
+    # Build map: constant_name -> new_value
+    changes = {}
+    for component, const_names in COMPONENT_MAP.items():
+        scale = w[component]
+        for name in const_names:
+            old = BASELINE[name]
+            new = max(1, round(old * scale))
+            changes[name] = (old, new, scale)
 
-def rebuild(build_dir: str) -> bool:
-    """Run cmake --build in build_dir. Returns True on success."""
-    cmake_candidates = [
-        r'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe',
-        r'C:\Program Files\CMake\bin\cmake.exe',
-        'cmake',
-    ]
-    cmake = next((c for c in cmake_candidates if os.path.exists(c)), 'cmake')
-    cmd = [cmake, '--build', build_dir, '--config', 'Debug', '--target', 'mkaguzi']
-    print(f"\n  Building: {' '.join(cmd)}")
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        print("  BUILD FAILED:")
-        print(r.stdout[-3000:])
-        print(r.stderr[-2000:])
+    # Group by file
+    files_to_patch = {}
+    for name, (old, new, scale) in changes.items():
+        fpath = os.path.join(core_dir, CONST_FILE[name])
+        files_to_patch.setdefault(fpath, []).append((name, old, new))
+
+    print()
+    print("  Constant changes:")
+    for fpath, consts in sorted(files_to_patch.items()):
+        relpath = os.path.relpath(fpath, core_dir)
+        print(f"  [{relpath}]")
+        for name, old, new in sorted(consts, key=lambda x: x[0]):
+            arrow = '->' if new != old else '=='
+            pct   = (new - old) / old * 100 if old else 0
+            print(f"    {name:<30}  {old:4d} {arrow} {new:4d}  ({pct:+.1f}%)")
+
+    # PST arrays (structure component)
+    w_struct = w['structure']
+    struct_file = os.path.join(core_dir, 'src/eval/structure.cpp')
+    print(f"  [src/eval/structure.cpp] — PST arrays scaled by {w_struct:.4f}")
+
+    if dry_run:
+        print()
+        print("  (Dry run — no files modified. Use --apply to patch.)")
+        return
+
+    # Apply to each unique file
+    for fpath, consts in files_to_patch.items():
+        with open(fpath, 'r', encoding='utf-8') as f:
+            text = f.read()
+        for name, old, new in consts:
+            text = patch_constexpr(text, name, new)
+        with open(fpath, 'w', encoding='utf-8') as f:
+            f.write(text)
+
+    # Scale PST arrays in structure.cpp
+    with open(struct_file, 'r', encoding='utf-8') as f:
+        text = f.read()
+    for arr in PST_ARRAYS:
+        text = scale_pst_array(text, arr, w_struct)
+    with open(struct_file, 'w', encoding='utf-8') as f:
+        f.write(text)
+
+    print()
+    print("  Files patched successfully.")
+
+# ── Rebuild ────────────────────────────────────────────────────────────────────
+
+def rebuild(core_dir: str):
+    build_dir = os.path.join(core_dir, 'build')
+    if not os.path.exists(build_dir):
+        print(f"ERROR: Build directory not found: {build_dir}")
+        print("Run: cd engines/core && cmake -B build -DCMAKE_BUILD_TYPE=Release")
         return False
-    print("  Build succeeded.")
-    return True
 
-# =============================================================================
-# Main
-# =============================================================================
+    # Use MSBuild on Windows if available
+    msbuild = r"C:\Program Files\Microsoft Visual Studio\18\Insiders\MSBuild\Current\Bin\MSBuild.exe"
+    sln_path = os.path.join(build_dir, 'mkaguzi_engine.sln')
+
+    print()
+    print("  Rebuilding engine...")
+    t0 = time.time()
+
+    if os.path.exists(msbuild) and os.path.exists(sln_path):
+        cmd = [msbuild, sln_path, '/p:Configuration=Release', '/m', '/nologo', '/v:m']
+    else:
+        cmd = ['cmake', '--build', build_dir, '--config', 'Release']
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    elapsed = time.time() - t0
+
+    if result.returncode == 0:
+        print(f"  Build succeeded in {elapsed:.0f}s")
+        return True
+    else:
+        print(f"  Build FAILED (exit {result.returncode}):")
+        for line in (result.stdout + result.stderr).splitlines()[-20:]:
+            print(f"    {line}")
+        return False
+
+# ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
-    here = os.path.dirname(os.path.abspath(__file__))
-    core_root  = os.path.normpath(os.path.join(here, '..'))
-    src_root   = os.path.join(core_root, 'src')
-    build_dir  = os.path.join(core_root, 'build_mkaguzi')
-    repo_root  = os.path.normpath(os.path.join(core_root, '..', '..'))
+    here     = os.path.dirname(os.path.abspath(__file__))
+    core_dir = os.path.normpath(os.path.join(here, '..'))
+    default_bin = os.path.join(core_dir, 'build', 'Release', 'mkaguzi.exe')
+    default_ds  = os.path.join(core_dir, 'dataset.epd')
 
-    ap = argparse.ArgumentParser(description='Texel tuner for Mkaguzi')
-    ap.add_argument('--games',   type=int,  default=80,   help='Games to play (default 80)')
-    ap.add_argument('--depth',   type=int,  default=4,    help='Mkaguzi search depth (default 4)')
-    ap.add_argument('--time',    type=int,  default=200,  help='ms per move (default 200)')
-    ap.add_argument('--sample',  type=int,  default=3,    help='Sample every N half-moves (default 3)')
-    ap.add_argument('--weak-depth', type=int, default=1,   help='Handicap depth for loss generation (default 1)')
-    ap.add_argument('--rebuild', action='store_true',      help='Rebuild after patching')
-    ap.add_argument('--dry-run', action='store_true',      help='Print changes but do not write')
-    ap.add_argument('--verbose', action='store_true',      help='Print each move')
-    ap.add_argument('--mkaguzi', default=os.path.join(build_dir, 'Debug', 'mkaguzi.exe'))
-    ap.add_argument('--sidra',   default=os.path.join(repo_root, 'engines', 'sidra', 'cli', 'sidra-cli.exe'))
+    ap = argparse.ArgumentParser(description='Texel eval tuner for Mkaguzi')
+    ap.add_argument('--positions', type=int,   default=80000, help='Positions to sample (default 80000)')
+    ap.add_argument('--K',         type=float, default=0,     help='Sigmoid scale K in cp (0=auto, default)')
+    ap.add_argument('--apply',     action='store_true',       help='Patch C++ files with tuned constants')
+    ap.add_argument('--rebuild',   action='store_true',       help='Rebuild engine after patching (implies --apply)')
+    ap.add_argument('--binary',    default=default_bin,       help='Path to mkaguzi.exe')
+    ap.add_argument('--dataset',   default=default_ds,        help='Path to dataset.epd')
+    ap.add_argument('--seed',      type=int,   default=42,    help='Random seed for position sampling')
     args = ap.parse_args()
 
-    mkaguzi_bin = os.path.normpath(args.mkaguzi)
-    sidra_bin   = os.path.normpath(args.sidra)
+    if args.rebuild:
+        args.apply = True
 
-    if not os.path.exists(mkaguzi_bin):
-        print(f"ERROR: mkaguzi binary not found:\n  {mkaguzi_bin}")
+    W = 66
+    print("=" * W)
+    print("  Mkaguzi Texel Eval Tuner")
+    print("=" * W)
+
+    if not os.path.exists(args.binary):
+        print(f"ERROR: Engine binary not found: {args.binary}")
+        print("Build first: cmake --build engines/core/build --config Release")
         return 1
-    if not os.path.exists(sidra_bin):
-        print(f"ERROR: sidra-cli binary not found:\n  {sidra_bin}")
-        print("  Texel tuning requires mkaguzi vs sidra games for outcome diversity.")
-        print("  Pass --sidra <path> to specify the sidra-cli binary.")
-        return 1
 
-    print("=" * 62)
-    print("  Texel tuner — Mkaguzi engine")
-    print(f"  {args.games} games (mkaguzi vs sidra)  depth={args.depth}  {args.time}ms/move")
-    print("=" * 62)
+    # Step 1 — load positions
+    print()
+    print("  Step 1 — Loading dataset")
+    positions = load_positions(args.dataset, args.positions, args.seed)
 
-    # Phase 1: collect positions
-    print("\nPhase 1: collecting positions from mkaguzi vs sidra …")
-    t0 = time.time()
-    engine = MkaguziProcess(mkaguzi_bin)
+    # Step 2 — collect evalTrace features
+    print()
+    print("  Step 2 — Collecting eval traces")
+    engine = TraceEngine(args.binary)
     try:
-        positions = collect_positions(engine, sidra_bin, args.games, args.depth, args.time,
-                                      sample_every=args.sample, verbose=args.verbose,
-                                      weak_depth=args.weak_depth)
+        features, targets = collect_features(engine, positions)
     finally:
         engine.close()
 
-    print(f"  Collected {len(positions)} positions in {time.time()-t0:.1f}s")
-    if len(positions) < 200:
-        print("  WARNING: very few positions — results may be unreliable")
+    # Filter out any zero-feature rows (failed traces)
+    valid = np.any(features != 0, axis=1)
+    features = features[valid]
+    targets  = targets[valid]
+    print(f"  Valid positions: {len(features):,}")
 
-    # Phase 2: Texel optimisation
-    print("\nPhase 2: L-BFGS-B optimisation …")
-    tuned = tune_weights(positions, INIT_WEIGHTS)
+    if len(features) < 1000:
+        print("ERROR: Too few valid positions. Check binary and dataset.")
+        return 1
 
-    # Phase 3: report
-    print("\nTuned weights:")
-    print(f"  {'Feature':<30} {'Init':>6} {'Tuned':>7}  {'Delta':>6}")
-    print("  " + "-" * 54)
-    for i, name in enumerate(FEATURE_NAMES):
-        init_v = INIT_WEIGHTS[i]
-        tuned_v = tuned[i]
-        delta = tuned_v - init_v
-        sign = '+' if delta >= 0 else ''
-        print(f"  {name:<30} {init_v:6.0f} {tuned_v:7.1f}  {sign}{delta:.1f}")
+    # Step 3 — find K
+    if args.K <= 0:
+        print()
+        print("  Step 3 — Auto-selecting K (sigmoid scale)...")
+        K = auto_tune_K(features, targets)
+        print(f"  K = {K}")
+    else:
+        K = args.K
+        print()
+        print(f"  Step 3 — Using K = {K} (user-specified)")
 
-    # Phase 4: patch C++ sources
-    print(f"\nPhase 4: {'[DRY RUN] ' if args.dry_run else ''}patching C++ constants …")
-    patch_source(src_root, tuned, dry_run=args.dry_run)
+    # Step 4 — tune
+    print()
+    print("  Step 4 — L-BFGS-B optimisation (6 scale factors)...")
+    t0 = time.time()
+    w_opt, init_loss, final_loss = tune(features, targets, K)
+    elapsed = time.time() - t0
 
-    # Phase 5: rebuild
-    if args.rebuild and not args.dry_run:
-        print("\nPhase 5: rebuilding …")
-        ok = rebuild(build_dir)
-        return 0 if ok else 1
+    improvement = (init_loss - final_loss) / init_loss * 100 if init_loss > 0 else 0
 
-    if not args.rebuild:
-        print("\n  (pass --rebuild to automatically rebuild after patching)")
+    print()
+    print("  Optimisation results:")
+    print(f"    {'Component':<14}  {'Scale':>7}  {'Direction'}")
+    print(f"    {'-'*14}  {'-'*7}  {'-'*20}")
+    for name, w in zip(COMPONENT_NAMES, w_opt):
+        direction = ('increase' if w > 1.05 else
+                     'decrease' if w < 0.95 else
+                     'unchanged (~)')
+        print(f"    {name:<14}  {w:7.4f}  {direction}")
+    print()
+    print(f"    Initial loss:   {init_loss:.6f}")
+    print(f"    Final loss:     {final_loss:.6f}  (-{improvement:.1f}%)")
+    print(f"    Optimised in:   {elapsed:.1f}s")
 
+    # Step 5 — patch / dry-run
+    print()
+    print("  Step 5 — Constant changes:")
+    patch_files(w_opt, core_dir, dry_run=not args.apply)
+
+    # Step 6 — rebuild
+    if args.rebuild:
+        ok = rebuild(core_dir)
+        if not ok:
+            return 1
+
+    print()
+    print("=" * W)
+    if args.apply:
+        print("  Done. C++ files patched.")
+        if args.rebuild:
+            print("  Engine rebuilt with tuned constants.")
+        else:
+            print("  Rebuild to apply: cmake --build engines/core/build --config Release")
+    else:
+        print("  Dry run complete. Re-run with --apply to patch files.")
+    print("=" * W)
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())

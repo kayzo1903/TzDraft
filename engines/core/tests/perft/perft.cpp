@@ -21,10 +21,27 @@ static long long perft(Position& pos, int depth, const RuleConfig& rules) {
 
     long long nodes = 0;
     for (int i = 0; i < count; i++) {
+        Position before = pos;
+        uint64_t beforeHash = pos.zobrist;
         Undo undo;
         makeMove(pos, moves[i], undo, rules);
         nodes += perft(pos, depth - 1, rules);
         unmakeMove(pos, moves[i], undo);
+
+        bool restored =
+            pos.whiteMen   == before.whiteMen &&
+            pos.whiteKings == before.whiteKings &&
+            pos.blackMen   == before.blackMen &&
+            pos.blackKings == before.blackKings &&
+            pos.sideToMove == before.sideToMove &&
+            pos.ply        == before.ply &&
+            pos.fiftyMove  == before.fiftyMove &&
+            pos.zobrist    == beforeHash;
+
+        if (!restored) {
+            std::cerr << "make/unmake corruption detected at depth " << depth << "\n";
+            std::exit(2);
+        }
     }
     return nodes;
 }
@@ -40,12 +57,11 @@ int main() {
     const RuleConfig& rules = TANZANIA;
 
     // Expected Tanzania perft values from starting position
-    // depth 1: 7 (white has 7 quiet moves)
-    // depth 2: 49 (black has 7 responses each)
-    const long long EXPECTED[3] = { 0, 7, 49 };
+    // These are locked baseline regression counts for the current engine.
+    const long long EXPECTED[6] = { 0, 7, 49, 302, 1469, 7361 };
 
     bool allOk = true;
-    for (int depth = 1; depth <= 2; depth++) {
+    for (int depth = 1; depth <= 5; depth++) {
         long long nodes = perft(pos, depth, rules);
         bool ok = (nodes == EXPECTED[depth]);
         std::cout << "perft(" << depth << ") = " << nodes;
@@ -53,12 +69,6 @@ int main() {
         else    std::cout << " FAIL (expected " << EXPECTED[depth] << ")";
         std::cout << "\n";
         if (!ok) allOk = false;
-    }
-
-    // Run a few more depths for timing/sanity (no expected value check)
-    for (int depth = 3; depth <= 5; depth++) {
-        long long nodes = perft(pos, depth, rules);
-        std::cout << "perft(" << depth << ") = " << nodes << "\n";
     }
 
     return allOk ? 0 : 1;

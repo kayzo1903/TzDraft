@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-Gauntlet: Mkaguzi v0.1 vs Sidra
+Gauntlet: Mkaguzi vs Sidra
 Plays N alternating-color games and reports W/D/L + Elo estimate.
 
 Usage:
-  python gauntlet.py [--games 20] [--depth 10] [--time 500] [--verbose]
+  python gauntlet.py [--games 20] [--time 500] [--verbose]
+
+Note: depth is no longer a parameter — Mkaguzi searches to depth 64
+      and uses the time budget as the only termination condition.
 """
 
 import subprocess, json, sys, os, math, time, argparse
@@ -213,13 +216,14 @@ class MkaguziProcess:
         self.proc.stdin.write(json.dumps(msg) + '\n')
         self.proc.stdin.flush()
 
-    def get_move(self, fen: str, depth: int, time_ms: int,
+    def get_move(self, fen: str, time_ms: int,
                  history: list = None) -> Optional[str]:
         msg = {"type": "setPosition", "fen": fen}
         if history:
             msg["history"] = history
         self._send(msg)
-        self._send({"type": "go", "depth": depth, "timeMs": time_ms, "multiPV": 1})
+        # depth=64 = effectively unlimited; time budget is the only constraint
+        self._send({"type": "go", "depth": 64, "timeMs": time_ms, "multiPV": 1})
         while True:
             line = self.proc.stdout.readline().strip()
             if not line:
@@ -254,7 +258,9 @@ def ask_sidra(sidra_path: str, board: dict, side: str, time_ms: int) -> Optional
         lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
         if not lines:
             return None
-        return json.loads(lines[-1])
+        last_line = lines[-1]
+        # print(f"DEBUG Sidra: {last_line}", file=sys.stderr)
+        return json.loads(last_line)
     except Exception as e:
         print(f"  [sidra error] {e}", file=sys.stderr)
         return None
@@ -265,7 +271,7 @@ MAX_HALFMOVES    = 200   # safety draw
 DRAW_NO_PROGRESS = 80    # half-moves without capture or promotion -- draw
 
 def play_game(mkaguzi: MkaguziProcess, sidra_path: str,
-              mkaguzi_side: str, depth: int, time_ms: int,
+              mkaguzi_side: str, time_ms: int,
               verbose: bool = False) -> str:
     """
     Play one game. mkaguzi_side = 'w' or 'b'.
@@ -292,7 +298,7 @@ def play_game(mkaguzi: MkaguziProcess, sidra_path: str,
         if turn == mkaguzi_side:
             # Pass prior FENs so mkaguzi can detect game-level repetitions.
             # Keep up to 20 prior positions (sufficient to detect all relevant repetitions).
-            move_str = mkaguzi.get_move(fen, depth, time_ms, history=fen_log[-20:])
+            move_str = mkaguzi.get_move(fen, time_ms, history=fen_log[-20:])
             if not move_str or len(move_str) < 4:
                 return 'b' if turn == 'w' else 'w'
             fp = int(move_str[:2])
@@ -342,11 +348,10 @@ def main() -> int:
 
     ap = argparse.ArgumentParser(description='Gauntlet: Mkaguzi vs Sidra')
     ap.add_argument('--games',   type=int, default=20,   help='Games to play (default 20)')
-    ap.add_argument('--depth',   type=int, default=10,   help='Mkaguzi depth limit (default 10)')
     ap.add_argument('--time',    type=int, default=500,  help='ms per move (default 500)')
     ap.add_argument('--verbose', action='store_true',    help='Print each move')
     ap.add_argument('--mkaguzi', default=os.path.join(
-        here, '..', 'build_mkaguzi', 'Debug', 'mkaguzi.exe'))
+        here, '..', 'build', 'Release', 'mkaguzi.exe'))
     ap.add_argument('--sidra',   default=os.path.join(
         root, 'engines', 'sidra', 'cli', 'sidra-cli.exe'))
     args = ap.parse_args()
@@ -360,8 +365,8 @@ def main() -> int:
             return 1
 
     print("=" * 62)
-    print(f"  Gauntlet: Mkaguzi v0.1  vs  Sidra")
-    print(f"  {args.games} games  |  depth={args.depth}  |  {args.time}ms/move")
+    print(f"  Gauntlet: Mkaguzi  vs  Sidra")
+    print(f"  {args.games} games  |  {args.time}ms/move  |  depth=unlimited")
     print("=" * 62)
 
     mkaguzi = MkaguziProcess(mkaguzi_bin)
@@ -374,7 +379,7 @@ def main() -> int:
         if args.verbose:
             print(f"\nGame {g} — mkaguzi plays {'WHITE' if mk_side=='w' else 'BLACK'}")
 
-        result = play_game(mkaguzi, sidra_bin, mk_side, args.depth, args.time, args.verbose)
+        result = play_game(mkaguzi, sidra_bin, mk_side, args.time, args.verbose)
         elapsed = time.time() - t0
 
         if   result == mk_side:  wins   += 1; tag = 'WIN '
