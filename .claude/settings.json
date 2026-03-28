@@ -16,7 +16,19 @@
       "Bash(pnpm test --testPathPatterns=\"capture-finding|move-validation|game-rules|make-move.use-case\" --no-coverage)",
       "Bash(pnpm test --no-coverage)",
       "Bash(pnpm test:cov)",
-      "Bash(grep -n \"featured\" src/app/[locale]/learn/page.tsx)"
+      "Bash(grep -n \"featured\" src/app/[locale]/learn/page.tsx)",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3002 | ForEach-Object { Get-Process -Id $_.OwningProcess | Select-Object Id, Name, CommandLine } | Format-List\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 23040 -Force; Stop-Process -Name mkaguzi -Force -ErrorAction SilentlyContinue; Write-Output done\")",
+      "Bash(powershell.exe -Command \"Get-Process -Name mkaguzi -ErrorAction SilentlyContinue | Select-Object Id; Get-NetTCPConnection -LocalPort 3002 -ErrorAction SilentlyContinue | ForEach-Object { Get-Process -Id $_.OwningProcess | Select-Object Id, Name }\")",
+      "Bash(cmd //c \"C:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\build_mkaguzi.bat\")",
+      "Read(//c/Users/Admin/Desktop/TzDraft/**)",
+      "Bash(cmd //c \"taskkill /PID 5896 /F\")",
+      "Bash(cmd //c \"taskkill /IM node.exe /F\")",
+      "Bash(cmd //c 'taskkill /IM mkaguzi.exe /F' 2)",
+      "Bash(/dev/null netstat:*)",
+      "Bash(xargs -I{} cmd //c 'taskkill /PID {} /F' 2)",
+      "Bash(/dev/null echo:*)",
+      "Bash(git add:*)"
     ]
   }
 }
