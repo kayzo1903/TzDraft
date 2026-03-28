@@ -1,5 +1,9 @@
 import { Injectable, Inject, BadRequestException, forwardRef } from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
+import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
+import { Move } from '../../domain/game/entities/move.entity';
+import { Position } from '../../domain/game/value-objects/position.vo';
+import { randomUUID } from 'crypto';
 import { Winner, EndReason, GameStatus } from '../../shared/constants/game.constants';
 import { RatingService } from './rating.service';
 import { ReportTournamentResultUseCase } from './tournament/report-tournament-result.use-case';
@@ -14,6 +18,8 @@ export class EndGameUseCase {
   constructor(
     @Inject('IGameRepository')
     private readonly gameRepository: IGameRepository,
+    @Inject('IMoveRepository')
+    private readonly moveRepository: IMoveRepository,
     private readonly ratingService: RatingService,
     @Inject(forwardRef(() => ReportTournamentResultUseCase))
     private readonly reportTournamentResult: ReportTournamentResultUseCase,
@@ -104,6 +110,47 @@ export class EndGameUseCase {
     game.abort();
     await this.gameRepository.update(game);
     // No rating change on abort — game was never played
+  }
+
+  /**
+   * Finalise an AI game: save all moves + set winner/endReason/FINISHED.
+   * No Elo update (AI games don't affect ratings).
+   */
+  async finaliseGame(
+    gameId: string,
+    winner: Winner,
+    endReason: EndReason,
+    moveDtos: Array<{
+      player: 'WHITE' | 'BLACK';
+      fromSquare: number;
+      toSquare: number;
+      capturedSquares: number[];
+      isPromotion: boolean;
+      notation: string;
+    }>,
+  ): Promise<void> {
+    const game = await this.gameRepository.findById(gameId);
+    if (!game) throw new BadRequestException('Game not found');
+    if (game.status === GameStatus.FINISHED) return;
+
+    for (let i = 0; i < moveDtos.length; i++) {
+      const m = moveDtos[i];
+      const move = new Move(
+        randomUUID(),
+        gameId,
+        i + 1,
+        m.player as any,
+        new Position(m.fromSquare),
+        new Position(m.toSquare),
+        m.capturedSquares.map((sq) => new Position(sq)),
+        m.isPromotion,
+        m.notation,
+      );
+      await this.moveRepository.create(move);
+    }
+
+    game.endGame(winner, endReason);
+    await this.gameRepository.update(game);
   }
 
   private ensureParticipant(
