@@ -5,15 +5,29 @@
 #include <cstdlib>  // abs
 
 // Pattern weights — Texel-tunable
-constexpr int DOUBLE_CORNER_BONUS    = 20;
-constexpr int BACK_RANK_BONUS        = 15;
-constexpr int CHAIN_BONUS            = 30;
-constexpr int PROMO_THREAT_BONUS     = 60;
-constexpr int CENTER_CLUSTER_BONUS   = 10;
-constexpr int SUPP_PROMO_BONUS       = 20;
-constexpr int BLOCKED_MAN_PENALTY    = 8;
-constexpr int KING_TRAP_EDGE_PENALTY = 25;
-constexpr int WINDOW_COHESION_BONUS  = 15;
+constexpr int DOUBLE_CORNER_BONUS    = 6;
+constexpr int BACK_RANK_BONUS        = 4;
+constexpr int CHAIN_BONUS            = 4;
+constexpr int PROMO_THREAT_BONUS     = 35;  // man 1 step from promotion with open lane
+constexpr int CENTER_CLUSTER_BONUS   = 2;
+constexpr int BLOCKED_MAN_PENALTY    = 2;
+constexpr int KING_TRAP_EDGE_PENALTY = 6;
+constexpr int WINDOW_COHESION_BONUS  = 2;
+
+static int countOpenForwardLanes(const Position& pos, int sq, int side) {
+    Bitboard occ = pos.whiteMen | pos.whiteKings | pos.blackMen | pos.blackKings;
+    int lanes = 0;
+
+    if (side == 0) {
+        if (NE_MASK[sq] && !((occ >> bsf(NE_MASK[sq])) & 1)) lanes++;
+        if (NW_MASK[sq] && !((occ >> bsf(NW_MASK[sq])) & 1)) lanes++;
+    } else {
+        if (SE_MASK[sq] && !((occ >> bsf(SE_MASK[sq])) & 1)) lanes++;
+        if (SW_MASK[sq] && !((occ >> bsf(SW_MASK[sq])) & 1)) lanes++;
+    }
+
+    return lanes;
+}
 
 // Tanzania pattern set
 //
@@ -158,40 +172,22 @@ int evalPatterns(const Position& pos) {
         score += (wChains - bChains) * CHAIN_BONUS;
     }
 
-    // Pattern 4: Promotion threat — man on row 1 (sqs 24-27) with no enemy blocking
+    // Pattern 4: Promotion threat — man one step from promotion with at least one open lane.
     {
-        static const Bitboard ROW1 = (1U<<24)|(1U<<25)|(1U<<26)|(1U<<27);
-        Bitboard wThreats = pos.whiteMen & ROW1;
+        static const Bitboard WHITE_PROMO_RUNNERS = (1U<<4)|(1U<<5)|(1U<<6)|(1U<<7);
+        Bitboard wThreats = pos.whiteMen & WHITE_PROMO_RUNNERS;
         while (wThreats) {
             int sq = bsf(wThreats); wThreats &= wThreats-1;
-            // Check NE and NW squares (promotion row)
-            bool blocked = false;
-            for (int d = 0; d < 2; d++) {
-                uint32_t adj = (d==0) ? NE_MASK[sq] : NW_MASK[sq];
-                if (adj) {
-                    int toSq = bsf(adj);
-                    Bitboard occ = pos.whiteMen | pos.whiteKings | pos.blackMen | pos.blackKings;
-                    if ((occ >> toSq) & 1) blocked = true;
-                }
-            }
-            if (!blocked) score += PROMO_THREAT_BONUS;
+            int openLanes = countOpenForwardLanes(pos, sq, 0);
+            if (openLanes > 0) score += PROMO_THREAT_BONUS + (openLanes - 1) * 6;
         }
 
-        // Black promotion threat: row 6 (sqs 4-7), moving SE/SW to row 7 (sqs 0-3)
-        static const Bitboard ROW6 = (1U<<4)|(1U<<5)|(1U<<6)|(1U<<7);
-        Bitboard bThreats = pos.blackMen & ROW6;
+        static const Bitboard BLACK_PROMO_RUNNERS = (1U<<24)|(1U<<25)|(1U<<26)|(1U<<27);
+        Bitboard bThreats = pos.blackMen & BLACK_PROMO_RUNNERS;
         while (bThreats) {
             int sq = bsf(bThreats); bThreats &= bThreats-1;
-            bool blocked = false;
-            for (int d = 2; d < 4; d++) {
-                uint32_t adj = (d==2) ? SE_MASK[sq] : SW_MASK[sq];
-                if (adj) {
-                    int toSq = bsf(adj);
-                    Bitboard occ = pos.whiteMen | pos.whiteKings | pos.blackMen | pos.blackKings;
-                    if ((occ >> toSq) & 1) blocked = true;
-                }
-            }
-            if (!blocked) score -= PROMO_THREAT_BONUS;
+            int openLanes = countOpenForwardLanes(pos, sq, 1);
+            if (openLanes > 0) score -= PROMO_THREAT_BONUS + (openLanes - 1) * 6;
         }
     }
 
@@ -206,29 +202,8 @@ int evalPatterns(const Position& pos) {
         if (bCenter >= 2) score -= CENTER_CLUSTER_BONUS;
     }
 
-    // Pattern 6: Supported promotion threat — man one step from back rank with a
-    // friendly man directly behind (SE/SW for white, NE/NW for black).
-    // A supported promotion runner is very hard to stop.
-    {
-        static const Bitboard ROW6W = (1U<<4)|(1U<<5)|(1U<<6)|(1U<<7);  // white on row 6
-        Bitboard wRun = pos.whiteMen & ROW6W;
-        while (wRun) {
-            int sq = bsf(wRun); wRun &= wRun - 1;
-            bool supported = false;
-            if (SE_MASK[sq] && ((pos.whiteMen >> bsf(SE_MASK[sq])) & 1)) supported = true;
-            if (SW_MASK[sq] && ((pos.whiteMen >> bsf(SW_MASK[sq])) & 1)) supported = true;
-            if (supported) score += SUPP_PROMO_BONUS;
-        }
-        static const Bitboard ROW1B = (1U<<24)|(1U<<25)|(1U<<26)|(1U<<27);  // black on row 1
-        Bitboard bRun = pos.blackMen & ROW1B;
-        while (bRun) {
-            int sq = bsf(bRun); bRun &= bRun - 1;
-            bool supported = false;
-            if (NE_MASK[sq] && ((pos.blackMen >> bsf(NE_MASK[sq])) & 1)) supported = true;
-            if (NW_MASK[sq] && ((pos.blackMen >> bsf(NW_MASK[sq])) & 1)) supported = true;
-            if (supported) score -= SUPP_PROMO_BONUS;
-        }
-    }
+    // Pattern 6: Removed — SUPP_PROMO_BONUS was stacking with PST advancement
+    // to give promotion-zone men an outsized ~40cp bonus before promotion even occurred.
 
     // Pattern 7: Blocked man — man whose both forward squares are occupied by
     // friendly pieces; contributes nothing to the advance.

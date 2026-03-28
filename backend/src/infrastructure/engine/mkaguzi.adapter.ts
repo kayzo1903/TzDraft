@@ -170,17 +170,107 @@ export class MkaguziAdapter
     this.proc.stdin.write(JSON.stringify(obj) + '\n');
   }
 
+  /**
+   * Build a FEN string for Mkaguzi from CAKE board state.
+   *
+   * CAKE uses the American convention: WHITE pieces start at positions 1-12
+   * (top of the board) and promote at positions 29-32 (bottom).
+   *
+   * Mkaguzi uses the International convention: WHITE pieces start at positions
+   * 21-32 (bottom) and promote at positions 1-4 (top).
+   *
+   * The square numbers (1-32) refer to the same physical squares in both
+   * systems, but the color assignments are inverted. Fix: send CAKE WHITE as
+   * Mkaguzi BLACK and vice-versa, and flip the side-to-move accordingly.
+   * The returned move (from/to) is in the same 1-32 PDN numbering so no
+   * further conversion is needed.
+   */
   private piecesToFen(pieces: EnginePiece[], currentPlayer: 'WHITE' | 'BLACK'): string {
-    const stm = currentPlayer === 'WHITE' ? 'W' : 'B';
-    const whiteParts = pieces
-      .filter((p) => p.color === 'WHITE')
-      .map((p) => (p.type === 'KING' ? `K${p.position}` : `${p.position}`))
-      .join(',');
-    const blackParts = pieces
+    // CAKE WHITE = Mkaguzi BLACK (both at top, sqs 1-12)
+    // CAKE BLACK = Mkaguzi WHITE (both at bottom, sqs 21-32)
+    const mkaguziStm = currentPlayer === 'WHITE' ? 'B' : 'W';
+    const mkaguziWhiteParts = pieces
       .filter((p) => p.color === 'BLACK')
       .map((p) => (p.type === 'KING' ? `K${p.position}` : `${p.position}`))
       .join(',');
-    return `${stm}:W${whiteParts}:B${blackParts}`;
+    const mkaguziBlackParts = pieces
+      .filter((p) => p.color === 'WHITE')
+      .map((p) => (p.type === 'KING' ? `K${p.position}` : `${p.position}`))
+      .join(',');
+    return `${mkaguziStm}:W${mkaguziWhiteParts}:B${mkaguziBlackParts}`;
+  }
+
+  /** Convert a CAKE-convention FEN to Mkaguzi-convention FEN (swap colors + STM). */
+  private cakeToMkaguziFen(cakeFen: string): string {
+    const stm = cakeFen[0] === 'W' ? 'B' : 'W';
+    const wMatch = cakeFen.match(/:W([^:]*)/);
+    const bMatch = cakeFen.match(/:B([^:]*)/);
+    const whiteSqs = wMatch ? wMatch[1] : '';
+    const blackSqs = bMatch ? bMatch[1] : '';
+    return `${stm}:W${blackSqs}:B${whiteSqs}`;
+  }
+
+  private parseMoveString(move: unknown): { from: number; to: number } | null {
+    if (typeof move !== 'string' || !/^\d{4}$/.test(move)) return null;
+    const from = parseInt(move.substring(0, 2), 10);
+    const to = parseInt(move.substring(2, 4), 10);
+    if (!Number.isInteger(from) || !Number.isInteger(to)) return null;
+    if (from < 1 || from > 32 || to < 1 || to > 32) return null;
+    return { from, to };
+  }
+
+  private pickDiverseOpeningMove(opts: {
+    aiLevel?: number;
+    priorHistoryCount: number;
+    bestMove: string;
+    rootInfos: Array<{ move: string; score: number; pvIndex: number }>;
+  }): string {
+    const { aiLevel, priorHistoryCount, bestMove, rootInfos } = opts;
+
+    if (!aiLevel || aiLevel < 15) return bestMove;
+    // Add diversity only in the opening/middlegame transition.
+    if (priorHistoryCount >= 12) return bestMove;
+
+    const sorted = rootInfos
+      .filter((r) => this.parseMoveString(r.move) !== null)
+      .sort((a, b) => a.pvIndex - b.pvIndex);
+    if (sorted.length === 0) return bestMove;
+
+    const bestScore = sorted[0].score;
+    const scoreWindowByLevel: Record<number, number> = {
+      15: 90,
+      16: 75,
+      17: 60,
+      18: 40,
+      19: 24,
+    };
+    const diversifyChanceByLevel: Record<number, number> = {
+      15: 0.45,
+      16: 0.32,
+      17: 0.22,
+      18: 0.12,
+      19: 0.06,
+    };
+    const scoreWindow = scoreWindowByLevel[aiLevel] ?? 30;
+    const diversifyChance = diversifyChanceByLevel[aiLevel] ?? 0.1;
+    const nearBest = sorted.filter((r) => bestScore - r.score <= scoreWindow);
+
+    if (nearBest.length <= 1 || Math.random() >= diversifyChance) {
+      return bestMove;
+    }
+
+    // Weighted by rank: prefer stronger PVs while still introducing variety.
+    const weighted: Array<{ move: string; w: number }> = nearBest.map((r) => ({
+      move: r.move,
+      w: 1 / (r.pvIndex + 1),
+    }));
+    const total = weighted.reduce((sum, item) => sum + item.w, 0);
+    let pick = Math.random() * total;
+    for (const item of weighted) {
+      pick -= item.w;
+      if (pick <= 0) return item.move;
+    }
+    return nearBest[0].move;
   }
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -194,7 +284,24 @@ export class MkaguziAdapter
     }
     this.busy = true;
 
-    const timeoutMs = (request.timeLimitMs ?? 5000) + 5000;
+    // Strength is controlled by time budget only — no depth cap.
+    // Depth 64 = effectively unlimited; the engine searches until timeMs runs out.
+    // Shallow depth caps caused the engine to finish in <10ms and ignore the budget.
+    const depth = 64;
+    let timeMs = request.timeLimitMs ?? 2500;
+
+    if (request.aiLevel !== undefined && request.aiLevel !== null) {
+      switch (request.aiLevel) {
+        case 15: timeMs = 1000; break;
+        case 16: timeMs = 1500; break;
+        case 17: timeMs = 2500; break;
+        case 18: timeMs = 4000; break;
+        case 19: timeMs = 6000; break;
+        default: timeMs = request.timeLimitMs ?? 6000; break;
+      }
+    }
+
+    const timeoutMs = timeMs + 8000;
 
     try {
       const fen = this.piecesToFen(request.pieces, request.currentPlayer);
@@ -202,26 +309,42 @@ export class MkaguziAdapter
       this.send({ type: 'setVariant', variant: 'tanzania' });
       const posMsg: Record<string, unknown> = { type: 'setPosition', fen };
       if (request.history && request.history.length > 0) {
-        posMsg.history = request.history;
+        posMsg.history = request.history.map((f) => this.cakeToMkaguziFen(f));
       }
       this.send(posMsg);
 
-      // Scale strength based on aiLevel (Levels 15-19)
-      let depth = 20;
-      let timeMs = request.timeLimitMs ?? 2500;
-      
+      const multiPV =
+        request.aiLevel !== undefined && request.aiLevel !== null
+          ? request.aiLevel >= 19
+            ? 2
+            : request.aiLevel >= 17
+              ? 3
+              : 4
+          : 2;
+
+      let randomness = 0;
       if (request.aiLevel !== undefined && request.aiLevel !== null) {
-        switch (request.aiLevel) {
-          case 15: depth = 8;  timeMs = 1000; break;
-          case 16: depth = 10; timeMs = 1500; break;
-          case 17: depth = 12; timeMs = 2000; break;
-          case 18: depth = 15; timeMs = 3000; break;
-          case 19: depth = 20; timeMs = 5000; break;
-          default: depth = 20; timeMs = request.timeLimitMs ?? 5000; break;
-        }
+        const noiseMap: Record<number, number> = {
+          15: 18,
+          16: 12,
+          17: 7,
+          18: 3,
+          19: 0,
+        };
+        randomness = noiseMap[request.aiLevel] ?? 0;
       }
 
-      this.send({ type: 'go', depth, timeMs });
+      this.send({
+        type: 'go',
+        depth,
+        timeMs,
+        multiPV,
+        level: request.aiLevel ?? 19,
+        randomness,
+      });
+
+      const rootInfos: Array<{ move: string; score: number; pvIndex: number }> =
+        [];
 
       // Read lines until we get a bestmove or error response
       while (true) {
@@ -229,12 +352,34 @@ export class MkaguziAdapter
         let obj: any;
         try { obj = JSON.parse(line); } catch { continue; }
 
+        if (obj.type === 'info') {
+          const pv = Array.isArray(obj.pv) ? obj.pv : [];
+          const rootMove = typeof pv[0] === 'string' ? pv[0] : null;
+          const score = Number.isFinite(obj.score) ? Number(obj.score) : null;
+          const pvIndex = Number.isInteger(obj.pvIndex) ? Number(obj.pvIndex) : null;
+          if (rootMove && score !== null && pvIndex !== null) {
+            rootInfos.push({ move: rootMove, score, pvIndex });
+          }
+          continue;
+        }
+
         if (obj.type === 'bestmove') {
-          const moveStr: string = obj.move ?? '';
+          const rawBestMove: string = obj.move ?? '';
+          const moveStr = this.pickDiverseOpeningMove({
+            aiLevel: request.aiLevel,
+            priorHistoryCount: request.history?.length ?? 0,
+            bestMove: rawBestMove,
+            rootInfos,
+          });
           if (!moveStr || moveStr === '0000') return null;
 
-          const from = parseInt(moveStr.substring(0, 2), 10);
-          const to   = parseInt(moveStr.substring(2, 4), 10);
+          const parsed = this.parseMoveString(moveStr);
+          if (!parsed) {
+            this.logger.warn(`Mkaguzi returned unparsable move: ${moveStr}`);
+            return null;
+          }
+          const from = parsed.from;
+          const to = parsed.to;
           const capturedSquares: number[] = Array.isArray(obj.capturedSquares)
             ? obj.capturedSquares
             : [];
