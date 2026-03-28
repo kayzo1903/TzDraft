@@ -94,3 +94,7 @@ target_include_directories(mkaguzi_gauntlet PRIVATE src)
 # PVS / Aspiration Window score-stability regression test
 add_executable(mkaguzi_stability tests/stability/score_stability.cpp ${SEARCH_SOURCES})
 target_include_directories(mkaguzi_stability PRIVATE src)
+
+# Eval regressions for promotion-race orientation
+add_executable(mkaguzi_eval_regression tests/eval/promotion_orientation.cpp ${CORE_SOURCES})
+target_include_directories(mkaguzi_eval_regression PRIVATE src)

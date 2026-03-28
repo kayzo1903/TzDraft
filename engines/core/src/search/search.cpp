@@ -17,9 +17,9 @@
 #include <atomic>
 
 // Contempt: engine treats a drawn position as slightly bad from its own perspective.
-// This discourages accepting draws (repetition / fifty-move) when there may be
-// a winning continuation still to find.
-constexpr int CONTEMPT = 120;
+// Keep this well below MAN_VALUE (100) — otherwise the engine sacrifices pieces to
+// avoid draws, which is far worse than accepting them.
+constexpr int CONTEMPT = 20;
 static std::atomic<bool> g_stopRequested{false};
 
 void requestSearchStop() {
@@ -179,18 +179,32 @@ int search(Position& pos, int depth, int alpha, int beta, int ply, SearchInfo& i
         pushHash(pos.zobrist);
         makeMove(pos, m, undo, *info.rules);
 
-        // Late Move Reductions: quiet, non-promoting, late-ordered moves at depth>=3.
-        // Tanzania note: never reduce captures — they are mandatory and position-defining.
+        // PVS and LMR
         int score;
-        const int newDepth = depth - 1;
-        if (i >= 3 && depth >= 3 && m.capLen == 0 && !m.promote) {
-            int R = (i >= 6) ? 2 : 1;
-            score = -search(pos, newDepth - R, -beta, -alpha, ply + 1, info);
-            // If the reduced search beats alpha, re-search at full depth.
-            if (!info.stop && score > alpha) {
-                score = -search(pos, newDepth, -beta, -alpha, ply + 1, info);
+        const int newDepth = depth - 1;  // no promotion extension — promotion reward is in eval
+        bool doFullSearch = false;
+
+        if (depth >= 2 && i > 0) {
+            if (i >= 3 && depth >= 3 && m.capLen == 0 && !m.promote) {
+                int R = (i >= 6) ? 2 : 1;
+                score = -search(pos, newDepth - R, -alpha - 1, -alpha, ply + 1, info);
+                if (!info.stop && score > alpha) {
+                    score = -search(pos, newDepth, -alpha - 1, -alpha, ply + 1, info);
+                    if (!info.stop && score > alpha && score < beta) {
+                        doFullSearch = true;
+                    }
+                }
+            } else {
+                score = -search(pos, newDepth, -alpha - 1, -alpha, ply + 1, info);
+                if (!info.stop && score > alpha && score < beta) {
+                    doFullSearch = true;
+                }
             }
         } else {
+            doFullSearch = true;
+        }
+
+        if (doFullSearch) {
             score = -search(pos, newDepth, -beta, -alpha, ply + 1, info);
         }
 
@@ -228,7 +242,7 @@ BestResult searchRoot(Position& pos, SearchInfo& info, int multiPV) {
     clearSearchStop();
     incrementTTAge();
     pushHash(pos.zobrist);
-    initTimeManager(info.tm, info.timeLimitMs, info.maxDepth, info.timeLimitMs <= 0 && info.maxDepth <= 0);
+    initTimeManager(info.tm, info.timeLimitMs, info.maxDepth, info.timeLimitMs <= 0 && info.maxDepth <= 0, pos.fullMove);
 
     info.nodes = 0;
     info.stop  = false;
@@ -259,46 +273,80 @@ BestResult searchRoot(Position& pos, SearchInfo& info, int multiPV) {
     scoreMoves(rootMoves, rootCount, ttMove, pos, 0);
     sortMoves(rootMoves, rootCount);
 
+    int lastScore = 0;
+
     for (int depth = 1; depth <= maxD; depth++) {
         RootLine bestLines[32];
         int bestLineCount = 0;
 
-        int rootAlpha = -INF;
+        int windowAlpha = -INF;
+        int windowBeta  = INF;
 
-        for (int i = 0; i < rootCount; ++i) {
-            pickMove(rootMoves, rootCount, i);
-            const Move& rootMove = rootMoves[i];
-
-            Undo undo;
-            pushHash(pos.zobrist);
-            makeMove(pos, rootMove, undo, *info.rules);
-            // Single PV: pass -rootAlpha as beta so moves that can't beat the
-            // current best are pruned in the subtree. MultiPV needs accurate
-            // scores for all moves, so keep a full window there.
-            int beta = (rootMultiPV <= 1) ? -rootAlpha : INF;
-            int score = -search(pos, depth - 1, -INF, beta, 1, info);
-            unmakeMove(pos, rootMove, undo);
-            popHash();
-
-            if (score > rootAlpha) rootAlpha = score;
-            rootMoves[i].score = static_cast<int16_t>(std::max(-32768, std::min(32767, score)));
-
-            if (info.stop) {
-                break;
-            }
-
-            RootLine line;
-            line.move = rootMove;
-            line.score = score;
-            line.pvJson = buildPvJsonFromRootMove(pos, *info.rules, rootMove, depth);
-            insertRootLine(bestLines, bestLineCount, std::min(rootMultiPV, 32), line);
+        // Aspiration Windows
+        if (depth >= 2 && rootMultiPV <= 1) {
+            windowAlpha = lastScore - 75;
+            windowBeta  = lastScore + 75;
         }
 
-        sortMoves(rootMoves, rootCount);
+        while (true) {
+            bestLineCount = 0;
+            int currentAlpha = windowAlpha;
+
+            for (int i = 0; i < rootCount; ++i) {
+                pickMove(rootMoves, rootCount, i);
+                const Move& rootMove = rootMoves[i];
+
+                Undo undo;
+                pushHash(pos.zobrist);
+                makeMove(pos, rootMove, undo, *info.rules);
+
+                int score;
+                if (i == 0 || rootMultiPV > 1) {
+                    int beta = (rootMultiPV <= 1) ? windowBeta : INF;
+                    score = -search(pos, depth - 1, -beta, -currentAlpha, 1, info);
+                } else {
+                    score = -search(pos, depth - 1, -currentAlpha - 1, -currentAlpha, 1, info);
+                    if (!info.stop && score > currentAlpha && score < windowBeta) {
+                        score = -search(pos, depth - 1, -windowBeta, -currentAlpha, 1, info);
+                    }
+                }
+
+                unmakeMove(pos, rootMove, undo);
+                popHash();
+
+                if (score > currentAlpha) currentAlpha = score;
+                rootMoves[i].score = static_cast<int16_t>(std::max(-32768, std::min(32767, score)));
+
+                if (info.stop) break;
+
+                RootLine line;
+                line.move = rootMove;
+                line.score = score;
+                line.pvJson = buildPvJsonFromRootMove(pos, *info.rules, rootMove, depth);
+                insertRootLine(bestLines, bestLineCount, std::min(rootMultiPV, 32), line);
+            }
+
+            sortMoves(rootMoves, rootCount);
+
+            if (info.stop) break;
+
+            if (rootMultiPV <= 1 && depth >= 2) {
+                int bestScoreIter = bestLines[0].score;
+                if (bestScoreIter <= windowAlpha) {
+                    windowAlpha = -INF;
+                    continue;
+                } else if (bestScoreIter >= windowBeta) {
+                    windowBeta = INF;
+                    continue;
+                }
+            }
+            break;
+        }
 
         if (info.stop && depth > 1) break;
         if (bestLineCount == 0) break;
 
+        lastScore = bestLines[0].score;
         result.score = bestLines[0].score;
         extendIfUnstable(info.tm, result.score);
         result.depth = depth;

@@ -22,6 +22,8 @@ struct GoParams {
     int  depth;      // 0 = unlimited
     int  timeMs;     // 0 = unlimited
     int  multiPV;    // default 1
+    int  level;      // ai level (15-19)
+    int  randomness; // eval noise amplitude (cp)
 };
 
 struct IncomingMsg {

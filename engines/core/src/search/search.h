@@ -3,6 +3,7 @@
 
 #include "core/types.h"
 #include "rules/variant.h"
+#include "board/position.h"
 #include "search/time.h"
 #include <string>
 
@@ -14,6 +15,8 @@ struct SearchInfo {
     const RuleConfig* rules;
     int  maxDepth;
     int  timeLimitMs;
+    int  level;
+    int  randomness;
     bool stop;
     long long nodes;
     TimeManager tm;
