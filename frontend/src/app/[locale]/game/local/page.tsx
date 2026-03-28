@@ -772,25 +772,27 @@ export default function LocalGamePage() {
 
       {/* Game result — hidden while the tier overlay is showing */}
       {state.result && tierUnlockLevel === null && (
-        <GameResultCard
-          result={state.result.winner}
-          bot={bot}
-          playerColor={playerColor}
-          moveCount={state.moveCount}
-          userRating={userRating}
-          userName={userLabel}
-          canOfferNextBot={canOfferNextBot}
-          isNewUnlock={isNewUnlock}
-          nextBotLevel={nextBotLevel}
-          nextBot={nextBot}
-          locale={locale}
-          timeSeconds={timeSeconds}
-          undoUsed={state.undoUsed}
-          onPlayAgain={handleResetGame}
-          onNextBot={() => { reset(); router.push(`/${locale}/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
-          onChangeBots={() => router.push(setupAiPath)}
-          t={t}
-        />
+        <>
+          <GameResultCard
+            result={state.result.winner}
+            bot={bot}
+            playerColor={playerColor}
+            moveCount={state.moveCount}
+            userRating={userRating}
+            userName={userLabel}
+            canOfferNextBot={canOfferNextBot}
+            isNewUnlock={isNewUnlock}
+            nextBotLevel={nextBotLevel}
+            nextBot={nextBot}
+            locale={locale}
+            timeSeconds={timeSeconds}
+            undoUsed={state.undoUsed}
+            onPlayAgain={handleResetGame}
+            onNextBot={() => { reset(); router.push(`/${locale}/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
+            onChangeBots={() => router.push(setupAiPath)}
+            t={t}
+          />
+        </>
       )}
     </main>
   );

@@ -1,17 +1,19 @@
 #include "search/time.h"
+#include <cmath>
 
 static int64_t nowMs() {
     using namespace std::chrono;
     return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
-void initTimeManager(TimeManager& tm, int timeLimitMs, int maxDepth, bool infinite) {
+void initTimeManager(TimeManager& tm, int timeLimitMs, int maxDepth, bool infinite, int fullMove) {
     tm.startMs     = nowMs();
     tm.timeLimitMs = timeLimitMs;
-    tm.softLimitMs = timeLimitMs;
     tm.maxDepth    = maxDepth;
     tm.infinite    = infinite;
     tm.prevScore   = 0;
+
+    tm.softLimitMs = timeLimitMs;
 }
 
 int64_t elapsedMs(const TimeManager& tm) {

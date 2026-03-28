@@ -2,10 +2,15 @@
 #include "core/bitboard.h"
 #include "core/square_map.h"
 #include "core/constants.h"
+#include <cstdlib>  // abs
 
-constexpr int KING_CENTER_BONUS    = 20;  // cp per king on center 4 — Texel-tunable
-constexpr int KING_EDGE_PENALTY    = 25;  // cp per king on edge
-constexpr int KING_TRAPPED_PENALTY = 60;  // cp for trapped king on back rank
+constexpr int KING_CENTER_BONUS    = 10;  // cp per king on center 4 — Texel-tunable
+constexpr int KING_EDGE_PENALTY    = 18;  // cp per king on edge
+constexpr int KING_TRAPPED_PENALTY = 55;  // cp for trapped king on back rank
+// When one side has a king and the other has only men, the king dominates.
+// Bonus = base + per_enemy_man * enemy_men (more targets = more winning chances).
+constexpr int KING_DOMINANCE_BASE  = 40;  // flat bonus for having king vs no kings
+constexpr int KING_DOMINANCE_MAN   =  8;  // extra cp per enemy man the king can hunt
 
 // Center 4 squares: 13,14,17,18
 static const Bitboard CENTER_4_KS = (1U<<13)|(1U<<14)|(1U<<17)|(1U<<18);
@@ -22,29 +27,25 @@ static const Bitboard EDGE_MASK_KS =
 int evalKingSafety(const Position& pos, const RuleConfig& rules) {
     int score = 0;
 
-    // White king centrality and trapping
+    // White king edge penalty only — centrality is already handled by PST_KINGS.
+    // KING_CENTER_BONUS was double-counting with PST_KINGS centre peak (+11cp),
+    // making kings 9cp more rewarded than men on the same squares.
     {
         Bitboard wk = pos.whiteKings;
         while (wk) {
             int sq = bsf(wk); wk &= wk-1;
-            Bitboard sqMask = (1U << sq);
-            if (CENTER_4_KS & sqMask) {
-                score += KING_CENTER_BONUS;
-            } else if (EDGE_MASK_KS & sqMask) {
+            if (EDGE_MASK_KS & (1U << sq)) {
                 score -= KING_EDGE_PENALTY;
             }
         }
     }
 
-    // Black king centrality and trapping
+    // Black king edge penalty only
     {
         Bitboard bk = pos.blackKings;
         while (bk) {
             int sq = bsf(bk); bk &= bk-1;
-            Bitboard sqMask = (1U << sq);
-            if (CENTER_4_KS & sqMask) {
-                score -= KING_CENTER_BONUS;
-            } else if (EDGE_MASK_KS & sqMask) {
+            if (EDGE_MASK_KS & (1U << sq)) {
                 score += KING_EDGE_PENALTY;
             }
         }
@@ -91,6 +92,88 @@ int evalKingSafety(const Position& pos, const RuleConfig& rules) {
                 if (adj && !((occ >> bsf(adj)) & 1)) { trapped = false; break; }
             }
             if (trapped) score += KING_TRAPPED_PENALTY;
+        }
+    }
+
+    // King dominance: reward having kings when opponent has none
+    {
+        bool whiteHasKings = pos.whiteKings != 0;
+        bool blackHasKings = pos.blackKings != 0;
+        if (whiteHasKings && !blackHasKings) {
+            int enemyMen = popcount(pos.blackMen);
+            score += KING_DOMINANCE_BASE + KING_DOMINANCE_MAN * enemyMen;
+        }
+        if (blackHasKings && !whiteHasKings) {
+            int enemyMen = popcount(pos.whiteMen);
+            score -= KING_DOMINANCE_BASE + KING_DOMINANCE_MAN * enemyMen;
+        }
+    }
+
+    // King centrality: bonus for kings in the active middle of the board.
+    // PST_KINGS peaks at 9cp for center — add explicit activity bonus on top
+    // so shuffling on edge/near-edge is clearly punished vs. heading toward center.
+    {
+        // Inner center ring: rows 3-4, cols 2-5 (internal sqs 13,14,17,18)
+        static const Bitboard KING_INNER = (1U<<13)|(1U<<14)|(1U<<17)|(1U<<18);
+        // Outer center ring: rows 3-5, cols 0-7 minus inner (sqs 9,10,11,12,15,16,19,21,22)
+        static const Bitboard KING_OUTER =
+            (1U<<9)|(1U<<10)|(1U<<11)|
+            (1U<<12)|(1U<<15)|
+            (1U<<16)|(1U<<19)|
+            (1U<<21)|(1U<<22);
+        constexpr int INNER_BONUS = 12;
+        constexpr int OUTER_BONUS =  6;
+        score += popcount(pos.whiteKings & KING_INNER) * INNER_BONUS;
+        score += popcount(pos.whiteKings & KING_OUTER) * OUTER_BONUS;
+        score -= popcount(pos.blackKings & KING_INNER) * INNER_BONUS;
+        score -= popcount(pos.blackKings & KING_OUTER) * OUTER_BONUS;
+    }
+
+    // Endgame: king chases lone men — reward being close to the nearest enemy man.
+    // Without this, a lone king shuffles on the edge while enemy men march freely.
+    {
+        int wKings = popcount(pos.whiteKings);
+        int bKings = popcount(pos.blackKings);
+        int wMen   = popcount(pos.whiteMen);
+        int bMen   = popcount(pos.blackMen);
+
+        // White king hunting black men (no black kings to hide behind)
+        if (wKings > 0 && bKings == 0 && bMen > 0) {
+            Bitboard wk = pos.whiteKings;
+            while (wk) {
+                int ksq = bsf(wk); wk &= wk - 1;
+                int kRow = sqRow(ksq), kCol = sqCol(ksq);
+                int minDist = 99;
+                Bitboard bm = pos.blackMen;
+                while (bm) {
+                    int msq = bsf(bm); bm &= bm - 1;
+                    int dist = abs(sqRow(msq) - kRow) + abs(sqCol(msq) - kCol);
+                    if (dist < minDist) minDist = dist;
+                }
+                // Closer = higher score (max bonus 8*7=56 when adjacent)
+                score += (8 - minDist) * 4;
+            }
+        }
+        // Black king hunting white men
+        if (bKings > 0 && wKings == 0 && wMen > 0) {
+            Bitboard bk = pos.blackKings;
+            while (bk) {
+                int ksq = bsf(bk); bk &= bk - 1;
+                int kRow = sqRow(ksq), kCol = sqCol(ksq);
+                int minDist = 99;
+                Bitboard wm = pos.whiteMen;
+                while (wm) {
+                    int msq = bsf(wm); wm &= wm - 1;
+                    int dist = abs(sqRow(msq) - kRow) + abs(sqCol(msq) - kCol);
+                    if (dist < minDist) minDist = dist;
+                }
+                score -= (8 - minDist) * 4;
+            }
+        }
+
+        // Pure K vs K (no men): eval is 0 — neither side can win, stop wasting time
+        if (wKings > 0 && bKings > 0 && wMen == 0 && bMen == 0) {
+            return 0;
         }
     }
 

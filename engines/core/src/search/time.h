@@ -13,7 +13,7 @@ struct TimeManager {
     int     prevScore;    // score from last completed iteration (for instability check)
 };
 
-void initTimeManager(TimeManager& tm, int timeLimitMs, int maxDepth, bool infinite);
+void initTimeManager(TimeManager& tm, int timeLimitMs, int maxDepth, bool infinite, int fullMove = 0);
 int64_t elapsedMs(const TimeManager& tm);
 bool    timeUp(const TimeManager& tm);
 
