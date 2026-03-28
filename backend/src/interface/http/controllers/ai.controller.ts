@@ -70,7 +70,7 @@ export class AiAnalyzeRequestDto {
 
 /**
  * AI Controller
- * Exposes stateless engine connections (CAKE, SiDra, Mkaguzi).
+ * Exposes engine endpoints: CAKE (levels 1-9, frontend-side) and Mkaguzi (levels 10-19, backend).
  * These endpoints are public for local play and analysis.
  */
 @ApiTags('ai')

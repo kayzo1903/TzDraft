@@ -2,7 +2,7 @@
 // NestJS service that integrates the Mkaguzi engine via a persistent JSON IPC process.
 //
 // Mkaguzi is TzDraft's own C++20 Tanzania draughts engine.
-// Unlike SiDra (one-shot process per move), Mkaguzi stays alive between requests:
+// Mkaguzi is a persistent long-lived process (stays alive between requests):
 //   setVariant → setPosition → go → read bestmove
 //   setVariant → evalTrace   → read evalTrace
 //
@@ -227,7 +227,7 @@ export class MkaguziAdapter
   }): string {
     const { aiLevel, priorHistoryCount, bestMove, rootInfos } = opts;
 
-    if (!aiLevel || aiLevel < 15) return bestMove;
+    if (!aiLevel) return bestMove;
     // Add diversity only in the opening/middlegame transition.
     if (priorHistoryCount >= 12) return bestMove;
 
@@ -238,6 +238,20 @@ export class MkaguziAdapter
 
     const bestScore = sorted[0].score;
     const scoreWindowByLevel: Record<number, number> = {
+       1: 300,
+       2: 260,
+       3: 230,
+       4: 210,
+       5: 190,
+       6: 170,
+       7: 160,
+       8: 155,
+       9: 150,
+      10: 150,
+      11: 120,
+      12: 100,
+      13: 90,
+      14: 80,
       15: 90,
       16: 75,
       17: 60,
@@ -245,6 +259,20 @@ export class MkaguziAdapter
       19: 24,
     };
     const diversifyChanceByLevel: Record<number, number> = {
+       1: 0.80,
+       2: 0.76,
+       3: 0.72,
+       4: 0.70,
+       5: 0.68,
+       6: 0.65,
+       7: 0.62,
+       8: 0.60,
+       9: 0.58,
+      10: 0.65,
+      11: 0.58,
+      12: 0.50,
+      13: 0.45,
+      14: 0.40,
       15: 0.45,
       16: 0.32,
       17: 0.22,
@@ -292,6 +320,20 @@ export class MkaguziAdapter
 
     if (request.aiLevel !== undefined && request.aiLevel !== null) {
       switch (request.aiLevel) {
+        case  1: timeMs =   50; break;
+        case  2: timeMs =   75; break;
+        case  3: timeMs =  100; break;
+        case  4: timeMs =  150; break;
+        case  5: timeMs =  200; break;
+        case  6: timeMs =  250; break;
+        case  7: timeMs =  300; break;
+        case  8: timeMs =  400; break;
+        case  9: timeMs =  500; break;
+        case 10: timeMs =  300; break;
+        case 11: timeMs =  500; break;
+        case 12: timeMs =  750; break;
+        case 13: timeMs = 1000; break;
+        case 14: timeMs = 1500; break;
         case 15: timeMs = 1000; break;
         case 16: timeMs = 1500; break;
         case 17: timeMs = 2500; break;
@@ -315,16 +357,32 @@ export class MkaguziAdapter
 
       const multiPV =
         request.aiLevel !== undefined && request.aiLevel !== null
-          ? request.aiLevel >= 19
-            ? 2
-            : request.aiLevel >= 17
-              ? 3
-              : 4
+          ? request.aiLevel >= 19 ? 2
+          : request.aiLevel >= 17 ? 3
+          : request.aiLevel >= 15 ? 4
+          : request.aiLevel >= 13 ? 5
+          : request.aiLevel >= 10 ? 6
+          : request.aiLevel >=  7 ? 7
+          : 8
           : 2;
 
       let randomness = 0;
       if (request.aiLevel !== undefined && request.aiLevel !== null) {
         const noiseMap: Record<number, number> = {
+           1: 80,
+           2: 72,
+           3: 65,
+           4: 58,
+           5: 52,
+           6: 46,
+           7: 40,
+           8: 36,
+           9: 32,
+          10: 45,
+          11: 38,
+          12: 28,
+          13: 22,
+          14: 16,
           15: 18,
           16: 12,
           17: 7,

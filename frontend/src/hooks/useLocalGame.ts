@@ -705,36 +705,7 @@ export const useLocalGame = (
     const thinkDelayMs = 320 + Math.floor(Math.random() * 260);
     setIsAiThinking(true);
 
-    // ── Local CAKE engine for levels 1-9 ─────────────────────────────────
-    // Runs synchronously in a setTimeout to avoid blocking React render.
-    if (aiLevel < 10) {
-      aiTimeoutRef.current = window.setTimeout(() => {
-        aiTimeoutRef.current = null;
-        try {
-          const move = getBestMove(board, currentPlayer, aiLevel);
-          if (move) {
-            applyMove(move);
-          } else {
-            const gameResult = CakeEngine.evaluateGameResult(
-              board,
-              currentPlayer,
-            );
-            if (gameResult) setResult({ winner: gameResult.winner });
-          }
-        } finally {
-          setIsAiThinking(false);
-        }
-      }, thinkDelayMs);
-
-      return () => {
-        if (aiTimeoutRef.current !== null) {
-          window.clearTimeout(aiTimeoutRef.current);
-          aiTimeoutRef.current = null;
-        }
-      };
-    }
-
-    // ── Backend engine for levels 10+ (SiDra 10-14 / Mkaguzi 15-19) ──────
+    // ── Backend Mkaguzi engine for all levels 1-19 ───────────────────────
     const fetchMove = async () => {
       try {
         const payloadPieces = board.getAllPieces().map((p) => ({
