@@ -253,7 +253,6 @@ export const useLocalGame = (
   // Engine state uses WHITE at the top by default; flip only when the human plays WHITE.
   const flipForPlayer = playerColor === PlayerColor.WHITE;
   const loaded = loadSavedGame(aiLevel, playerColor);
-  const gameLoggedRef = useRef(false);
   const [board, setBoard] = useState<BoardState>(() =>
     loaded ? loaded.board : CakeEngine.createInitialState(),
   );
@@ -921,40 +920,6 @@ export const useLocalGame = (
     aiLevel,
     playerColor,
   ]);
-
-  // ── Console-log full game record when game ends (for analysis) ────────────
-  useEffect(() => {
-    if (!result || gameLoggedRef.current || moves.length === 0) return;
-    gameLoggedRef.current = true;
-
-    const winner =
-      result.winner === Winner.WHITE ? "WHITE"
-      : result.winner === Winner.BLACK ? "BLACK"
-      : "DRAW";
-
-    const humanSide = playerColor === PlayerColor.WHITE ? "WHITE" : "BLACK";
-    const engineSide = humanSide === "WHITE" ? "BLACK" : "WHITE";
-
-    const moveLog = moves.map((m, i) => ({
-      "#": i + 1,
-      player: m.player === PlayerColor.WHITE ? "WHITE" : "BLACK",
-      role: m.player === playerColor ? "HUMAN" : "ENGINE",
-      from: m.from.value,
-      to: m.to.value,
-      captures: m.capturedSquares.map((p) => p.value),
-      promotion: m.isPromotion,
-      notation: m.notation,
-    }));
-
-    console.group(
-      `%c[Mkaguzi] Game Record — Level ${aiLevel} | Human: ${humanSide} | Engine: ${engineSide} | Result: ${winner} | Moves: ${moves.length}`,
-      "color: #4ade80; font-weight: bold; font-size: 13px",
-    );
-    console.table(moveLog);
-    console.log("Raw moves JSON (copy for analysis):");
-    console.log(JSON.stringify(moveLog, null, 2));
-    console.groupEnd();
-  }, [result, moves, playerColor, aiLevel]);
 
   return {
     state: {
