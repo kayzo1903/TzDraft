@@ -7,7 +7,7 @@ import { Board, BoardState as UiBoardState } from '@/components/game/Board';
 import { Button } from '@/components/ui/Button';
 import { useGameReplay } from '@/hooks/useGameReplay';
 import { useAuth } from '@/hooks/useAuth';
-import { PlayerColor, Position } from '@tzdraft/cake-engine';
+import { PlayerColor, Position } from '@tzdraft/mkaguzi-engine';
 import axiosInstance from '@/lib/axios';
 import {
   ArrowLeft,
@@ -94,9 +94,9 @@ function posToIndex(squareValue: number, flip = false): number {
   return flip ? (7 - row) * 8 + (7 - col) : row * 8 + col;
 }
 
-/** Convert CAKE BoardState to the UI Board's pieces format, with optional flip */
-function cakeBoardToUi(
-  board: ReturnType<typeof import('@tzdraft/cake-engine').CakeEngine.createInitialState>,
+/** Convert a Mkaguzi board state to the UI Board's pieces format, with optional flip */
+function boardToUiPieces(
+  board: ReturnType<typeof import('@tzdraft/mkaguzi-engine').MkaguziEngine.createInitialState>,
   flip = false,
 ): UiBoardState {
   const pieces: UiBoardState = {};
@@ -185,7 +185,7 @@ export default function GameReviewPage() {
   }, [currentBoard, currentPlayer, loading]);
 
   const uiPieces = useMemo(
-    () => cakeBoardToUi(currentBoard, isFlipped),
+    () => boardToUiPieces(currentBoard, isFlipped),
     [currentBoard, isFlipped],
   );
 

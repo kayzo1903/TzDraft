@@ -26,8 +26,8 @@
       "@/*": [
         "./src/*"
       ],
-      "@tzdraft/cake-engine": [
-        "../packages/cake-engine/dist"
+      "@tzdraft/mkaguzi-engine": [
+        "../packages/mkaguzi-engine/dist"
       ]
     }
   },

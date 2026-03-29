@@ -5,7 +5,7 @@ import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { Board } from "@/components/game/Board";
 import { Button } from "@/components/ui/Button";
 import { useLocalPvpGame } from "@/hooks/useLocalPvpGame";
-import { PlayerColor, Winner } from "@tzdraft/cake-engine";
+import { PlayerColor, Winner } from "@tzdraft/mkaguzi-engine";
 import {
   AlertTriangle,
   Crown,
@@ -258,6 +258,7 @@ export default function LocalPvpPage() {
     legalMoves,
     forcedPieces,
     flipBoard,
+    engineReady,
     playWarning,
     makeMove,
     dismissPassOverlay,
@@ -352,16 +353,23 @@ export default function LocalPvpPage() {
             </div>
           </div>
 
-          <Board
-            onMove={makeMove}
-            pieces={pieces}
-            lastMove={lastMove}
-            capturedGhosts={capturedGhosts}
-            legalMoves={legalMoves}
-            forcedPieces={forcedPieces}
-            flipped={flipBoard}
-            onInvalidSelect={playWarning}
-          />
+          <div className="relative">
+            <Board
+              onMove={makeMove}
+              pieces={pieces}
+              lastMove={lastMove}
+              capturedGhosts={capturedGhosts}
+              legalMoves={legalMoves}
+              forcedPieces={forcedPieces}
+              flipped={flipBoard}
+              onInvalidSelect={playWarning}
+            />
+            {!engineReady && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                <div className="w-7 h-7 rounded-full border-2 border-neutral-400/30 border-t-neutral-300 animate-spin" />
+              </div>
+            )}
+          </div>
 
           {/* Mobile bottom bar — current player */}
           <div className="md:hidden mt-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">

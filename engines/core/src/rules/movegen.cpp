@@ -1,6 +1,7 @@
 #include "core/types.h"
 #include "core/constants.h"
 #include "core/bitboard.h"
+#include "core/square_map.h"
 #include "rules/variant.h"
 #include "rules/promotion.h"
 #include <algorithm>
@@ -86,32 +87,53 @@ void generateQuiets(const Position& pos, const RuleConfig& rules, Move* out, int
         }
     }
 
-    // Process kings (all 4 directions, adjacent only — Tanzania: kingLandingFlexible=false)
+    // Kings: flying king (Art. 3.2) — slide any number of empty squares along each diagonal.
+    // Short king fallback (non-TZD variants) uses the adjacent square only.
     Bitboard kings = myKings;
     while (kings) {
         int sq = bsf(kings);
         kings &= kings - 1;
 
-        for (int d = 0; d < 4; d++) {
-            uint32_t adj = 0;
-            switch (d) {
-                case 0: adj = NE_MASK[sq]; break;
-                case 1: adj = NW_MASK[sq]; break;
-                case 2: adj = SE_MASK[sq]; break;
-                case 3: adj = SW_MASK[sq]; break;
-            }
-            if (!adj) continue;
-            int toSq = bsf(adj);
-            if (!((empty >> toSq) & 1)) continue;
+        if (rules.kingsFly) {
+            // Flying king: keep sliding until a piece blocks or the board edge is reached.
+            for (int d = 0; d < 4; d++) {
+                for (int i = 0; i < (int)DIAG_RAY_LEN[sq][d]; i++) {
+                    int toSq = (int)DIAG_RAY[sq][d][i];
+                    if (!((empty >> toSq) & 1)) break; // blocked — stop in this direction
 
-            Move m;
-            m.from    = (uint8_t)sq;
-            m.to      = (uint8_t)toSq;
-            m.pathLen = 0;
-            m.capLen  = 0;
-            m.promote = false; // kings don't re-promote
-            m.score   = 0;
-            out[count++] = m;
+                    Move m;
+                    m.from    = (uint8_t)sq;
+                    m.to      = (uint8_t)toSq;
+                    m.pathLen = 0;
+                    m.capLen  = 0;
+                    m.promote = false;
+                    m.score   = 0;
+                    out[count++] = m;
+                }
+            }
+        } else {
+            // Short king: one adjacent square per direction.
+            for (int d = 0; d < 4; d++) {
+                uint32_t adj = 0;
+                switch (d) {
+                    case 0: adj = NE_MASK[sq]; break;
+                    case 1: adj = NW_MASK[sq]; break;
+                    case 2: adj = SE_MASK[sq]; break;
+                    case 3: adj = SW_MASK[sq]; break;
+                }
+                if (!adj) continue;
+                int toSq = bsf(adj);
+                if (!((empty >> toSq) & 1)) continue;
+
+                Move m;
+                m.from    = (uint8_t)sq;
+                m.to      = (uint8_t)toSq;
+                m.pathLen = 0;
+                m.capLen  = 0;
+                m.promote = false;
+                m.score   = 0;
+                out[count++] = m;
+            }
         }
     }
 }

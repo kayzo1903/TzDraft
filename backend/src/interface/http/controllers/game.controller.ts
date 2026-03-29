@@ -26,6 +26,7 @@ import {
   CreateInviteGameDto,
   StartAiChallengeSessionDto,
   CompleteAiChallengeSessionDto,
+  SyncAiProgressDto,
   RecordGameDto,
 } from '../dtos/create-game.dto';
 import { Winner, EndReason, GameStatus } from '../../../shared/constants/game.constants';
@@ -169,6 +170,21 @@ export class GameController {
       sessionId,
       dto.result,
       dto.undoUsed,
+    );
+    return { success: true, data };
+  }
+
+  @Post('ai/progression/sync')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Merge local offline AI progression into the authenticated account' })
+  async syncAiProgression(
+    @CurrentUser() user: any,
+    @Body() dto: SyncAiProgressDto,
+  ) {
+    const data = await this.aiProgressionService.syncLocalProgress(
+      user.id,
+      dto.completedLevels,
+      dto.maxUnlockedAiLevel,
     );
     return { success: true, data };
   }

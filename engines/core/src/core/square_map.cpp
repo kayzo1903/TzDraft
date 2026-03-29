@@ -9,6 +9,8 @@ uint32_t SE_MASK[32] = {0};
 uint32_t SW_MASK[32] = {0};
 uint32_t JUMP_OVER[32][4] = {};  // 0=NE, 1=NW, 2=SE, 3=SW
 uint32_t JUMP_LAND[32][4] = {};
+uint8_t  DIAG_RAY[32][4][7] = {};
+uint8_t  DIAG_RAY_LEN[32][4] = {};
 
 // Board layout:
 // Row 7 (black back rank):  sq 0(col1)  sq 1(col3)  sq 2(col5)  sq 3(col7)
@@ -87,6 +89,24 @@ void initSquareMaps() {
             // Set jump tables
             JUMP_OVER[sq][d] = (adj >= 0)  ? (uint32_t)adj  : 0xFF;
             JUMP_LAND[sq][d] = (land >= 0) ? (uint32_t)land : 0xFF;
+        }
+    }
+
+    // Build diagonal ray tables for flying king move/capture generation.
+    // Each entry lists the squares reachable step-by-step in one direction.
+    for (int sq = 0; sq < 32; sq++) {
+        int row = sqRow(sq);
+        int col = sqCol(sq);
+        for (int d = 0; d < 4; d++) {
+            uint8_t len = 0;
+            for (int step = 1; step <= 7; step++) {
+                int r2 = row + DR[d] * step;
+                int c2 = col + DC[d] * step;
+                int nsq = rcToSq(r2, c2);
+                if (nsq < 0) break;
+                DIAG_RAY[sq][d][len++] = (uint8_t)nsq;
+            }
+            DIAG_RAY_LEN[sq][d] = len;
         }
     }
 

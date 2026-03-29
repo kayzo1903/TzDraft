@@ -3,18 +3,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BoardState,
-  CakeEngine,
+  MkaguziEngine,
   Move,
   PlayerColor,
   Position,
   Winner,
-} from "@tzdraft/cake-engine";
+  isEngineReady,
+  initEngine,
+} from "@tzdraft/mkaguzi-engine";
 import type {
   BoardState as UiBoardState,
   CaptureGhost,
   LastMoveState,
 } from "@/components/game/Board";
 import { playMoveSound } from "@/lib/game/move-sound";
+
+function boardToFen(board: BoardState, player: PlayerColor): string {
+  const stm = player === PlayerColor.WHITE ? "W" : "B";
+  const w = board
+    .getPiecesByColor(PlayerColor.WHITE)
+    .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .sort()
+    .join(",");
+  const b = board
+    .getPiecesByColor(PlayerColor.BLACK)
+    .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .sort()
+    .join(",");
+  return `${stm}:W${w}:B${b}`;
+}
+
+function countFenOccurrences(history: string[], fen: string): number {
+  let n = 0;
+  for (const f of history) if (f === fen) n++;
+  return n;
+}
 
 export interface LocalPvpGameState {
   board: BoardState;
@@ -65,7 +88,7 @@ const boardToUiPieces = (board: BoardState, flip: boolean): UiBoardState => {
 
 export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   const [board, setBoard] = useState<BoardState>(() =>
-    CakeEngine.createInitialState(),
+    MkaguziEngine.createInitialState(),
   );
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>(PlayerColor.WHITE);
   const [moveCount, setMoveCount] = useState(0);
@@ -86,6 +109,11 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   thirtyMoveCountRef.current = thirtyMoveCount;
   const [mustContinueFrom, setMustContinueFrom] = useState<Position | null>(null);
   const [showPassOverlay, setShowPassOverlay] = useState(false);
+  const [engineReady, setEngineReady] = useState(isEngineReady());
+  useEffect(() => {
+    if (engineReady) return;
+    initEngine("/wasm/mkaguzi_wasm.js").then(() => setEngineReady(true)).catch(() => {});
+  }, [engineReady]);
   // Store last move in board coordinates so it re-maps correctly when board flips
   const [lastMovePositions, setLastMovePositions] = useState<{
     from: Position;
@@ -95,7 +123,10 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
 
   const captureCleanupTimeoutsRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
-  const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
+  const initialBoardRef = useRef<BoardState>(MkaguziEngine.createInitialState());
+  const fenHistoryRef = useRef<string[]>([
+    boardToFen(MkaguziEngine.createInitialState(), PlayerColor.WHITE),
+  ]);
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
   const captureAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -115,7 +146,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
 
   const legalMoves = useMemo(() => {
     const map: Record<number, number[]> = {};
-    const allMoves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
+    const allMoves = MkaguziEngine.generateLegalMoves(board, currentPlayer, moveCount);
     const filtered = mustContinueFrom
       ? allMoves.filter((m) => m.from.equals(mustContinueFrom))
       : allMoves;
@@ -126,13 +157,13 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       map[fromIdx].push(toIdx);
     }
     return map;
-  }, [board, currentPlayer, moveCount, flipForCurrentPlayer, mustContinueFrom]);
+  }, [board, currentPlayer, moveCount, flipForCurrentPlayer, mustContinueFrom, engineReady]);
 
   const forcedPieces = useMemo(() => {
     if (mustContinueFrom) {
       return [positionToIndex(mustContinueFrom, flipForCurrentPlayer)];
     }
-    const allMoves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
+    const allMoves = MkaguziEngine.generateLegalMoves(board, currentPlayer, moveCount);
     const captures = allMoves.filter((m) => m.capturedSquares.length > 0);
     if (captures.length === 0) return [];
     const set = new Set<number>();
@@ -140,7 +171,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       set.add(positionToIndex(move.from, flipForCurrentPlayer));
     }
     return Array.from(set);
-  }, [board, currentPlayer, moveCount, flipForCurrentPlayer, mustContinueFrom]);
+  }, [board, currentPlayer, moveCount, flipForCurrentPlayer, mustContinueFrom, engineReady]);
 
   // Derive UI last-move indices from board-space positions so they update when board flips
   const lastMove: LastMoveState = useMemo(
@@ -164,13 +195,13 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       const whiteMen = whitePieces.length - whiteKings;
       const blackMen = blackPieces.length - blackKings;
 
-      // Article 8.3 — 30-move rule: all kings, no captures → count; reset otherwise
+      // Article 8.3 — 30 full moves = 60 half-moves with kings only and no captures.
       const allKings = whiteMen === 0 && blackMen === 0;
       const newThirtyCount =
         !allKings || hadCapture ? 0 : thirtyMoveCountRef.current + 1;
       setThirtyMoveCount(newThirtyCount);
       thirtyMoveCountRef.current = newThirtyCount;
-      if (newThirtyCount >= 30) return true;
+      if (newThirtyCount >= 60) return true;
 
       const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
       const blackOnlyKing = blackPieces.length === 1 && blackKings === 1;
@@ -265,8 +296,11 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
         captureCleanupTimeoutsRef.current.push(cleanupId);
       }
 
-      const nextBoard = CakeEngine.applyMove(board, move);
+      const nextBoard = MkaguziEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
+
+      // Track FEN history for Art. 8.2 threefold repetition detection
+      fenHistoryRef.current.push(boardToFen(nextBoard, nextPlayer));
 
       setBoard(nextBoard);
       setMoves((prev) => [...prev, move]);
@@ -284,9 +318,13 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
         move.capturedSquares.length > 0,
       );
 
-      const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
+      // Art. 8.2 — threefold repetition
+      const newFen = fenHistoryRef.current[fenHistoryRef.current.length - 1];
+      const isRepetition = countFenOccurrences(fenHistoryRef.current, newFen) >= 3;
+
+      const gameResult = MkaguziEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) setResult({ winner: gameResult.winner });
-      else if (isDraw) setResult({ winner: Winner.DRAW });
+      else if (isDraw || isRepetition) setResult({ winner: Winner.DRAW });
     },
     [board, currentPlayer, evaluateEndgameCountdown, flipForCurrentPlayer, passDevice],
   );
@@ -300,7 +338,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       const to = indexToPosition(toIndex, flipForCurrentPlayer);
       if (!from || !to) return;
 
-      const allMoves = CakeEngine.generateLegalMoves(board, currentPlayer, moveCount);
+      const allMoves = MkaguziEngine.generateLegalMoves(board, currentPlayer, moveCount);
       const filtered = mustContinueFrom
         ? allMoves.filter((m) => m.from.equals(mustContinueFrom))
         : allMoves;
@@ -327,9 +365,12 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     if (moves.length === 0) return;
     const newMoves = moves.slice(0, -1);
     let nextBoard = initialBoardRef.current;
+    const rebuiltFens: string[] = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     for (const move of newMoves) {
-      nextBoard = CakeEngine.applyMove(nextBoard, move);
+      nextBoard = MkaguziEngine.applyMove(nextBoard, move);
+      rebuiltFens.push(boardToFen(nextBoard, getOpponent(move.player)));
     }
+    fenHistoryRef.current = rebuiltFens;
     const nextPlayer =
       newMoves.length === 0
         ? PlayerColor.WHITE
@@ -354,7 +395,8 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   }, [moves]);
 
   const reset = useCallback(() => {
-    initialBoardRef.current = CakeEngine.createInitialState();
+    initialBoardRef.current = MkaguziEngine.createInitialState();
+    fenHistoryRef.current = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     setBoard(initialBoardRef.current);
     setCurrentPlayer(PlayerColor.WHITE);
     setMoveCount(0);
@@ -454,15 +496,20 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
         } else {
           next.BLACK = Math.max(0, next.BLACK - 1);
         }
-        const whitePieces = board.getPiecesByColor(PlayerColor.WHITE).length;
-        const blackPieces = board.getPiecesByColor(PlayerColor.BLACK).length;
-        const isThreeVsOne =
-          (whitePieces === 3 && blackPieces === 1) ||
-          (whitePieces === 1 && blackPieces === 3);
+        // Art. 10: timeout → loss UNLESS opponent has insufficient material to win (Art. 8.1).
+        const wp = board.getPiecesByColor(PlayerColor.WHITE);
+        const bp = board.getPiecesByColor(PlayerColor.BLACK);
+        const wk = wp.filter((p) => p.isKing()).length;
+        const bk = bp.filter((p) => p.isKing()).length;
+        const wm = wp.length - wk;
+        const bm = bp.length - bk;
+        // Opponent cannot force a win: 1-2 kings vs lone king (no men on either side)
+        const blackCannotWin = bm === 0 && bk <= 2 && wm === 0 && wk === 1;
+        const whiteCannotWin = wm === 0 && wk <= 2 && bm === 0 && bk === 1;
         if (next.WHITE === 0) {
-          setResult({ winner: isThreeVsOne ? Winner.DRAW : Winner.BLACK });
+          setResult({ winner: blackCannotWin ? Winner.DRAW : Winner.BLACK });
         } else if (next.BLACK === 0) {
-          setResult({ winner: isThreeVsOne ? Winner.DRAW : Winner.WHITE });
+          setResult({ winner: whiteCannotWin ? Winner.DRAW : Winner.WHITE });
         }
         return next;
       });
@@ -496,6 +543,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     legalMoves,
     forcedPieces,
     flipBoard: flipForCurrentPlayer,
+    engineReady,
     playWarning,
     makeMove,
     dismissPassOverlay,

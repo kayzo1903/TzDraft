@@ -70,7 +70,7 @@ export class AiAnalyzeRequestDto {
 
 /**
  * AI Controller
- * Exposes stateless engine connections (CAKE, SiDra, Mkaguzi).
+ * Exposes Mkaguzi-backed move generation and analysis endpoints.
  * These endpoints are public for local play and analysis.
  */
 @ApiTags('ai')

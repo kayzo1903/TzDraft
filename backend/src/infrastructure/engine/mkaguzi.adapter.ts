@@ -2,7 +2,7 @@
 // NestJS service that integrates the Mkaguzi engine via a persistent JSON IPC process.
 //
 // Mkaguzi is TzDraft's own C++20 Tanzania draughts engine.
-// Unlike SiDra (one-shot process per move), Mkaguzi stays alive between requests:
+// The adapter keeps a persistent process alive between requests:
 //   setVariant → setPosition → go → read bestmove
 //   setVariant → evalTrace   → read evalTrace
 //
@@ -171,23 +171,24 @@ export class MkaguziAdapter
   }
 
   /**
-   * Build a FEN string for Mkaguzi from CAKE board state.
+   * Build a FEN string for Mkaguzi from the app's board state convention.
    *
-   * CAKE uses the American convention: WHITE pieces start at positions 1-12
-   * (top of the board) and promote at positions 29-32 (bottom).
+   * The app uses the legacy top-oriented convention: WHITE pieces start at
+   * positions 1-12 (top of the board) and promote at positions 29-32
+   * (bottom).
    *
    * Mkaguzi uses the International convention: WHITE pieces start at positions
    * 21-32 (bottom) and promote at positions 1-4 (top).
    *
    * The square numbers (1-32) refer to the same physical squares in both
-   * systems, but the color assignments are inverted. Fix: send CAKE WHITE as
+   * systems, but the color assignments are inverted. Fix: send app WHITE as
    * Mkaguzi BLACK and vice-versa, and flip the side-to-move accordingly.
    * The returned move (from/to) is in the same 1-32 PDN numbering so no
    * further conversion is needed.
    */
   private piecesToFen(pieces: EnginePiece[], currentPlayer: 'WHITE' | 'BLACK'): string {
-    // CAKE WHITE = Mkaguzi BLACK (both at top, sqs 1-12)
-    // CAKE BLACK = Mkaguzi WHITE (both at bottom, sqs 21-32)
+    // App WHITE = Mkaguzi BLACK (both at top, sqs 1-12)
+    // App BLACK = Mkaguzi WHITE (both at bottom, sqs 21-32)
     const mkaguziStm = currentPlayer === 'WHITE' ? 'B' : 'W';
     const mkaguziWhiteParts = pieces
       .filter((p) => p.color === 'BLACK')
@@ -200,11 +201,11 @@ export class MkaguziAdapter
     return `${mkaguziStm}:W${mkaguziWhiteParts}:B${mkaguziBlackParts}`;
   }
 
-  /** Convert a CAKE-convention FEN to Mkaguzi-convention FEN (swap colors + STM). */
-  private cakeToMkaguziFen(cakeFen: string): string {
-    const stm = cakeFen[0] === 'W' ? 'B' : 'W';
-    const wMatch = cakeFen.match(/:W([^:]*)/);
-    const bMatch = cakeFen.match(/:B([^:]*)/);
+  /** Convert an app-convention FEN to Mkaguzi's convention (swap colors + STM). */
+  private appFenToMkaguziFen(appFen: string): string {
+    const stm = appFen[0] === 'W' ? 'B' : 'W';
+    const wMatch = appFen.match(/:W([^:]*)/);
+    const bMatch = appFen.match(/:B([^:]*)/);
     const whiteSqs = wMatch ? wMatch[1] : '';
     const blackSqs = bMatch ? bMatch[1] : '';
     return `${stm}:W${blackSqs}:B${whiteSqs}`;
@@ -292,10 +293,15 @@ export class MkaguziAdapter
 
     if (request.aiLevel !== undefined && request.aiLevel !== null) {
       switch (request.aiLevel) {
-        case 15: timeMs = 1000; break;
-        case 16: timeMs = 1500; break;
-        case 17: timeMs = 2500; break;
-        case 18: timeMs = 4000; break;
+        case 10: timeMs =  400; break;
+        case 11: timeMs =  600; break;
+        case 12: timeMs =  800; break;
+        case 13: timeMs = 1000; break;
+        case 14: timeMs = 1200; break;
+        case 15: timeMs = 1500; break;
+        case 16: timeMs = 2000; break;
+        case 17: timeMs = 3000; break;
+        case 18: timeMs = 4500; break;
         case 19: timeMs = 6000; break;
         default: timeMs = request.timeLimitMs ?? 6000; break;
       }
@@ -309,7 +315,7 @@ export class MkaguziAdapter
       this.send({ type: 'setVariant', variant: 'tanzania' });
       const posMsg: Record<string, unknown> = { type: 'setPosition', fen };
       if (request.history && request.history.length > 0) {
-        posMsg.history = request.history.map((f) => this.cakeToMkaguziFen(f));
+        posMsg.history = request.history.map((f) => this.appFenToMkaguziFen(f));
       }
       this.send(posMsg);
 

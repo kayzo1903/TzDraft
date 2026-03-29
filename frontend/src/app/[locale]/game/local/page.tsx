@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useLocalGame } from "@/hooks/useLocalGame";
 import { getBotByLevel, type BotProfile } from "@/lib/game/bots";
 import { useAuthStore } from "@/lib/auth/auth-store";
-import { PlayerColor, Winner } from "@tzdraft/cake-engine";
+import { PlayerColor, Winner } from "@tzdraft/mkaguzi-engine";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { getMaxUnlockedBotLevel, TOTAL_BOT_LEVELS, BOT_TIERS, INITIAL_FREE_LEVELS } from "@/lib/game/bot-progression";
@@ -431,6 +431,11 @@ export default function LocalGamePage() {
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const nextBot = useMemo(() => getBotByLevel(Math.min(level + 1, TOTAL_BOT_LEVELS)), [level]);
   const { user, isAuthenticated, hasHydrated } = useAuthStore();
+  const isRegisteredUser =
+    hasHydrated &&
+    isAuthenticated &&
+    user?.accountType === "REGISTERED" &&
+    Boolean(user?.id);
   // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of redirect before mount effect runs
   const [maxUnlockedAtStart, setMaxUnlockedAtStart] = useState(INITIAL_FREE_LEVELS);
   const [maxUnlockedNow, setMaxUnlockedNow] = useState(INITIAL_FREE_LEVELS);
@@ -441,8 +446,8 @@ export default function LocalGamePage() {
   const [sessionReported, setSessionReported] = useState(false);
   const [gameRunKey, setGameRunKey] = useState(0);
 
-  const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, playWarning, undo, resign, makeMove, reset } =
-    useLocalGame(level, playerColor, timeSeconds, !isAuthenticated);
+  const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning, undo, resign, makeMove, reset } =
+    useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
   const [showResign, setShowResign] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -465,7 +470,7 @@ export default function LocalGamePage() {
     if (!hasHydrated) return;
 
     const loadProgression = async () => {
-      if (isAuthenticated && user?.id) {
+      if (isRegisteredUser) {
         try {
           const progression = await aiChallengeService.getProgression();
           const max = progression.highestUnlockedAiLevel;
@@ -485,10 +490,10 @@ export default function LocalGamePage() {
     };
 
     void loadProgression();
-  }, [hasHydrated, isAuthenticated, level, router, setupAiPath, user?.id]);
+  }, [hasHydrated, isRegisteredUser, level, router, setupAiPath, user?.id]);
 
   useEffect(() => {
-    if (!hasHydrated || !isAuthenticated || !user?.id) {
+    if (!hasHydrated || !isRegisteredUser || !user?.id) {
       setSessionId(null);
       setSessionReported(false);
       return;
@@ -517,7 +522,7 @@ export default function LocalGamePage() {
     return () => {
       cancelled = true;
     };
-  }, [gameRunKey, hasHydrated, isAuthenticated, level, playerColor, user?.id]);
+  }, [gameRunKey, hasHydrated, isRegisteredUser, level, playerColor, user?.id]);
 
   useEffect(() => {
     if (!state.result) {
@@ -525,7 +530,7 @@ export default function LocalGamePage() {
       setIsNewUnlock(false);
       return;
     }
-    if (isAuthenticated && user?.id) {
+    if (isRegisteredUser) {
       return;
     }
     const newMax = getMaxUnlockedBotLevel();
@@ -543,10 +548,10 @@ export default function LocalGamePage() {
     } else {
       setIsNewUnlock(false);
     }
-  }, [isAuthenticated, maxUnlockedAtStart, state.result, user?.id]);
+  }, [isRegisteredUser, maxUnlockedAtStart, state.result, user?.id]);
 
   useEffect(() => {
-    if (!state.result || !sessionId || sessionReported || !isAuthenticated || !user?.id) return;
+    if (!state.result || !sessionId || sessionReported || !isRegisteredUser || !user?.id) return;
 
     let cancelled = false;
     const completeSession = async () => {
@@ -588,7 +593,7 @@ export default function LocalGamePage() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, maxUnlockedAtStart, playerColor, sessionId, sessionReported, state.result, state.undoUsed, user?.id]);
+  }, [isRegisteredUser, maxUnlockedAtStart, playerColor, sessionId, sessionReported, state.result, state.undoUsed, user?.id]);
 
   const handleResetGame = () => {
     reset();
@@ -673,17 +678,24 @@ export default function LocalGamePage() {
             </div>
           </div>
 
-          <Board
-            onMove={makeMove}
-            pieces={pieces}
-            lastMove={lastMove}
-            capturedGhosts={capturedGhosts}
-            legalMoves={legalMoves}
-            forcedPieces={forcedPieces}
-            flipped={flipBoard}
-            onInvalidSelect={playWarning}
-            readOnly={state.isAiThinking}
-          />
+          <div className="relative">
+            <Board
+              onMove={makeMove}
+              pieces={pieces}
+              lastMove={lastMove}
+              capturedGhosts={capturedGhosts}
+              legalMoves={legalMoves}
+              forcedPieces={forcedPieces}
+              flipped={flipBoard}
+              onInvalidSelect={playWarning}
+              readOnly={state.isAiThinking}
+            />
+            {!engineReady && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                <div className="w-7 h-7 rounded-full border-2 border-neutral-400/30 border-t-neutral-300 animate-spin" />
+              </div>
+            )}
+          </div>
 
           {/* Mobile bottom player bar */}
           <div className="md:hidden mt-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">

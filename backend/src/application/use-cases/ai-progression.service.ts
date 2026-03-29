@@ -138,6 +138,78 @@ export class AiProgressionService {
     return this.getProgression(userId);
   }
 
+  async syncLocalProgress(
+    userId: string,
+    completedLevels: number[],
+    maxUnlockedAiLevel: number,
+  ): Promise<AiProgressionSummary> {
+    await this.ensureRating(userId);
+
+    const normalizedCompleted = Array.from(
+      new Set(
+        completedLevels
+          .map((level) => Number(level))
+          .filter(
+            (level) =>
+              Number.isInteger(level) &&
+              level >= 1 &&
+              level <= TOTAL_AI_LEVELS,
+          ),
+      ),
+    ).sort((a, b) => a - b);
+
+    const normalizedMaxUnlocked = Math.min(
+      TOTAL_AI_LEVELS,
+      Math.max(INITIAL_FREE_AI_LEVELS, Math.trunc(maxUnlockedAiLevel)),
+    );
+    const highestCompleted = normalizedCompleted.length
+      ? normalizedCompleted[normalizedCompleted.length - 1]
+      : 0;
+
+    const existingCompleted = await this.prisma.$queryRaw<Array<{ aiLevel: number }>>`
+      SELECT DISTINCT ai_level AS "aiLevel"
+      FROM ai_challenge_sessions
+      WHERE user_id = ${userId}
+        AND result = 'WIN'
+        AND undo_used = false
+        AND completed_at IS NOT NULL
+    `;
+
+    const existingCompletedSet = new Set(
+      existingCompleted.map((entry) => entry.aiLevel),
+    );
+    const missingCompleted = normalizedCompleted.filter(
+      (level) => !existingCompletedSet.has(level),
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      if (missingCompleted.length > 0) {
+        await tx.aiChallengeSession.createMany({
+          data: missingCompleted.map((level) => ({
+            id: randomUUID(),
+            userId,
+            aiLevel: level,
+            playerColor: 'WHITE',
+            result: 'WIN',
+            undoUsed: false,
+            completedAt: new Date(),
+          })),
+        });
+      }
+
+      await tx.$executeRaw`
+        UPDATE ratings
+        SET
+          highest_ai_level_played = GREATEST(COALESCE(highest_ai_level_played, 0), ${highestCompleted}),
+          highest_ai_level_beaten = GREATEST(COALESCE(highest_ai_level_beaten, 0), ${highestCompleted}),
+          highest_unlocked_ai_level = GREATEST(COALESCE(highest_unlocked_ai_level, ${INITIAL_FREE_AI_LEVELS}), ${normalizedMaxUnlocked})
+        WHERE user_id = ${userId}
+      `;
+    });
+
+    return this.getProgression(userId);
+  }
+
   private async ensureRating(userId: string) {
     await this.prisma.rating.upsert({
       where: { userId },

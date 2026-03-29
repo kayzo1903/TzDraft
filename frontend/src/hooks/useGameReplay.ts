@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { historyService } from "@/services/history.service";
-import { CakeEngine } from "@tzdraft/cake-engine";
-import { PlayerColor } from "@tzdraft/cake-engine";
+import { MkaguziEngine } from "@tzdraft/mkaguzi-engine";
+import { PlayerColor } from "@tzdraft/mkaguzi-engine";
 
 export interface ReplayMove {
   id: string;
@@ -18,7 +18,7 @@ export interface ReplayMove {
 }
 
 export interface ReplayState {
-  boardState: ReturnType<typeof CakeEngine.createInitialState>;
+  boardState: ReturnType<typeof MkaguziEngine.createInitialState>;
   currentPlayer: "WHITE" | "BLACK";
   stepIndex: number; // -1 = initial position
 }
@@ -32,7 +32,7 @@ export function useGameReplay(gameId: string) {
 
   // Board states at each step (index 0 = after move 0, etc.)
   const [boardStates, setBoardStates] = useState<
-    ReturnType<typeof CakeEngine.createInitialState>[]
+    ReturnType<typeof MkaguziEngine.createInitialState>[]
   >([]);
 
   const [stepIndex, setStepIndex] = useState(-1); // -1 = initial position
@@ -51,16 +51,16 @@ export function useGameReplay(gameId: string) {
         setMoves(sortedMoves);
 
         // Pre-compute board state after each move
-        const states: ReturnType<typeof CakeEngine.createInitialState>[] = [];
-        let board = CakeEngine.createInitialState();
+        const states: ReturnType<typeof MkaguziEngine.createInitialState>[] = [];
+        let board = MkaguziEngine.createInitialState();
 
         for (const m of sortedMoves) {
-          const from = CakeEngine.createPosition(m.fromSquare);
-          const to = CakeEngine.createPosition(m.toSquare);
+          const from = MkaguziEngine.createPosition(m.fromSquare);
+          const to = MkaguziEngine.createPosition(m.toSquare);
           const captured = m.capturedSquares.map((sq: number) =>
-            CakeEngine.createPosition(sq),
+            MkaguziEngine.createPosition(sq),
           );
-          const move = CakeEngine.createMove(
+          const move = MkaguziEngine.createMove(
             m.id,
             gameId,
             m.moveNumber,
@@ -70,7 +70,7 @@ export function useGameReplay(gameId: string) {
             captured,
             m.isPromotion,
           );
-          board = CakeEngine.applyMove(board, move);
+          board = MkaguziEngine.applyMove(board, move);
           states.push(board);
         }
 
@@ -83,8 +83,8 @@ export function useGameReplay(gameId: string) {
 
   const currentBoard =
     stepIndex === -1
-      ? CakeEngine.createInitialState()
-      : boardStates[stepIndex] ?? CakeEngine.createInitialState();
+      ? MkaguziEngine.createInitialState()
+      : boardStates[stepIndex] ?? MkaguziEngine.createInitialState();
 
   const currentPlayer: "WHITE" | "BLACK" =
     stepIndex === -1

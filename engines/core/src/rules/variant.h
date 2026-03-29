@@ -3,22 +3,22 @@
 
 struct RuleConfig {
   bool menCaptureBackward;       // TZ: false  |  RU: true
-  bool kingsFly;                 // TZ: false  |  RU: true
+  bool kingsFly;                 // TZ: true   |  RU: true
   bool menPromoteAndContinue;    // TZ: false  |  RU: true
   bool maxCaptureRequired;       // TZ: true   |  RU: true
   bool majorityCaptureMandatory; // TZ: true   |  RU: false
-  bool kingLandingFlexible;      // TZ: false  |  RU: true
+  bool kingLandingFlexible;      // TZ: true   |  RU: true
   bool drawByRepetition;         // both: true
   int  repetitionThreshold;      // TZ: 3      |  RU: 3
 };
 
 const RuleConfig TANZANIA = {
   /* menCaptureBackward */       false,
-  /* kingsFly */                 false,
+  /* kingsFly */                 true,   // Art. 3.2: flying king — any number of empty squares
   /* menPromoteAndContinue */    false,
-  /* maxCaptureRequired */       false,  // TZD: free choice — no max-capture requirement
-  /* majorityCaptureMandatory */ false,  // TZD: free choice — no majority requirement
-  /* kingLandingFlexible */      false,
+  /* maxCaptureRequired */       false,  // Art. 4.9: free choice — no max-capture requirement
+  /* majorityCaptureMandatory */ false,  // Art. 4.9: free choice — no majority requirement
+  /* kingLandingFlexible */      true,   // Art. 4.3: king lands on any free square beyond captured piece
   /* drawByRepetition */         true,
   /* repetitionThreshold */      3
 };
