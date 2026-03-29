@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-wasm.mjs",
     "dev": "next dev -p 3000",
-    "prebuild": "pnpm --filter @tzdraft/cake-engine build",
+    "prebuild": "pnpm --filter @tzdraft/mkaguzi-engine build && node scripts/copy-wasm.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -14,7 +15,7 @@
     "@radix-ui/react-label": "^2.1.0",
     "@sanity/vision": "^5.17.1",
     "@sentry/nextjs": "^8.0.0",
-    "@tzdraft/cake-engine": "file:../packages/cake-engine",
+    "@tzdraft/mkaguzi-engine": "file:../packages/mkaguzi-engine",
     "@tzdraft/shared-client": "file:../packages/shared-client",
     "axios": "^1.13.4",
     "better-auth": "^1.4.18",

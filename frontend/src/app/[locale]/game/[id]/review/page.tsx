@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/routing';
 import { Board, BoardState as UiBoardState } from '@/components/game/Board';
 import { Button } from '@/components/ui/Button';
 import { useGameReplay } from '@/hooks/useGameReplay';
 import { useAuth } from '@/hooks/useAuth';
-import { PlayerColor, Position } from '@tzdraft/cake-engine';
+import { PlayerColor, Position } from '@tzdraft/mkaguzi-engine';
+import axiosInstance from '@/lib/axios';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -17,6 +18,75 @@ import {
   Loader2,
 } from 'lucide-react';
 
+// ── Mkaguzi eval trace types ──────────────────────────────────────────────────
+interface EvalTrace {
+  material: number;
+  mobility: number;
+  structure: number;
+  patterns: number;
+  kingSafety: number;
+  tempo: number;
+  total: number;
+}
+
+// ── Eval trace panel ──────────────────────────────────────────────────────────
+function EvalBar({ label, value, max = 200 }: { label: string; value: number; max?: number }) {
+  const pct = Math.min(100, Math.abs(value) / max * 100);
+  const positive = value >= 0;
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-20 text-neutral-400 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+        <div
+          className={`h-full rounded-full ${positive ? 'bg-[#81b64c]' : 'bg-red-500'}`}
+          style={{ width: `${pct}%`, marginLeft: positive ? '50%' : `${50 - pct}%` }}
+        />
+      </div>
+      <span className={`w-10 text-right font-mono ${positive ? 'text-[#81b64c]' : 'text-red-400'}`}>
+        {value > 0 ? '+' : ''}{value}
+      </span>
+    </div>
+  );
+}
+
+function MkaguziEvalPanel({ trace, loading }: { trace: EvalTrace | null; loading: boolean }) {
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 overflow-hidden">
+      <div className="px-4 py-3 border-b border-neutral-800 flex items-center justify-between">
+        <h2 className="text-sm font-black text-neutral-300 uppercase tracking-[0.3em]">Mkaguzi Eval</h2>
+        {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />}
+      </div>
+      <div className="px-4 py-3 space-y-2.5">
+        {trace ? (
+          <>
+            <EvalBar label="Material"   value={trace.material}   max={300} />
+            <EvalBar label="Mobility"   value={trace.mobility}   max={60} />
+            <EvalBar label="Structure"  value={trace.structure}  max={120} />
+            <EvalBar label="Patterns"   value={trace.patterns}   max={100} />
+            <EvalBar label="King Safety" value={trace.kingSafety} max={100} />
+            <EvalBar label="Tempo"      value={trace.tempo}      max={20} />
+            <div className="border-t border-neutral-800 pt-2 mt-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-neutral-400 font-medium">Total</span>
+                <span className={`font-black font-mono ${trace.total >= 0 ? 'text-[#81b64c]' : 'text-red-400'}`}>
+                  {trace.total > 0 ? '+' : ''}{trace.total}
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-600 mt-1">
+                Positive = White advantage · centipawns
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-neutral-600 py-2">
+            {loading ? 'Analysing…' : 'Navigate to a position to see evaluation.'}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Convert a checkers position (1-32) to a board grid index (0-63), with optional flip */
 function posToIndex(squareValue: number, flip = false): number {
   const pos = new Position(squareValue);
@@ -24,9 +94,9 @@ function posToIndex(squareValue: number, flip = false): number {
   return flip ? (7 - row) * 8 + (7 - col) : row * 8 + col;
 }
 
-/** Convert CAKE BoardState to the UI Board's pieces format, with optional flip */
-function cakeBoardToUi(
-  board: ReturnType<typeof import('@tzdraft/cake-engine').CakeEngine.createInitialState>,
+/** Convert a Mkaguzi board state to the UI Board's pieces format, with optional flip */
+function boardToUiPieces(
+  board: ReturnType<typeof import('@tzdraft/mkaguzi-engine').MkaguziEngine.createInitialState>,
   flip = false,
 ): UiBoardState {
   const pieces: UiBoardState = {};
@@ -67,6 +137,7 @@ export default function GameReviewPage() {
     loading,
     error,
     currentBoard,
+    currentPlayer,
     stepIndex,
     totalMoves,
     goTo,
@@ -79,8 +150,42 @@ export default function GameReviewPage() {
   // Flip the board when the current user played as BLACK so their pieces are always at the bottom
   const isFlipped = Boolean(user && players?.black && user.id === players.black.id);
 
+  // ── Mkaguzi eval trace ──────────────────────────────────────────────────
+  const [evalTrace, setEvalTrace] = useState<EvalTrace | null>(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const evalDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+    if (evalDebounceRef.current) clearTimeout(evalDebounceRef.current);
+
+    evalDebounceRef.current = setTimeout(async () => {
+      try {
+        setEvalLoading(true);
+        const pieces = currentBoard.getAllPieces().map((p) => ({
+          type: p.isKing() ? 'KING' : 'MAN',
+          color: p.color === PlayerColor.WHITE ? 'WHITE' : 'BLACK',
+          position: p.position.value,
+        }));
+        const { data } = await axiosInstance.post('/ai/analyze', {
+          pieces,
+          currentPlayer,
+        });
+        setEvalTrace(data.data ?? null);
+      } catch {
+        setEvalTrace(null);
+      } finally {
+        setEvalLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      if (evalDebounceRef.current) clearTimeout(evalDebounceRef.current);
+    };
+  }, [currentBoard, currentPlayer, loading]);
+
   const uiPieces = useMemo(
-    () => cakeBoardToUi(currentBoard, isFlipped),
+    () => boardToUiPieces(currentBoard, isFlipped),
     [currentBoard, isFlipped],
   );
 
@@ -189,15 +294,15 @@ export default function GameReviewPage() {
             )}
           </div>
 
-          {/* Move List */}
-          <div className="lg:col-span-1">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 overflow-hidden h-full">
+          {/* Move List + Eval Panel */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 overflow-hidden">
               <div className="px-4 py-3 border-b border-neutral-800">
                 <h2 className="text-sm font-black text-neutral-300 uppercase tracking-[0.3em]">
                   Moves ({totalMoves})
                 </h2>
               </div>
-              <div className="overflow-y-auto max-h-[500px] divide-y divide-neutral-800/50">
+              <div className="overflow-y-auto max-h-100 divide-y divide-neutral-800/50">
                 <button
                   onClick={() => goTo(-1)}
                   className={`w-full text-left px-4 py-2 text-xs text-neutral-500 hover:bg-neutral-800/30 transition-colors ${
@@ -228,6 +333,9 @@ export default function GameReviewPage() {
                 ))}
               </div>
             </div>
+
+            {/* Mkaguzi position evaluation */}
+            <MkaguziEvalPanel trace={evalTrace} loading={evalLoading} />
           </div>
         </div>
       </div>

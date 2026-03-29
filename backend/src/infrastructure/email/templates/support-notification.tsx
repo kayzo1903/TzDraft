@@ -139,10 +139,10 @@ const label = {
 };
 
 const messageBox = {
-    backgroundColor: emailTheme.colors.secondary,
+    backgroundColor: emailTheme.colors.surface,
     borderRadius: '8px',
     padding: '16px',
-    border: '1px solid #374151',
+    border: `1px solid ${emailTheme.colors.border}`,
 };
 
 const messageText = {

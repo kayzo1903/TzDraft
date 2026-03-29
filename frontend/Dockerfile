@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Copy workspace manifests for layer caching
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/cake-engine/package.json ./packages/cake-engine/
+COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY packages/shared-client/package.json ./packages/shared-client/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
@@ -16,12 +16,12 @@ COPY frontend/package.json ./frontend/
 RUN pnpm install --frozen-lockfile
 
 # Copy source
-COPY packages/cake-engine/ ./packages/cake-engine/
+COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 COPY packages/shared-client/ ./packages/shared-client/
 COPY frontend/ ./frontend/
 
-# Build shared CAKE engine first (frontend imports it via webpack alias)
-WORKDIR /app/packages/cake-engine
+# Build Mkaguzi engine TypeScript package first (frontend imports it via webpack alias)
+WORKDIR /app/packages/mkaguzi-engine
 RUN pnpm build
 
 # Build Next.js frontend
@@ -46,17 +46,17 @@ WORKDIR /app
 
 # Workspace manifests
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/cake-engine/package.json ./packages/cake-engine/
+COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 
-# Production deps only; --ignore-scripts prevents cake-engine from rebuilding
+# Production deps only; --ignore-scripts prevents mkaguzi-engine from rebuilding
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# CAKE engine dist (symlinked via pnpm workspace — copy resolves it)
-COPY --from=builder /app/packages/cake-engine/dist ./packages/cake-engine/dist
+# Mkaguzi engine dist (symlinked via pnpm workspace — copy resolves it)
+COPY --from=builder /app/packages/mkaguzi-engine/dist ./packages/mkaguzi-engine/dist
 
-# Next.js build output and public assets
+# Next.js build output and public assets (includes /wasm/*.js/.wasm artifacts)
 COPY --from=builder /app/frontend/.next ./frontend/.next
 COPY --from=builder /app/frontend/public ./frontend/public
 

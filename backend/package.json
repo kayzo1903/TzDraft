@@ -20,7 +20,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:merge": "node scripts/merge-schemas.js",
-    "prisma:generate": "node scripts/merge-schemas.js && prisma generate"
+    "prisma:generate": "node scripts/merge-schemas.js && prisma generate",
+    "test:emails": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/scripts/test-notification-emails.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -41,7 +42,6 @@
     "@sentry/nestjs": "^8.0.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@types/passport-google-oauth20": "^2.0.17",
-    "@tzdraft/cake-engine": "file:../packages/cake-engine",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -99,12 +99,13 @@
     "moduleFileExtensions": [
       "js",
       "json",
-      "ts"
+      "ts",
+      "tsx"
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)sx?$": "ts-jest"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

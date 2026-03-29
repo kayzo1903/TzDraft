@@ -20,6 +20,11 @@ export class GetGameStateUseCase {
     private readonly userService: UserService,
   ) {}
 
+  /** Lightweight game lookup — just the entity, no moves/players. */
+  async getGame(gameId: string): Promise<Game | null> {
+    return this.gameRepository.findById(gameId);
+  }
+
   /**
    * Get complete game state
    */

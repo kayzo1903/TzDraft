@@ -6,7 +6,7 @@ import { Board } from "@/components/game/Board";
 import { ConnectionStatus } from "@/components/game/ConnectionStatus";
 import { useOnlineGame } from "@/hooks/useOnlineGame";
 import { useSocket } from "@/hooks/useSocket";
-import { PlayerColor, Winner } from "@tzdraft/cake-engine";
+import { PlayerColor, Winner } from "@tzdraft/mkaguzi-engine";
 import {
   Check,
   Copy,

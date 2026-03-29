@@ -4,6 +4,7 @@ import { PrismaService } from '../../../infrastructure/database/prisma/prisma.se
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { TournamentParticipant } from '../../../domain/tournament/entities/tournament-participant.entity';
 import { EligibilityCheckService } from '../../../domain/tournament/services/eligibility-check.service';
+import { TournamentNotificationService } from '../../services/tournament-notification.service';
 
 @Injectable()
 export class RegisterForTournamentUseCase {
@@ -12,6 +13,7 @@ export class RegisterForTournamentUseCase {
     private readonly repo: ITournamentRepository,
     private readonly eligibility: EligibilityCheckService,
     private readonly prisma: PrismaService,
+    private readonly notificationService: TournamentNotificationService,
   ) {}
 
   async execute(tournamentId: string, userId: string): Promise<TournamentParticipant> {
@@ -66,6 +68,10 @@ export class RegisterForTournamentUseCase {
       new Date(),
     );
 
-    return this.repo.createParticipant(participant);
+    const saved = await this.repo.createParticipant(participant);
+
+    void this.notificationService.notifyRegistered(userId, tournament);
+
+    return saved;
   }
 }

@@ -46,6 +46,7 @@ model User {
     tournamentParticipants TournamentParticipant[] @relation("TournamentParticipants")
     aiChallengeSessions    AiChallengeSession[]
     matchmakingSearches    MatchmakingSearch[]
+    notifications          Notification[]         @relation("UserNotifications")
 
     @@index([country])
     @@index([country, region])

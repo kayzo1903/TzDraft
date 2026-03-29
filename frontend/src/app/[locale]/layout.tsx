@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { EngineInit } from "@/components/engine/EngineInit";
 import type { Metadata } from "next";
 import {
   getCanonicalUrl,
@@ -164,6 +165,7 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
+      <EngineInit />
       <JsonLd data={organizationSchema} />
       <JsonLd data={gameSchema} />
       <Navbar />

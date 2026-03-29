@@ -1,12 +1,14 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
+import { TournamentNotificationService } from '../../services/tournament-notification.service';
 
 @Injectable()
 export class AdminCancelTournamentUseCase {
   constructor(
     @Inject('ITournamentRepository')
     private readonly repo: ITournamentRepository,
+    private readonly notificationService: TournamentNotificationService,
   ) {}
 
   async execute(tournamentId: string) {
@@ -23,6 +25,14 @@ export class AdminCancelTournamentUseCase {
     }
 
     tournament.status = TournamentStatus.CANCELLED;
-    return this.repo.update(tournament);
+    const saved = await this.repo.update(tournament);
+
+    const participants = await this.repo.findParticipantsByTournament(tournamentId);
+    void this.notificationService.notifyTournamentCancelled(
+      participants.map((p) => p.userId),
+      saved,
+    );
+
+    return saved;
   }
 }
