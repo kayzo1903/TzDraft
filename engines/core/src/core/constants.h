@@ -20,4 +20,10 @@ extern uint32_t SW_MASK[32];
 extern uint32_t JUMP_OVER[32][4];
 extern uint32_t JUMP_LAND[32][4];
 
+// Diagonal ray tables for flying kings (Art. 3.2, 4.3).
+// DIAG_RAY[sq][d][i] = the i-th square in direction d from sq (0=NE,1=NW,2=SE,3=SW).
+// DIAG_RAY_LEN[sq][d] = number of valid squares in that direction (0–7).
+extern uint8_t DIAG_RAY[32][4][7];
+extern uint8_t DIAG_RAY_LEN[32][4];
+
 #endif // CORE_CONSTANTS_H

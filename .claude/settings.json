@@ -28,7 +28,16 @@
       "Bash(/dev/null netstat:*)",
       "Bash(xargs -I{} cmd //c 'taskkill /PID {} /F' 2)",
       "Bash(/dev/null echo:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(cmd //c \"taskkill /IM mkaguzi.exe /F\")",
+      "Bash(git commit:*)",
+      "Bash(emcc --version)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(pnpm dlx:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\Desktop\\TzDraft\\frontend\\src\\app\\[locale]\\game\\[id]\\review"
     ]
   }
 }

@@ -26,6 +26,28 @@ function makeGameWithBoard(b: BoardState): Game {
   return game;
 }
 
+function makeGameWithSnapshotAndMoves(
+  pieces: BoardState,
+  rawMoves: { fromSquare: number; toSquare: number; capturedSquares: number[] }[],
+): Game {
+  const game = new Game('game1', 'white-player', 'black-player', GameType.CASUAL);
+  game.start();
+  game.restoreFromSnapshot(pieces.serialize(), rawMoves);
+  return game;
+}
+
+function repeatRawMove(
+  count: number,
+  fromSquare: number,
+  toSquare: number,
+): { fromSquare: number; toSquare: number; capturedSquares: number[] }[] {
+  return Array.from({ length: count }, () => ({
+    fromSquare,
+    toSquare,
+    capturedSquares: [],
+  }));
+}
+
 const mockGameRepository = {
   findById: jest.fn(),
   update: jest.fn().mockResolvedValue(undefined),
@@ -186,6 +208,61 @@ describe('MakeMoveUseCase', () => {
 
       expect(game.isGameOver()).toBe(false);
       expect(mockGamesGateway.emitGameOver).not.toHaveBeenCalled();
+    });
+
+    it('declares a draw on the 60th kings-only reversible half-move', async () => {
+      const game = makeGameWithSnapshotAndMoves(
+        new BoardState([
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(1)),
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(18)),
+          new Piece(PieceType.KING, PlayerColor.BLACK, new Position(32)),
+        ]),
+        repeatRawMove(59, 18, 22),
+      );
+      mockGameRepository.findById.mockResolvedValue(game);
+
+      await useCase.execute('game1', 'white-player', 18, 22);
+
+      expect(game.isGameOver()).toBe(true);
+      expect(game.winner).toBe(Winner.DRAW);
+      expect(game.endReason).toBe(EndReason.DRAW);
+    });
+
+    it('declares a draw on the 12th stronger-side move in 3K vs 1K', async () => {
+      const game = makeGameWithSnapshotAndMoves(
+        new BoardState([
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(1)),
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(5)),
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(18)),
+          new Piece(PieceType.KING, PlayerColor.BLACK, new Position(32)),
+        ]),
+        repeatRawMove(21, 18, 22),
+      );
+      mockGameRepository.findById.mockResolvedValue(game);
+
+      await useCase.execute('game1', 'white-player', 18, 22);
+
+      expect(game.isGameOver()).toBe(true);
+      expect(game.winner).toBe(Winner.DRAW);
+      expect(game.endReason).toBe(EndReason.DRAW);
+    });
+
+    it('declares a draw on the 10th half-move in a 2K vs K ending', async () => {
+      const game = makeGameWithSnapshotAndMoves(
+        new BoardState([
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(1)),
+          new Piece(PieceType.KING, PlayerColor.WHITE, new Position(18)),
+          new Piece(PieceType.KING, PlayerColor.BLACK, new Position(32)),
+        ]),
+        repeatRawMove(9, 18, 22),
+      );
+      mockGameRepository.findById.mockResolvedValue(game);
+
+      await useCase.execute('game1', 'white-player', 18, 22);
+
+      expect(game.isGameOver()).toBe(true);
+      expect(game.winner).toBe(Winner.DRAW);
+      expect(game.endReason).toBe(EndReason.DRAW);
     });
   });
 });

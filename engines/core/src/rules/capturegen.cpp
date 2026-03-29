@@ -2,36 +2,39 @@
 #include "rules/promotion.h"
 #include "core/constants.h"
 #include "core/bitboard.h"
+#include "core/square_map.h"
 #include <cstring>
 
 // Recursive multi-jump capture generator.
 //
-// Tanzania rules:
+// Tanzania rules (Art. 4):
 //  - Men capture forward only (white: NE=0, NW=1; black: SE=2, SW=3)
-//  - Kings capture in all 4 directions, land exactly 1 step beyond (no flying kings)
+//  - Kings: flying king — scan the diagonal for first enemy, land on any empty square beyond
 //  - Promotion during capture stops the sequence (menPromoteAndContinue=false)
-//  - The same enemy piece cannot be captured twice in one sequence
+//  - Same enemy cannot be captured twice in one sequence (Turkish strike, Art. 4.7)
+//  - Captured pieces remain physically on the board until sequence ends (Art. 4.4)
+//    → they block landing squares but cannot be re-captured
 //
 // sq           - current square of the capturing piece
 // isKing       - whether the piece is currently a king
 // side         - 0=white, 1=black
-// removedMask  - bitmask of enemy squares removed so far in this sequence
-// partial      - move being built (from/path/captures already partially set)
+// removedMask  - bitmask of enemy squares already captured in this sequence
+// partial      - move being built
 // out          - output array
 // count        - number of moves written so far
 
-static void genCaptureFrom(
+static bool genCaptureFrom(
     const Position& pos,
     const RuleConfig& rules,
     uint8_t sq,
     bool isKing,
     int side,
-    Bitboard removedMask,   // enemies already captured in this sequence
+    Bitboard removedMask,
     Move& partial,
     Move* out,
     int& count)
 {
-    // Determine which squares are enemies and which are occupied
+    // Enemies that can still be captured (not yet taken in this sequence)
     Bitboard enemies;
     if (side == 0) {
         enemies = (pos.blackMen | pos.blackKings) & ~removedMask;
@@ -39,87 +42,133 @@ static void genCaptureFrom(
         enemies = (pos.whiteMen | pos.whiteKings) & ~removedMask;
     }
 
-    // Occupied squares excluding already-removed enemies
-    // The jumping piece itself isn't in the occupied mask we use for landing checks.
-    // Pieces already captured (removedMask) are considered vacated.
-    Bitboard allPieces = (pos.whiteMen | pos.whiteKings | pos.blackMen | pos.blackKings) & ~removedMask;
+    // Blocking occupancy: all pieces on board minus the jumping piece.
+    // Art. 4.4: captured pieces remain physically until sequence ends → they stay in
+    // this mask and block landing/passing squares even after being captured.
+    Bitboard blocking = (pos.whiteMen | pos.whiteKings | pos.blackMen | pos.blackKings)
+                        & ~(1U << sq);
 
-    // Also remove the current square of the jumping piece from allPieces
-    // so it doesn't block its own jump-over squares on multi-jumps
-    allPieces &= ~(1U << sq);
-
-    // Determine which directions to check
-    // Men: white=NE(0),NW(1); black=SE(2),SW(3)
-    // Kings: all 4 directions
+    // Direction limits
     int dirStart = 0, dirEnd = 4;
-    if (!isKing) {
-        if (!rules.menCaptureBackward) {
-            if (side == 0) { dirStart = 0; dirEnd = 2; }   // NE, NW
-            else            { dirStart = 2; dirEnd = 4; }   // SE, SW
-        }
+    if (!isKing && !rules.menCaptureBackward) {
+        if (side == 0) { dirStart = 0; dirEnd = 2; }  // white men: NE, NW
+        else            { dirStart = 2; dirEnd = 4; }  // black men: SE, SW
     }
 
     bool foundFurther = false;
 
     for (int d = dirStart; d < dirEnd; d++) {
-        uint32_t over = JUMP_OVER[sq][d];
-        uint32_t land = JUMP_LAND[sq][d];
-
-        if (over == 0xFF || land == 0xFF) continue; // off board
-
-        Bitboard overMask = (1U << over);
-        Bitboard landMask = (1U << land);
-
-        // Enemy must be on the over square and landing must be empty
-        if (!(enemies & overMask)) continue;
-        if (allPieces & landMask) continue;
-
-        foundFurther = true;
-
-        // Extend the sequence
-        Bitboard newRemoved = removedMask | overMask;
-
-        // Record capture and path step
-        int savedCapLen  = partial.capLen;
-        int savedPathLen = partial.pathLen;
-        bool savedPromote = partial.promote;
-
-        partial.captures[partial.capLen++] = (uint8_t)over;
-        partial.path[partial.pathLen++]    = (uint8_t)land;
-
-        // Check promotion: only applies to men landing on promotion rank
-        bool promoted = shouldPromote((int)land, side, isKing);
-        if (promoted) partial.promote = true;
-
-        // Tanzania: if a man promotes during a capture, the sequence ends immediately
-        bool canContinue = !promoted || rules.menPromoteAndContinue;
-
-        if (canContinue) {
-            // Recurse: try to extend the sequence from the landing square
-            genCaptureFrom(pos, rules, (uint8_t)land, isKing || promoted,
-                           side, newRemoved, partial, out, count);
-        } else {
-            // Promotion stops the sequence — commit this partial move now
-            if (partial.capLen > 0 && count < 256) {
-                partial.to = (uint8_t)land;
-                out[count++] = partial;
+        if (isKing && rules.kingsFly) {
+            // ── Flying king capture (Art. 4.3, 4.6) ──────────────────────────────
+            // Step 1: scan the diagonal to find the first enemy piece.
+            //         Stop at any blocking piece (own or previously-captured enemy).
+            int enemySq  = -1;
+            int enemyIdx = -1;
+            for (int i = 0; i < (int)DIAG_RAY_LEN[sq][d]; i++) {
+                int rsq = (int)DIAG_RAY[sq][d][i];
+                if (blocking & (1U << rsq)) {
+                    if (enemies & (1U << rsq)) {
+                        enemySq  = rsq;
+                        enemyIdx = i;
+                    }
+                    break; // blocked — stop regardless
+                }
             }
-        }
+            if (enemySq < 0) continue; // no capturable enemy this way
 
-        // Undo extension (backtrack)
-        partial.capLen  = savedCapLen;
-        partial.pathLen = savedPathLen;
-        partial.promote = savedPromote;
+            Bitboard overMask   = 1U << enemySq;
+            Bitboard newRemoved = removedMask | overMask;
+
+            // Step 2: enumerate every empty landing square beyond the captured enemy.
+            //         Stop at the next blocking piece (Art. 4.3: land on any free square
+            //         beyond the captured piece).
+            for (int i = enemyIdx + 1; i < (int)DIAG_RAY_LEN[sq][d]; i++) {
+                int land = (int)DIAG_RAY[sq][d][i];
+                // blocking still contains the captured enemy, but we're past its index
+                // and landing on squares beyond it — check the remaining ray for blockers.
+                if (blocking & (1U << land)) break; // blocked — no further landing
+
+                foundFurther = true;
+
+                int  savedCapLen  = partial.capLen;
+                int  savedPathLen = partial.pathLen;
+                bool savedPromote = partial.promote;
+
+                partial.captures[partial.capLen++] = (uint8_t)enemySq;
+                partial.path[partial.pathLen++]    = (uint8_t)land;
+                // Kings don't re-promote
+
+                // Recurse: try more captures from this landing square.
+                // If this landing forces continuation, any later landing square
+                // beyond it would illegally bypass that obligation (TZD Art. 4.6).
+                bool forcedContinuation =
+                    genCaptureFrom(pos, rules, (uint8_t)land, true, side,
+                                   newRemoved, partial, out, count);
+
+                partial.capLen  = savedCapLen;
+                partial.pathLen = savedPathLen;
+                partial.promote = savedPromote;
+
+                if (forcedContinuation) {
+                    break;
+                }
+            }
+        } else {
+            // ── Man (or short-king) capture: fixed one-step-over, one-step-land ──
+            uint32_t over = JUMP_OVER[sq][d];
+            uint32_t land = JUMP_LAND[sq][d];
+
+            if (over == 0xFF || land == 0xFF) continue; // off board
+
+            Bitboard overMask = 1U << over;
+            Bitboard landMask = 1U << land;
+
+            if (!(enemies & overMask)) continue;   // no capturable enemy here
+            if (blocking & landMask)   continue;   // landing occupied
+
+            foundFurther = true;
+
+            Bitboard newRemoved = removedMask | overMask;
+
+            int  savedCapLen  = partial.capLen;
+            int  savedPathLen = partial.pathLen;
+            bool savedPromote = partial.promote;
+
+            partial.captures[partial.capLen++] = (uint8_t)over;
+            partial.path[partial.pathLen++]    = (uint8_t)land;
+
+            bool promoted = shouldPromote((int)land, side, isKing);
+            if (promoted) partial.promote = true;
+
+            // Art. 4.10: promotion during capture ends the sequence immediately
+            bool canContinue = !promoted || rules.menPromoteAndContinue;
+
+            if (canContinue) {
+                genCaptureFrom(pos, rules, (uint8_t)land, isKing || promoted,
+                               side, newRemoved, partial, out, count);
+            } else {
+                // Promotion stops — commit now
+                if (partial.capLen > 0 && count < 256) {
+                    partial.to = (uint8_t)land;
+                    out[count++] = partial;
+                }
+            }
+
+            partial.capLen  = savedCapLen;
+            partial.pathLen = savedPathLen;
+            partial.promote = savedPromote;
+        }
     }
 
     if (!foundFurther) {
-        // This is a leaf node: commit the partial move
+        // Leaf node: commit the completed capture sequence
         if (partial.capLen > 0 && count < 256) {
-            // The 'to' square is the last square in the path
             partial.to = partial.path[partial.pathLen - 1];
             out[count++] = partial;
         }
     }
+
+    return foundFurther;
 }
 
 void generateCaptures(const Position& pos, const RuleConfig& rules, Move* out, int& count) {

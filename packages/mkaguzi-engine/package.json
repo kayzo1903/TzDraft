@@ -1,0 +1,42 @@
+{
+  "name": "@tzdraft/mkaguzi-engine",
+  "version": "1.0.0",
+  "description": "Mkaguzi Engine for Tanzania Drafti — WASM-backed browser game engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/search-worker.d.ts",
+      "import": "./dist/search-worker.js"
+    }
+  },
+  "files": [
+    "dist",
+    "wasm"
+  ],
+  "scripts": {
+    "build": "tsc && node build-worker.mjs",
+    "build:watch": "tsc --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "tanzanian-drafti",
+    "draughts",
+    "checkers",
+    "wasm",
+    "game-engine"
+  ],
+  "author": "TzDraft Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.27.4",
+    "typescript": "^5.7.3"
+  }
+}

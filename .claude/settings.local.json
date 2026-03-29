@@ -89,7 +89,10 @@
       "Bash(ls \"C:/Program Files \\(x86\\)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/MSBuild.exe\")",
       "Bash(ls /c/Users/Admin/Desktop/TzDraft/engines/core/build/*.sln)",
       "Bash(\"C:/Program Files \\(x86\\)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/MSBuild.exe\" \"C:/Users/Admin/Desktop/TzDraft/engines/core/build/mkaguzi_engine.sln\" /p:Configuration=Release /t:mkaguzi /m /nologo)",
-      "Bash(cmd //c \"cd /d C:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\engines\\\\core\\\\build && C:\\\\Windows\\\\System32\\\\cmd.exe /c \"\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\2022\\\\BuildTools\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\"\" mkaguzi_engine.sln /p:Configuration=Release /t:mkaguzi /m /nologo\")"
+      "Bash(cmd //c \"cd /d C:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\engines\\\\core\\\\build && C:\\\\Windows\\\\System32\\\\cmd.exe /c \"\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\2022\\\\BuildTools\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\"\" mkaguzi_engine.sln /p:Configuration=Release /t:mkaguzi /m /nologo\")",
+      "Bash(command -v esbuild)",
+      "Bash(npx esbuild:*)",
+      "Bash(node scripts/copy-wasm.mjs)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",

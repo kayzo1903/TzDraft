@@ -38,8 +38,8 @@ inline Bitboard emptyCount(const Position& p) {
 struct Move {
     uint8_t from;
     uint8_t to;
-    uint8_t path[12];      // multi-jump path
-    uint8_t captures[6];   // captured square indices
+    uint8_t path[12];      // multi-jump landing squares (one per captured piece)
+    uint8_t captures[12];  // captured square indices (flying kings can capture all 12 opponent pieces)
     uint8_t pathLen;
     uint8_t capLen;
     bool promote;

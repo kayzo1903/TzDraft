@@ -18,6 +18,14 @@ export const aiChallengeService = {
     return response.data.data;
   },
 
+  async syncLocalProgress(input: {
+    completedLevels: number[];
+    maxUnlockedAiLevel: number;
+  }): Promise<AiProgression> {
+    const response = await axiosInstance.post("/games/ai/progression/sync", input);
+    return response.data.data;
+  },
+
   async startSession(input: {
     aiLevel: number;
     playerColor: AiChallengePlayerColor;

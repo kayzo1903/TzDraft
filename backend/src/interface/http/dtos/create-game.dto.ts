@@ -127,6 +127,26 @@ export class CompleteAiChallengeSessionDto {
   undoUsed: boolean;
 }
 
+export class SyncAiProgressDto {
+  @ApiProperty({
+    description: 'Levels completed locally without undo, to be merged into server progression',
+    type: [Number],
+  })
+  @IsArray()
+  @IsInt({ each: true })
+  completedLevels: number[];
+
+  @ApiProperty({
+    description: 'Highest locally unlocked AI level',
+    minimum: 1,
+    maximum: 19,
+  })
+  @IsInt()
+  @Min(1)
+  @Max(19)
+  maxUnlockedAiLevel: number;
+}
+
 export class RecordMoveDto {
   @IsInt() @Min(1) @Max(32) fromSquare: number;
   @IsInt() @Min(1) @Max(32) toSquare: number;

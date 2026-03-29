@@ -1,5 +1,5 @@
 // engine-adapter.interface.ts
-// Shared contract for all engine adapters (SiDra, future custom engines).
+// Shared contract for Mkaguzi and any future engine adapters.
 
 export interface EngineMove {
   from: number; // 1–32 square number

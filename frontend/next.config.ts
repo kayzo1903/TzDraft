@@ -70,9 +70,9 @@ const nextConfig: NextConfig = {
     config.resolve = config.resolve || {};
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      "@tzdraft/cake-engine": path.resolve(
+      "@tzdraft/mkaguzi-engine": path.resolve(
         __dirname,
-        "../packages/cake-engine/dist",
+        "../packages/mkaguzi-engine/dist",
       ),
       "@tzdraft/shared-client": path.resolve(
         __dirname,

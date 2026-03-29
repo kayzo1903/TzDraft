@@ -1,8 +1,22 @@
 import axiosInstance from "../axios";
 import { useAuthStore } from "./auth-store";
 import { RegisterData, LoginData, AuthResponse } from "./types";
+import { hasLocalBotProgressToSync, getLocalBotProgressSnapshot } from "../game/bot-progression";
+import { aiChallengeService } from "@/services/ai-challenge.service";
 
 export type OtpPurpose = "signup" | "password_reset" | "verify_phone";
+
+async function syncLocalAiProgressIfNeeded(response: AuthResponse): Promise<void> {
+  if (response.user.accountType !== "REGISTERED") return;
+  if (!hasLocalBotProgressToSync()) return;
+
+  try {
+    const snapshot = getLocalBotProgressSnapshot();
+    await aiChallengeService.syncLocalProgress(snapshot);
+  } catch (error) {
+    console.warn("Failed to sync local AI progression after authentication.", error);
+  }
+}
 
 export const authClient = {
   async register(data: RegisterData): Promise<AuthResponse> {
@@ -12,6 +26,7 @@ export const authClient = {
     );
     const { user, accessToken, refreshToken } = response.data;
     useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    await syncLocalAiProgressIfNeeded(response.data);
     return response.data;
   },
 
@@ -22,6 +37,7 @@ export const authClient = {
     );
     const { user, accessToken, refreshToken } = response.data;
     useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    await syncLocalAiProgressIfNeeded(response.data);
     return response.data;
   },
 

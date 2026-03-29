@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BoardState,
-  CakeEngine,
+  MkaguziEngine,
   Move,
   PlayerColor,
   Position,
   Piece,
   PieceType,
   Winner,
-} from "@tzdraft/cake-engine";
+  isEngineReady,
+  initEngine,
+} from "@tzdraft/mkaguzi-engine";
 
 // Build a PDN FEN string from a board state — used to send game history to
 // the Mkaguzi engine so it can detect game-level repetitions.
@@ -19,12 +21,21 @@ function boardToFen(board: BoardState, player: PlayerColor): string {
   const w = board
     .getPiecesByColor(PlayerColor.WHITE)
     .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .sort()
     .join(",");
   const b = board
     .getPiecesByColor(PlayerColor.BLACK)
     .map((p) => (p.isKing() ? `K${p.position.value}` : `${p.position.value}`))
+    .sort()
     .join(",");
   return `${stm}:W${w}:B${b}`;
+}
+
+// Art. 8.2: count how many times a FEN has appeared in history (≥3 = draw).
+function countFenOccurrences(history: string[], fen: string): number {
+  let n = 0;
+  for (const f of history) if (f === fen) n++;
+  return n;
 }
 import type {
   BoardState as UiBoardState,
@@ -254,7 +265,7 @@ export const useLocalGame = (
   const flipForPlayer = playerColor === PlayerColor.WHITE;
   const loaded = loadSavedGame(aiLevel, playerColor);
   const [board, setBoard] = useState<BoardState>(() =>
-    loaded ? loaded.board : CakeEngine.createInitialState(),
+    loaded ? loaded.board : MkaguziEngine.createInitialState(),
   );
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>(
     loaded ? loaded.currentPlayer : PlayerColor.WHITE,
@@ -287,12 +298,12 @@ export const useLocalGame = (
   const [lastMove, setLastMove] = useState<LastMoveState>(null);
   const [capturedGhosts, setCapturedGhosts] = useState<CaptureGhost[]>([]);
   const fenHistoryRef = useRef<string[]>([
-    boardToFen(loaded ? loaded.board : CakeEngine.createInitialState(), PlayerColor.WHITE),
+    boardToFen(loaded ? loaded.board : MkaguziEngine.createInitialState(), PlayerColor.WHITE),
   ]);
   const aiTimeoutRef = useRef<number | null>(null);
   const captureCleanupTimeoutsRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
-  const initialBoardRef = useRef<BoardState>(CakeEngine.createInitialState());
+  const initialBoardRef = useRef<BoardState>(MkaguziEngine.createInitialState());
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
   const captureAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -302,13 +313,20 @@ export const useLocalGame = (
   const startedRef = useRef(false);
   const prevResultRef = useRef<Winner | null>(null);
 
+  // Re-render once when the WASM engine finishes loading so legalMoves is computed.
+  const [engineReady, setEngineReady] = useState(isEngineReady());
+  useEffect(() => {
+    if (engineReady) return;
+    initEngine("/wasm/mkaguzi_wasm.js").then(() => setEngineReady(true)).catch((e) => console.error("[Mkaguzi] WASM init failed:", e));
+  }, [engineReady]);
+
   const pieces = useMemo(
     () => boardToUiPieces(board, flipForPlayer),
     [board, flipForPlayer],
   );
   const legalMoves = useMemo(() => {
     const map: Record<number, number[]> = {};
-    const moves = CakeEngine.generateLegalMoves(
+    const moves = MkaguziEngine.generateLegalMoves(
       board,
       currentPlayer,
       moveCount,
@@ -323,12 +341,12 @@ export const useLocalGame = (
       map[fromIndex].push(toIndex);
     }
     return map;
-  }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom]);
+  }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom, engineReady]);
   const forcedPieces = useMemo(() => {
     if (mustContinueFrom) {
       return [positionToIndex(mustContinueFrom, flipForPlayer)];
     }
-    const moves = CakeEngine.generateLegalMoves(
+    const moves = MkaguziEngine.generateLegalMoves(
       board,
       currentPlayer,
       moveCount,
@@ -354,13 +372,13 @@ export const useLocalGame = (
       const whiteMen = whitePieces.length - whiteKings;
       const blackMen = blackPieces.length - blackKings;
 
-      // Article 8.3 — 30-move rule: all kings, no captures → count; reset otherwise
+      // Article 8.3 — 30 full moves = 60 half-moves with kings only and no captures.
       const allKings = whiteMen === 0 && blackMen === 0;
       const newThirtyCount =
         !allKings || hadCapture ? 0 : thirtyMoveCountRef.current + 1;
       setThirtyMoveCount(newThirtyCount);
       thirtyMoveCountRef.current = newThirtyCount;
-      if (newThirtyCount >= 30) return true;
+      if (newThirtyCount >= 60) return true;
 
       // Classify endgame scenario for timed draws
       const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
@@ -462,7 +480,7 @@ export const useLocalGame = (
         captureCleanupTimeoutsRef.current.push(cleanupTimeout);
       }
 
-      const nextBoard = CakeEngine.applyMove(board, move);
+      const nextBoard = MkaguziEngine.applyMove(board, move);
       const nextPlayer = getOpponent(currentPlayer);
 
       // Track FEN history for Mkaguzi game-level repetition detection
@@ -481,10 +499,14 @@ export const useLocalGame = (
         move.capturedSquares.length > 0,
       );
 
-      const gameResult = CakeEngine.evaluateGameResult(nextBoard, nextPlayer);
+      // Art. 8.2 — threefold repetition: same position with same side-to-move 3× → draw
+      const newFen = fenHistoryRef.current[fenHistoryRef.current.length - 1];
+      const isRepetition = countFenOccurrences(fenHistoryRef.current, newFen) >= 3;
+
+      const gameResult = MkaguziEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) {
         setResult({ winner: gameResult.winner });
-      } else if (isDraw) {
+      } else if (isDraw || isRepetition) {
         setResult({ winner: Winner.DRAW });
       }
     },
@@ -500,7 +522,7 @@ export const useLocalGame = (
       const to = indexToPosition(toIndex, flipForPlayer);
       if (!from || !to) return;
 
-      const legalMoves = CakeEngine.generateLegalMoves(
+      const legalMoves = MkaguziEngine.generateLegalMoves(
         board,
         currentPlayer,
         moveCount,
@@ -529,7 +551,7 @@ export const useLocalGame = (
   );
 
   const reset = useCallback(() => {
-    initialBoardRef.current = CakeEngine.createInitialState();
+    initialBoardRef.current = MkaguziEngine.createInitialState();
     fenHistoryRef.current = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     setBoard(initialBoardRef.current);
     setCurrentPlayer(PlayerColor.WHITE);
@@ -585,7 +607,7 @@ export const useLocalGame = (
     let nextBoard = initialBoardRef.current;
     const rebuiltFens: string[] = [boardToFen(initialBoardRef.current, PlayerColor.WHITE)];
     for (const move of newMoves) {
-      nextBoard = CakeEngine.applyMove(nextBoard, move);
+      nextBoard = MkaguziEngine.applyMove(nextBoard, move);
       const nextP = getOpponent(move.player);
       rebuiltFens.push(boardToFen(nextBoard, nextP));
     }
@@ -704,21 +726,32 @@ export const useLocalGame = (
     const thinkDelayMs = 320 + Math.floor(Math.random() * 260);
     setIsAiThinking(true);
 
-    // ── Local CAKE engine for levels 1-9 ─────────────────────────────────
-    // Runs synchronously in a setTimeout to avoid blocking React render.
+    // ── Local Mkaguzi WASM engine for levels 1-9 ─────────────────────────
+    // Runs in a Web Worker (async) so the UI thread stays responsive.
     if (aiLevel < 10) {
-      aiTimeoutRef.current = window.setTimeout(() => {
+      aiTimeoutRef.current = window.setTimeout(async () => {
         aiTimeoutRef.current = null;
         try {
-          const move = getBestMove(board, currentPlayer, aiLevel);
+          const move = await getBestMove(board, currentPlayer, aiLevel, fenHistoryRef.current);
           if (move) {
             applyMove(move);
+          } else if (!isEngineReady()) {
+            // WASM still initialising — clear thinking flag; the engineReady
+            // state flip will re-trigger this effect once WASM is loaded.
           } else {
-            const gameResult = CakeEngine.evaluateGameResult(
+            const gameResult = MkaguziEngine.evaluateGameResult(
               board,
               currentPlayer,
             );
             if (gameResult) setResult({ winner: gameResult.winner });
+          }
+        } catch (e) {
+          // WASM search crashed (likely stack overflow — rebuild with -sSTACK_SIZE=4MB).
+          // Fall back to a random legal move so the game stays playable.
+          console.error("[bot] WASM search aborted, using random fallback:", e);
+          const legalMoves = MkaguziEngine.generateLegalMoves(board, currentPlayer, moveCount);
+          if (legalMoves.length > 0) {
+            applyMove(legalMoves[Math.floor(Math.random() * legalMoves.length)]);
           }
         } finally {
           setIsAiThinking(false);
@@ -763,7 +796,7 @@ export const useLocalGame = (
 
         const aiMoveData = data.data;
         if (aiMoveData) {
-          const legal = CakeEngine.generateLegalMoves(
+          const legal = MkaguziEngine.generateLegalMoves(
             board,
             currentPlayer,
             moveCount,
@@ -789,14 +822,14 @@ export const useLocalGame = (
         }
 
         // Backend returned null or no match — check for game over
-        const aiLegalMoves = CakeEngine.generateLegalMoves(
+        const aiLegalMoves = MkaguziEngine.generateLegalMoves(
           board,
           currentPlayer,
           moveCount,
         );
         if (aiLegalMoves.length === 0) {
           // AI has no legal moves — declare the opponent as winner
-          const gameResult = CakeEngine.evaluateGameResult(
+          const gameResult = MkaguziEngine.evaluateGameResult(
             board,
             currentPlayer,
           );
@@ -807,8 +840,8 @@ export const useLocalGame = (
               : Winner.WHITE);
           setResult({ winner });
         } else {
-          // Backend returned null or bad move but CAKE finds legal moves — fall back to local engine
-          const fallbackMove = getBestMove(board, currentPlayer, 9);
+          // Backend returned null or bad move — fall back to local Mkaguzi engine
+          const fallbackMove = await getBestMove(board, currentPlayer, 9, fenHistoryRef.current);
           if (fallbackMove) {
             applyMove(fallbackMove);
           } else {
@@ -824,11 +857,11 @@ export const useLocalGame = (
         // Network / engine failure → fall back to local engine at depth 5
         console.warn("AI backend unreachable, using local fallback:", e);
         try {
-          const fallbackMove = getBestMove(board, currentPlayer, 9);
+          const fallbackMove = await getBestMove(board, currentPlayer, 9, fenHistoryRef.current);
           if (fallbackMove) {
             applyMove(fallbackMove);
           } else {
-            const gameResult = CakeEngine.evaluateGameResult(
+            const gameResult = MkaguziEngine.evaluateGameResult(
               board,
               currentPlayer,
             );
@@ -858,6 +891,7 @@ export const useLocalGame = (
     applyMove,
     board,
     currentPlayer,
+    engineReady,
     playerColor,
     result,
     moveCount,
@@ -874,15 +908,24 @@ export const useLocalGame = (
         } else {
           next.BLACK = Math.max(0, next.BLACK - 1);
         }
-        const whitePieces = board.getPiecesByColor(PlayerColor.WHITE).length;
-        const blackPieces = board.getPiecesByColor(PlayerColor.BLACK).length;
-        const isThreeVsOne =
-          (whitePieces === 3 && blackPieces === 1) ||
-          (whitePieces === 1 && blackPieces === 3);
+        // Art. 10: timeout → loss UNLESS opponent has insufficient material to win (Art. 8.1).
+        // Insufficient = board already qualifies as a draw by material:
+        //   K vs K  |  K+Man vs K  |  2K vs K  (Art. 8.4 draw scenarios)
+        const wp = board.getPiecesByColor(PlayerColor.WHITE);
+        const bp = board.getPiecesByColor(PlayerColor.BLACK);
+        const wk = wp.filter((p) => p.isKing()).length;
+        const bk = bp.filter((p) => p.isKing()).length;
+        const wm = wp.length - wk;
+        const bm = bp.length - bk;
+        // "Opponent cannot force a win" when opponent is the side with time remaining.
+        // WHITE timed out → opponent is BLACK; check if BLACK's material is insufficient.
+        // BLACK timed out → opponent is WHITE; check if WHITE's material is insufficient.
+        const blackCannotWin = bm === 0 && bk <= 2 && wm === 0 && wk === 1;  // 1-2K vs 1K
+        const whiteCannotWin = wm === 0 && wk <= 2 && bm === 0 && bk === 1;  // 1-2K vs 1K
         if (next.WHITE === 0) {
-          setResult({ winner: isThreeVsOne ? Winner.DRAW : Winner.BLACK });
+          setResult({ winner: blackCannotWin ? Winner.DRAW : Winner.BLACK });
         } else if (next.BLACK === 0) {
-          setResult({ winner: isThreeVsOne ? Winner.DRAW : Winner.WHITE });
+          setResult({ winner: whiteCannotWin ? Winner.DRAW : Winner.WHITE });
         }
         return next;
       });
@@ -942,6 +985,7 @@ export const useLocalGame = (
     legalMoves,
     forcedPieces,
     flipBoard: flipForPlayer,
+    engineReady,
     playWarning,
     undo,
     resign,
