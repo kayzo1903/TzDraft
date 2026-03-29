@@ -819,6 +819,19 @@ export class GamesGateway
     this.server.to(`tournament:${tournamentId}`).emit('tournamentCompleted', payload);
   }
 
+  emitTournamentStarted(tournamentId: string, payload: any) {
+    this.server.to(`tournament:${tournamentId}`).emit('tournamentStarted', payload);
+  }
+
+  emitTournamentCancelled(tournamentId: string, payload: any) {
+    this.server.to(`tournament:${tournamentId}`).emit('tournamentCancelled', payload);
+  }
+
+  /** Push a persisted notification to a user's personal room. */
+  emitNotification(userId: string, notification: any) {
+    this.server.to(`user:${userId}`).emit('notification', notification);
+  }
+
   /* ── Helpers ─────────────────────────────────────────────────────────── */
 
   private isWsRateLimited(socketId: string): boolean {

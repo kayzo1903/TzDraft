@@ -339,6 +339,11 @@ export default function SetupAiPage() {
   const params = useParams<{ locale: string }>();
   const locale = typeof params?.locale === "string" ? params.locale : "en";
   const { user, isAuthenticated, hasHydrated } = useAuthStore();
+  const isRegisteredUser =
+    hasHydrated &&
+    isAuthenticated &&
+    user?.accountType === "REGISTERED" &&
+    Boolean(user?.id);
 
   // Bug fix: initialize to INITIAL_FREE_LEVELS to avoid flash of all-locked UI
   const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(INITIAL_FREE_LEVELS);
@@ -362,7 +367,7 @@ export default function SetupAiPage() {
     if (!hasHydrated) return;
 
     const loadProgression = async () => {
-      if (isAuthenticated && user?.id) {
+      if (isRegisteredUser) {
         try {
           const progression = await aiChallengeService.getProgression();
           const max = progression.highestUnlockedAiLevel;
@@ -392,7 +397,7 @@ export default function SetupAiPage() {
     };
 
     void loadProgression();
-  }, [hasHydrated, isAuthenticated, user?.id]);
+  }, [hasHydrated, isRegisteredUser, user?.id]);
 
   useEffect(() => {
     if (selectedBot.level > maxUnlockedLevel) setSelectedBot(highestUnlockedBot);

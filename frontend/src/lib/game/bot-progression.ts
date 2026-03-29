@@ -90,6 +90,22 @@ export const getCompletedBotLevels = (): number[] => {
   return Array.from(getCompletedLevelsSet().values()).sort((a, b) => a - b);
 };
 
+export const getLocalBotProgressSnapshot = (): {
+  completedLevels: number[];
+  maxUnlockedAiLevel: number;
+} => ({
+  completedLevels: getCompletedBotLevels(),
+  maxUnlockedAiLevel: getMaxUnlockedBotLevel(),
+});
+
+export const hasLocalBotProgressToSync = (): boolean => {
+  const snapshot = getLocalBotProgressSnapshot();
+  return (
+    snapshot.completedLevels.length > 0 ||
+    snapshot.maxUnlockedAiLevel > INITIAL_FREE_LEVELS
+  );
+};
+
 export const isBotLevelCompleted = (level: number): boolean => {
   return getCompletedLevelsSet().has(clampLevel(level));
 };

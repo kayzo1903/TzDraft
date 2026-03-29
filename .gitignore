@@ -13,3 +13,11 @@ packages/shared-client/dist/
 *.VC.db
 *.vsidx
 *.wsuo
+
+# CMake build artifacts
+build/
+engines/core/build*/
+
+# Python cache
+__pycache__/
+*.pyc

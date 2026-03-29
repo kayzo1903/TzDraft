@@ -1,15 +1,16 @@
-# ─── Stage 0: Sidra Linux build ──────────────────────────────────────────────
-FROM ubuntu:24.04 AS sidra-builder
+# Stage 0: Mkaguzi Linux build
+FROM ubuntu:24.04 AS mkaguzi-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends cmake g++ make && \
     rm -rf /var/lib/apt/lists/*
 
-COPY engines/sidra/ /sidra/
+COPY engines/core/ /mkaguzi/
 
-WORKDIR /sidra
-RUN bash build.sh
+WORKDIR /mkaguzi
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build --config Release
 
-# ─── Stage 1: Builder ────────────────────────────────────────────────────────
+# Stage 1: Backend builder
 FROM node:22-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && \
@@ -19,29 +20,20 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Copy workspace manifests first for better layer caching
+# Copy workspace manifests first for better layer caching.
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/cake-engine/package.json ./packages/cake-engine/
 COPY backend/package.json ./backend/
-# frontend/package.json must exist so pnpm can wire the full workspace
-COPY frontend/package.json ./frontend/
 
-# Install all deps (devDeps needed for build tools: tsc, prisma CLI, etc.)
-RUN pnpm install --frozen-lockfile
+# Install only backend deps (including devDependencies used by build tools).
+RUN pnpm install --filter backend... --frozen-lockfile
 
-# Copy source
-COPY packages/cake-engine/ ./packages/cake-engine/
+# Copy backend source and build it.
 COPY backend/ ./backend/
 
-# Build shared CAKE engine first (backend imports it)
-WORKDIR /app/packages/cake-engine
-RUN pnpm build
-
-# Build backend: merge schemas → prisma generate → tsc
 WORKDIR /app/backend
 RUN pnpm build
 
-# ─── Stage 2: Production ──────────────────────────────────────────────────────
+# Stage 2: Production
 FROM node:22-slim AS production
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && \
@@ -51,34 +43,28 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Workspace manifests for dep resolution
+# Workspace manifests for dependency resolution.
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/cake-engine/package.json ./packages/cake-engine/
 COPY backend/package.json ./backend/
-COPY frontend/package.json ./frontend/
 
-# Install all deps including devDeps (prisma CLI needed for migrate deploy)
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# Install backend deps including devDependencies (prisma CLI is needed at startup).
+RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts
 
-# Copy compiled backend
+# Copy compiled backend output.
 COPY --from=builder /app/backend/dist ./backend/dist
 
-# Copy compiled CAKE engine (backend requires it at runtime)
-COPY --from=builder /app/packages/cake-engine/dist ./packages/cake-engine/dist
-
-# Prisma schema files (needed by migrate deploy and prisma generate)
+# Prisma schema files are needed by migrate deploy and prisma generate.
 COPY --from=builder /app/backend/prisma ./backend/prisma
 
-# Generate Prisma client in this stage — avoids pnpm virtual-store path issues
+# Generate Prisma client in this stage to avoid virtual-store path issues.
 RUN cd /app/backend && pnpm exec prisma generate
 
-# Sidra CLI — Linux binary compiled in sidra-builder stage
-RUN mkdir -p ./engines/sidra/bin
-COPY --from=sidra-builder /sidra/bin/sidra ./engines/sidra/bin/sidra
+# Copy the Mkaguzi native binary to the path the adapter probes by default.
+RUN mkdir -p ./engines/core/build/Release
+COPY --from=mkaguzi-builder /mkaguzi/build/mkaguzi ./engines/core/build/Release/mkaguzi
 
 WORKDIR /app/backend
 
 EXPOSE 3002
 
-# Run migrations then start server
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/src/main"]

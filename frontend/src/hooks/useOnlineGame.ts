@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BoardState,
-  CakeEngine,
+  MkaguziEngine,
   CaptureFindingService,
   Move,
   PlayerColor,
   Position,
   Winner,
-} from "@tzdraft/cake-engine";
+} from "@tzdraft/mkaguzi-engine";
 import type {
   BoardState as UiBoardState,
   CaptureGhost,
@@ -97,7 +97,7 @@ const toUiColor = (color: PlayerColor): "WHITE" | "BLACK" =>
 
 /* ─── Reconstruct board from backend moves ─────────────────────────────── */
 const reconstructBoard = (rawMoves: unknown[]): BoardState => {
-  let board = CakeEngine.createInitialState();
+  let board = MkaguziEngine.createInitialState();
   for (const raw of rawMoves) {
     const m = raw as Record<string, unknown>;
     try {
@@ -123,7 +123,7 @@ const reconstructBoard = (rawMoves: unknown[]): BoardState => {
         notation,
         new Date(),
       );
-      board = CakeEngine.applyMove(board, move);
+      board = MkaguziEngine.applyMove(board, move);
     } catch {
       // Skip malformed moves
     }
@@ -145,7 +145,7 @@ export const useOnlineGame = (gameId: string) => {
     black: Record<string, unknown> | null;
   }>({ white: null, black: null });
   const [board, setBoard] = useState<BoardState>(() =>
-    CakeEngine.createInitialState(),
+    MkaguziEngine.createInitialState(),
   );
   const [moveCount, setMoveCount] = useState(0);
   const [result, setResult] = useState<{
@@ -237,7 +237,7 @@ export const useOnlineGame = (gameId: string) => {
   const legalMoves = useMemo(() => {
     if (currentPlayer !== myColor) return {};
     const map: Record<number, number[]> = {};
-    const allMoves = CakeEngine.generateLegalMoves(
+    const allMoves = MkaguziEngine.generateLegalMoves(
       board,
       currentPlayer,
       moveCount,
@@ -253,7 +253,7 @@ export const useOnlineGame = (gameId: string) => {
 
   const forcedPieces = useMemo(() => {
     if (currentPlayer !== myColor) return [];
-    const allMoves = CakeEngine.generateLegalMoves(
+    const allMoves = MkaguziEngine.generateLegalMoves(
       board,
       currentPlayer,
       moveCount,
@@ -526,7 +526,7 @@ export const useOnlineGame = (gameId: string) => {
 
         setBoard((prevBoard) => {
           try {
-            const updatedBoard = CakeEngine.applyMove(prevBoard, move);
+            const updatedBoard = MkaguziEngine.applyMove(prevBoard, move);
 
             setMoveCount(incomingMoveNum);
             prevMoveCountRef.current = incomingMoveNum;
@@ -857,7 +857,7 @@ export const useOnlineGame = (gameId: string) => {
       // ── Optimistic update ───────────────────────────────────────────
       // Find the matching legal move so we can apply it instantly before
       // the server confirms, giving a completely lag-free feel.
-      const allMoves = CakeEngine.generateLegalMoves(
+      const allMoves = MkaguziEngine.generateLegalMoves(
         board,
         currentPlayer,
         moveCount,
@@ -867,7 +867,7 @@ export const useOnlineGame = (gameId: string) => {
       );
 
       if (matchingMove) {
-        const newBoard = CakeEngine.applyMove(board, matchingMove);
+        const newBoard = MkaguziEngine.applyMove(board, matchingMove);
         const newMoveCount = moveCount + 1;
 
         setBoard(newBoard);

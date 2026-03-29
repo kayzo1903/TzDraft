@@ -1,4 +1,4 @@
-import type { Position } from "@tzdraft/cake-engine";
+import type { Position } from "@tzdraft/mkaguzi-engine";
 
 export type MoveSoundKind = "normal" | "long" | "capture";
 

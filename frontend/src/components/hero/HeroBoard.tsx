@@ -3,9 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Board, BoardState as UiBoardState } from "@/components/game/Board";
 import {
   BoardState as EngineBoardState,
-  CakeEngine,
+  MkaguziEngine,
   PlayerColor,
-} from "@tzdraft/cake-engine";
+} from "@tzdraft/mkaguzi-engine";
 import { getBestMove } from "@/lib/ai/bot";
 
 const FULL_MOVE_LIMIT = 5;
@@ -22,7 +22,7 @@ const TIMING = {
 
 // --- Helpers ---
 const createInitialBoard = (): EngineBoardState =>
-  CakeEngine.createInitialState();
+  MkaguziEngine.createInitialState();
 
 const toUiPieces = (board: EngineBoardState): UiBoardState => {
   const pieces: UiBoardState = {};
@@ -41,17 +41,12 @@ export const HeroBoard: React.FC = () => {
   const currentPlayerRef = useRef<PlayerColor>(PlayerColor.WHITE);
   const moveCountRef = useRef(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
 
   // Cleanup helper
   const clearTimers = () => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
     }
   };
 
@@ -63,20 +58,20 @@ export const HeroBoard: React.FC = () => {
   };
 
   // Main animation loop
-  const playSequence = () => {
+  const playSequence = async () => {
     const currentPlayer = currentPlayerRef.current;
-    const move = getBestMove(boardRef.current, currentPlayer, AI_LEVEL);
+    const move = await getBestMove(boardRef.current, currentPlayer, AI_LEVEL);
 
     if (!move) {
       timeoutRef.current = setTimeout(() => {
         resetBoard();
-        animationFrameRef.current = requestAnimationFrame(playSequence);
+        timeoutRef.current = setTimeout(playSequence, 0);
       }, TIMING.RESET_PAUSE);
       return;
     }
 
     setIsAnimating(true);
-    const nextBoard = CakeEngine.applyMove(boardRef.current, move);
+    const nextBoard = MkaguziEngine.applyMove(boardRef.current, move);
     boardRef.current = nextBoard;
     setPieces(toUiPieces(nextBoard));
     currentPlayerRef.current =
@@ -92,15 +87,13 @@ export const HeroBoard: React.FC = () => {
     if (moveCountRef.current >= FULL_MOVE_LIMIT * 2) {
       timeoutRef.current = setTimeout(() => {
         resetBoard();
-        animationFrameRef.current = requestAnimationFrame(playSequence);
+        timeoutRef.current = setTimeout(playSequence, 0);
       }, TIMING.RESET_PAUSE);
       return;
     }
 
     const nextDelay = TIMING.MOVE_DURATION + TIMING.MOVE_DELAY;
-    timeoutRef.current = setTimeout(() => {
-      animationFrameRef.current = requestAnimationFrame(playSequence);
-    }, nextDelay);
+    timeoutRef.current = setTimeout(playSequence, nextDelay);
   };
 
   // Initialize and start animation loop
@@ -108,9 +101,7 @@ export const HeroBoard: React.FC = () => {
     resetBoard();
 
     // Start animation sequence after initial delay
-    timeoutRef.current = setTimeout(() => {
-      animationFrameRef.current = requestAnimationFrame(playSequence);
-    }, TIMING.INITIAL_DELAY);
+    timeoutRef.current = setTimeout(playSequence, TIMING.INITIAL_DELAY);
 
     // Cleanup on unmount
     return () => {
