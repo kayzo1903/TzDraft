@@ -21,3 +21,4 @@ engines/core/build*/
 # Python cache
 __pycache__/
 *.pyc
+emsdk/
