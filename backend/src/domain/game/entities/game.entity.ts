@@ -261,15 +261,16 @@ export class Game {
       // Weaker side's moves don't change the counter
     }
 
-    // Art 8.4 — endgame draws: K vs K, K+Man vs K, 2K vs K → draw after 5 full moves (10 half-moves)
+    // Art 8.4 — endgame draws: K+Man vs K, 2K vs K → draw after 5 full moves (10 half-moves).
+    // K vs K is intentionally excluded: in TZD kings can capture kings, so the game must
+    // continue until one king captures the other or threefold repetition occurs.
     const wMen = whitePieces.length - wKings;
     const bMen = blackPieces.length - bKings;
     const isEndgame84 =
-      (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 0) || // K vs K
       (wKings === 1 && wMen === 1 && bKings === 1 && bMen === 0) || // K+Man vs K
       (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 1) || // K vs K+Man
       (wKings === 2 && wMen === 0 && bKings === 1 && bMen === 0) || // 2K vs K
-      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0); // K vs 2K
+      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0);   // K vs 2K
 
     if (!isEndgame84) {
       this._endgameMoveCount = 0;

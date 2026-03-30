@@ -190,22 +190,6 @@ export class GameRulesService {
     return false;
   }
 
-  /**
-   * Check for draw by insufficient material
-   * (e.g., king vs king)
-   */
-  isDrawByInsufficientMaterial(board: BoardState): boolean {
-    const whitePieces = board.getPiecesByColor(PlayerColor.WHITE);
-    const blackPieces = board.getPiecesByColor(PlayerColor.BLACK);
-    // Art 8.1: only K vs K is truly insufficient material (neither can force a win)
-    return (
-      whitePieces.length === 1 &&
-      blackPieces.length === 1 &&
-      whitePieces[0].isKing() &&
-      blackPieces[0].isKing()
-    );
-  }
-
   /** Art 8.3 — 30-move rule: 60 half-moves with kings only and no captures. */
   isDrawByThirtyMoveRule(reversibleMoveCount: number): boolean {
     return reversibleMoveCount >= 60;

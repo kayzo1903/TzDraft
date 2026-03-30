@@ -112,27 +112,22 @@ export class MakeMoveUseCase {
       if (this.gameRulesService.isGameOver(game)) {
         const winner = this.gameRulesService.detectWinner(game);
         if (winner) {
-          game.endGame(winner, EndReason.STALEMATE);
+          game.endGame(winner, EndReason.NO_MOVES);
         }
       }
     }
 
-    // 7. Check for draw conditions (in priority order)
+    // 7. Check for draw conditions (in priority order).
+    // Note: K vs K is NOT a draw in TZD — kings can capture kings.
+    // Draws only arise from the 30-move rule, three-kings rule, Art. 8.4 endgame rule,
+    // or threefold repetition (enforced by the engine / client).
     if (!game.isGameOver()) {
-      if (this.gameRulesService.isDrawByInsufficientMaterial(game.board)) {
-        game.endGame(Winner.DRAW, EndReason.DRAW);
-      } else if (
-        this.gameRulesService.isDrawByThirtyMoveRule(game.reversibleMoveCount)
-      ) {
-        game.endGame(Winner.DRAW, EndReason.DRAW);
-      } else if (
-        this.gameRulesService.isDrawByThreeKingsRule(game.threeKingsMoveCount)
-      ) {
-        game.endGame(Winner.DRAW, EndReason.DRAW);
-      } else if (
-        this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)
-      ) {
-        game.endGame(Winner.DRAW, EndReason.DRAW);
+      if (this.gameRulesService.isDrawByThirtyMoveRule(game.reversibleMoveCount)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW_30_MOVE);
+      } else if (this.gameRulesService.isDrawByThreeKingsRule(game.threeKingsMoveCount)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW_THREE_KINGS);
+      } else if (this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW_ENDGAME);
       }
     }
 
@@ -211,9 +206,17 @@ export class MakeMoveUseCase {
       const reasonStr =
         game.endReason === EndReason.TIME
           ? 'timeout'
-          : game.endReason === EndReason.STALEMATE
-            ? 'stalemate'
-            : 'draw';
+          : (game.endReason === EndReason.NO_MOVES || game.endReason === EndReason.STALEMATE)
+            ? 'no-moves'
+            : game.endReason === EndReason.DRAW_REPETITION
+              ? 'draw-repetition'
+              : game.endReason === EndReason.DRAW_30_MOVE
+                ? 'draw-30-move'
+                : game.endReason === EndReason.DRAW_THREE_KINGS
+                  ? 'draw-three-kings'
+                  : game.endReason === EndReason.DRAW_ENDGAME
+                    ? 'draw-endgame'
+                    : 'draw';
       this.gamesGateway.emitGameOver(gameId, {
         gameId,
         winner: game.winner.toString(),

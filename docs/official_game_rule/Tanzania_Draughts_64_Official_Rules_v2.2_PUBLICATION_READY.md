@@ -2,7 +2,7 @@
 
 **OFFICIAL RULES**
 
-*Version 2.2 - Publication Ready Edition*
+*Version 2.3 - Draw & Timeout Rules Revision*
 
 *Including Online Governance & Engine Compliance Standards*
 
@@ -248,35 +248,42 @@ A player wins when the opponent:
 
 - Draw offers should be made after completing your move and before opponent responds.
 
-# 8. Draw Conditions (Simplified for Tanzania)
+# 8. Draw Conditions
 
-**Tanzania Draughts uses simplified draw rules for practical tournament implementation:**
+**Tanzania Draughts uses the following draw rules. All draw conditions apply during normal play (clock status is irrelevant unless Article 10 applies separately).**
 
-## 8.1. Insufficient Material
+## 8.1. King vs. King — Not an Automatic Draw
 
-- The game is a draw if neither player has sufficient material to force a win.
+- **A King vs. King position is NOT an automatic draw.** In TZD, a flying king may capture an opposing king. Play continues until one king captures the other, or a draw is declared by another rule (threefold repetition, 30-move rule, or Article 10 timeout provisions).
+
+- The term "insufficient material" in TZD applies **only** in clock-timeout situations as defined in Article 10. It does not trigger an automatic in-game draw.
 
 ## 8.2. Threefold Repetition
 
-- If the same position occurs three times with the same player to move, that player may claim a draw.
+- If the same position (same pieces on the same squares, same player to move) occurs three times, a draw is declared automatically.
 
-## 8.3. 30-Move Rule (Simplified)
+- The repetitions need not be consecutive.
 
-- **If 30 consecutive moves occur (by both players) with only kings on the board and no captures, either player may claim a draw.**
+## 8.3. 30-Move Rule
 
-## 8.4. King vs. King Endgames
+- **If 30 consecutive full moves occur (by both players combined: 60 half-moves) with only kings on the board and no captures, the game is a draw.**
 
-- The following positions are automatic draws after 5 moves if no winning position is achieved:
+- The counter resets to zero if any capture is made or if a man is still present on the board.
 
-- King vs. King
+## 8.4. Endgame Draw Rules (Weak-Side Move Count)
 
-- King + Man vs. King
+The following endgame positions are draws if the **weak side (lone king)** makes **5 moves** within the endgame without being captured:
 
-- Two Kings vs. King
+- **Two Kings vs. King** (2K vs. 1K)
+- **King + Man vs. King** (K+Man vs. 1K)
+
+The 5-move counter begins the moment the position is first established. The counter resets to zero if any capture occurs. If the stronger side captures within 5 weak-side moves, the game continues normally; if not, a draw is declared.
+
+**Note:** King vs. King (1K vs. 1K) is excluded from this article. That endgame is governed by Article 8.1, 8.2, and 8.3 respectively, and by Article 10.2 when a clock is in use.
 
 ## 8.5. Three Kings Rule
 
-- If a player has three or more kings against one enemy king and cannot capture within 12 moves by the stronger side (counting from when the material imbalance was established), the game is a draw.
+- If a player has **three or more kings** against a **lone enemy king** and cannot capture within **12 moves by the stronger side** (counting from when the material imbalance was established), the game is a draw.
 
 # 9. Algebraic Notation
 
@@ -320,7 +327,68 @@ A player wins when the opponent:
 
 - Blitz: 3-5 minutes per player (or 3-5 minutes + Fischer increment)
 
-- When a player's time expires, that player loses unless the opponent has insufficient material to win (as defined in Article 8.1), in which case the game is drawn.
+- When a player's time expires the **general rule** is that player loses. However, the following exceptions apply, in order of priority.
+
+## 10.1. Prerequisite — Legal Moves Required
+
+- **No timeout draw exception applies unless the timed-out player still has at least one legal move at the moment time expires.**
+
+- If the player whose clock runs out has no legal moves, the result is a standard loss regardless of material on the board.
+
+## 10.2. King vs. King Timeout
+
+- If time expires in a **King vs. King** position and the timed-out player has legal moves, the game is declared a **draw**.
+
+- Rationale: neither lone flying king can force a capture against a correctly-playing opposing lone king. Awarding a win purely on the clock is unjust when no forced win exists for either side.
+
+## 10.3. Stronger Side Timeout
+
+The following positions result in a **draw** when the **stronger side** runs out of time, because the weaker side does not possess sufficient material to force a win in reverse:
+
+| Position | Stronger side (times out) | Weaker side |
+|---|---|---|
+| 2K vs. 1K | Two kings | Lone king |
+| K+Man vs. 1K | King + man | Lone king |
+| **1K vs. 2M** | **Lone king** | **Two men** |
+
+- **1K vs. 2M rationale:** A lone flying king can move and capture in all directions, outmanoeuvring men that are restricted to forward movement only. The two men cannot reliably force a win against a correctly-playing king — they would need to promote first, and the king can often prevent or intercept promotion. Awarding a win to the two-men side purely on the clock is therefore unjust.
+
+- **2K vs. 1K and K+Man vs. 1K rationale:** The lone surviving king does not possess sufficient material to force a win against the stronger material in reverse.
+
+## 10.4. Lone King Timeout (2K vs. 1K or K+Man vs. 1K)
+
+When the **lone king (weak side)** runs out of time, the following cases apply in priority order:
+
+**Case A — No legal moves:**
+The result is a **loss** for the timed-out player. The clock and the board agree.
+
+**Case B — Has legal moves and is positioned on the long diagonal (a1–h8):**
+The result is a **draw**.
+The long diagonal (defined in Article 2.1) runs the full width of the board across 8 dark squares. A lone flying king on the long diagonal possesses geometrical escape resources — it can slide between the two double-corner areas at each end — that prevent the stronger side from forcing a capture regardless of clock time. This is consistent with established theory in all 8×8 flying-king draughts variants (Brazilian, Russian, Pool Checkers).
+
+**Case C — Has legal moves, NOT on the long diagonal, and the weak side has already made 5 or more moves within this endgame:**
+The result is a **draw**.
+Once the weak side has survived 5 of their own turns in the 2K vs. 1K or K+Man vs. 1K endgame without being captured, the stronger side has exhausted the window established under Article 8.4. Awarding a timeout loss to the lone king at this stage is unjust — the position has already proven to be beyond the stronger side's ability to convert.
+
+**Case D — Has legal moves, NOT on the long diagonal, and the weak side has made fewer than 5 moves within this endgame:**
+The result is a **loss** for the timed-out player.
+The stronger side has not yet exhausted their Article 8.4 window. The timeout is treated as a standard loss.
+
+## 10.5. Summary Table
+
+| Position | Who times out | Has legal moves? | On long diagonal? | Weak-side moves ≥ 5? | Result |
+|---|---|---|---|---|---|
+| K vs. K | Either side | Yes | — | — | **Draw** |
+| K vs. K | Either side | No | — | — | Loss |
+| 2K vs. 1K | Stronger side (2K) | Any | — | — | **Draw** |
+| K+Man vs. 1K | Stronger side (K+Man) | Any | — | — | **Draw** |
+| 1K vs. 2M | Stronger side (1K) | Any | — | — | **Draw** |
+| 2K vs. 1K or K+Man vs. 1K | Lone king | No | — | — | Loss |
+| 2K vs. 1K or K+Man vs. 1K | Lone king | Yes | Yes (a1–h8) | — | **Draw** |
+| 2K vs. 1K or K+Man vs. 1K | Lone king | Yes | No | Yes (≥ 5) | **Draw** |
+| 2K vs. 1K or K+Man vs. 1K | Lone king | Yes | No | No (< 5) | Loss |
+| 1K vs. 2M | Two men | Yes | — | — | Loss (normal timeout) |
+| 1K vs. 2M | Two men | No | — | — | Loss (normal timeout) |
 
 # 11. Competition Regulations
 
@@ -490,15 +558,16 @@ A player wins when the opponent:
 
 ## 13.5. Draw Detection
 
-- Engines must detect:
+Engines must detect and declare the following draws, each with a labelled reason:
 
-- Threefold repetition
+- **Threefold repetition** (Art. 8.2): same position + same side-to-move appears 3 times
+- **30-move rule** (Art. 8.3): 60 half-moves with kings only and no captures
+- **Endgame rule** (Art. 8.4): weak side makes 5 moves in 2K vs. 1K or K+Man vs. 1K without being captured
+- **Three-kings rule** (Art. 8.5): stronger side (3+ kings) fails to capture lone king within 12 moves
 
-- 30-move rule (kings only, no captures)
+**Engines must NOT declare a draw for K vs. K during normal play.** That position is only drawn through the rules above (repetition, 30-move rule) or via clock timeout (Art. 10.2), which is handled by the server, not the engine.
 
-- Insufficient material (K vs K, K+man vs K, etc.)
-
-- 15-move rule (3+ kings vs 1 king)
+**Timeout-draw logic** (Art. 10.2–10.4) is the responsibility of the **game server**, not the engine. Engines report the board position and legal moves; the server applies the timeout-draw rules.
 
 ## 13.6. Protocol Support
 
@@ -558,7 +627,22 @@ A player wins when the opponent:
 
 # B. Version History
 
-**Version 2.2 (Current) - Publication Ready Edition**
+**Version 2.3 (Current) — Draw & Timeout Rules Revision**
+
+- **Rewrote Article 8.1:** K vs. K is no longer an automatic in-game draw. Kings can capture kings in TZD. "Insufficient material" now applies exclusively to clock-timeout situations (Article 10).
+
+- **Revised Article 8.4:** Removed K vs. K from the endgame draw list. The 5-move draw rule now applies only to 2K vs. 1K and K+Man vs. 1K, measured by moves made by the **weak side (lone king)**, not combined moves.
+
+- **Expanded Article 10:** Full timeout-draw rule set introduced (Articles 10.1–10.5):
+  - 10.1 Legal-moves prerequisite for all timeout draws
+  - 10.2 K vs. K timeout → draw
+  - 10.3 Stronger side timeout → draw; includes **1K vs. 2M** (lone king is stronger side — two men cannot force a win against a flying king)
+  - 10.4 Lone king timeout: four cases (no moves = loss; long diagonal = draw; ≥5 weak-side moves = draw; <5 weak-side moves = loss)
+  - 10.5 Summary table
+
+- **Updated Article 13.5:** Draw detection list corrected — K vs. K removed as engine-level draw; timeout-draw responsibility assigned to game server, not engine.
+
+**Version 2.2 (Previous) - Publication Ready Edition**
 
 - Established consistent terminology: 'TZD' and 'TZD Federation' defined in Preamble and used throughout
 
@@ -614,7 +698,7 @@ These rules were developed by the Tanzania Draughts Federation (TZD) Rules Commi
 
 - Engine developers and online platform operators
 
-*Tanzania Draughts Federation • Official Rules v2.2 • Publication Ready • 202**6*
+*Tanzania Draughts Federation • Official Rules v2.3 • 2026*
 
 
 | Rule Aspect | Tanzania Draughts-64 | Brazilian Variant |

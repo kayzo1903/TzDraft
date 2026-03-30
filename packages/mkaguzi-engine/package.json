@@ -1,6 +1,6 @@
 {
   "name": "@tzdraft/mkaguzi-engine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Mkaguzi Engine for Tanzania Drafti — WASM-backed browser game engine",
   "type": "module",
   "main": "dist/index.js",
