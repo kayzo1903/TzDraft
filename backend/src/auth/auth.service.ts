@@ -54,6 +54,7 @@ export class AuthService {
     const verifiedOtp = await this.prisma.otpCode.findFirst({
       where: {
         phoneNumber,
+        purpose: 'signup',
         verified: true,
         expiresAt: { gt: new Date() },
         createdAt: {
@@ -337,6 +338,7 @@ export class AuthService {
     const otpRecord = await this.prisma.otpCode.findFirst({
       where: {
         phoneNumber: normalized,
+        purpose: 'password_reset',
         code,
         verified: true,
         createdAt: {

@@ -41,14 +41,20 @@ export class WsJwtGuard implements CanActivate {
   }
 
   private extractToken(client: Socket): string | null {
-    // socket.io sends auth data via handshake.auth (the `auth` option in io())
+    // 1. httpOnly cookie from the HTTP upgrade handshake (browser clients)
+    const cookieHeader = client.handshake.headers.cookie;
+    if (cookieHeader) {
+      const match = cookieHeader.match(/(?:^|;\s*)accessToken=([^;]+)/);
+      if (match) return decodeURIComponent(match[1]);
+    }
+
+    // 2. socket.io auth.token (fallback for non-browser / legacy clients)
     const authToken = client.handshake.auth?.token as string | undefined;
     if (authToken) return authToken;
 
-    // Fallback: check Authorization header for other clients
+    // 3. Authorization header (fallback)
     const authHeader = client.handshake.headers.authorization;
     if (!authHeader) return null;
-
     const [type, token] = authHeader.split(' ');
     return type === 'Bearer' ? token : null;
   }

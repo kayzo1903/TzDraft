@@ -6,24 +6,18 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       hasHydrated: false,
 
-      setAuth: (user: User, accessToken: string, refreshToken: string) => {
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+      // Tokens are stored exclusively in httpOnly cookies set by the backend.
+      // Never stored in localStorage or JS-accessible state.
+      setAuth: (user: User) => {
+        set({ user, isAuthenticated: true });
       },
 
       clearAuth: () => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
         set({
           user: null,
-          accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
         });
       },
@@ -37,10 +31,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage",
+      // Only persist non-sensitive UI state — tokens live in httpOnly cookies only
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {

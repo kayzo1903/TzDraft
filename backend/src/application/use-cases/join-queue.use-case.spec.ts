@@ -105,6 +105,7 @@ describe('JoinQueueUseCase', () => {
         matchmakingRepo as any,
         prisma as any,
         matchmakingAnalytics as any,
+        null as any, // gateway not needed for this test
       );
 
       const [resB, resC] = await Promise.all([
@@ -155,6 +156,7 @@ describe('JoinQueueUseCase', () => {
         matchmakingRepo,
         prisma as any,
         matchmakingAnalytics,
+        null as any, // gateway not needed for these tests
       );
     });
 

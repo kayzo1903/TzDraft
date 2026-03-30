@@ -41,7 +41,38 @@ const nextConfig: NextConfig = {
     externalDir: true,
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === "production";
+
+    // Security headers applied to every response from the Next.js server
+    const securityHeaders = [
+      // Prevent browsers from MIME-sniffing the content type
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      // Block this site from being embedded in iframes (clickjacking)
+      { key: "X-Frame-Options", value: "DENY" },
+      // Don't leak the full URL in the Referer header to third parties
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      // Disable browser features the app doesn't use
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+      },
+      // HSTS: force HTTPS for 1 year (production only — breaks local HTTP dev)
+      ...(isProd
+        ? [
+            {
+              key: "Strict-Transport-Security",
+              value: "max-age=31536000; includeSubDomains; preload",
+            },
+          ]
+        : []),
+    ];
+
     return [
+      {
+        // Apply security headers to all routes
+        source: "/:path*",
+        headers: securityHeaders,
+      },
       {
         // Private user/admin areas should never be indexed, even if linked.
         source: "/(sw|en)/(auth|game|admin|profile|settings)/:path*",

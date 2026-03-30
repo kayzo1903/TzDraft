@@ -70,23 +70,41 @@ export class AuthController {
   @Public()
   @Post('guest')
   @HttpCode(HttpStatus.CREATED)
-  async createGuest() {
-    return this.authService.createGuestUser();
+  async createGuest(@Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.createGuestUser();
+    const opts = this.getCookieOptions();
+    res.cookie('accessToken', result.accessToken, opts);
+    res.cookie('refreshToken', result.refreshToken, opts);
+    return result;
   }
 
   @Public()
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(dto);
+    const opts = this.getCookieOptions();
+    res.cookie('accessToken', result.accessToken, opts);
+    res.cookie('refreshToken', result.refreshToken, opts);
+    return result;
   }
 
   @Public()
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto);
+    const opts = this.getCookieOptions();
+    res.cookie('accessToken', result.accessToken, opts);
+    res.cookie('refreshToken', result.refreshToken, opts);
+    return result;
   }
 
   @Public()
@@ -98,6 +116,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpDto) {

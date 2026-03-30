@@ -423,7 +423,7 @@ export class GamesGateway
       return {};
     } catch (err: any) {
       this.logger.error(`acceptDraw failed for game ${data.gameId} (userId=${userId}): ${err?.message}`, err?.stack);
-      return { error: err?.message || 'Failed to end game as draw' };
+      return { error: 'Failed to end game as draw' };
     }
   }
 
@@ -628,31 +628,54 @@ export class GamesGateway
 
   @SubscribeMessage('voice:offer')
   async handleVoiceOffer(
-    @MessageBody() data: { gameId: string; sdp: any },
+    @MessageBody() data: { gameId: string; sdp: { type: string; sdp: string } },
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     if (!(await this.isInRoom(client, data.gameId))) return;
-    client.to(data.gameId).emit('voice:offer', { sdp: data.sdp });
+    const sdp = data.sdp;
+    if (
+      !sdp ||
+      typeof sdp !== 'object' ||
+      typeof sdp.type !== 'string' ||
+      typeof sdp.sdp !== 'string' ||
+      sdp.sdp.length > 8192
+    ) return;
+    client.to(data.gameId).emit('voice:offer', { sdp: { type: sdp.type, sdp: sdp.sdp } });
   }
 
   @SubscribeMessage('voice:answer')
   async handleVoiceAnswer(
-    @MessageBody() data: { gameId: string; sdp: any },
+    @MessageBody() data: { gameId: string; sdp: { type: string; sdp: string } },
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     if (!(await this.isInRoom(client, data.gameId))) return;
-    client.to(data.gameId).emit('voice:answer', { sdp: data.sdp });
+    const sdp = data.sdp;
+    if (
+      !sdp ||
+      typeof sdp !== 'object' ||
+      typeof sdp.type !== 'string' ||
+      typeof sdp.sdp !== 'string' ||
+      sdp.sdp.length > 8192
+    ) return;
+    client.to(data.gameId).emit('voice:answer', { sdp: { type: sdp.type, sdp: sdp.sdp } });
   }
 
   @SubscribeMessage('voice:ice-candidate')
   async handleVoiceIceCandidate(
-    @MessageBody() data: { gameId: string; candidate: any },
+    @MessageBody() data: { gameId: string; candidate: { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null } },
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     if (!(await this.isInRoom(client, data.gameId))) return;
-    client
-      .to(data.gameId)
-      .emit('voice:ice-candidate', { candidate: data.candidate });
+    const c = data.candidate;
+    if (
+      !c ||
+      typeof c !== 'object' ||
+      typeof c.candidate !== 'string' ||
+      c.candidate.length > 2048
+    ) return;
+    client.to(data.gameId).emit('voice:ice-candidate', {
+      candidate: { candidate: c.candidate, sdpMid: c.sdpMid ?? null, sdpMLineIndex: c.sdpMLineIndex ?? null },
+    });
   }
 
   @SubscribeMessage('voice:hangup')

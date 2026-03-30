@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../../auth/guards/admin.guard';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { Public } from '../../../auth/decorators/public.decorator';
 import { CreateTournamentUseCase } from '../../../application/use-cases/tournament/create-tournament.use-case';
@@ -81,6 +82,7 @@ export class TournamentController {
 
   @Post(':id/register')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @HttpCode(HttpStatus.CREATED)
   async register(@Param('id') id: string, @CurrentUser() user: { id: string }) {
     return this.registerFor.execute(id, user.id);

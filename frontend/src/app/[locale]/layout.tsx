@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { EngineInit } from "@/components/engine/EngineInit";
+import { AuthInitializer } from "@/components/auth/AuthInitializer";
 import type { Metadata } from "next";
 import {
   getCanonicalUrl,
@@ -165,6 +166,7 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
+      <AuthInitializer />
       <EngineInit />
       <JsonLd data={organizationSchema} />
       <JsonLd data={gameSchema} />
