@@ -39,11 +39,27 @@ async function bootstrap() {
           objectSrc: ["'none'"],
           mediaSrc: ["'self'"],
           frameSrc: ["'none'"],
+          frameAncestors: ["'none'"],
         },
       },
+      // HSTS: force HTTPS for 1 year (production only — skip in dev to avoid breaking local http)
+      strictTransportSecurity: process.env.NODE_ENV === 'production'
+        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+        : false,
+      // Referrer policy — don't leak path/query to third parties
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       crossOriginEmbedderPolicy: false, // allows cross-origin embeds (socket.io needs this)
     }),
   );
+
+  // Permissions-Policy — disable unused browser features
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+    );
+    next();
+  });
 
   // 1c. Global exception filter — prevents stack trace leakage
   app.useGlobalFilters(new AllExceptionsFilter());
