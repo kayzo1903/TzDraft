@@ -10,11 +10,28 @@ const axiosInstance = axios.create({
   },
 });
 
+function isAuthRoute(url?: string): boolean {
+  if (!url) return false;
+  return url.includes("/auth/");
+}
+
+function isAuthPage(pathname: string): boolean {
+  return /^\/(?:sw|en)\/auth(?:\/|$)/.test(pathname);
+}
+
 // Response interceptor — handle token refresh transparently
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url as string | undefined;
+
+    // Auth endpoints should surface their own errors directly.
+    // Otherwise a failed login/refresh can recurse into the refresh flow
+    // and reload the current auth page.
+    if (error.response?.status === 401 && isAuthRoute(requestUrl)) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -35,18 +52,11 @@ axiosInstance.interceptors.response.use(
           ? pathParts[1]
           : "sw";
 
-        window.location.href = `/${currentLocale}/auth/login`;
+        if (!isAuthPage(window.location.pathname)) {
+          window.location.href = `/${currentLocale}/auth/login`;
+        }
         return Promise.reject(error);
       }
-    }
-
-    // Don't intercept login/register 401s
-    if (
-      error.response?.status === 401 &&
-      (originalRequest.url?.includes("/auth/login") ||
-        originalRequest.url?.includes("/auth/register"))
-    ) {
-      return Promise.reject(error);
     }
 
     return Promise.reject(error);
