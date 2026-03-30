@@ -132,6 +132,7 @@ model OtpCode {
     code        String
     expiresAt   DateTime @map("expires_at")
     verified    Boolean  @default(false)
+    attempts    Int      @default(0)
     createdAt   DateTime @default(now()) @map("created_at")
 
     user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
