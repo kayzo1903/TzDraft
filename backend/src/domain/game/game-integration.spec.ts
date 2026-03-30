@@ -135,17 +135,15 @@ describe('Game integration — full sequences', () => {
     expect(promotedPiece!.isKing()).toBe(true);
   });
 
-  it('draw by insufficient material is detected after board becomes king-only', () => {
-    // K vs K — insufficient material for any decisive result
+  it('K vs K does not auto-end the game', () => {
+    // In TZD, kings can still capture kings, so K vs K is not an automatic draw.
     const game = makeGame([
       { p: 18, c: 'WHITE', k: true },
       { p: 27, c: 'BLACK', k: true },
     ]);
 
-    expect(gameRules.isDrawByInsufficientMaterial(game.board)).toBe(true);
-
-    game.endGame(Winner.DRAW, EndReason.DRAW);
-    expect(game.winner).toBe(Winner.DRAW);
-    expect(game.isGameOver()).toBe(true);
+    expect(gameRules.isGameOver(game)).toBe(false);
+    expect(gameRules.detectWinner(game)).toBeNull();
+    expect(game.isGameOver()).toBe(false);
   });
 });

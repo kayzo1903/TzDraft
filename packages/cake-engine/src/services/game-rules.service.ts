@@ -172,14 +172,7 @@ export class GameRulesService {
    * (e.g., king vs king)
    */
   isDrawByInsufficientMaterial(board: BoardState): boolean {
-    const whitePieces = board.getPiecesByColor(PlayerColor.WHITE);
-    const blackPieces = board.getPiecesByColor(PlayerColor.BLACK);
-    return (
-      whitePieces.length === 1 &&
-      blackPieces.length === 1 &&
-      whitePieces[0].isKing() &&
-      blackPieces[0].isKing()
-    );
+    return false; // K vs K is no longer an automatic draw in v2.3
   }
 
   /** Art 8.3 — 30-move rule: 60 half-moves with kings only and no captures. */

@@ -126,14 +126,26 @@ function ResignCard({
 
 /* ─── Game Result Card ──────────────────────────────────────────────────── */
 
+function drawReasonLabel(reason?: string): string {
+  switch (reason) {
+    case "repetition":  return "Draw by threefold repetition";
+    case "30-move":     return "Draw by 30-move rule";
+    case "three-kings": return "Draw by three-kings rule";
+    case "endgame":     return "Draw by endgame rule";
+    default:            return "The game ended in a draw";
+  }
+}
+
 function PvpResultCard({
   winner,
+  drawReason,
   player1Color,
   moveCount,
   onPlayAgain,
   onSetupFriend,
 }: {
   winner: Winner;
+  drawReason?: string;
   player1Color: PlayerColor;
   moveCount: number;
   onPlayAgain: () => void;
@@ -149,7 +161,7 @@ function PvpResultCard({
   const cfg = isDraw
     ? {
         label: "Draw",
-        sub: "The game ended in a draw",
+        sub: drawReasonLabel(drawReason),
         icon: <Handshake className="w-8 h-8" />,
         borderColor: "border-sky-500/30",
         iconBg: "bg-sky-500/15 border-sky-500/30",
@@ -472,6 +484,7 @@ export default function LocalPvpPage() {
       {state.result && (
         <PvpResultCard
           winner={state.result.winner}
+          drawReason={state.result.drawReason}
           player1Color={player1Color}
           moveCount={state.moveCount}
           onPlayAgain={reset}

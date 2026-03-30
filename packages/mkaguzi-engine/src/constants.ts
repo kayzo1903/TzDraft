@@ -62,5 +62,5 @@ export const DEFAULT_TIME_CONTROLS = {
   CLASSICAL: { initial: 1800000, increment: 0 },
 } as const;
 
-export const RULE_VERSION = 'TZ-8x8-v1';
+export const RULE_VERSION = 'TZ-8x8-v2.3';
 export const DEFAULT_ELO_RATING = 1200;

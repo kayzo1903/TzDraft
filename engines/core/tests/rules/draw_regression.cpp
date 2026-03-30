@@ -33,12 +33,12 @@ int main() {
     bool ok = true;
 
     ok &= expectContains(
-        "k-vs-k-insufficient",
+        "k-vs-k-not-automatic-draw",
         "W:WK18:BK27",
         0,
         0,
         0,
-        "\"reason\":\"insufficient_material\"");
+        "\"status\":\"ongoing\"");
 
     ok &= expectContains(
         "two-kings-vs-king-not-immediate-draw",
@@ -89,19 +89,19 @@ int main() {
         "\"reason\":\"three_kings\"");
 
     ok &= expectContains(
-        "article84-at-9-halfmoves",
+        "article84-at-4-fullmoves",
         "W:WK18,K22:BK27",
         0,
         0,
-        9,
+        4,
         "\"status\":\"ongoing\"");
 
     ok &= expectContains(
-        "article84-at-10-halfmoves",
+        "article84-at-5-fullmoves",
         "W:WK18,K22:BK27",
         0,
         0,
-        10,
+        5,
         "\"reason\":\"endgame\"");
 
     return ok ? 0 : 1;

@@ -6,7 +6,6 @@
  * GameRulesService).
  */
 import { Position } from './position.js';
-import { PlayerColor } from './constants.js';
 import { wasmGenerateMoves } from './wasm-bridge.js';
 import { MkaguziEngine } from './engine.js';
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,18 +75,16 @@ export class GameRulesService {
         return result?.winner ?? null;
     }
     isDrawByThirtyMoveRule(reversibleMoveCount) {
-        return reversibleMoveCount >= 30;
+        return reversibleMoveCount >= 60;
     }
     isDrawByThreeKingsRule(threeKingsMoveCount) {
-        return threeKingsMoveCount >= 16;
+        return threeKingsMoveCount >= 12;
     }
     isDrawByArticle84Endgame(endgameMoveCount) {
         return endgameMoveCount >= 5;
     }
     isDrawByInsufficientMaterial(board) {
-        return (board.getPiecesByColor(PlayerColor.WHITE).every((p) => p.isKing()) &&
-            board.getPiecesByColor(PlayerColor.BLACK).every((p) => p.isKing()) &&
-            board.getAllPieces().length === 2);
+        return false; // K vs K is no longer an automatic draw in v2.3 rules
     }
 }
 //# sourceMappingURL=services.js.map

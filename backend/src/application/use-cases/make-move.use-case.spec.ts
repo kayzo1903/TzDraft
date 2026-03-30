@@ -183,7 +183,7 @@ describe('MakeMoveUseCase', () => {
 
       expect(result.game.isGameOver()).toBe(true);
       expect(result.game.winner).toBe(Winner.WHITE);
-      expect(result.game.endReason).toBe(EndReason.STALEMATE);
+      expect(result.game.endReason).toBe(EndReason.NO_MOVES);
     });
 
     it('emits gameOver and updates ratings when game ends', async () => {
@@ -225,7 +225,7 @@ describe('MakeMoveUseCase', () => {
 
       expect(game.isGameOver()).toBe(true);
       expect(game.winner).toBe(Winner.DRAW);
-      expect(game.endReason).toBe(EndReason.DRAW);
+      expect(game.endReason).toBe(EndReason.DRAW_30_MOVE);
     });
 
     it('declares a draw on the 12th stronger-side move in 3K vs 1K', async () => {
@@ -244,7 +244,7 @@ describe('MakeMoveUseCase', () => {
 
       expect(game.isGameOver()).toBe(true);
       expect(game.winner).toBe(Winner.DRAW);
-      expect(game.endReason).toBe(EndReason.DRAW);
+      expect(game.endReason).toBe(EndReason.DRAW_THREE_KINGS);
     });
 
     it('declares a draw on the 10th half-move in a 2K vs K ending', async () => {
@@ -262,7 +262,7 @@ describe('MakeMoveUseCase', () => {
 
       expect(game.isGameOver()).toBe(true);
       expect(game.winner).toBe(Winner.DRAW);
-      expect(game.endReason).toBe(EndReason.DRAW);
+      expect(game.endReason).toBe(EndReason.DRAW_ENDGAME);
     });
   });
 });

@@ -293,7 +293,9 @@ function OnlineResultCard({
       accentText: "text-amber-300",
       glow: "shadow-[0_0_40px_rgba(251,191,36,0.15)]",
       headerBg: "bg-gradient-to-br from-amber-950/80 via-neutral-900 to-neutral-900",
-      sub: isSw ? "Umeshinda mchezo" : "You win",
+      sub: reason === "no-moves"
+        ? (isSw ? "Adui hana hamua — umeshinda" : "Opponent had no legal moves — you win")
+        : (isSw ? "Umeshinda mchezo" : "You win"),
     },
     loss: {
       label: isSw ? "Umeshindwa" : "Defeated",
@@ -304,7 +306,9 @@ function OnlineResultCard({
       accentText: "text-rose-400",
       glow: "shadow-[0_0_40px_rgba(244,63,94,0.10)]",
       headerBg: "bg-gradient-to-br from-rose-950/80 via-neutral-900 to-neutral-900",
-      sub: isSw ? "Bahati njema wakati mwingine" : "Better luck next time",
+      sub: reason === "no-moves"
+        ? (isSw ? "Huna hamua — umeshindwa" : "You had no legal moves — you lose")
+        : (isSw ? "Bahati njema wakati mwingine" : "Better luck next time"),
     },
     draw: {
       label: isSw ? "Sare" : "Draw",
@@ -315,7 +319,15 @@ function OnlineResultCard({
       accentText: "text-sky-400",
       glow: "shadow-[0_0_40px_rgba(56,189,248,0.10)]",
       headerBg: "bg-gradient-to-br from-sky-950/80 via-neutral-900 to-neutral-900",
-      sub: isSw ? "Mchezo umeisha kwa sare" : "The game ended in a draw",
+      sub: reason === "draw-repetition"
+        ? (isSw ? "Sare kwa kurudia nafasi" : "Draw by threefold repetition")
+        : reason === "draw-30-move"
+          ? (isSw ? "Sare kwa sheria ya mihambo 30" : "Draw by 30-move rule")
+          : reason === "draw-three-kings"
+            ? (isSw ? "Sare kwa sheria ya wafalme watatu" : "Draw by three-kings rule")
+            : reason === "draw-endgame"
+              ? (isSw ? "Sare kwa sheria ya mwisho wa mchezo" : "Draw by endgame rule")
+              : (isSw ? "Mchezo umeisha kwa sare" : "The game ended in a draw"),
     },
     aborted: {
       label: isSw ? "Mchezo Umesitishwa" : "Game Aborted",

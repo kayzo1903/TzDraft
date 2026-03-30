@@ -298,12 +298,10 @@ MKZ_EXPORT const char* mkz_game_result(
         return ret("{\"status\":\"draw\",\"winner\":\"none\",\"reason\":\"thirty_move\"}");
     }
 
-    // Insufficient material: only K vs K is an immediate draw.
+    // Insufficient material evaluation (K vs K). 
+    // Removed according to Art 8.1: K vs K is NOT an automatic draw in-game.
     int wm, wk, bm, bk;
     countPieces(pos, wm, wk, bm, bk);
-    if (wm == 0 && bm == 0 && wk == 1 && bk == 1) {
-        return ret("{\"status\":\"draw\",\"winner\":\"none\",\"reason\":\"insufficient_material\"}");
-    }
 
     // Art 8.5 — three-kings rule: 3K vs 1K, 12 stronger-side moves without progress.
     bool whiteThreeKings = (wk >= 3 && bm == 0 && bk == 1 && wm == 0);
@@ -312,10 +310,10 @@ MKZ_EXPORT const char* mkz_game_result(
         return ret("{\"status\":\"draw\",\"winner\":\"none\",\"reason\":\"three_kings\"}");
     }
 
-    // Art 8.4 — K+Man vs K or 2K vs K: draw after 5 full moves = 10 half-moves.
+    // Art 8.4 — K+Man vs K or 2K vs K: draw after 5 full moves by the weak side.
     bool whiteEndgame = (wm + wk == 2 && bm == 0 && bk == 1);
     bool blackEndgame = (bm + bk == 2 && wm == 0 && wk == 1);
-    if ((whiteEndgame || blackEndgame) && endgame_count >= 10) {
+    if ((whiteEndgame || blackEndgame) && endgame_count >= 5) {
         return ret("{\"status\":\"draw\",\"winner\":\"none\",\"reason\":\"endgame\"}");
     }
 
