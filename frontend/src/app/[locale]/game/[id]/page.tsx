@@ -751,6 +751,7 @@ export default function OnlineGamePage() {
     legalMoves,
     forcedPieces,
     flipBoard,
+    playWarning,
     makeMove,
     startGame,
     offerDraw,
@@ -1038,6 +1039,7 @@ export default function OnlineGamePage() {
 
           <Board
             onMove={makeMove}
+            onInvalidSelect={playWarning}
             pieces={pieces}
             lastMove={lastMove}
             capturedGhosts={capturedGhosts}
