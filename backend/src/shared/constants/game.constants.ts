@@ -39,12 +39,17 @@ export enum Winner {
  * End Reason
  */
 export enum EndReason {
-  STALEMATE = 'STALEMATE', // Current player has no legal moves (loses in draughts)
-  CHECKMATE = 'CHECKMATE', // Legacy alias kept for existing DB rows
+  NO_MOVES = 'NO_MOVES',         // Current player has no legal moves → loses in draughts
+  STALEMATE = 'STALEMATE',       // Legacy alias kept for existing DB rows (same as NO_MOVES)
+  CHECKMATE = 'CHECKMATE',       // Legacy alias kept for existing DB rows
   RESIGN = 'RESIGN',
   TIME = 'TIME',
   DISCONNECT = 'DISCONNECT',
-  DRAW = 'DRAW',
+  DRAW = 'DRAW',                 // Generic draw (legacy / fallback)
+  DRAW_REPETITION = 'DRAW_REPETITION',   // Art. 8.2 — same position appeared 3 times
+  DRAW_30_MOVE = 'DRAW_30_MOVE',         // Art. 8.3 — 30 moves kings-only, no capture
+  DRAW_THREE_KINGS = 'DRAW_THREE_KINGS', // Art. 8.5 — stronger side (3+ kings) failed to win in 12 moves
+  DRAW_ENDGAME = 'DRAW_ENDGAME',         // Art. 8.4 — K+Man vs K / 2K vs K, no win in 5 full moves
 }
 
 /**
