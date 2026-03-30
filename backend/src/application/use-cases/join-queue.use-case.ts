@@ -94,7 +94,14 @@ export class JoinQueueUseCase {
    * covers tab-close and network drop at the exact moment of matching.
    */
   private scheduleNoShowCheck(gameId: string): void {
-    setTimeout(async () => {
+    if (
+      typeof this.prisma.game?.findUnique !== 'function' ||
+      typeof this.prisma.game?.update !== 'function'
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
       try {
         const game = await this.prisma.game.findUnique({
           where: { id: gameId },
@@ -106,12 +113,14 @@ export class JoinQueueUseCase {
           where: { id: gameId },
           data: { status: GameStatus.ABORTED, endedAt: new Date() },
         });
-        this.gateway.emitGameOver(gameId, { gameId, winner: 'NONE', reason: 'no_show' });
+        this.gateway?.emitGameOver(gameId, { gameId, winner: 'NONE', reason: 'no_show' });
         this.logger.log(`[NO-SHOW] Auto-aborted game ${gameId} — no moves after 30s`);
       } catch (err) {
         this.logger.error(`[NO-SHOW] Check failed for game ${gameId}`, err);
       }
     }, 30_000);
+
+    timer.unref?.();
   }
 
   async execute(
