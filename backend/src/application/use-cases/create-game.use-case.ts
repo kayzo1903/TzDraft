@@ -14,11 +14,11 @@ import {
 } from '../../shared/constants/game.constants';
 import { randomUUID } from 'crypto';
 
-/** Generate a random 6-char alphanumeric invite code */
+/** Generate a random 8-char alphanumeric invite code */
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;

@@ -3,25 +3,14 @@ import { useAuthStore } from "./auth/auth-store";
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
+  // withCredentials sends the httpOnly accessToken/refreshToken cookies on every request
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor - Add access token
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
-
-// Response interceptor - Handle token refresh
+// Response interceptor — handle token refresh transparently
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -31,23 +20,14 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) {
-          throw new Error("No refresh token");
-        }
+        // refreshToken cookie is sent automatically via withCredentials.
+        // The server rotates both tokens and sets fresh httpOnly cookies.
+        await axiosInstance.post("/auth/refresh", {});
 
-        const { data } = await axiosInstance.post(`/auth/refresh`, {
-          refreshToken,
-        });
-
-        localStorage.setItem("accessToken", data.accessToken);
-        localStorage.setItem("refreshToken", data.refreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        // Retry the original request — the new accessToken cookie is now set
         return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        // Clear both localStorage tokens and the Zustand auth store so the
-        // navbar reflects the signed-out state before redirecting.
+      } catch {
+        // Refresh failed — session expired or cookie missing
         useAuthStore.getState().clearAuth();
 
         const pathParts = window.location.pathname.split("/");
@@ -56,11 +36,11 @@ axiosInstance.interceptors.response.use(
           : "sw";
 
         window.location.href = `/${currentLocale}/auth/login`;
-        return Promise.reject(refreshError);
+        return Promise.reject(error);
       }
     }
 
-    // Special case for login/register failures - don't try to refresh/redirect
+    // Don't intercept login/register 401s
     if (
       error.response?.status === 401 &&
       (originalRequest.url?.includes("/auth/login") ||

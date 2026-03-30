@@ -8,10 +8,13 @@ import {
   Patch,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { HealthCheckService } from '@nestjs/terminus';
 import { AccountType, Prisma } from '@prisma/client';
 import { AdminGuard } from '../../../auth/guards/admin.guard';
+import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import {
   PrismaHealthIndicator,
   RedisHealthIndicator,
@@ -116,16 +119,28 @@ export class AdminController {
   }
 
   @Patch('users/:id/role')
-  async updateRole(@Param('id') id: string, @Body() dto: UpdateUserRoleDto) {
-    return this.prisma.user.update({
+  async updateRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserRoleDto,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    const result = await this.prisma.user.update({
       where: { id },
       data: { role: dto.role },
       select: { id: true, username: true, role: true },
     });
+    this.audit('UPDATE_ROLE', admin, req, { targetUserId: id, newRole: dto.role });
+    return result;
   }
 
   @Patch('users/:id/ban')
-  async updateBan(@Param('id') id: string, @Body() dto: UpdateUserBanDto) {
+  async updateBan(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserBanDto,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
     const user = await this.prisma.user.update({
       where: { id },
       data: { isBanned: dto.isBanned },
@@ -136,6 +151,7 @@ export class AdminController {
       await this.prisma.refreshToken.deleteMany({ where: { userId: id } });
     }
 
+    this.audit(dto.isBanned ? 'BAN_USER' : 'UNBAN_USER', admin, req, { targetUserId: id });
     return user;
   }
 
@@ -157,7 +173,11 @@ export class AdminController {
   }
 
   @Delete('guests')
-  async cleanupGuests(@Query() query: CleanupGuestsQueryDto) {
+  async cleanupGuests(
+    @Query() query: CleanupGuestsQueryDto,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - (query.olderThanDays ?? 7));
 
@@ -170,6 +190,7 @@ export class AdminController {
       },
     });
 
+    this.audit('CLEANUP_GUESTS', admin, req, { deleted: count, olderThanDays: query.olderThanDays ?? 7 });
     return { deleted: count, olderThanDays: query.olderThanDays ?? 7 };
   }
 
@@ -304,6 +325,25 @@ export class AdminController {
       () => this.prismaIndicator.isHealthy('database'),
       () => this.redisIndicator.isHealthy('redis'),
     ]);
+  }
+
+  // ─── Audit Logging ────────────────────────────────────────────────────────
+
+  private audit(
+    action: string,
+    admin: any,
+    req: Request,
+    details: Record<string, unknown> = {},
+  ): void {
+    this.logger.log({
+      audit: true,
+      action,
+      adminId: admin?.id ?? 'unknown',
+      adminUsername: admin?.username ?? 'unknown',
+      ip: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress,
+      timestamp: new Date().toISOString(),
+      ...details,
+    });
   }
 
   // ─── Tournament Winners ───────────────────────────────────────────────────
