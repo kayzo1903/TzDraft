@@ -82,12 +82,17 @@ enum Winner {
 }
 
 enum EndReason {
+    NO_MOVES
     STALEMATE
     CHECKMATE
     RESIGN
     TIME
     DISCONNECT
     DRAW
+    DRAW_REPETITION
+    DRAW_30_MOVE
+    DRAW_THREE_KINGS
+    DRAW_ENDGAME
 }
 
 enum AiChallengeResult {
