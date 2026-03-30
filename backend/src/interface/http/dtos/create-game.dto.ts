@@ -46,29 +46,6 @@ export class JoinInviteGameDto {
 }
 
 /**
- * Create PvP Game DTO
- */
-export class CreatePvPGameDto {
-  @ApiProperty({ description: 'White player ID' })
-  @IsString()
-  whitePlayerId: string;
-
-  @ApiProperty({ description: 'Black player ID' })
-  @IsString()
-  blackPlayerId: string;
-
-  @ApiProperty({ description: 'White player ELO rating', required: false })
-  @IsNumber()
-  @IsOptional()
-  whiteElo?: number;
-
-  @ApiProperty({ description: 'Black player ELO rating', required: false })
-  @IsNumber()
-  @IsOptional()
-  blackElo?: number;
-}
-
-/**
  * Create PvE Game DTO
  */
 export class CreatePvEGameDto {

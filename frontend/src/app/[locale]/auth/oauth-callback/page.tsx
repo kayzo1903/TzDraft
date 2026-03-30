@@ -1,48 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import axiosInstance from "@/lib/axios";
 
 export default function OAuthCallbackPage() {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const [error, setError] = useState<string | null>(null);
     const { setAuth } = useAuthStore();
 
     useEffect(() => {
         const handleCallback = async () => {
             try {
-                // Preferred flow: backend set httpOnly cookies and we exchange them for tokens here.
-                // Backward-compatible: still supports query tokens if present.
-                let accessToken = searchParams.get("accessToken");
-                let refreshToken = searchParams.get("refreshToken");
-
-                if (!accessToken || !refreshToken) {
-                    const refreshed = await axiosInstance.post("/auth/refresh", {});
-                    accessToken = refreshed.data.accessToken;
-                    refreshToken = refreshed.data.refreshToken;
-                }
-
-                if (!accessToken || !refreshToken) {
-                    throw new Error("Missing authentication tokens");
-                }
-
-                localStorage.setItem("accessToken", accessToken);
-                localStorage.setItem("refreshToken", refreshToken);
-
-                // Fetch user data
-                const response = await axiosInstance.get("/auth/me", {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                });
-
-                // Update auth store
-                setAuth(response.data, accessToken, refreshToken);
-
-                // Redirect to dashboard/home
+                // Backend already set httpOnly cookies via the OAuth redirect.
+                // Trigger a refresh to ensure both cookies are current, then
+                // fetch the user profile.
+                await axiosInstance.post("/auth/refresh", {});
+                const response = await axiosInstance.get("/auth/me");
+                setAuth(response.data);
                 router.push("/");
             } catch (err) {
                 console.error("OAuth callback error:", err);
@@ -54,7 +30,7 @@ export default function OAuthCallbackPage() {
         };
 
         handleCallback();
-    }, [searchParams, router, setAuth]);
+    }, [router, setAuth]);
 
     if (error) {
         return (
