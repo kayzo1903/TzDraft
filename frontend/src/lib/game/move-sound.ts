@@ -12,6 +12,27 @@ type MoveAudioSet = {
   normal: HTMLAudioElement | null;
   long: HTMLAudioElement | null;
   capture: HTMLAudioElement | null;
+  multiCapture?: HTMLAudioElement | null;
+};
+
+const playAudioOnce = (audio: HTMLAudioElement | null): void => {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+};
+
+const playMultiCaptureCombo = ({
+  capture,
+  multiCapture,
+}: Pick<MoveAudioSet, "capture" | "multiCapture">): void => {
+  playAudioOnce(capture);
+
+  const followUp = multiCapture ?? capture;
+  if (!followUp) return;
+
+  window.setTimeout(() => {
+    playAudioOnce(followUp);
+  }, 95);
 };
 
 export const getMoveSoundKind = ({
@@ -19,6 +40,7 @@ export const getMoveSoundKind = ({
   to,
   capturedCount,
 }: MoveSoundInput): MoveSoundKind => {
+  if (capturedCount > 1) return "capture";
   if (capturedCount > 0) return "capture";
 
   const fromRowCol = from.toRowCol();
@@ -35,6 +57,11 @@ export const playMoveSound = (
   input: MoveSoundInput,
   sounds: MoveAudioSet,
 ): void => {
+  if (input.capturedCount > 1) {
+    playMultiCaptureCombo(sounds);
+    return;
+  }
+
   const kind = getMoveSoundKind(input);
   const audio =
     kind === "capture"
@@ -43,7 +70,5 @@ export const playMoveSound = (
         ? sounds.long
         : sounds.normal;
 
-  if (!audio) return;
-  audio.currentTime = 0;
-  audio.play().catch(() => {});
+  playAudioOnce(audio);
 };
