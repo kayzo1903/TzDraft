@@ -90,22 +90,29 @@ const LEVEL_PARAMS: Record<
   number,
   { timeMs: number; depth: number; level: number; randomness: number }
 > = {
-  1:  { timeMs: 150,  depth: 0, level: 15, randomness: 30 },
-  2:  { timeMs: 200,  depth: 0, level: 15, randomness: 24 },
-  3:  { timeMs: 300,  depth: 0, level: 15, randomness: 18 },
-  4:  { timeMs: 400,  depth: 0, level: 16, randomness: 14 },
-  5:  { timeMs: 600,  depth: 0, level: 16, randomness: 10 },
-  6:  { timeMs: 800,  depth: 0, level: 16, randomness: 7  },
-  7:  { timeMs: 1000, depth: 0, level: 17, randomness: 5  },
-  8:  { timeMs: 1200, depth: 0, level: 17, randomness: 3  },
-  9:  { timeMs: 1500, depth: 0, level: 18, randomness: 2  },
-  10: { timeMs: 2000, depth: 0, level: 18, randomness: 1  },
-  11: { timeMs: 2500, depth: 0, level: 18, randomness: 1  },
-  12: { timeMs: 3000, depth: 0, level: 19, randomness: 0  },
+  1:  { timeMs: 150,   depth: 0, level: 15, randomness: 30 },
+  2:  { timeMs: 200,   depth: 0, level: 15, randomness: 24 },
+  3:  { timeMs: 300,   depth: 0, level: 15, randomness: 18 },
+  4:  { timeMs: 400,   depth: 0, level: 16, randomness: 14 },
+  5:  { timeMs: 600,   depth: 0, level: 16, randomness: 10 },
+  6:  { timeMs: 800,   depth: 0, level: 16, randomness: 7  },
+  7:  { timeMs: 1000,  depth: 0, level: 17, randomness: 5  },
+  8:  { timeMs: 1200,  depth: 0, level: 17, randomness: 3  },
+  9:  { timeMs: 1500,  depth: 0, level: 18, randomness: 2  },
+  10: { timeMs: 2000,  depth: 0, level: 18, randomness: 1  },
+  11: { timeMs: 2500,  depth: 0, level: 18, randomness: 1  },
+  12: { timeMs: 3000,  depth: 0, level: 19, randomness: 0  },
+  13: { timeMs: 3500,  depth: 0, level: 19, randomness: 0  },
+  14: { timeMs: 4000,  depth: 0, level: 19, randomness: 0  },
+  15: { timeMs: 5000,  depth: 0, level: 19, randomness: 0  },
+  16: { timeMs: 6000,  depth: 0, level: 19, randomness: 0  },
+  17: { timeMs: 7000,  depth: 0, level: 19, randomness: 0  },
+  18: { timeMs: 8000,  depth: 0, level: 19, randomness: 0  },
+  19: { timeMs: 9000,  depth: 0, level: 19, randomness: 0  },
 };
 
 function getParams(level: number) {
-  return LEVEL_PARAMS[Math.max(1, Math.min(level, 12))] ?? LEVEL_PARAMS[12];
+  return LEVEL_PARAMS[Math.max(1, Math.min(level, 19))] ?? LEVEL_PARAMS[19];
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────
@@ -115,7 +122,7 @@ function getParams(level: number) {
  *
  * @param board       Current board state
  * @param player      Side to move
- * @param level       AI difficulty level 1-12 (≥10 routed through backend by hooks)
+ * @param level       AI difficulty level 1-19
  * @param fenHistory  Prior app-convention FEN strings for repetition detection
  */
 export async function getBestMove(
