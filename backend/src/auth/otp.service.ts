@@ -10,6 +10,8 @@ import type { OtpPurpose } from './dto';
  */
 @Injectable()
 export class OtpService {
+  private static readonly MAX_ATTEMPTS = 5;
+
   constructor(
     private prisma: PrismaService,
     private beamAfrica: BeamAfricaService,
@@ -27,9 +29,6 @@ export class OtpService {
    * @param phoneNumber - Phone number (will be normalized)
    * @returns OTP code (for testing purposes)
    */
-  /** Maximum failed verification attempts before the OTP record is locked. */
-  private static readonly MAX_ATTEMPTS = 5;
-
   async sendOTP(
     phoneNumber: string,
     purpose: OtpPurpose = 'signup',
@@ -62,6 +61,7 @@ export class OtpService {
       data: {
         phoneNumber: normalized,
         userId: existingUser?.id ?? null,
+        purpose,
         code,
         expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
       },
@@ -89,16 +89,15 @@ export class OtpService {
   async verifyOTP(
     phoneNumber: string,
     code: string,
-    // Purpose is currently unused, but accepted for forward compatibility
-    // (e.g., stricter rules per-flow).
-    _purpose: OtpPurpose = 'signup',
+    purpose: OtpPurpose = 'signup',
   ): Promise<boolean> {
     const normalized = normalizePhoneNumber(phoneNumber);
 
-    // Find the most recent unverified OTP for this phone number
+    // Find the most recent unverified OTP for this phone number and flow.
     const otpRecord = await this.prisma.otpCode.findFirst({
       where: {
         phoneNumber: normalized,
+        purpose,
         verified: false,
       },
       orderBy: { createdAt: 'desc' },
