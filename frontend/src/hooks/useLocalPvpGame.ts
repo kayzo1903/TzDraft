@@ -44,7 +44,7 @@ export interface LocalPvpGameState {
   currentPlayer: PlayerColor;
   moveCount: number;
   moves: Move[];
-  result: { winner: Winner } | null;
+  result: { winner: Winner; drawReason?: string } | null;
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
   mustContinueFrom: number | null;
@@ -53,6 +53,80 @@ export interface LocalPvpGameState {
 
 const getOpponent = (player: PlayerColor): PlayerColor =>
   player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+
+function isOnLongDiagonal(position: Position): boolean {
+  const { row, col } = position.toRowCol();
+  return row + col === 7;
+}
+
+function computeTimeoutResult(
+  board: BoardState,
+  timedOutPlayer: PlayerColor,
+  moveCount: number,
+  endgameCountdown: { favored: PlayerColor | null; remaining: number } | null,
+): { winner: Winner; drawReason?: string } {
+  const opponent =
+    timedOutPlayer === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+  const opponentWinner =
+    opponent === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK;
+
+  // Art. 10.1: no legal moves → loss
+  const legal = MkaguziEngine.generateLegalMoves(board, timedOutPlayer, moveCount);
+  if (legal.length === 0) {
+    return { winner: opponentWinner };
+  }
+
+  const wp = board.getPiecesByColor(PlayerColor.WHITE);
+  const bp = board.getPiecesByColor(PlayerColor.BLACK);
+  const wk = wp.filter((p) => p.isKing()).length;
+  const bk = bp.filter((p) => p.isKing()).length;
+  const wm = wp.length - wk;
+  const bm = bp.length - bk;
+
+  // Art. 10.2: K vs K → draw
+  if (wk === 1 && wm === 0 && bk === 1 && bm === 0) {
+    return { winner: Winner.DRAW, drawReason: "timeout-kvk" };
+  }
+
+  // Art. 10.3: stronger side timed out → draw
+  const timedWhite = timedOutPlayer === PlayerColor.WHITE;
+  const timedBlack = timedOutPlayer === PlayerColor.BLACK;
+  if (
+    (timedWhite && wk === 2 && wm === 0 && bk === 1 && bm === 0) ||
+    (timedBlack && bk === 2 && bm === 0 && wk === 1 && wm === 0) ||
+    (timedWhite && wk === 1 && wm === 1 && bk === 1 && bm === 0) ||
+    (timedBlack && bk === 1 && bm === 1 && wk === 1 && wm === 0) ||
+    (timedWhite && wk === 1 && wm === 0 && bk === 0 && bm === 2) ||
+    (timedBlack && bk === 1 && bm === 0 && wk === 0 && wm === 2)
+  ) {
+    return { winner: Winner.DRAW, drawReason: "timeout-insufficient" };
+  }
+
+  // Art. 10.4: weaker side (lone king) timed out in 2K/K+Man vs 1K
+  const timedOutPieces = timedWhite ? wp : bp;
+  const opponentPieces = timedWhite ? bp : wp;
+  const timedOutIsLoneKing =
+    timedOutPieces.length === 1 &&
+    timedOutPieces[0].isKing() &&
+    opponentPieces.length === 2;
+
+  if (timedOutIsLoneKing) {
+    const loneKingPos = timedOutPieces[0].position;
+
+    if (isOnLongDiagonal(loneKingPos)) {
+      return { winner: Winner.DRAW, drawReason: "timeout-long-diagonal" };
+    }
+
+    const weakMovesMade = endgameCountdown != null ? Math.max(0, 5 - endgameCountdown.remaining) : 0;
+    if (weakMovesMade >= 5) {
+      return { winner: Winner.DRAW, drawReason: "timeout-endgame-survived" };
+    }
+
+    return { winner: opponentWinner };
+  }
+
+  return { winner: opponentWinner };
+}
 
 const toUiColor = (color: PlayerColor): "WHITE" | "BLACK" =>
   color === PlayerColor.WHITE ? "WHITE" : "BLACK";
@@ -185,9 +259,9 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     [lastMovePositions, flipForCurrentPlayer],
   );
 
-  // Returns true if a draw should be declared — caller is responsible for setResult.
+  // Returns the draw reason string if a draw should be declared, null otherwise.
   const evaluateEndgameCountdown = useCallback(
-    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean): boolean => {
+    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean): string | null => {
       const whitePieces = nextBoard.getPiecesByColor(PlayerColor.WHITE);
       const blackPieces = nextBoard.getPiecesByColor(PlayerColor.BLACK);
       const whiteKings = whitePieces.filter((p) => p.isKing()).length;
@@ -201,8 +275,9 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
         !allKings || hadCapture ? 0 : thirtyMoveCountRef.current + 1;
       setThirtyMoveCount(newThirtyCount);
       thirtyMoveCountRef.current = newThirtyCount;
-      if (newThirtyCount >= 60) return true;
+      if (newThirtyCount >= 60) return '30-move';
 
+      // K vs K intentionally excluded — in TZD kings can capture kings.
       const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
       const blackOnlyKing = blackPieces.length === 1 && blackKings === 1;
       const whiteTwoKings = whitePieces.length === 2 && whiteKings === 2;
@@ -221,12 +296,12 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       else if (blackOnlyKing && whiteTwoKings) { favored = PlayerColor.WHITE; limit = 5; }
       else if (whiteOnlyKing && blackKingMan) { favored = PlayerColor.BLACK; limit = 5; }
       else if (blackOnlyKing && whiteKingMan) { favored = PlayerColor.WHITE; limit = 5; }
-      else if (whiteOnlyKing && blackOnlyKing) { favored = null; limit = 5; }
+      // K vs K intentionally omitted — kings can capture kings in TZD
 
       if (limit === 0) {
         setEndgameCountdown(null);
         endgameCountdownRef.current = null;
-        return false;
+        return null;
       }
 
       const prev = endgameCountdownRef.current;
@@ -244,7 +319,9 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
 
       setEndgameCountdown(newCountdown);
       endgameCountdownRef.current = newCountdown;
-      return newCountdown.remaining === 0;
+      return newCountdown.remaining === 0
+        ? (favored !== null ? 'three-kings' : 'endgame')
+        : null;
     },
     [],
   );
@@ -312,19 +389,21 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       setCurrentPlayer(nextPlayer);
       if (passDevice) setShowPassOverlay(true);
 
-      const isDraw = evaluateEndgameCountdown(
+      const endgameDrawReason = evaluateEndgameCountdown(
         nextBoard,
         move.player,
         move.capturedSquares.length > 0,
       );
 
-      // Art. 8.2 — threefold repetition
+      // Art. 8.2 — threefold repetition: same position with same side-to-move 3× → draw
       const newFen = fenHistoryRef.current[fenHistoryRef.current.length - 1];
       const isRepetition = countFenOccurrences(fenHistoryRef.current, newFen) >= 3;
 
+      const drawReason = endgameDrawReason ?? (isRepetition ? 'repetition' : null);
+
       const gameResult = MkaguziEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) setResult({ winner: gameResult.winner });
-      else if (isDraw || isRepetition) setResult({ winner: Winner.DRAW });
+      else if (drawReason) setResult({ winner: Winner.DRAW, drawReason });
     },
     [board, currentPlayer, evaluateEndgameCountdown, flipForCurrentPlayer, passDevice],
   );

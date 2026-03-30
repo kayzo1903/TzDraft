@@ -86,8 +86,7 @@ export class Game {
         }
         const wMen = whitePieces.length - wKings;
         const bMen = blackPieces.length - bKings;
-        const isEndgame84 = (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 0) ||
-            (wKings === 1 && wMen === 1 && bKings === 1 && bMen === 0) ||
+        const isEndgame84 = (wKings === 1 && wMen === 1 && bKings === 1 && bMen === 0) ||
             (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 1) ||
             (wKings === 2 && wMen === 0 && bKings === 1 && bMen === 0) ||
             (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0);
@@ -95,7 +94,10 @@ export class Game {
             this._endgameMoveCount = 0;
         }
         else {
-            this._endgameMoveCount++;
+            const weakColor = (wKings + wMen === 1) ? PlayerColor.WHITE : PlayerColor.BLACK;
+            if (movingPlayer === weakColor) {
+                this._endgameMoveCount = wasCapture ? 0 : this._endgameMoveCount + 1;
+            }
         }
     }
     endGame(winner, reason) {

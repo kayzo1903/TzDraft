@@ -1,6 +1,6 @@
 {
   "name": "@tzdraft/cake-engine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CAKE Engine for Tanzania Drafti - Browser-safe game engine for 8x8 draughts",
   "type": "module",
   "main": "dist/index.js",
