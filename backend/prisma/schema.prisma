@@ -142,6 +142,7 @@ model OtpCode {
     id          String   @id @default(uuid())
     phoneNumber String   @map("phone_number")
     userId      String?  @map("user_id")
+    purpose     String
     code        String
     expiresAt   DateTime @map("expires_at")
     verified    Boolean  @default(false)
@@ -151,6 +152,7 @@ model OtpCode {
     user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@index([phoneNumber])
+    @@index([phoneNumber, purpose])
     @@index([userId])
     @@map("otp_codes")
 }
