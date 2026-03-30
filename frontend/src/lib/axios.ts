@@ -3,51 +3,48 @@ import { useAuthStore } from "./auth/auth-store";
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
+  // withCredentials sends the httpOnly accessToken/refreshToken cookies on every request
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor - Add access token
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+function isAuthRoute(url?: string): boolean {
+  if (!url) return false;
+  return url.includes("/auth/");
+}
 
-// Response interceptor - Handle token refresh
+function isAuthPage(pathname: string): boolean {
+  return /^\/(?:sw|en)\/auth(?:\/|$)/.test(pathname);
+}
+
+// Response interceptor — handle token refresh transparently
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url as string | undefined;
+
+    // Auth endpoints should surface their own errors directly.
+    // Otherwise a failed login/refresh can recurse into the refresh flow
+    // and reload the current auth page.
+    if (error.response?.status === 401 && isAuthRoute(requestUrl)) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) {
-          throw new Error("No refresh token");
-        }
+        // refreshToken cookie is sent automatically via withCredentials.
+        // The server rotates both tokens and sets fresh httpOnly cookies.
+        await axiosInstance.post("/auth/refresh", {});
 
-        const { data } = await axiosInstance.post(`/auth/refresh`, {
-          refreshToken,
-        });
-
-        localStorage.setItem("accessToken", data.accessToken);
-        localStorage.setItem("refreshToken", data.refreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        // Retry the original request — the new accessToken cookie is now set
         return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        // Clear both localStorage tokens and the Zustand auth store so the
-        // navbar reflects the signed-out state before redirecting.
+      } catch {
+        // Refresh failed — session expired or cookie missing
         useAuthStore.getState().clearAuth();
 
         const pathParts = window.location.pathname.split("/");
@@ -55,18 +52,11 @@ axiosInstance.interceptors.response.use(
           ? pathParts[1]
           : "sw";
 
-        window.location.href = `/${currentLocale}/auth/login`;
-        return Promise.reject(refreshError);
+        if (!isAuthPage(window.location.pathname)) {
+          window.location.href = `/${currentLocale}/auth/login`;
+        }
+        return Promise.reject(error);
       }
-    }
-
-    // Special case for login/register failures - don't try to refresh/redirect
-    if (
-      error.response?.status === 401 &&
-      (originalRequest.url?.includes("/auth/login") ||
-        originalRequest.url?.includes("/auth/register"))
-    ) {
-      return Promise.reject(error);
     }
 
     return Promise.reject(error);

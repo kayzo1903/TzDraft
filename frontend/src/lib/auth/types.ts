@@ -25,11 +25,9 @@ export interface User {
 
 export interface AuthState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   hasHydrated: boolean;
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setAuth: (user: User) => void;
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
   setHasHydrated: (value: boolean) => void;
@@ -53,8 +51,8 @@ export interface LoginData {
 
 export interface AuthResponse {
   user: User;
-  accessToken: string;
-  refreshToken: string;
+  // accessToken and refreshToken are set as httpOnly cookies by the backend
+  // and intentionally not exposed to JavaScript
 }
 
 export interface OtpData {

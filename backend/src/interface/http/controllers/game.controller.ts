@@ -8,7 +8,10 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -21,7 +24,6 @@ import { CreateGameUseCase } from '../../../application/use-cases/create-game.us
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
 import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
 import {
-  CreatePvPGameDto,
   CreatePvEGameDto,
   CreateInviteGameDto,
   StartAiChallengeSessionDto,
@@ -58,27 +60,6 @@ export class GameController {
     private readonly getPlayerStatsUseCase: GetPlayerStatsUseCase,
     private readonly aiProgressionService: AiProgressionService,
   ) {}
-
-  /**
-   * Create a new PvP game
-   */
-  @Post('pvp')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new Player vs Player game' })
-  @ApiResponse({ status: 201, description: 'Game created successfully' })
-  async createPvPGame(@CurrentUser() user: any, @Body() dto: CreatePvPGameDto) {
-    const game = await this.createGameUseCase.createPvPGame(
-      user.id,
-      dto.blackPlayerId,
-      user.rating?.rating || 1200,
-      dto.blackElo || 1200,
-    );
-
-    return {
-      success: true,
-      data: game,
-    };
-  }
 
   /**
    * Create a new PvE game
@@ -193,6 +174,7 @@ export class GameController {
    * Create an invite game (waiting for second player)
    */
   @Post('invite')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create an invite game and get invite code' })
   @ApiResponse({ status: 201, description: 'Invite game created' })
@@ -225,6 +207,7 @@ export class GameController {
    * Join an invite game via code
    */
   @Post('invite/:code/join')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Join an invite game using its code' })
   @ApiResponse({ status: 200, description: 'Joined game successfully' })
@@ -310,15 +293,17 @@ export class GameController {
   @ApiOperation({ summary: 'Get my game history' })
   async getMyHistory(
     @CurrentUser() user: any,
-    @Query('skip') skip = '0',
-    @Query('take') take = '20',
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
+    @Query('take', new DefaultValuePipe(20), ParseIntPipe) take: number,
     @Query('result') result?: 'WIN' | 'LOSS' | 'DRAW',
     @Query('gameType') gameType?: string,
   ) {
+    const safeSkip = Math.max(0, skip);
+    const safeTake = Math.min(Math.max(1, take), 100);
     const data = await this.getGameHistoryUseCase.execute(
       user.id,
-      parseInt(skip, 10),
-      parseInt(take, 10),
+      safeSkip,
+      safeTake,
       {
         result,
         gameType: gameType as GameType | undefined,

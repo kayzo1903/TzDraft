@@ -1,13 +1,13 @@
 import axiosInstance from "../axios";
 import { useAuthStore } from "./auth-store";
-import { RegisterData, LoginData, AuthResponse } from "./types";
+import { RegisterData, LoginData } from "./types";
 import { hasLocalBotProgressToSync, getLocalBotProgressSnapshot } from "../game/bot-progression";
 import { aiChallengeService } from "@/services/ai-challenge.service";
 
 export type OtpPurpose = "signup" | "password_reset" | "verify_phone";
 
-async function syncLocalAiProgressIfNeeded(response: AuthResponse): Promise<void> {
-  if (response.user.accountType !== "REGISTERED") return;
+async function syncLocalAiProgressIfNeeded(accountType: string): Promise<void> {
+  if (accountType !== "REGISTERED") return;
   if (!hasLocalBotProgressToSync()) return;
 
   try {
@@ -19,25 +19,34 @@ async function syncLocalAiProgressIfNeeded(response: AuthResponse): Promise<void
 }
 
 export const authClient = {
-  async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await axiosInstance.post<AuthResponse>(
-      "/auth/register",
-      data,
-    );
-    const { user, accessToken, refreshToken } = response.data;
-    useAuthStore.getState().setAuth(user, accessToken, refreshToken);
-    await syncLocalAiProgressIfNeeded(response.data);
+  /**
+   * Restore auth state from httpOnly cookie.
+   * Call this on app mount to rehydrate the user after a page refresh.
+   * The accessToken cookie is sent automatically by the browser.
+   */
+  async init(): Promise<void> {
+    try {
+      const response = await axiosInstance.get("/auth/me");
+      useAuthStore.getState().setAuth(response.data);
+    } catch {
+      // Cookie missing or expired — user is not logged in
+      useAuthStore.getState().clearAuth();
+    }
+  },
+
+  async register(data: RegisterData): Promise<{ user: any }> {
+    const response = await axiosInstance.post("/auth/register", data);
+    const { user } = response.data;
+    useAuthStore.getState().setAuth(user);
+    await syncLocalAiProgressIfNeeded(user.accountType);
     return response.data;
   },
 
-  async login(data: LoginData): Promise<AuthResponse> {
-    const response = await axiosInstance.post<AuthResponse>(
-      "/auth/login",
-      data,
-    );
-    const { user, accessToken, refreshToken } = response.data;
-    useAuthStore.getState().setAuth(user, accessToken, refreshToken);
-    await syncLocalAiProgressIfNeeded(response.data);
+  async login(data: LoginData): Promise<{ user: any }> {
+    const response = await axiosInstance.post("/auth/login", data);
+    const { user } = response.data;
+    useAuthStore.getState().setAuth(user);
+    await syncLocalAiProgressIfNeeded(user.accountType);
     return response.data;
   },
 
@@ -65,31 +74,28 @@ export const authClient = {
     return response.data;
   },
 
-  async createGuest(): Promise<AuthResponse> {
-    // Reuse existing guest session if still authenticated — avoids creating a
-    // new DB record on every fresh page load for the same browser session.
+  async createGuest(): Promise<{ user: any }> {
+    // Reuse existing guest session if still authenticated
     const state = useAuthStore.getState();
     if (
       state.isAuthenticated &&
       (state.user?.accountType === "GUEST" ||
         state.user?.phoneNumber?.startsWith("GUEST_"))
     ) {
-      return {
-        user: state.user!,
-        accessToken: state.accessToken!,
-        refreshToken: state.refreshToken!,
-      };
+      return { user: state.user! };
     }
-    const response = await axiosInstance.post<AuthResponse>("/auth/guest");
-    const { user, accessToken, refreshToken } = response.data;
-    useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    const response = await axiosInstance.post("/auth/guest");
+    const { user } = response.data;
+    useAuthStore.getState().setAuth(user);
     return response.data;
   },
 
   async logout(): Promise<void> {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      await axiosInstance.post("/auth/logout", { refreshToken });
+    try {
+      // refreshToken is in the httpOnly cookie — sent automatically
+      await axiosInstance.post("/auth/logout", {});
+    } catch {
+      // ignore server errors on logout
     }
     useAuthStore.getState().clearAuth();
   },
