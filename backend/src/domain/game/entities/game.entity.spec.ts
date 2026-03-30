@@ -255,14 +255,14 @@ describe('Game', () => {
   });
 
   describe('endgameMoveCount (Art 8.4)', () => {
-    it('increments in a K vs K endgame position', () => {
-      // WK@18, BK@27 — K vs K is an Art 8.4 endgame
+    it('does not increment in a K vs K position', () => {
+      // K vs K is not an Art. 8.4 auto-draw in TZD.
       const game = makeGame([
         { p: 18, c: 'WHITE', k: true },
         { p: 27, c: 'BLACK', k: true },
       ]);
       game.applyMove(makeMove(PlayerColor.WHITE, 18, 22));
-      expect(game.endgameMoveCount).toBe(1);
+      expect(game.endgameMoveCount).toBe(0);
     });
   });
 

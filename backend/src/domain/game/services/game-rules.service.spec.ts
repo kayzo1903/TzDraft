@@ -169,23 +169,6 @@ describe('GameRulesService', () => {
 
   // ─── Draw detection ───────────────────────────────────────────────────────────
 
-  describe('isDrawByInsufficientMaterial', () => {
-    it('returns true for lone king vs lone king (K vs K)', () => {
-      const b = new BoardState([wk(18), bk(22)]);
-      expect(service.isDrawByInsufficientMaterial(b)).toBe(true);
-    });
-
-    it('returns false when one side has a man', () => {
-      const b = new BoardState([wp(18), bk(22)]);
-      expect(service.isDrawByInsufficientMaterial(b)).toBe(false);
-    });
-
-    it('returns false for 2K vs 1K', () => {
-      const b = new BoardState([wk(18), wk(19), bk(22)]);
-      expect(service.isDrawByInsufficientMaterial(b)).toBe(false);
-    });
-  });
-
   describe('isDrawByThirtyMoveRule (Art 8.3)', () => {
     it('returns true at 60 reversible half-moves', () => {
       expect(service.isDrawByThirtyMoveRule(60)).toBe(true);
