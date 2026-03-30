@@ -167,7 +167,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>(PlayerColor.WHITE);
   const [moveCount, setMoveCount] = useState(0);
   const [moves, setMoves] = useState<Move[]>([]);
-  const [result, setResult] = useState<{ winner: Winner } | null>(null);
+  const [result, setResult] = useState<{ winner: Winner; drawReason?: string } | null>(null);
   const [timeLeft, setTimeLeft] = useState<{ WHITE: number; BLACK: number }>({
     WHITE: timeSeconds,
     BLACK: timeSeconds,
