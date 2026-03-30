@@ -27,6 +27,9 @@ export class OtpService {
    * @param phoneNumber - Phone number (will be normalized)
    * @returns OTP code (for testing purposes)
    */
+  /** Maximum failed verification attempts before the OTP record is locked. */
+  private static readonly MAX_ATTEMPTS = 5;
+
   async sendOTP(
     phoneNumber: string,
     purpose: OtpPurpose = 'signup',
@@ -37,19 +40,18 @@ export class OtpService {
       where: { phoneNumber: normalized },
     });
 
+    // Use the same generic message for both cases to prevent phone enumeration.
+    // signup rejects existing numbers; reset/verify rejects unknown numbers —
+    // but we never reveal which condition triggered the error.
     if (purpose === 'signup' && existingUser) {
-      throw new BadRequestException(
-        'User with this phone number already exists',
-      );
+      throw new BadRequestException('Unable to send OTP. Please try again.');
     }
 
     if (
       (purpose === 'password_reset' || purpose === 'verify_phone') &&
       !existingUser
     ) {
-      throw new BadRequestException(
-        'User with this phone number does not exist',
-      );
+      throw new BadRequestException('Unable to send OTP. Please try again.');
     }
 
     // Generate OTP code
@@ -93,28 +95,38 @@ export class OtpService {
   ): Promise<boolean> {
     const normalized = normalizePhoneNumber(phoneNumber);
 
-    // Find the most recent OTP for this phone number
+    // Find the most recent unverified OTP for this phone number
     const otpRecord = await this.prisma.otpCode.findFirst({
       where: {
         phoneNumber: normalized,
-        code,
         verified: false,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
 
-    if (!otpRecord) {
-      throw new BadRequestException('Invalid OTP code');
+    // Generic error — never reveal whether the code is wrong vs. not found
+    const invalidErr = new BadRequestException('Invalid or expired OTP code');
+
+    if (!otpRecord) throw invalidErr;
+
+    // Locked after too many failed attempts
+    if (otpRecord.attempts >= OtpService.MAX_ATTEMPTS) {
+      throw new BadRequestException('Too many failed attempts. Please request a new code.');
     }
 
-    // Check if OTP has expired
-    if (otpRecord.expiresAt < new Date()) {
-      throw new BadRequestException('OTP code has expired');
+    // Check expiry before comparing the code
+    if (otpRecord.expiresAt < new Date()) throw invalidErr;
+
+    // Wrong code — increment attempt counter
+    if (otpRecord.code !== code) {
+      await this.prisma.otpCode.update({
+        where: { id: otpRecord.id },
+        data: { attempts: { increment: 1 } },
+      });
+      throw invalidErr;
     }
 
-    // Mark OTP as verified
+    // Correct — mark as verified
     await this.prisma.otpCode.update({
       where: { id: otpRecord.id },
       data: { verified: true },
