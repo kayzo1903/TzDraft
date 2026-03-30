@@ -196,6 +196,7 @@ type GameResultOutcome = "win" | "loss" | "draw";
 
 interface GameResultCardProps {
   result: Winner;
+  drawReason?: string;
   bot: BotProfile;
   playerColor: PlayerColor;
   moveCount: number;
@@ -214,8 +215,19 @@ interface GameResultCardProps {
   t: ReturnType<typeof useTranslations<"gameArena">>;
 }
 
+function drawReasonLabel(reason?: string): string {
+  switch (reason) {
+    case "repetition":   return "Draw by threefold repetition";
+    case "30-move":      return "Draw by 30-move rule";
+    case "three-kings":  return "Draw by three-kings rule";
+    case "endgame":      return "Draw by endgame rule";
+    default:             return "The game ended in a draw";
+  }
+}
+
 function GameResultCard({
   result,
+  drawReason,
   bot,
   playerColor,
   moveCount,
@@ -315,6 +327,9 @@ function GameResultCard({
             <div className="text-sm text-white/70">
               {cfg.sublabel} <span className="font-bold text-white">{bot.name}</span>
             </div>
+            {outcome === "draw" && (
+              <div className="text-xs text-sky-300/80 mt-0.5">{drawReasonLabel(drawReason)}</div>
+            )}
           </div>
 
           {/* ELO badge top-right */}
@@ -787,6 +802,7 @@ export default function LocalGamePage() {
         <>
           <GameResultCard
             result={state.result.winner}
+            drawReason={state.result.drawReason}
             bot={bot}
             playerColor={playerColor}
             moveCount={state.moveCount}

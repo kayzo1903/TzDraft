@@ -126,11 +126,11 @@ export class GameRulesService {
   }
 
   isDrawByThirtyMoveRule(reversibleMoveCount: number): boolean {
-    return reversibleMoveCount >= 30;
+    return reversibleMoveCount >= 60;
   }
 
   isDrawByThreeKingsRule(threeKingsMoveCount: number): boolean {
-    return threeKingsMoveCount >= 16;
+    return threeKingsMoveCount >= 12;
   }
 
   isDrawByArticle84Endgame(endgameMoveCount: number): boolean {
@@ -138,10 +138,6 @@ export class GameRulesService {
   }
 
   isDrawByInsufficientMaterial(board: BoardState): boolean {
-    return (
-      board.getPiecesByColor(PlayerColor.WHITE).every((p) => p.isKing()) &&
-      board.getPiecesByColor(PlayerColor.BLACK).every((p) => p.isKing()) &&
-      board.getAllPieces().length === 2
-    );
+    return false; // K vs K is no longer an automatic draw in v2.3 rules
   }
 }

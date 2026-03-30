@@ -52,7 +52,7 @@ export interface LocalGameState {
   currentPlayer: PlayerColor;
   moveCount: number;
   moves: Move[];
-  result: { winner: Winner } | null;
+  result: { winner: Winner; drawReason?: string } | null;
   isAiThinking: boolean;
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
@@ -89,11 +89,105 @@ type SavedGame = {
     color: PlayerColor;
     position: number;
   }[];
-  result: { winner: Winner } | null;
+  result: { winner: Winner; drawReason?: string } | null;
 };
 
 const getOpponent = (player: PlayerColor): PlayerColor =>
   player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+
+/** Returns true if PDN position sits on the a1-h8 long diagonal (row + col === 7). */
+function isOnLongDiagonal(position: Position): boolean {
+  const { row, col } = position.toRowCol();
+  return row + col === 7;
+}
+
+/**
+ * Art. 10 — Timeout result adjudication.
+ * Returns the correct winner/draw given that `timedOutPlayer` ran out of clock.
+ *
+ * Art. 10.1: if the timed-out player has no legal moves → loss (no draw exception).
+ * Art. 10.2: K vs K → draw.
+ * Art. 10.3: stronger side timed out (2K vs 1K, K+Man vs 1K, 1K vs 2M) → draw.
+ * Art. 10.4: lone king (weaker side) timed out in 2K/K+Man vs 1K →
+ *   – long diagonal → draw,
+ *   – ≥5 weak-side endgame moves survived → draw,
+ *   – otherwise → loss.
+ */
+function computeTimeoutResult(
+  board: BoardState,
+  timedOutPlayer: PlayerColor,
+  moveCount: number,
+  endgameCountdown: { favored: PlayerColor | null; remaining: number } | null,
+): { winner: Winner; drawReason?: string } {
+  const opponent =
+    timedOutPlayer === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+  const opponentWinner =
+    opponent === PlayerColor.WHITE ? Winner.WHITE : Winner.BLACK;
+
+  // Art. 10.1: no legal moves for the timed-out player → loss (clock expired on a losing position)
+  const legal = MkaguziEngine.generateLegalMoves(board, timedOutPlayer, moveCount);
+  if (legal.length === 0) {
+    return { winner: opponentWinner };
+  }
+
+  const wp = board.getPiecesByColor(PlayerColor.WHITE);
+  const bp = board.getPiecesByColor(PlayerColor.BLACK);
+  const wk = wp.filter((p) => p.isKing()).length;
+  const bk = bp.filter((p) => p.isKing()).length;
+  const wm = wp.length - wk;
+  const bm = bp.length - bk;
+
+  // Art. 10.2: K vs K — neither side can force a win → draw
+  if (wk === 1 && wm === 0 && bk === 1 && bm === 0) {
+    return { winner: Winner.DRAW, drawReason: "timeout-kvk" };
+  }
+
+  // Art. 10.3: the STRONGER side timed out — they had the advantage, so draw is fair
+  const timedWhite = timedOutPlayer === PlayerColor.WHITE;
+  const timedBlack = timedOutPlayer === PlayerColor.BLACK;
+  if (
+    (timedWhite && wk === 2 && wm === 0 && bk === 1 && bm === 0) || // WHITE 2K vs BLACK 1K
+    (timedBlack && bk === 2 && bm === 0 && wk === 1 && wm === 0) || // BLACK 2K vs WHITE 1K
+    (timedWhite && wk === 1 && wm === 1 && bk === 1 && bm === 0) || // WHITE K+M vs BLACK 1K
+    (timedBlack && bk === 1 && bm === 1 && wk === 1 && wm === 0) || // BLACK K+M vs WHITE 1K
+    (timedWhite && wk === 1 && wm === 0 && bk === 0 && bm === 2) || // WHITE 1K vs BLACK 2M
+    (timedBlack && bk === 1 && bm === 0 && wk === 0 && wm === 2)    // BLACK 1K vs WHITE 2M
+  ) {
+    return { winner: Winner.DRAW, drawReason: "timeout-insufficient" };
+  }
+
+  // Art. 10.4: WEAKER side (lone king) timed out in 2K vs 1K or K+Man vs 1K
+  const timedOutPieces = timedWhite ? wp : bp;
+  const opponentPieces = timedWhite ? bp : wp;
+  const timedOutIsLoneKing =
+    timedOutPieces.length === 1 &&
+    timedOutPieces[0].isKing() &&
+    opponentPieces.length === 2; // exactly 2 opp pieces = Art. 8.4 endgame
+
+  if (timedOutIsLoneKing) {
+    const loneKingPos = timedOutPieces[0].position;
+
+    // Long diagonal → draw (Art. 10.4b)
+    if (isOnLongDiagonal(loneKingPos)) {
+      return { winner: Winner.DRAW, drawReason: "timeout-long-diagonal" };
+    }
+
+    // ≥5 weak-side moves survived in this endgame → draw (Art. 10.4c)
+    // endgameCountdown.remaining starts at 5 and decrements on each weak-side move.
+    // weakMovesMade = 5 − remaining.  When remaining reaches 0 the game already ended
+    // as Art. 8.4 draw, so this branch is an extra safety net.
+    const weakMovesMade = endgameCountdown != null ? Math.max(0, 5 - endgameCountdown.remaining) : 0;
+    if (weakMovesMade >= 5) {
+      return { winner: Winner.DRAW, drawReason: "timeout-endgame-survived" };
+    }
+
+    // Not on long diagonal, < 5 weak moves → loss
+    return { winner: opponentWinner };
+  }
+
+  // Default: loss for the player who ran out of time
+  return { winner: opponentWinner };
+}
 
 const toUiColor = (color: PlayerColor): "WHITE" | "BLACK" =>
   color === PlayerColor.WHITE ? "WHITE" : "BLACK";
@@ -143,7 +237,7 @@ const loadSavedGame = (
   currentPlayer: PlayerColor;
   moveCount: number;
   moves: Move[];
-  result: { winner: Winner } | null;
+  result: { winner: Winner; drawReason?: string } | null;
   timeLeft: { WHITE: number; BLACK: number };
   endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
   thirtyMoveCount: number;
@@ -207,7 +301,7 @@ const saveGame = (
     currentPlayer: PlayerColor;
     moveCount: number;
     moves: Move[];
-    result: { winner: Winner } | null;
+    result: { winner: Winner; drawReason?: string } | null;
     timeLeft: { WHITE: number; BLACK: number };
     endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
     thirtyMoveCount: number;
@@ -360,10 +454,10 @@ export const useLocalGame = (
     return Array.from(set);
   }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom]);
 
-  // Returns true if a draw should be declared — caller is responsible for setResult.
+  // Returns the draw reason string if a draw should be declared, null otherwise.
   // Uses refs (not state directly) so the callback stays stable with [] deps.
   const evaluateEndgameCountdown = useCallback(
-    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean): boolean => {
+    (nextBoard: BoardState, movePlayer: PlayerColor, hadCapture: boolean): string | null => {
       const whitePieces = nextBoard.getPiecesByColor(PlayerColor.WHITE);
       const blackPieces = nextBoard.getPiecesByColor(PlayerColor.BLACK);
 
@@ -378,9 +472,10 @@ export const useLocalGame = (
         !allKings || hadCapture ? 0 : thirtyMoveCountRef.current + 1;
       setThirtyMoveCount(newThirtyCount);
       thirtyMoveCountRef.current = newThirtyCount;
-      if (newThirtyCount >= 60) return true;
+      if (newThirtyCount >= 60) return '30-move';
 
-      // Classify endgame scenario for timed draws
+      // Classify endgame scenario for timed draws.
+      // K vs K is intentionally excluded — in TZD kings can capture kings.
       const whiteOnlyKing = whitePieces.length === 1 && whiteKings === 1;
       const blackOnlyKing = blackPieces.length === 1 && blackKings === 1;
       const whiteTwoKings = whitePieces.length === 2 && whiteKings === 2;
@@ -401,18 +496,21 @@ export const useLocalGame = (
       else if (blackOnlyKing && whiteTwoKings) { favored = PlayerColor.WHITE; limit = 5; }
       else if (whiteOnlyKing && blackKingMan) { favored = PlayerColor.BLACK; limit = 5; }
       else if (blackOnlyKing && whiteKingMan) { favored = PlayerColor.WHITE; limit = 5; }
-      else if (whiteOnlyKing && blackOnlyKing) { favored = null; limit = 5; }
+      // K vs K intentionally omitted — kings can capture kings in TZD
 
       if (limit === 0) {
         setEndgameCountdown(null);
         endgameCountdownRef.current = null;
-        return false;
+        return null;
       }
 
       const prev = endgameCountdownRef.current;
       const isNewScenario = !prev || prev.favored !== favored;
       const base = isNewScenario ? limit : prev.remaining;
-      const shouldDecrement = favored === null || movePlayer === favored;
+      // Art. 8.5 (limit=12): count STRONG-side (favored) moves.
+      // Art. 8.4 (limit=5):  count WEAK-side (non-favored) moves.
+      const shouldDecrement =
+        limit === 12 ? movePlayer === favored : movePlayer !== favored;
 
       let newCountdown: { favored: PlayerColor | null; remaining: number };
       if (!shouldDecrement) {
@@ -424,7 +522,9 @@ export const useLocalGame = (
 
       setEndgameCountdown(newCountdown);
       endgameCountdownRef.current = newCountdown;
-      return newCountdown.remaining === 0;
+      return newCountdown.remaining === 0
+        ? (limit === 12 ? 'three-kings' : 'endgame')
+        : null;
     },
     [],
   );
@@ -493,7 +593,7 @@ export const useLocalGame = (
       // always passes to the opponent — never force a "continue capturing" chain.
       setMustContinueFrom(null);
       setCurrentPlayer(nextPlayer);
-      const isDraw = evaluateEndgameCountdown(
+      const endgameDrawReason = evaluateEndgameCountdown(
         nextBoard,
         move.player,
         move.capturedSquares.length > 0,
@@ -503,11 +603,13 @@ export const useLocalGame = (
       const newFen = fenHistoryRef.current[fenHistoryRef.current.length - 1];
       const isRepetition = countFenOccurrences(fenHistoryRef.current, newFen) >= 3;
 
+      const drawReason = endgameDrawReason ?? (isRepetition ? 'repetition' : null);
+
       const gameResult = MkaguziEngine.evaluateGameResult(nextBoard, nextPlayer);
       if (gameResult) {
         setResult({ winner: gameResult.winner });
-      } else if (isDraw || isRepetition) {
-        setResult({ winner: Winner.DRAW });
+      } else if (drawReason) {
+        setResult({ winner: Winner.DRAW, drawReason });
       }
     },
     [board, currentPlayer, evaluateEndgameCountdown, flipForPlayer],
@@ -908,30 +1010,19 @@ export const useLocalGame = (
         } else {
           next.BLACK = Math.max(0, next.BLACK - 1);
         }
-        // Art. 10: timeout → loss UNLESS opponent has insufficient material to win (Art. 8.1).
-        // Insufficient = board already qualifies as a draw by material:
-        //   K vs K  |  K+Man vs K  |  2K vs K  (Art. 8.4 draw scenarios)
-        const wp = board.getPiecesByColor(PlayerColor.WHITE);
-        const bp = board.getPiecesByColor(PlayerColor.BLACK);
-        const wk = wp.filter((p) => p.isKing()).length;
-        const bk = bp.filter((p) => p.isKing()).length;
-        const wm = wp.length - wk;
-        const bm = bp.length - bk;
-        // "Opponent cannot force a win" when opponent is the side with time remaining.
-        // WHITE timed out → opponent is BLACK; check if BLACK's material is insufficient.
-        // BLACK timed out → opponent is WHITE; check if WHITE's material is insufficient.
-        const blackCannotWin = bm === 0 && bk <= 2 && wm === 0 && wk === 1;  // 1-2K vs 1K
-        const whiteCannotWin = wm === 0 && wk <= 2 && bm === 0 && bk === 1;  // 1-2K vs 1K
+        // Art. 10: apply TZD-specific timeout-draw rules
         if (next.WHITE === 0) {
-          setResult({ winner: blackCannotWin ? Winner.DRAW : Winner.BLACK });
+          const r = computeTimeoutResult(board, PlayerColor.WHITE, moveCount, endgameCountdownRef.current);
+          setResult(r);
         } else if (next.BLACK === 0) {
-          setResult({ winner: whiteCannotWin ? Winner.DRAW : Winner.WHITE });
+          const r = computeTimeoutResult(board, PlayerColor.BLACK, moveCount, endgameCountdownRef.current);
+          setResult(r);
         }
         return next;
       });
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [board, currentPlayer, result, timeSeconds]);
+  }, [board, currentPlayer, moveCount, result, timeSeconds]);
   useEffect(() => {
     saveGame(
       {
