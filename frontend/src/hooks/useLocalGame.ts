@@ -366,7 +366,7 @@ export const useLocalGame = (
   );
   const [moveCount, setMoveCount] = useState(loaded ? loaded.moveCount : 0);
   const [moves, setMoves] = useState<Move[]>(loaded ? loaded.moves : []);
-  const [result, setResult] = useState<{ winner: Winner } | null>(
+  const [result, setResult] = useState<{ winner: Winner; drawReason?: string } | null>(
     loaded ? loaded.result : null,
   );
   const [undoUsed, setUndoUsed] = useState<boolean>(loaded?.undoUsed ?? false);
