@@ -383,14 +383,18 @@
     "timeControl": "Time control",
     "findOpponent": "Find Opponent",
     "searching": "Searching for opponent...",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "timeoutHint": "No opponent found after 60 seconds.",
+    "playVsTau": "Play vs Tau instead",
+    "keepSearching": "Keep searching"
   },
   "setupFriend": {
     "title": "Play with a Friend",
     "subtitle": "Challenge a friend locally or online",
     "tabs": {
       "online": "Online",
-      "local": "Local"
+      "local": "Local",
+      "quick": "Quick Match"
     },
     "colors": {
       "white": "White",
@@ -430,6 +434,17 @@
       "back": "Back",
       "enterInviteCode": "Enter invite code",
       "joinGame": "Join Game"
+    },
+    "quickMatch": {
+      "bannerTitle": "Quick Match",
+      "bannerDesc": "Get paired with a random opponent instantly. No invite needed.",
+      "findButton": "Find Opponent",
+      "searching": "Looking for an opponent...",
+      "elapsed": "Elapsed: {time}",
+      "cancel": "Cancel",
+      "timeoutHint": "No one found after 60 seconds.",
+      "playVsTau": "Play vs Tau instead",
+      "keepSearching": "Keep searching"
     }
   },
   "gameArena": {
