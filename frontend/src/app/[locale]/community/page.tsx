@@ -1,7 +1,26 @@
-import { ArrowRight, BarChart3, CalendarDays, Globe2, Trophy, Users } from "lucide-react";
+import { ArrowRight, BarChart3, CalendarDays, Globe2, Trophy, Users, Puzzle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import type { Tournament, TournamentDetail, TournamentStatus } from "@/services/tournament.service";
+
+interface DailyPuzzle {
+  id: string;
+  title: string | null;
+  difficulty: number;
+  theme: string | null;
+  sideToMove: string;
+  _count: { attempts: number };
+}
+
+async function fetchDailyPuzzle(): Promise<DailyPuzzle | null> {
+  try {
+    const res = await fetch(`${API_URL}/puzzles/daily`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -163,7 +182,10 @@ export default async function CommunityPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const tournaments = await fetchTournaments();
+  const [tournaments, dailyPuzzle] = await Promise.all([
+    fetchTournaments(),
+    fetchDailyPuzzle(),
+  ]);
   const decorated = await Promise.all(
     tournaments.map(async (tournament) => {
       const detail = await fetchTournamentDetail(tournament.id);
@@ -433,7 +455,7 @@ export default async function CommunityPage({
             </div>
           )}
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-3">
             <Link
               href="/community/tournament"
               className="rounded-3xl border border-sky-400/20 bg-sky-400/10 p-6 transition hover:border-sky-300/35 hover:bg-sky-400/14"
@@ -472,6 +494,47 @@ export default async function CommunityPage({
                   ? "Ruka moja kwa moja kwenye leaderboard kuona nani anapanda, nani anatamba, na nani wa kumpinga."
                   : "Jump straight to the leaderboard to see who is climbing, who is holding form, and who might be your next rival."}
               </p>
+            </Link>
+
+            {/* Daily Puzzle card */}
+            <Link
+              href={dailyPuzzle ? `/puzzles/${dailyPuzzle.id}` : "/puzzles"}
+              className="rounded-3xl border border-purple-400/20 bg-purple-400/10 p-6 transition hover:border-purple-300/35 hover:bg-purple-400/14 flex flex-col"
+            >
+              <div className="flex items-center gap-3 text-purple-200">
+                <Puzzle className="h-5 w-5" />
+                <span className="text-sm font-semibold uppercase tracking-[0.16em]">
+                  {locale === "sw" ? "Fumbo la leo" : "Daily puzzle"}
+                </span>
+              </div>
+              <h3 className="mt-4 text-2xl font-black text-white flex-1">
+                {dailyPuzzle
+                  ? (dailyPuzzle.title ?? (locale === "sw" ? "Tafuta mchezaji bora" : "Find the best move"))
+                  : (locale === "sw" ? "Fumbo linakuja hivi karibuni" : "Puzzles coming soon")}
+              </h3>
+              {dailyPuzzle && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs tracking-widest text-amber-300">
+                    {"★".repeat(dailyPuzzle.difficulty)}{"☆".repeat(5 - dailyPuzzle.difficulty)}
+                  </p>
+                  {dailyPuzzle.theme && (
+                    <p className="text-xs text-purple-300/70 capitalize">{dailyPuzzle.theme}</p>
+                  )}
+                  <p className="text-xs text-purple-200/50">
+                    {dailyPuzzle._count.attempts}{" "}
+                    {locale === "sw" ? "majaribio" : "attempts today"}
+                  </p>
+                </div>
+              )}
+              <p className="mt-3 text-sm leading-7 text-purple-100/80">
+                {locale === "sw"
+                  ? "Fumbo halisi kutoka mchezo wa kweli wa TzDraft. Jaribu ujuzi wako wa mbinu."
+                  : "A real position extracted from a live TzDraft game. Test your tactical eye."}
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-purple-300">
+                {locale === "sw" ? "Suluhisha sasa" : "Solve now"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
             </Link>
           </div>
         </div>
