@@ -98,8 +98,10 @@ export class PrismaGameRepository implements IGameRepository {
 
     if (!game) return null;
 
-    // 3. Write to cache
-    if (this.redisService) {
+    // 3. Write to cache — skip WAITING games to avoid race conditions where a
+    // concurrent joinInvite/startGame invalidates the key and a stale read
+    // immediately re-populates it with blackPlayerId=null.
+    if (this.redisService && game.status !== GameStatus.WAITING) {
       const isFinished =
         game.status === GameStatus.FINISHED ||
         game.status === GameStatus.ABORTED;
