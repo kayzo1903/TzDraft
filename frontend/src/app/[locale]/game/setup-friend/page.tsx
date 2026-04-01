@@ -362,7 +362,7 @@ function OnlineTab() {
   };
 
   const handleJoin = async () => {
-    if (joinCode.trim().length < 4) {
+    if (joinCode.trim().length < 8) {
       setError(t("online.invalidCodeInput"));
       return;
     }
@@ -545,10 +545,10 @@ function OnlineTab() {
           </div>
           <input
             type="text"
-            maxLength={6}
+            maxLength={8}
             value={joinCode}
             onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-            placeholder="ABC123"
+            placeholder="ABC12345"
             className="mt-4 w-full rounded-2xl border border-white/10 bg-neutral-950 px-4 py-4 text-center font-mono text-2xl tracking-[0.28em] text-white placeholder:text-neutral-600 focus:border-[var(--primary)] focus:outline-none"
           />
         </div>

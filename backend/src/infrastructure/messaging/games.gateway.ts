@@ -146,13 +146,7 @@ export class GamesGateway
         strict: false,
       });
 
-      const token =
-        (client.handshake.auth?.token as string | undefined) ??
-        (() => {
-          const header = client.handshake.headers.authorization ?? '';
-          const [type, t] = header.split(' ');
-          return type === 'Bearer' ? t : null;
-        })();
+      const token = this.extractToken(client);
 
       if (!token) {
         this.logger.warn(`Socket ${client.id} rejected: no token`);
@@ -879,6 +873,21 @@ export class GamesGateway
       clearInterval(tick);
       this.disconnectTickIntervals.delete(userId);
     }
+  }
+
+  private extractToken(client: Socket): string | null {
+    const cookieHeader = client.handshake.headers.cookie;
+    if (cookieHeader) {
+      const match = cookieHeader.match(/(?:^|;\s*)accessToken=([^;]+)/);
+      if (match) return decodeURIComponent(match[1]);
+    }
+
+    const authToken = client.handshake.auth?.token as string | undefined;
+    if (authToken) return authToken;
+
+    const authHeader = client.handshake.headers.authorization ?? '';
+    const [type, token] = authHeader.split(' ');
+    return type === 'Bearer' ? token : null;
   }
 }
 

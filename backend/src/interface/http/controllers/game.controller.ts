@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
+import { Public } from '../../../auth/decorators/public.decorator';
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
 import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
@@ -326,6 +327,7 @@ export class GameController {
    * Get game by ID
    */
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'Get game by ID' })
   @ApiResponse({ status: 200, description: 'Game found' })
   @ApiResponse({ status: 404, description: 'Game not found' })
@@ -396,6 +398,7 @@ export class GameController {
    * Get game state with pagination
    */
   @Get(':id/state')
+  @Public()
   @ApiOperation({ summary: 'Get game state with paginated moves' })
   @ApiResponse({ status: 200, description: 'Game state retrieved' })
   async getGameState(
@@ -419,6 +422,7 @@ export class GameController {
    * Get all moves for a game (for replay)
    */
   @Get(':id/replay')
+  @Public()
   @ApiOperation({ summary: 'Get all moves for game replay' })
   async getGameReplay(@Param('id') id: string) {
     const { game, moves, players } = await this.getGameStateUseCase.execute(id);

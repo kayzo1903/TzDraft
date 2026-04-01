@@ -1,14 +1,19 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { Clock3, Search, ShieldCheck, Swords, TimerReset, X } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Clock3, Search, ShieldCheck, Swords, TimerReset, X, Zap } from "lucide-react";
 import clsx from "clsx";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { Button } from "@/components/ui/Button";
 import { useMatchmaking, QUEUE_TIME_OPTIONS } from "@/hooks/useMatchmaking";
 import { Link } from "@/i18n/routing";
+
+function formatElapsed(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 function InfoStrip({
   title,
@@ -37,10 +42,17 @@ function InfoStrip({
 export default function SetupOnlinePage() {
   const t = useTranslations("setupOnline");
   const locale = useLocale();
-  const { state, error, joinQueue, cancelQueue } = useMatchmaking();
+  const router = useRouter();
+  const { locale: routeLocale } = useParams<{ locale: string }>();
+  const { state, error, timeoutReached, elapsedMs, joinQueue, cancelQueue, resetTimeout } = useMatchmaking();
   const { isAuthenticated } = useAuthStore();
   const searchParams = useSearchParams();
   const selectedOption = QUEUE_TIME_OPTIONS.find((o) => o.ms === 300000) ?? QUEUE_TIME_OPTIONS[1];
+
+  const handlePlayVsTau = async () => {
+    await cancelQueue();
+    router.push(`/${routeLocale}/game/local?level=1&color=white&time=${selectedOption.ms / 1000}`);
+  };
 
   const isSw = locale === "sw";
 
@@ -260,26 +272,57 @@ export default function SetupOnlinePage() {
                     </Button>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center gap-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-8 text-center sm:gap-6 sm:py-10">
-                    <div className="relative flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20">
-                      <div className="absolute inset-0 animate-ping rounded-full border-2 border-[var(--primary)]/30" />
-                      <div className="absolute inset-2 rounded-full border border-amber-300/20" />
-                      <Search className="relative h-7 w-7 text-[var(--primary)] sm:h-8 sm:w-8" />
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col items-center gap-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-8 text-center sm:gap-6 sm:py-10">
+                      <div className="relative flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20">
+                        <div className="absolute inset-0 animate-ping rounded-full border-2 border-(--primary)/30" />
+                        <div className="absolute inset-2 rounded-full border border-amber-300/20" />
+                        <Search className="relative h-7 w-7 text-primary sm:h-8 sm:w-8" />
+                      </div>
+                      <div>
+                        <div className="text-lg font-black text-white sm:text-xl">{t("searching")}</div>
+                        <p className="mt-1 text-sm text-neutral-400">
+                          {selectedOption.name} • {selectedOption.label}
+                        </p>
+                        <p className="mt-1 font-mono text-sm text-neutral-600">
+                          {formatElapsed(elapsedMs)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={cancelQueue}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10 hover:text-white sm:py-3"
+                      >
+                        <X className="h-4 w-4" />
+                        {t("cancel")}
+                      </button>
                     </div>
-                    <div>
-                      <div className="text-lg font-black text-white sm:text-xl">{t("searching")}</div>
-                      <p className="mt-1.5 text-sm leading-6 text-neutral-400 sm:mt-2">
-                        {selectedOption.name} • {selectedOption.label}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={cancelQueue}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10 hover:text-white sm:py-3"
-                    >
-                      <X className="h-4 w-4" />
-                      {t("cancel")}
-                    </button>
+
+                    {/* 60s fallback — shown when no match found */}
+                    {timeoutReached && (
+                      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                        <p className="mb-3 text-sm font-semibold text-amber-300">
+                          {t("timeoutHint")}
+                        </p>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={handlePlayVsTau}
+                            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-(--primary)/40 bg-(--primary)/10 px-4 py-3 text-sm font-black text-orange-300 transition hover:bg-(--primary)/20"
+                          >
+                            <Zap className="h-4 w-4" />
+                            {t("playVsTau")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={resetTimeout}
+                            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-300 transition hover:bg-white/10"
+                          >
+                            {t("keepSearching")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
