@@ -3,7 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.spec.ts'],
-  moduleFileExtensions: ['ts', 'js', 'json'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       tsconfig: {
@@ -12,6 +12,12 @@ module.exports = {
       },
     }],
   },
+  moduleNameMapper: {
+    '^src/infrastructure/messaging/games\\.gateway$': '<rootDir>/src/__mocks__/games.gateway.ts',
+    '^src/(.*)$': '<rootDir>/src/$1',
+  },
+  modulePaths: ['<rootDir>'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.spec.ts',

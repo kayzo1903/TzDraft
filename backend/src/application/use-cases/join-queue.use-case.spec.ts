@@ -58,7 +58,7 @@ class FakePrismaService {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('JoinQueueUseCase', () => {
-  describe('concurrency — only one worker can claim the same opponent', () => {
+  describe('concurrency - only one worker can claim the same opponent', () => {
     it('does not match the same opponent into two games under concurrent joins', async () => {
       const prisma = new FakePrismaService();
 
