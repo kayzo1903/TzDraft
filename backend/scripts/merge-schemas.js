@@ -23,6 +23,17 @@ const schemaFiles = [
 
 console.log('🔄 Merging Prisma schemas...\n');
 
+try {
+  console.log('DEBUG: Contents of prisma dir:', fs.readdirSync(path.join(__dirname, '..', 'prisma')));
+  if (fs.existsSync(schemaDir)) {
+    console.log('DEBUG: Contents of schema dir:', fs.readdirSync(schemaDir));
+  } else {
+    console.log('DEBUG: schema dir DOES NOT EXIST at', schemaDir);
+  }
+} catch (e) {
+  console.log('DEBUG Error reading directories:', e);
+}
+
 let mergedContent = '';
 let addedHeader = false;
 
