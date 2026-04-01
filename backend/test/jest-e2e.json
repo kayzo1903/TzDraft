@@ -10,5 +10,10 @@
         "allowSyntheticDefaultImports": true
       }
     }]
-  }
+  },
+  "moduleNameMapper": {
+    "^src/(.*)$": "<rootDir>/../src/$1"
+  },
+  "modulePaths": ["<rootDir>/.."],
+  "setupFilesAfterEnv": ["<rootDir>/../jest.setup.js"]
 }
