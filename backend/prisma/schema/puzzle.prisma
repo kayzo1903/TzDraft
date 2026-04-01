@@ -1,0 +1,48 @@
+// ============================================
+// PUZZLE DOMAIN
+// ============================================
+
+model Puzzle {
+  id                String    @id @default(uuid())
+  title             String?
+  pieces            Json                    // Board snapshot (array of pieces)
+  sideToMove        String                  // 'WHITE' | 'BLACK'
+  solution          Json                    // Array of moves: [{from, to, captures}, ...]
+  evalGap           Int       @default(0)   // Centipawn evaluation swing
+  difficulty        Int       @default(3)   // 1-5 scale
+  theme             String    @default("tactical")  // tactical, sacrifice, endgame, etc.
+  status            String    @default("PENDING")   // PENDING | APPROVED | REJECTED
+  
+  // Source game reference
+  sourceGameId      String?   @map("source_game_id")
+  sourceGame        Game?     @relation(fields: [sourceGameId], references: [id], onDelete: SetNull)
+  sourceMoveNum     Int?      @map("source_move_num")
+  
+  // Metadata
+  createdAt         DateTime  @default(now()) @map("created_at")
+  publishedAt       DateTime? @map("published_at")
+  
+  attempts          PuzzleAttempt[]
+
+  @@index([status])
+  @@index([difficulty])
+  @@index([theme])
+  @@index([sourceGameId])
+  @@map("puzzles")
+}
+
+model PuzzleAttempt {
+  id        String   @id @default(uuid())
+  puzzleId  String   @map("puzzle_id")
+  puzzle    Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  solved    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([puzzleId])
+  @@index([userId])
+  @@map("puzzle_attempts")
+}
