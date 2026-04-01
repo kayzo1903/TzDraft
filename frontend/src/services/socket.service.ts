@@ -33,7 +33,11 @@ class SocketService {
 
   public joinGame(gameId: string): void {
     if (this.socket) {
-      this.socket.emit("joinGame", { gameId });
+      // Must send the raw string — NOT { gameId }.
+      // The NestJS gateway uses @MessageBody() gameId: string which expects
+      // a plain string payload. Sending an object creates a room named
+      // "[object Object]" and no events are ever delivered to that socket.
+      this.socket.emit("joinGame", gameId);
     }
   }
 

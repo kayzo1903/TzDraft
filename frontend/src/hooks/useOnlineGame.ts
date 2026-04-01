@@ -448,6 +448,16 @@ export const useOnlineGame = (gameId: string) => {
 
     socket.emit("joinGame", gameId);
 
+    // Re-join the game room and re-sync state on every reconnect.
+    // Socket.IO room memberships are per-connection — they are NOT preserved
+    // when the transport drops and the client gets a new socket ID.
+    // Without this, any network interruption leaves the board permanently frozen.
+    const handleReconnect = () => {
+      socket.emit("joinGame", gameId);
+      fetchGameState();
+    };
+    socket.on("connect", handleReconnect);
+
     const handleUpdate = (data?: unknown) => {
       const d = data as Record<string, unknown> | undefined;
 
@@ -664,6 +674,10 @@ export const useOnlineGame = (gameId: string) => {
       userId: string;
       secondsRemaining?: number;
     }) => {
+      // If the game is already over (e.g. gameOver arrived first), ignore the
+      // disconnect event — we don't want to flash the "opponent disconnected"
+      // banner after the result card is already showing.
+      if (resultRef.current !== null) return;
       setOpponentConnected(false);
       const secs = data.secondsRemaining ?? 60;
       setDisconnectSecondsRemaining(secs);
@@ -747,6 +761,7 @@ export const useOnlineGame = (gameId: string) => {
     socket.on("autoRequeue", handleAutoRequeue);
 
     return () => {
+      socket.off("connect", handleReconnect);
       socket.off("gameStateUpdated", handleUpdate);
       socket.off("gameOver", handleGameOverEvent);
       socket.off("drawOffered", handleDrawOffered);

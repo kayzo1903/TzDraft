@@ -383,14 +383,18 @@
     "timeControl": "Muda wa mchezo",
     "findOpponent": "Tafuta Mpinzani",
     "searching": "Inatafuta mpinzani...",
-    "cancel": "Ghairi"
+    "cancel": "Ghairi",
+    "timeoutHint": "Hakuna mpinzani aliyepatikana baada ya sekunde 60.",
+    "playVsTau": "Cheza dhidi ya Tau badala yake",
+    "keepSearching": "Endelea kutafuta"
   },
   "setupFriend": {
     "title": "Cheza na Rafiki",
     "subtitle": "Mpe changamoto rafiki wako ana kwa ana au mtandaoni",
     "tabs": {
       "online": "Mtandaoni",
-      "local": "Ana kwa ana"
+      "local": "Ana kwa ana",
+      "quick": "Mechi ya Haraka"
     },
     "colors": {
       "white": "Nyeupe",
@@ -430,6 +434,17 @@
       "back": "Rudi",
       "enterInviteCode": "Weka msimbo wa mwaliko",
       "joinGame": "Jiunge na Mchezo"
+    },
+    "quickMatch": {
+      "bannerTitle": "Mechi ya Haraka",
+      "bannerDesc": "Patanishwa na mpinzani wa nasibu mara moja. Hakuna mwaliko unaohitajika.",
+      "findButton": "Tafuta Mpinzani",
+      "searching": "Inatafuta mpinzani...",
+      "elapsed": "Imepita: {time}",
+      "cancel": "Ghairi",
+      "timeoutHint": "Hakuna aliyepatikana baada ya sekunde 60.",
+      "playVsTau": "Cheza dhidi ya Tau badala yake",
+      "keepSearching": "Endelea kutafuta"
     }
   },
   "gameArena": {
