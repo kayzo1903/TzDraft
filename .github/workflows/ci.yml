@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, production-Already-prep]
+    branches: [main, production-Already-prep, fix/solveclitest]
   pull_request:
     branches: [main]
 
