@@ -82,7 +82,7 @@ describe('MakeMoveUseCase', () => {
     );
   });
 
-  describe('happy path – valid move', () => {
+  describe('happy path - valid move', () => {
     it('returns the updated game and move on a valid capture', async () => {
       // WHITE at 18 captures BLACK at 22, lands at 25; BLACK at 30 survives
       const game = makeGameWithBoard(new BoardState([wp(18), bp(22), bp(30)]));

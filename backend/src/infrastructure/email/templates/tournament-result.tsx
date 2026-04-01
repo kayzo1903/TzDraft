@@ -55,7 +55,7 @@ export const TournamentResult = ({
     return (
         <Html lang="en">
             <Head />
-            <Preview>{previewText}</Preview>
+            <Preview children={previewText} />
             <Body style={s.main}>
                 <Container style={s.container}>
 

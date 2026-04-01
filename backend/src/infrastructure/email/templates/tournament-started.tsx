@@ -19,7 +19,7 @@ export const TournamentStarted = ({
 }: TournamentStartedProps) => (
     <Html lang="sw">
         <Head />
-        <Preview>{tournamentName} INAENDELEA — Raundi {String(roundNumber)} imeanza. Fungua TzDraft sasa!</Preview>
+        <Preview children={`${tournamentName} INAENDELEA — Raundi ${String(roundNumber)} imeanza. Fungua TzDraft sasa!`} />
         <Body style={s.main}>
             <Container style={s.container}>
 

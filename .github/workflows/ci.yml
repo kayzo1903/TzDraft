@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, production-Already-prep]
+    branches: [main, production-Already-prep, fix/solveclitest]
   pull_request:
     branches: [main]
 
@@ -50,7 +50,9 @@ jobs:
 
       - name: Generate Prisma client
         working-directory: backend
-        run: pnpm prisma:generate
+        run: |
+          rm -rf node_modules/.prisma
+          pnpm prisma:generate
 
       - name: Run backend tests
         working-directory: backend
@@ -89,7 +91,9 @@ jobs:
 
       - name: Generate Prisma client
         working-directory: backend
-        run: pnpm prisma:generate
+        run: |
+          rm -rf node_modules/.prisma
+          pnpm prisma:generate
 
       - name: Lint backend
         working-directory: backend

@@ -620,7 +620,8 @@ function GameActions({
       : moveCount >= 2;           // BLACK's first move is move #2
 
   // Show abort as long as THIS player hasn't moved yet (regardless of opponent).
-  const canAbort = !iHaveMoved;
+  // myColor must be resolved first — if it's null the player isn't identified yet.
+  const canAbort = myColor !== null && !iHaveMoved;
 
   const [execError, setExecError] = useState<string | null>(null);
 
