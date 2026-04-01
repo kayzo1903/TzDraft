@@ -27,7 +27,7 @@ export const SupportNotification = ({
 }: SupportNotificationProps) => (
     <Html>
         <Head />
-        <Preview>New Support Ticket from {name}</Preview>
+        <Preview children={`New Support Ticket from ${name}`} />
         <Body style={main}>
             <Container style={container}>
                 <Section style={header}>

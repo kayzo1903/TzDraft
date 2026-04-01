@@ -23,7 +23,7 @@ interface UserConfirmationProps {
 export const UserConfirmation = ({ name, subject }: UserConfirmationProps) => (
     <Html>
         <Head />
-        <Preview>We received your support request</Preview>
+        <Preview children="We received your support request" />
         <Body style={main}>
             <Container style={container}>
                 {/* Header */}
