@@ -21,7 +21,7 @@ export const MatchAssigned = ({
 }: MatchAssignedProps) => (
     <Html lang="sw">
         <Head />
-        <Preview>Mechi yako ya Raundi {String(roundNumber)} dhidi ya {opponentDisplayName} iko tayari — cheza sasa!</Preview>
+        <Preview children={`Mechi yako ya Raundi ${String(roundNumber)} dhidi ya ${opponentDisplayName} iko tayari — cheza sasa!`} />
         <Body style={s.main}>
             <Container style={s.container}>
 
