@@ -265,6 +265,15 @@ BestResult searchRoot(Position& pos, SearchInfo& info, int multiPV) {
         return result;
     }
 
+    // Forced move: only one legal move, no need to search
+    if (rootCount == 1) {
+        result.bestMove = rootMoves[0];
+        result.depth = 0;
+        result.nodes = 0;
+        popHash();
+        return result;
+    }
+
     Move ttMove;
     ttMove.from = 0xFF;
     ttMove.to = 0xFF;

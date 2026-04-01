@@ -204,6 +204,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
   const captureAudioRef = useRef<HTMLAudioElement | null>(null);
+  const multiCaptureAudioRef = useRef<HTMLAudioElement | null>(null);
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
   const warningAudioRef = useRef<HTMLAudioElement | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -338,6 +339,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
           normal: moveAudioRef.current,
           long: longMoveAudioRef.current,
           capture: captureAudioRef.current,
+          multiCapture: multiCaptureAudioRef.current,
         },
       );
 
@@ -518,6 +520,11 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
     captureAudio.volume = 0.6;
     captureAudioRef.current = captureAudio;
 
+    const multiCaptureAudio = new Audio("/sfx/move-knock-real.wav");
+    multiCaptureAudio.preload = "auto";
+    multiCaptureAudio.volume = 0.62;
+    multiCaptureAudioRef.current = multiCaptureAudio;
+
     const startAudio = new Audio("/sfx/start.mp3");
     startAudio.preload = "auto";
     startAudio.volume = 0.5;
@@ -547,6 +554,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
       moveAudioRef.current = null;
       longMoveAudioRef.current = null;
       captureAudioRef.current = null;
+      multiCaptureAudioRef.current = null;
       startAudioRef.current = null;
       warningAudioRef.current = null;
       victoryAudioRef.current = null;
