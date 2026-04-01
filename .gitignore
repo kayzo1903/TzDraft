@@ -17,6 +17,7 @@ packages/shared-client/dist/
 # CMake build artifacts
 build/
 engines/core/build*/
+emsdk/
 
 # Python cache
 __pycache__/
