@@ -47,6 +47,7 @@ model User {
     aiChallengeSessions    AiChallengeSession[]
     matchmakingSearches    MatchmakingSearch[]
     notifications          Notification[]         @relation("UserNotifications")
+    puzzleAttempts         PuzzleAttempt[]
 
     @@index([country])
     @@index([country, region])
