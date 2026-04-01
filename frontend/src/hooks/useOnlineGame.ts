@@ -170,6 +170,8 @@ export const useOnlineGame = (gameId: string) => {
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
   const captureAudioRef = useRef<HTMLAudioElement | null>(null);
+  const multiCaptureAudioRef = useRef<HTMLAudioElement | null>(null);
+  const warningAudioRef = useRef<HTMLAudioElement | null>(null);
   const prevMoveCountRef = useRef(0);
 
   // Clock refs — WHITE/BLACK stored in milliseconds for sub-second scheduling precision
@@ -390,6 +392,7 @@ export const useOnlineGame = (gameId: string) => {
               normal: moveAudioRef.current,
               long: longMoveAudioRef.current,
               capture: captureAudioRef.current,
+              multiCapture: multiCaptureAudioRef.current,
             },
           );
         } catch {
@@ -582,6 +585,7 @@ export const useOnlineGame = (gameId: string) => {
                   normal: moveAudioRef.current,
                   long: longMoveAudioRef.current,
                   capture: captureAudioRef.current,
+                  multiCapture: multiCaptureAudioRef.current,
                 },
               );
             }
@@ -794,13 +798,31 @@ export const useOnlineGame = (gameId: string) => {
     captureAudio.preload = "auto";
     captureAudio.volume = 0.6;
     captureAudioRef.current = captureAudio;
+
+    const multiCaptureAudio = new Audio("/sfx/move-knock-real.wav");
+    multiCaptureAudio.preload = "auto";
+    multiCaptureAudio.volume = 0.62;
+    multiCaptureAudioRef.current = multiCaptureAudio;
+
+    const warningAudio = new Audio("/sfx/warning.wav");
+    warningAudio.preload = "auto";
+    warningAudio.volume = 0.6;
+    warningAudioRef.current = warningAudio;
     return () => {
       moveAudioRef.current = null;
       longMoveAudioRef.current = null;
       captureAudioRef.current = null;
+      multiCaptureAudioRef.current = null;
+      warningAudioRef.current = null;
       for (const id of captureCleanupRef.current) window.clearTimeout(id);
       captureCleanupRef.current = [];
     };
+  }, []);
+
+  const playWarning = useCallback(() => {
+    if (!warningAudioRef.current) return;
+    warningAudioRef.current.currentTime = 0;
+    warningAudioRef.current.play().catch(() => {});
   }, []);
 
   /* ── Keep clock refs in sync with state (used inside the interval) ── */
@@ -1095,5 +1117,6 @@ export const useOnlineGame = (gameId: string) => {
     cancelRematch,
     refetch: fetchGameState,
     autoRequeue,
+    playWarning,
   };
 };
