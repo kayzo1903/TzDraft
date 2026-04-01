@@ -363,6 +363,11 @@ BestResult searchRoot(Position& pos, SearchInfo& info, int multiPV) {
         result.bestMove = bestLines[0].move;
 
         for (int pvIndex = 0; pvIndex < bestLineCount; ++pvIndex) {
+            // Only log in development mode
+            #ifdef NDEBUG
+            // Production: suppress logs
+            #else
+            // Development: show logs
             std::cout << "{\"type\":\"info\",\"depth\":" << depth
                       << ",\"score\":" << bestLines[pvIndex].score
                       << ",\"nodes\":" << info.nodes
@@ -370,6 +375,7 @@ BestResult searchRoot(Position& pos, SearchInfo& info, int multiPV) {
                       << ",\"pvIndex\":" << pvIndex
                       << "}\n";
             std::cout.flush();
+            #endif
         }
 
         if (timeUp(info.tm)) break;
