@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/auth/auth-store";
-import { LayoutDashboard, Users, Activity, Trophy } from "lucide-react";
+import { LayoutDashboard, Users, Activity, Trophy, Puzzle } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -28,6 +28,7 @@ export default function AdminLayout({
   const nav = [
     { href: `/${locale}/admin`, label: "Dashboard", icon: LayoutDashboard },
     { href: `/${locale}/admin/tournaments`, label: "Tournaments", icon: Trophy },
+    { href: `/${locale}/admin/puzzles`, label: "Puzzles", icon: Puzzle },
     { href: `/${locale}/admin/users`, label: "Users", icon: Users },
     { href: `/${locale}/admin/health`, label: "Health", icon: Activity },
   ];

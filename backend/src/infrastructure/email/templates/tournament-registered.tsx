@@ -21,7 +21,7 @@ export const TournamentRegistered = ({
 }: TournamentRegisteredProps) => (
     <Html lang="sw">
         <Head />
-        <Preview>Umesajiliwa kwenye {tournamentName} — nakutarajia ubaoní!</Preview>
+        <Preview children={`Umesajiliwa kwenye ${tournamentName} — nakutarajia ubaoní!`} />
         <Body style={s.main}>
             <Container style={s.container}>
 

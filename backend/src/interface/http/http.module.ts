@@ -10,13 +10,16 @@ import { GetAiMoveUseCase } from '../../application/use-cases/get-ai-move.use-ca
 import { TournamentController } from './controllers/tournament.controller';
 import { NotificationController } from './controllers/notification.controller';
 import { RepositoryModule } from '../../infrastructure/repositories/repository.module';
+import { PuzzleController, AdminPuzzleController } from './controllers/puzzle.controller';
+import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
+import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
 
 /**
  * HTTP Module
  * Provides REST API controllers
  */
 @Module({
-  imports: [UseCasesModule, MessagingModule, EmailModule, RepositoryModule],
+  imports: [UseCasesModule, MessagingModule, EmailModule, RepositoryModule, PrismaModule],
   controllers: [
     GameController,
     MoveController,
@@ -24,7 +27,9 @@ import { RepositoryModule } from '../../infrastructure/repositories/repository.m
     AiController,
     TournamentController,
     NotificationController,
+    PuzzleController,
+    AdminPuzzleController,
   ],
-  providers: [GetAiMoveUseCase],
+  providers: [GetAiMoveUseCase, PuzzleMinerService],
 })
 export class HttpModule {}
