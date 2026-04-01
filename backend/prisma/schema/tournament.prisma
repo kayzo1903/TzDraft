@@ -1,0 +1,197 @@
+// ============================================
+// TOURNAMENT DOMAIN — Phase 1: Single Elimination
+// ============================================
+
+model Tournament {
+    id            String           @id @default(uuid())
+    name          String
+    descriptionEn String           @map("description_en")
+    descriptionSw String           @map("description_sw")
+    rulesEn       String?          @map("rules_en")
+    rulesSw       String?          @map("rules_sw")
+    format        TournamentFormat
+    style         TournamentStyle
+    status        TournamentStatus @default(DRAFT)
+    scope         TournamentScope  @default(GLOBAL)
+    country       String?
+    region        String?
+
+    // Eligibility filters (all nullable = unrestricted)
+    minElo                Int? @map("min_elo")
+    maxElo                Int? @map("max_elo")
+    minMatchmakingWins    Int? @map("min_matchmaking_wins")
+    minAiLevelBeaten      Int? @map("min_ai_level_beaten")
+    requiredAiLevelPlayed Int? @map("required_ai_level_played")
+
+    // maxPlayers hard caps by format (enforced in CreateTournamentUseCase):
+    //   SINGLE_ELIMINATION → 32
+    maxPlayers Int  @map("max_players")
+    minPlayers Int  @default(4) @map("min_players")
+
+    registrationDeadline DateTime? @map("registration_deadline")
+    scheduledStartAt     DateTime  @map("scheduled_start_at")
+    createdById          String    @map("created_by_id")
+    createdAt            DateTime  @default(now()) @map("created_at")
+    updatedAt            DateTime  @updatedAt @map("updated_at")
+
+    createdBy    User                   @relation("TournamentCreator", fields: [createdById], references: [id])
+    participants TournamentParticipant[]
+    rounds       TournamentRound[]
+
+    @@map("tournaments")
+}
+
+model TournamentParticipant {
+    id           String            @id @default(uuid())
+    tournamentId String            @map("tournament_id")
+    userId       String            @map("user_id")
+    seed         Int?
+    eloAtSignup  Int               @map("elo_at_signup")
+    status       ParticipantStatus @default(REGISTERED)
+
+    // Knockout formats
+    matchWins   Int @default(0) @map("match_wins")
+    matchLosses Int @default(0) @map("match_losses")
+
+    // Points formats (Round Robin, Swiss) — unused in Phase 1 SE
+    totalGamePoints Float @default(0) @map("total_game_points")
+
+    // Swiss Buchholz tiebreak — unused in Phase 1 SE
+    tiebreakScore Float @default(0) @map("tiebreak_score")
+
+    registeredAt DateTime @default(now()) @map("registered_at")
+
+    tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+    user       User       @relation("TournamentParticipants", fields: [userId], references: [id])
+
+    @@unique([tournamentId, userId])
+    @@map("tournament_participants")
+}
+
+model TournamentRound {
+    id           String      @id @default(uuid())
+    tournamentId String      @map("tournament_id")
+    roundNumber  Int         @map("round_number")
+    status       RoundStatus @default(PENDING)
+    startedAt    DateTime?   @map("started_at")
+    completedAt  DateTime?   @map("completed_at")
+
+    tournament Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+    matches    TournamentMatch[]
+
+    @@unique([tournamentId, roundNumber])
+    @@map("tournament_rounds")
+}
+
+model TournamentMatch {
+    id           String      @id @default(uuid())
+    roundId      String      @map("round_id")
+    tournamentId String      @map("tournament_id")
+    player1Id    String?     @map("player1_id")
+    player2Id    String?     @map("player2_id")
+    status       MatchStatus @default(PENDING)
+    result       MatchResult?
+
+    // Running score for knockout mode
+    player1Wins       Int @default(0) @map("player1_wins")
+    player2Wins       Int @default(0) @map("player2_wins")
+    player1ConsecLoss Int @default(0) @map("player1_consec_loss")
+    player2ConsecLoss Int @default(0) @map("player2_consec_loss")
+    gamesPlayed       Int @default(0) @map("games_played")
+
+    // Points mode fields (unused in Phase 1 SE)
+    player1GamePoints Float @default(0) @map("player1_game_points")
+    player2GamePoints Float @default(0) @map("player2_game_points")
+
+    // Active game pointer — null when match is PENDING or COMPLETED
+    currentGameId String? @unique @map("current_game_id")
+
+    startedAt   DateTime? @map("started_at")
+    completedAt DateTime? @map("completed_at")
+
+    round  TournamentRound      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+    games  TournamentMatchGame[]
+
+    @@index([tournamentId])
+    @@index([currentGameId])
+    @@map("tournament_matches")
+}
+
+model TournamentMatchGame {
+    id         String          @id @default(uuid())
+    matchId    String          @map("match_id")
+    gameNumber Int             @map("game_number")
+    isExtra    Boolean         @default(false) @map("is_extra")
+    result     MatchGameResult?
+
+    match TournamentMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+    // FK lives on Game side: Game.tournamentMatchGameId → TournamentMatchGame.id
+    game  Game?
+
+    @@unique([matchId, gameNumber])
+    @@map("tournament_match_games")
+}
+
+// ============================================
+// TOURNAMENT ENUMS
+// ============================================
+
+enum TournamentFormat {
+    SINGLE_ELIMINATION
+    ROUND_ROBIN
+    SWISS
+    DOUBLE_ELIMINATION
+}
+
+enum TournamentStyle {
+    BLITZ
+    RAPID
+    CLASSICAL
+    UNLIMITED
+}
+
+enum TournamentStatus {
+    DRAFT
+    REGISTRATION
+    ACTIVE
+    COMPLETED
+    CANCELLED
+}
+
+enum TournamentScope {
+    GLOBAL
+    COUNTRY
+    REGION
+}
+
+enum ParticipantStatus {
+    REGISTERED
+    ACTIVE
+    ELIMINATED
+    WITHDRAWN
+}
+
+enum RoundStatus {
+    PENDING
+    ACTIVE
+    COMPLETED
+}
+
+enum MatchStatus {
+    PENDING
+    ACTIVE
+    COMPLETED
+    BYE
+}
+
+enum MatchResult {
+    PLAYER1_WIN
+    PLAYER2_WIN
+    BYE
+}
+
+enum MatchGameResult {
+    PLAYER1_WIN
+    PLAYER2_WIN
+    DRAW
+}

@@ -1,0 +1,145 @@
+// ============================================
+// USER & IDENTITY DOMAIN
+// ============================================
+
+enum UserRole {
+    USER
+    ADMIN
+}
+
+enum AccountType {
+    REGISTERED
+    GUEST
+    OAUTH_PENDING
+}
+
+model User {
+    id           String    @id @default(uuid())
+    phoneNumber  String    @unique @map("phone_number")
+    email        String?   @unique
+    username     String    @unique
+    name         String? // Real name from OAuth provider (can be duplicate)
+    displayName  String    @unique @map("display_name") // Unique identifier shown in games
+    passwordHash String?   @map("password_hash") // Optional for OAuth users
+    isVerified   Boolean   @default(false) @map("is_verified")
+    country      String?   @default("TZ")
+    region       String?
+    role         UserRole  @default(USER)
+    accountType  AccountType @default(REGISTERED) @map("account_type")
+    isBanned     Boolean   @default(false) @map("is_banned")
+    createdAt    DateTime  @default(now()) @map("created_at")
+    lastLoginAt  DateTime? @map("last_login_at")
+
+    // OAuth fields
+    googleId      String? @unique @map("google_id")
+    oauthProvider String? @map("oauth_provider") // 'google', 'facebook', etc.
+
+    gamesAsWhite           Game[]                 @relation("WhitePlayer")
+    gamesAsBlack           Game[]                 @relation("BlackPlayer")
+    rating                 Rating?
+    matchmakingQueue       MatchmakingQueue?
+    refreshTokens          RefreshToken[]
+    verificationTokens     VerificationToken[]
+    passwordResetTokens    PasswordResetToken[]
+    otpCodes               OtpCode[]
+    tournamentsCreated     Tournament[]           @relation("TournamentCreator")
+    tournamentParticipants TournamentParticipant[] @relation("TournamentParticipants")
+    aiChallengeSessions    AiChallengeSession[]
+    matchmakingSearches    MatchmakingSearch[]
+    notifications          Notification[]         @relation("UserNotifications")
+
+    @@index([country])
+    @@index([country, region])
+    @@index([accountType])
+    @@map("users")
+}
+
+// ============================================
+// RATING (ELO/ILO System)
+// ============================================
+
+model Rating {
+    userId String @id @map("user_id")
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    rating      Int      @default(1200)
+    gamesPlayed Int      @default(0) @map("games_played")
+    lastUpdated DateTime @updatedAt @map("last_updated")
+
+    // Career stats — tracked separately from ELO
+    wins                 Int  @default(0)
+    losses               Int  @default(0)
+    draws                Int  @default(0)
+    matchmakingWins      Int  @default(0) @map("matchmaking_wins")
+    highestAiLevelBeaten Int? @map("highest_ai_level_beaten")
+    highestAiLevelPlayed Int  @default(0) @map("highest_ai_level_played")
+    highestUnlockedAiLevel Int @default(5) @map("highest_unlocked_ai_level")
+
+    @@index([rating])
+    @@map("ratings")
+}
+
+// ============================================
+// AUTHENTICATION TOKENS
+// ============================================
+
+model RefreshToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("refresh_tokens")
+}
+
+model VerificationToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+    id        String   @id @default(uuid())
+    userId    String   @map("user_id")
+    token     String   @unique
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([token])
+    @@map("password_reset_tokens")
+}
+
+model OtpCode {
+    id          String   @id @default(uuid())
+    phoneNumber String   @map("phone_number")
+    userId      String?  @map("user_id")
+    purpose     String
+    code        String
+    expiresAt   DateTime @map("expires_at")
+    verified    Boolean  @default(false)
+    attempts    Int      @default(0)
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([phoneNumber])
+    @@index([phoneNumber, purpose])
+    @@index([userId])
+    @@map("otp_codes")
+}
