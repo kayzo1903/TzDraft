@@ -56,7 +56,8 @@ export class UserService {
     },
   ): Promise<User> {
     const updateData: Record<string, any> = {};
-    if (data.displayName !== undefined) updateData.displayName = data.displayName;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName;
     if (data.email !== undefined) updateData.email = data.email;
     if (data.country !== undefined) {
       updateData.country = data.country;
@@ -79,7 +80,8 @@ export class UserService {
     totalPlayers: number;
   }> {
     const myRating = await this.prisma.rating.findUnique({ where: { userId } });
-    if (!myRating) return { global: null, country: null, region: null, totalPlayers: 0 };
+    if (!myRating)
+      return { global: null, country: null, region: null, totalPlayers: 0 };
 
     const myUser = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!myUser || myUser.accountType !== AccountType.REGISTERED) {
@@ -161,7 +163,8 @@ export class UserService {
     };
     if (country) userFilter.country = country;
     if (region) userFilter.region = region;
-    const where = Object.keys(userFilter).length > 0 ? { user: userFilter } : {};
+    const where =
+      Object.keys(userFilter).length > 0 ? { user: userFilter } : {};
 
     const [entries, total] = await Promise.all([
       this.prisma.rating.findMany({

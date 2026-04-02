@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { HealthCheckService } from '@nestjs/terminus';
-import { AccountType, Prisma } from '@prisma/client';
+import { AccountType, GameType, Prisma } from '@prisma/client';
 import { AdminGuard } from '../../../auth/guards/admin.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import {
@@ -83,9 +83,21 @@ export class AdminController {
       ...(query.search
         ? {
             OR: [
-              { username: { contains: query.search, mode: 'insensitive' as const } },
-              { email: { contains: query.search, mode: 'insensitive' as const } },
-              { phoneNumber: { contains: query.search, mode: 'insensitive' as const } },
+              {
+                username: {
+                  contains: query.search,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                email: { contains: query.search, mode: 'insensitive' as const },
+              },
+              {
+                phoneNumber: {
+                  contains: query.search,
+                  mode: 'insensitive' as const,
+                },
+              },
             ],
           }
         : {}),
@@ -130,7 +142,10 @@ export class AdminController {
       data: { role: dto.role },
       select: { id: true, username: true, role: true },
     });
-    this.audit('UPDATE_ROLE', admin, req, { targetUserId: id, newRole: dto.role });
+    this.audit('UPDATE_ROLE', admin, req, {
+      targetUserId: id,
+      newRole: dto.role,
+    });
     return result;
   }
 
@@ -151,7 +166,9 @@ export class AdminController {
       await this.prisma.refreshToken.deleteMany({ where: { userId: id } });
     }
 
-    this.audit(dto.isBanned ? 'BAN_USER' : 'UNBAN_USER', admin, req, { targetUserId: id });
+    this.audit(dto.isBanned ? 'BAN_USER' : 'UNBAN_USER', admin, req, {
+      targetUserId: id,
+    });
     return user;
   }
 
@@ -190,13 +207,19 @@ export class AdminController {
       },
     });
 
-    this.audit('CLEANUP_GUESTS', admin, req, { deleted: count, olderThanDays: query.olderThanDays ?? 7 });
+    this.audit('CLEANUP_GUESTS', admin, req, {
+      deleted: count,
+      olderThanDays: query.olderThanDays ?? 7,
+    });
     return { deleted: count, olderThanDays: query.olderThanDays ?? 7 };
   }
 
   @Get('growth')
   async getGrowth(@Query('days') daysParam?: string) {
-    const days = Math.min(Math.max(parseInt(daysParam ?? '30', 10) || 30, 7), 90);
+    const days = Math.min(
+      Math.max(parseInt(daysParam ?? '30', 10) || 30, 7),
+      90,
+    );
 
     const points: { date: string; newUsers: number; games: number }[] = [];
 
@@ -256,26 +279,64 @@ export class AdminController {
     const totalRegisteredUsers = await this.prisma.user.count({
       where: { accountType: { not: AccountType.GUEST } },
     });
-    const activeGames = await this.prisma.game.count({ where: { status: 'ACTIVE' } });
+    const activeGames = await this.prisma.game.count({
+      where: { status: 'ACTIVE' },
+    });
     const totalGames = await this.prisma.game.count();
     const totalTournamentGames = await this.prisma.game.count({
       where: { tournamentMatchGameId: { not: null } },
     });
-    const totalTournamentParticipants = await this.countDistinctTournamentParticipants();
+    const totalTournamentParticipants =
+      await this.countDistinctTournamentParticipants();
     const totalMatchmakingSearches = matchmakingEnabled
       ? await this.countMatchmakingSearches()
       : 0;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dailyVisits = await this.countUsersByLastLoginSince(today);
+    const dailyGuestUsers = await this.countUsersByLastLoginSince(
+      today,
+      Prisma.sql`"account_type" = 'GUEST'`,
+    );
+    const dailyRegisteredRevisits = await this.countUsersByLastLoginSince(
+      today,
+      Prisma.sql`"account_type" <> 'GUEST' AND "role" <> 'ADMIN' AND "created_at" < ${today}`,
+    );
+    const dailyAiGames = await this.prisma.game.count({
+      where: {
+        gameType: GameType.AI,
+        createdAt: { gte: today },
+      },
+    });
+    const dailyMatchPairings = matchmakingEnabled
+      ? await this.countMatchmakingPairingsSince(today)
+      : 0;
+    const dailyFriendMatches = await this.prisma.game.count({
+      where: {
+        inviteCode: { not: null },
+        createdAt: { gte: today },
+      },
+    });
+
     // Live game breakdown by type
-    const [liveRanked, liveCasual, liveAi, liveTournament, liveFriend] = await Promise.all([
-      this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'RANKED' } }),
-      this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'CASUAL' } }),
-      this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'AI' } }),
-      this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'TOURNAMENT' } }),
-      this.prisma.game.count({
-        where: { status: 'ACTIVE', inviteCode: { not: null } },
-      }),
-    ]);
+    const [liveRanked, liveCasual, liveAi, liveTournament, liveFriend] =
+      await Promise.all([
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', gameType: 'RANKED' },
+        }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', gameType: 'CASUAL' },
+        }),
+        this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'AI' } }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', gameType: 'TOURNAMENT' },
+        }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', inviteCode: { not: null } },
+        }),
+      ]);
 
     // Friend (invite) games total
     const [friendGamesActive, friendGamesTotal] = await Promise.all([
@@ -301,6 +362,12 @@ export class AdminController {
         totalMatchmakingSearches,
         totalTournamentParticipants,
         totalTournamentGames,
+        dailyVisits,
+        dailyGuestUsers,
+        dailyRegisteredRevisits,
+        dailyAiGames,
+        dailyMatchPairings,
+        dailyFriendMatches,
       },
       liveBreakdown: {
         ranked: liveRanked,
@@ -340,7 +407,9 @@ export class AdminController {
       action,
       adminId: admin?.id ?? 'unknown',
       adminUsername: admin?.username ?? 'unknown',
-      ip: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress,
+      ip:
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
+        req.socket?.remoteAddress,
       timestamp: new Date().toISOString(),
       ...details,
     });
@@ -403,8 +472,8 @@ export class AdminController {
         finalMatch.result === 'PLAYER1_WIN'
           ? finalMatch.player1Id
           : finalMatch.result === 'PLAYER2_WIN'
-          ? finalMatch.player2Id
-          : null;
+            ? finalMatch.player2Id
+            : null;
 
       let winnerName: string | null = null;
       if (winnerId) {
@@ -420,7 +489,8 @@ export class AdminController {
         tournamentName: t.name,
         winnerId,
         winnerName,
-        completedAt: finalMatch.completedAt?.toISOString() ?? t.updatedAt.toISOString(),
+        completedAt:
+          finalMatch.completedAt?.toISOString() ?? t.updatedAt.toISOString(),
       });
     }
 
@@ -441,6 +511,18 @@ export class AdminController {
       'created_at',
       Prisma.sql`"tournament_match_game_id" IS NOT NULL`,
     );
+    const visits = await this.getWindowCounts('users', 'last_login_at');
+    const guestUsers = await this.getWindowCounts(
+      'users',
+      'last_login_at',
+      Prisma.sql`"account_type" = 'GUEST'`,
+    );
+    const revisitUsers = await this.getWindowRevisitCounts();
+    const aiGames = await this.getWindowCounts(
+      'games',
+      'created_at',
+      Prisma.sql`"game_type" = 'AI'`,
+    );
     const friendGames = await this.getWindowCounts(
       'games',
       'created_at',
@@ -457,7 +539,7 @@ export class AdminController {
     const matchedSearches = matchmakingEnabled
       ? await this.getWindowCounts(
           'matchmaking_searches',
-          'started_at',
+          'matched_at',
           Prisma.sql`"status" = 'MATCHED'`,
         )
       : this.createEmptyWindowCounts();
@@ -471,6 +553,10 @@ export class AdminController {
 
     return AdminController.ANALYTICS_WINDOWS.map((days) => ({
       days,
+      visits: visits[days] ?? 0,
+      guestUsers: guestUsers[days] ?? 0,
+      revisitUsers: revisitUsers[days] ?? 0,
+      aiGames: aiGames[days] ?? 0,
       gamesPlayed: games[days] ?? 0,
       searches: searches[days] ?? 0,
       matchedSearches: matchedSearches[days] ?? 0,
@@ -479,6 +565,7 @@ export class AdminController {
       tournamentParticipants: tournamentParticipants[days] ?? 0,
       tournamentGamesPlayed: tournamentGames[days] ?? 0,
       friendGamesPlayed: friendGames[days] ?? 0,
+      matchPairings: matchedSearches[days] ?? 0,
     }));
   }
 
@@ -489,7 +576,25 @@ export class AdminController {
       days,
       Prisma.sql`"account_type" <> 'GUEST'`,
     );
+    const visitTrend = await this.getDailyCounts(
+      'users',
+      'last_login_at',
+      days,
+    );
+    const guestTrend = await this.getDailyCounts(
+      'users',
+      'last_login_at',
+      days,
+      Prisma.sql`"account_type" = 'GUEST'`,
+    );
+    const revisitTrend = await this.getDailyRevisitCounts(days);
     const gameTrend = await this.getDailyCounts('games', 'created_at', days);
+    const aiGameTrend = await this.getDailyCounts(
+      'games',
+      'created_at',
+      days,
+      Prisma.sql`"game_type" = 'AI'`,
+    );
     const tournamentGameTrend = await this.getDailyCounts(
       'games',
       'created_at',
@@ -514,7 +619,7 @@ export class AdminController {
     const matchedSearchTrend = matchmakingEnabled
       ? await this.getDailyCounts(
           'matchmaking_searches',
-          'started_at',
+          'matched_at',
           days,
           Prisma.sql`"status" = 'MATCHED'`,
         )
@@ -523,12 +628,17 @@ export class AdminController {
     return userTrend.map((point, index) => ({
       date: point.date,
       newRegisteredUsers: point.count,
+      visits: visitTrend[index]?.count ?? 0,
+      guestUsers: guestTrend[index]?.count ?? 0,
+      revisitUsers: revisitTrend[index]?.count ?? 0,
+      aiGames: aiGameTrend[index]?.count ?? 0,
       gamesPlayed: gameTrend[index]?.count ?? 0,
       searches: searchTrend[index]?.count ?? 0,
       matchedSearches: matchedSearchTrend[index]?.count ?? 0,
       tournamentParticipants: tournamentParticipantTrend[index]?.count ?? 0,
       tournamentGamesPlayed: tournamentGameTrend[index]?.count ?? 0,
       friendGamesPlayed: friendGameTrend[index]?.count ?? 0,
+      matchPairings: matchedSearchTrend[index]?.count ?? 0,
     }));
   }
 
@@ -539,8 +649,9 @@ export class AdminController {
   ): Promise<Record<number, number>> {
     const tableSql = Prisma.raw(`"${table}"`);
     const columnSql = Prisma.raw(`"${timestampColumn}"`);
-    const selects = AdminController.ANALYTICS_WINDOWS.map((days) =>
-      Prisma.sql`
+    const selects = AdminController.ANALYTICS_WINDOWS.map(
+      (days) =>
+        Prisma.sql`
         COUNT(*) FILTER (
           WHERE ${columnSql} >= NOW() - (${days} * INTERVAL '1 day')
         )::bigint AS ${Prisma.raw(`"d${days}"`)}
@@ -564,8 +675,9 @@ export class AdminController {
     const tableSql = Prisma.raw(`"${table}"`);
     const columnSql = Prisma.raw(`"${timestampColumn}"`);
     const distinctSql = Prisma.raw(`"${distinctColumn}"`);
-    const selects = AdminController.ANALYTICS_WINDOWS.map((days) =>
-      Prisma.sql`
+    const selects = AdminController.ANALYTICS_WINDOWS.map(
+      (days) =>
+        Prisma.sql`
         COUNT(DISTINCT CASE
           WHEN ${columnSql} >= NOW() - (${days} * INTERVAL '1 day')
           THEN ${distinctSql}
@@ -662,6 +774,86 @@ export class AdminController {
     }));
   }
 
+  private async getWindowRevisitCounts(): Promise<Record<number, number>> {
+    const result: Record<number, number> = {};
+
+    for (const days of AdminController.ANALYTICS_WINDOWS) {
+      const [row] = await this.prisma.$queryRaw<WindowCountsRow[]>(Prisma.sql`
+        SELECT COUNT(*)::bigint AS "count"
+        FROM "users"
+        WHERE "account_type" <> 'GUEST'
+          AND "role" <> 'ADMIN'
+          AND "last_login_at" >= NOW() - (${days} * INTERVAL '1 day')
+          AND "created_at" < NOW() - (${days} * INTERVAL '1 day')
+      `);
+
+      result[days] = Number(row?.count ?? 0n);
+    }
+
+    return result;
+  }
+
+  private async getDailyRevisitCounts(
+    days: number,
+  ): Promise<Array<{ date: string; count: number }>> {
+    const rows = await this.prisma.$queryRaw<DailyCountRow[]>(Prisma.sql`
+      WITH series AS (
+        SELECT generate_series(
+          CURRENT_DATE - ((${days - 1}) * INTERVAL '1 day'),
+          CURRENT_DATE,
+          INTERVAL '1 day'
+        )::date AS day
+      ),
+      counts AS (
+        SELECT
+          DATE_TRUNC('day', "last_login_at")::date AS day,
+          COUNT(*)::bigint AS count
+        FROM "users"
+        WHERE "last_login_at" >= CURRENT_DATE - ((${days - 1}) * INTERVAL '1 day')
+          AND "account_type" <> 'GUEST'
+          AND "role" <> 'ADMIN'
+          AND "created_at" < DATE_TRUNC('day', "last_login_at")
+        GROUP BY 1
+      )
+      SELECT
+        TO_CHAR(series.day, 'YYYY-MM-DD') AS date,
+        COALESCE(counts.count, 0)::bigint AS count
+      FROM series
+      LEFT JOIN counts ON counts.day = series.day
+      ORDER BY series.day ASC
+    `);
+
+    return rows.map((row) => ({
+      date: row.date,
+      count: Number(row.count),
+    }));
+  }
+
+  private async countUsersByLastLoginSince(
+    since: Date,
+    extraWhere?: Prisma.Sql,
+  ): Promise<number> {
+    const [row] = await this.prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS count
+      FROM "users"
+      WHERE "last_login_at" >= ${since}
+      ${extraWhere ? Prisma.sql`AND ${extraWhere}` : Prisma.empty}
+    `);
+
+    return Number(row?.count ?? 0n);
+  }
+
+  private async countMatchmakingPairingsSince(since: Date): Promise<number> {
+    const [row] = await this.prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS count
+      FROM "matchmaking_searches"
+      WHERE "status" = 'MATCHED'
+        AND "matched_at" >= ${since}
+    `);
+
+    return Number(row?.count ?? 0n);
+  }
+
   private async countDistinctTournamentParticipants(): Promise<number> {
     const [row] = await this.prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
       SELECT COUNT(DISTINCT "user_id")::bigint AS count
@@ -700,7 +892,9 @@ export class AdminController {
     return result;
   }
 
-  private createEmptyDailyCounts(days: number): Array<{ date: string; count: number }> {
+  private createEmptyDailyCounts(
+    days: number,
+  ): Array<{ date: string; count: number }> {
     const points: Array<{ date: string; count: number }> = [];
 
     for (let i = days - 1; i >= 0; i--) {
@@ -717,7 +911,9 @@ export class AdminController {
   }
 
   private async hasMatchmakingSearchesTable(): Promise<boolean> {
-    const [row] = await this.prisma.$queryRaw<Array<{ exists: string | null }>>(Prisma.sql`
+    const [row] = await this.prisma.$queryRaw<
+      Array<{ exists: string | null }>
+    >(Prisma.sql`
       SELECT to_regclass('public.matchmaking_searches')::text AS exists
     `);
 

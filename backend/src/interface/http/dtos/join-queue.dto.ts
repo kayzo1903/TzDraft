@@ -7,13 +7,16 @@ export type QueueTimeMs = (typeof QUEUE_TIME_OPTIONS)[number];
 
 export class JoinQueueDto {
   @ApiProperty({
-    description: 'Time control in milliseconds (3min=180000, 5min=300000, 10min=600000, 30min=1800000)',
+    description:
+      'Time control in milliseconds (3min=180000, 5min=300000, 10min=600000, 30min=1800000)',
     enum: QUEUE_TIME_OPTIONS,
   })
   @IsIn(QUEUE_TIME_OPTIONS)
   timeMs: QueueTimeMs;
 
-  @ApiPropertyOptional({ description: 'Socket.IO socket ID of the requesting client' })
+  @ApiPropertyOptional({
+    description: 'Socket.IO socket ID of the requesting client',
+  })
   @IsOptional()
   @IsString()
   socketId?: string;

@@ -7,7 +7,9 @@
  *  - URL vars must not contain "localhost" when NODE_ENV=production.
  *    This makes it structurally impossible to deploy with localhost URLs.
  */
-export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
+export function validateEnv(
+  config: Record<string, unknown>,
+): Record<string, unknown> {
   const isProd = config['NODE_ENV'] === 'production';
 
   // ── Required in every environment ─────────────────────────────────────────

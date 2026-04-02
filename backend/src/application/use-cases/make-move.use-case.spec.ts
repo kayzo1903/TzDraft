@@ -20,7 +20,12 @@ function bp(pos: number) {
 }
 
 function makeGameWithBoard(b: BoardState): Game {
-  const game = new Game('game1', 'white-player', 'black-player', GameType.CASUAL);
+  const game = new Game(
+    'game1',
+    'white-player',
+    'black-player',
+    GameType.CASUAL,
+  );
   game.start();
   game.restoreFromSnapshot(b.serialize(), []);
   return game;
@@ -28,9 +33,18 @@ function makeGameWithBoard(b: BoardState): Game {
 
 function makeGameWithSnapshotAndMoves(
   pieces: BoardState,
-  rawMoves: { fromSquare: number; toSquare: number; capturedSquares: number[] }[],
+  rawMoves: {
+    fromSquare: number;
+    toSquare: number;
+    capturedSquares: number[];
+  }[],
 ): Game {
-  const game = new Game('game1', 'white-player', 'black-player', GameType.CASUAL);
+  const game = new Game(
+    'game1',
+    'white-player',
+    'black-player',
+    GameType.CASUAL,
+  );
   game.start();
   game.restoreFromSnapshot(pieces.serialize(), rawMoves);
   return game;

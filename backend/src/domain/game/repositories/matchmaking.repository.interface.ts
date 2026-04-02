@@ -11,10 +11,15 @@ export interface MatchmakingEntry {
 
 export interface IMatchmakingRepository {
   /** Insert or replace the queue entry for a user (upsert by userId). */
-  upsert(entry: Omit<MatchmakingEntry, 'id' | 'joinedAt'>): Promise<MatchmakingEntry>;
+  upsert(
+    entry: Omit<MatchmakingEntry, 'id' | 'joinedAt'>,
+  ): Promise<MatchmakingEntry>;
 
   /** Find the oldest waiting entry for the given timeMs, excluding the given userId. */
-  findOldestMatch(timeMs: number, excludeUserId: string): Promise<MatchmakingEntry | null>;
+  findOldestMatch(
+    timeMs: number,
+    excludeUserId: string,
+  ): Promise<MatchmakingEntry | null>;
 
   /**
    * Atomically find and claim (remove) the oldest waiting opponent matching

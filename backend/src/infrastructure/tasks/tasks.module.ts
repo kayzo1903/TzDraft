@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { CleanupService } from './cleanup.service';
+import { DailyReportService } from './daily-report.service';
 import { PrismaModule } from '../database/prisma/prisma.module';
+import { EmailModule } from '../email/email.module';
 import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, EmailModule],
   // MkaguziAdapter is injected from the global EngineModule
-  providers: [CleanupService, PuzzleMinerService],
+  providers: [CleanupService, DailyReportService, PuzzleMinerService],
 })
 export class TasksModule {}

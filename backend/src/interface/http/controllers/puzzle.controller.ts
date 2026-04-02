@@ -179,7 +179,11 @@ export class AdminPuzzleController {
    * Example: POST /admin/puzzles/mine  { "days": 7 }
    */
   @Post('mine')
-  async triggerMine(@Body() dto: TriggerMiningDto, @CurrentUser() admin: any, @Req() req: Request) {
+  async triggerMine(
+    @Body() dto: TriggerMiningDto,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
     const days = dto.days ?? 1;
     const force = dto.force ?? false;
     this.auditLog('TRIGGER_PUZZLE_MINE', admin, req, { days, force });
@@ -255,7 +259,13 @@ export class AdminPuzzleController {
         ...(dto.difficulty !== undefined && { difficulty: dto.difficulty }),
         ...(dto.theme !== undefined && { theme: dto.theme }),
       },
-      select: { id: true, status: true, title: true, difficulty: true, theme: true },
+      select: {
+        id: true,
+        status: true,
+        title: true,
+        difficulty: true,
+        theme: true,
+      },
     });
 
     this.auditLog('APPROVE_PUZZLE', admin, req, { puzzleId: id });

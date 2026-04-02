@@ -103,10 +103,16 @@ export class AiController {
 
   @Post('analyze')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Return Mkaguzi eval trace (material, mobility, structure, patterns, kingSafety, tempo) for a position' })
+  @ApiOperation({
+    summary:
+      'Return Mkaguzi eval trace (material, mobility, structure, patterns, kingSafety, tempo) for a position',
+  })
   @ApiResponse({ status: 200, description: 'Eval trace returned' })
   async analyzePosition(@Body() dto: AiAnalyzeRequestDto) {
-    const result = await this.mkaguziAdapter.analyze(dto.pieces, dto.currentPlayer);
+    const result = await this.mkaguziAdapter.analyze(
+      dto.pieces,
+      dto.currentPlayer,
+    );
     return {
       success: true,
       data: result,

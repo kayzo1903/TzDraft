@@ -239,10 +239,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
   @HttpCode(HttpStatus.OK)
-  async updateProfile(
-    @CurrentUser() user: any,
-    @Body() dto: UpdateProfileDto,
-  ) {
+  async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
     const updated = await this.userService.updateProfile(user.id, dto);
     return { success: true, data: updated };
   }
@@ -273,7 +270,9 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch {
-      return res.redirect(`${process.env.FRONTEND_URL!}/sw/auth/login?error=google_failed`);
+      return res.redirect(
+        `${process.env.FRONTEND_URL!}/sw/auth/login?error=google_failed`,
+      );
     }
   }
 }

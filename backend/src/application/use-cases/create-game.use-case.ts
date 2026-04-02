@@ -126,8 +126,8 @@ export class CreateGameUseCase {
       null,
       null,
       GameStatus.WAITING,
-      null,         // winner
-      null,         // endReason
+      null, // winner
+      null, // endReason
       PlayerColor.WHITE, // currentTurn — WHITE always moves first
       inviteCode,
       creatorColor, // stored as dedicated field (not reused as currentTurn)
