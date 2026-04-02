@@ -44,7 +44,7 @@ export default function SetupOnlinePage() {
   const locale = useLocale();
   const router = useRouter();
   const { locale: routeLocale } = useParams<{ locale: string }>();
-  const { state, error, timeoutReached, elapsedMs, joinQueue, cancelQueue, resetTimeout } = useMatchmaking();
+  const { state, error, timeoutReached, remainingMs, joinQueue, cancelQueue, resetTimeout } = useMatchmaking();
   const { isAuthenticated } = useAuthStore();
   const searchParams = useSearchParams();
   const selectedOption = QUEUE_TIME_OPTIONS.find((o) => o.ms === 300000) ?? QUEUE_TIME_OPTIONS[1];
@@ -285,7 +285,7 @@ export default function SetupOnlinePage() {
                           {selectedOption.name} • {selectedOption.label}
                         </p>
                         <p className="mt-1 font-mono text-sm text-neutral-600">
-                          {formatElapsed(elapsedMs)}
+                          {isSw ? "Muda uliobaki:" : "Time remaining:"} {formatElapsed(remainingMs)}
                         </p>
                       </div>
                       <button
