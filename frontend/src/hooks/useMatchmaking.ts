@@ -27,6 +27,7 @@ export function useMatchmaking() {
   const [error, setError] = useState<string | null>(null);
   const [timeoutReached, setTimeoutReached] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [remainingMs, setRemainingMs] = useState(SEARCH_TIMEOUT_MS);
 
   // Refs — never cause re-render, safe to read inside closures/timers
   const cancelledRef = useRef(false);
@@ -34,6 +35,7 @@ export function useMatchmaking() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
+  const remainingRef = useRef(SEARCH_TIMEOUT_MS);
 
   const clearTimers = useCallback(() => {
     if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
@@ -100,15 +102,25 @@ export function useMatchmaking() {
       setError(null);
       setState("searching");
 
-      // Reset elapsed + start tick + start 60 s timeout
+      // Reset search timer and start countdown tick
       clearTimers();
       elapsedRef.current = 0;
+      remainingRef.current = SEARCH_TIMEOUT_MS;
       setElapsedMs(0);
+      setRemainingMs(SEARCH_TIMEOUT_MS);
       setTimeoutReached(false);
 
       tickRef.current = setInterval(() => {
         elapsedRef.current += 1000;
         setElapsedMs(elapsedRef.current);
+
+        remainingRef.current = Math.max(0, remainingRef.current - 1000);
+        setRemainingMs(remainingRef.current);
+
+        if (remainingRef.current <= 0) {
+          setTimeoutReached(true);
+          clearTimers();
+        }
       }, 1000);
 
       timeoutRef.current = setTimeout(() => {
@@ -150,6 +162,7 @@ export function useMatchmaking() {
     clearTimers();
     setTimeoutReached(false);
     setElapsedMs(0);
+    setRemainingMs(SEARCH_TIMEOUT_MS);
     setState("idle");
     setError(null);
     try { await gameService.cancelQueue(); } catch { /* best-effort */ }
@@ -158,11 +171,32 @@ export function useMatchmaking() {
   /** Reset the 60 s clock without leaving the queue ("Keep searching"). */
   const resetTimeout = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    // reset countdown timer to full 60 seconds
+    clearTimers();
+    elapsedRef.current = 0;
+    remainingRef.current = SEARCH_TIMEOUT_MS;
+    setElapsedMs(0);
+    setRemainingMs(SEARCH_TIMEOUT_MS);
     setTimeoutReached(false);
+
+    tickRef.current = setInterval(() => {
+      elapsedRef.current += 1000;
+      setElapsedMs(elapsedRef.current);
+
+      remainingRef.current = Math.max(0, remainingRef.current - 1000);
+      setRemainingMs(remainingRef.current);
+
+      if (remainingRef.current <= 0) {
+        setTimeoutReached(true);
+        clearTimers();
+      }
+    }, 1000);
+
     timeoutRef.current = setTimeout(() => {
       if (!cancelledRef.current) setTimeoutReached(true);
     }, SEARCH_TIMEOUT_MS);
-  }, []);
+  }, [clearTimers]);
 
   // Cleanup on unmount ONLY — empty deps prevents the cleanup from firing on
   // every state change (which was killing the timers right after they started)
@@ -176,5 +210,5 @@ export function useMatchmaking() {
     };
   }, [clearTimers]);
 
-  return { state, error, timeoutReached, elapsedMs, joinQueue, cancelQueue, resetTimeout };
+  return { state, error, timeoutReached, elapsedMs, remainingMs, joinQueue, cancelQueue, resetTimeout };
 }
