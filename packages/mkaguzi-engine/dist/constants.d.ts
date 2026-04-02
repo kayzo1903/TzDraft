@@ -89,6 +89,6 @@ export declare const DEFAULT_TIME_CONTROLS: {
         readonly increment: 0;
     };
 };
-export declare const RULE_VERSION = "TZ-8x8-v1";
+export declare const RULE_VERSION = "TZ-8x8-v2.3";
 export declare const DEFAULT_ELO_RATING = 1200;
 //# sourceMappingURL=constants.d.ts.map
