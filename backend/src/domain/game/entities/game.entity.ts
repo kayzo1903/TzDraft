@@ -270,7 +270,7 @@ export class Game {
       (wKings === 1 && wMen === 1 && bKings === 1 && bMen === 0) || // K+Man vs K
       (wKings === 1 && wMen === 0 && bKings === 1 && bMen === 1) || // K vs K+Man
       (wKings === 2 && wMen === 0 && bKings === 1 && bMen === 0) || // 2K vs K
-      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0);   // K vs 2K
+      (wKings === 1 && wMen === 0 && bKings === 2 && bMen === 0); // K vs 2K
 
     if (!isEndgame84) {
       this._endgameMoveCount = 0;

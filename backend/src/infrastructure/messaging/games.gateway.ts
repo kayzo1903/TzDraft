@@ -45,7 +45,11 @@ const KEY_TTL_S = 24 * 60 * 60; // 24 h
  * CORS_ORIGINS="https://a.com,https://b.com"
  */
 const WS_ALLOWED_ORIGINS = (() => {
-  const raw = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '').trim();
+  const raw = (
+    process.env.CORS_ORIGINS ||
+    process.env.FRONTEND_URL ||
+    ''
+  ).trim();
   const dequotedRaw = raw.replace(/^['"']|['"']$/g, '');
 
   return dequotedRaw
@@ -134,7 +138,8 @@ export class GamesGateway
 
     // When a namespace is used, afterInit receives the Namespace object.
     // The adapter must be set on the root Server (namespace.server).
-    const rootServer = (server as unknown as { server: Server }).server ?? server;
+    const rootServer =
+      (server as unknown as { server: Server }).server ?? server;
     rootServer.adapter(createAdapter(this.pubClient, this.subClient));
     this.logger.log('Socket.IO Redis adapter initialized');
   }
@@ -269,12 +274,24 @@ export class GamesGateway
 
         if (!hasMoved) {
           await endGameUseCase.abort(gameId, userId);
-          this.emitGameOver(gameId, { gameId, winner: 'NONE', reason: 'abort' });
-          this.logger.log(`Auto-aborted game ${gameId} — user ${userId} never moved`);
+          this.emitGameOver(gameId, {
+            gameId,
+            winner: 'NONE',
+            reason: 'abort',
+          });
+          this.logger.log(
+            `Auto-aborted game ${gameId} — user ${userId} never moved`,
+          );
         } else {
           const { winner } = await endGameUseCase.resign(gameId, userId);
-          this.emitGameOver(gameId, { gameId, winner: winner.toString(), reason: 'abandon' });
-          this.logger.log(`Auto-resigned user ${userId} from game ${gameId} (abandoned)`);
+          this.emitGameOver(gameId, {
+            gameId,
+            winner: winner.toString(),
+            reason: 'abandon',
+          });
+          this.logger.log(
+            `Auto-resigned user ${userId} from game ${gameId} (abandoned)`,
+          );
         }
 
         // Signal the remaining player to search for a new opponent.
@@ -391,7 +408,9 @@ export class GamesGateway
       ? await this.pubClient.get(K_DRAW(data.gameId))
       : (this.localDrawOffers.get(data.gameId) ?? null);
     if (!offeredBy) {
-      this.logger.warn(`acceptDraw: no offer found in state for game ${data.gameId} (userId=${userId})`);
+      this.logger.warn(
+        `acceptDraw: no offer found in state for game ${data.gameId} (userId=${userId})`,
+      );
       return { error: 'No pending draw offer' };
     }
     if (offeredBy === userId)
@@ -416,7 +435,10 @@ export class GamesGateway
       this.logger.log(`Draw by agreement: game ${data.gameId}`);
       return {};
     } catch (err: any) {
-      this.logger.error(`acceptDraw failed for game ${data.gameId} (userId=${userId}): ${err?.message}`, err?.stack);
+      this.logger.error(
+        `acceptDraw failed for game ${data.gameId} (userId=${userId}): ${err?.message}`,
+        err?.stack,
+      );
       return { error: 'Failed to end game as draw' };
     }
   }
@@ -633,8 +655,11 @@ export class GamesGateway
       typeof sdp.type !== 'string' ||
       typeof sdp.sdp !== 'string' ||
       sdp.sdp.length > 8192
-    ) return;
-    client.to(data.gameId).emit('voice:offer', { sdp: { type: sdp.type, sdp: sdp.sdp } });
+    )
+      return;
+    client
+      .to(data.gameId)
+      .emit('voice:offer', { sdp: { type: sdp.type, sdp: sdp.sdp } });
   }
 
   @SubscribeMessage('voice:answer')
@@ -650,13 +675,24 @@ export class GamesGateway
       typeof sdp.type !== 'string' ||
       typeof sdp.sdp !== 'string' ||
       sdp.sdp.length > 8192
-    ) return;
-    client.to(data.gameId).emit('voice:answer', { sdp: { type: sdp.type, sdp: sdp.sdp } });
+    )
+      return;
+    client
+      .to(data.gameId)
+      .emit('voice:answer', { sdp: { type: sdp.type, sdp: sdp.sdp } });
   }
 
   @SubscribeMessage('voice:ice-candidate')
   async handleVoiceIceCandidate(
-    @MessageBody() data: { gameId: string; candidate: { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null } },
+    @MessageBody()
+    data: {
+      gameId: string;
+      candidate: {
+        candidate: string;
+        sdpMid: string | null;
+        sdpMLineIndex: number | null;
+      };
+    },
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     if (!(await this.isInRoom(client, data.gameId))) return;
@@ -666,9 +702,14 @@ export class GamesGateway
       typeof c !== 'object' ||
       typeof c.candidate !== 'string' ||
       c.candidate.length > 2048
-    ) return;
+    )
+      return;
     client.to(data.gameId).emit('voice:ice-candidate', {
-      candidate: { candidate: c.candidate, sdpMid: c.sdpMid ?? null, sdpMLineIndex: c.sdpMLineIndex ?? null },
+      candidate: {
+        candidate: c.candidate,
+        sdpMid: c.sdpMid ?? null,
+        sdpMLineIndex: c.sdpMLineIndex ?? null,
+      },
     });
   }
 
@@ -817,31 +858,55 @@ export class GamesGateway
     @ConnectedSocket() client: Socket,
   ) {
     client.join(`tournament:${tournamentId}`);
-    this.logger.log(`Socket ${client.id} joined tournament room: ${tournamentId}`);
+    this.logger.log(
+      `Socket ${client.id} joined tournament room: ${tournamentId}`,
+    );
   }
 
-  emitTournamentMatchGameReady(player1Id: string, player2Id: string, payload: any) {
-    this.server.to(`user:${player1Id}`).to(`user:${player2Id}`).emit('tournamentMatchGameReady', payload);
+  emitTournamentMatchGameReady(
+    player1Id: string,
+    player2Id: string,
+    payload: any,
+  ) {
+    this.server
+      .to(`user:${player1Id}`)
+      .to(`user:${player2Id}`)
+      .emit('tournamentMatchGameReady', payload);
   }
 
-  emitTournamentMatchCompleted(player1Id: string, player2Id: string, payload: any) {
-    this.server.to(`user:${player1Id}`).to(`user:${player2Id}`).emit('tournamentMatchCompleted', payload);
+  emitTournamentMatchCompleted(
+    player1Id: string,
+    player2Id: string,
+    payload: any,
+  ) {
+    this.server
+      .to(`user:${player1Id}`)
+      .to(`user:${player2Id}`)
+      .emit('tournamentMatchCompleted', payload);
   }
 
   emitTournamentRoundAdvanced(tournamentId: string, payload: any) {
-    this.server.to(`tournament:${tournamentId}`).emit('tournamentRoundAdvanced', payload);
+    this.server
+      .to(`tournament:${tournamentId}`)
+      .emit('tournamentRoundAdvanced', payload);
   }
 
   emitTournamentCompleted(tournamentId: string, payload: any) {
-    this.server.to(`tournament:${tournamentId}`).emit('tournamentCompleted', payload);
+    this.server
+      .to(`tournament:${tournamentId}`)
+      .emit('tournamentCompleted', payload);
   }
 
   emitTournamentStarted(tournamentId: string, payload: any) {
-    this.server.to(`tournament:${tournamentId}`).emit('tournamentStarted', payload);
+    this.server
+      .to(`tournament:${tournamentId}`)
+      .emit('tournamentStarted', payload);
   }
 
   emitTournamentCancelled(tournamentId: string, payload: any) {
-    this.server.to(`tournament:${tournamentId}`).emit('tournamentCancelled', payload);
+    this.server
+      .to(`tournament:${tournamentId}`)
+      .emit('tournamentCancelled', payload);
   }
 
   /** Push a persisted notification to a user's personal room. */
@@ -890,6 +955,3 @@ export class GamesGateway
     return type === 'Bearer' ? token : null;
   }
 }
-
-
-

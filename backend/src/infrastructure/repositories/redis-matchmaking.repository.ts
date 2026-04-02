@@ -30,7 +30,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
     if (!redis.client) {
       throw new Error(
         'RedisMatchmakingRepository requires a live Redis connection. ' +
-        'Set REDIS_URL in the environment.',
+          'Set REDIS_URL in the environment.',
       );
     }
     this.rc = redis.client;
@@ -120,9 +120,7 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
       if (candidateUserId === excludeUserId) continue;
 
       // Load entry data
-      const raw = await this.rc.hgetall(
-        this.entryKey(candidateUserId),
-      );
+      const raw = await this.rc.hgetall(this.entryKey(candidateUserId));
       if (!raw || !raw.userId) continue; // entry expired or missing
 
       // Apply Elo window when the current user has a known rating

@@ -1,4 +1,9 @@
-import { Tournament, TournamentStatus, TournamentFormat, TournamentScope } from '../entities/tournament.entity';
+import {
+  Tournament,
+  TournamentStatus,
+  TournamentFormat,
+  TournamentScope,
+} from '../entities/tournament.entity';
 import { TournamentParticipant } from '../entities/tournament-participant.entity';
 import { TournamentRound } from '../entities/tournament-round.entity';
 import { TournamentMatch } from '../entities/tournament-match.entity';
@@ -39,21 +44,39 @@ export interface ITournamentRepository {
   findById(id: string): Promise<Tournament | null>;
   findAll(filters?: TournamentFilters): Promise<Tournament[]>;
   update(tournament: Tournament): Promise<Tournament>;
-  updateSchedule(id: string, schedule: TournamentScheduleUpdate): Promise<Tournament>;
-  updateDetails(id: string, details: TournamentAdminUpdate): Promise<Tournament>;
+  updateSchedule(
+    id: string,
+    schedule: TournamentScheduleUpdate,
+  ): Promise<Tournament>;
+  updateDetails(
+    id: string,
+    details: TournamentAdminUpdate,
+  ): Promise<Tournament>;
 
   // Participants
-  createParticipant(participant: TournamentParticipant): Promise<TournamentParticipant>;
-  findParticipant(tournamentId: string, userId: string): Promise<TournamentParticipant | null>;
-  findParticipantsByTournament(tournamentId: string): Promise<TournamentParticipant[]>;
-  updateParticipant(participant: TournamentParticipant): Promise<TournamentParticipant>;
+  createParticipant(
+    participant: TournamentParticipant,
+  ): Promise<TournamentParticipant>;
+  findParticipant(
+    tournamentId: string,
+    userId: string,
+  ): Promise<TournamentParticipant | null>;
+  findParticipantsByTournament(
+    tournamentId: string,
+  ): Promise<TournamentParticipant[]>;
+  updateParticipant(
+    participant: TournamentParticipant,
+  ): Promise<TournamentParticipant>;
   deleteParticipant(tournamentId: string, userId: string): Promise<void>;
   countParticipants(tournamentId: string): Promise<number>;
 
   // Rounds
   createRound(round: TournamentRound): Promise<TournamentRound>;
   findRoundsByTournament(tournamentId: string): Promise<TournamentRound[]>;
-  findRoundByNumber(tournamentId: string, roundNumber: number): Promise<TournamentRound | null>;
+  findRoundByNumber(
+    tournamentId: string,
+    roundNumber: number,
+  ): Promise<TournamentRound | null>;
   updateRound(round: TournamentRound): Promise<TournamentRound>;
 
   // Matches

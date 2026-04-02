@@ -15,12 +15,7 @@ export class SupportController {
   ) {
     const { name, email, subject, message } = createSupportTicketDto;
 
-    await this.emailService.sendSupportEmail(
-      name,
-      email,
-      subject,
-      message,
-    );
+    await this.emailService.sendSupportEmail(name, email, subject, message);
 
     return { message: 'Support ticket created successfully' };
   }

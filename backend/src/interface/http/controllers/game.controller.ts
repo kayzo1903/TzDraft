@@ -32,7 +32,11 @@ import {
   SyncAiProgressDto,
   RecordGameDto,
 } from '../dtos/create-game.dto';
-import { Winner, EndReason, GameStatus } from '../../../shared/constants/game.constants';
+import {
+  Winner,
+  EndReason,
+  GameStatus,
+} from '../../../shared/constants/game.constants';
 import { JoinQueueDto } from '../dtos/join-queue.dto';
 import { PlayerColor } from '../../../shared/constants/game.constants';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
@@ -112,7 +116,12 @@ export class GameController {
     // Save moves + finalise game in one call
     const winner = dto.winner as Winner;
     const endReason = (dto.endReason as EndReason) ?? EndReason.STALEMATE;
-    await this.endGameUseCase.finaliseGame(gameId, winner, endReason, dto.moves);
+    await this.endGameUseCase.finaliseGame(
+      gameId,
+      winner,
+      endReason,
+      dto.moves,
+    );
 
     return { success: true, data: { gameId } };
   }
@@ -158,7 +167,10 @@ export class GameController {
 
   @Post('ai/progression/sync')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Merge local offline AI progression into the authenticated account' })
+  @ApiOperation({
+    summary:
+      'Merge local offline AI progression into the authenticated account',
+  })
   async syncAiProgression(
     @CurrentUser() user: any,
     @Body() dto: SyncAiProgressDto,
@@ -261,10 +273,7 @@ export class GameController {
 
     if (result.status === 'matched') {
       // Notify the matched opponent via their current live socket
-      this.gamesGateway.emitMatchFound(
-        result.opponentUserId,
-        result.gameId,
-      );
+      this.gamesGateway.emitMatchFound(result.opponentUserId, result.gameId);
     }
 
     return {

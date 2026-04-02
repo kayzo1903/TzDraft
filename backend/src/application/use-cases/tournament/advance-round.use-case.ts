@@ -3,8 +3,15 @@ import { randomUUID } from 'crypto';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { BracketGenerationService } from '../../../domain/tournament/services/bracket-generation.service';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
-import { TournamentRound, RoundStatus } from '../../../domain/tournament/entities/tournament-round.entity';
-import { TournamentMatch, MatchStatus, MatchResult } from '../../../domain/tournament/entities/tournament-match.entity';
+import {
+  TournamentRound,
+  RoundStatus,
+} from '../../../domain/tournament/entities/tournament-round.entity';
+import {
+  TournamentMatch,
+  MatchStatus,
+  MatchResult,
+} from '../../../domain/tournament/entities/tournament-match.entity';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { StartTournamentUseCase } from './start-tournament.use-case';
 import { TournamentNotificationService } from '../../services/tournament-notification.service';
@@ -42,7 +49,10 @@ export class AdvanceRoundUseCase {
     for (const match of matches) {
       const winnerId = match.getWinnerId();
       if (winnerId) {
-        const participant = await this.repo.findParticipant(tournamentId, winnerId);
+        const participant = await this.repo.findParticipant(
+          tournamentId,
+          winnerId,
+        );
         winners.push({ userId: winnerId, seed: participant?.seed ?? null });
       }
     }
@@ -52,9 +62,13 @@ export class AdvanceRoundUseCase {
       tournament.status = TournamentStatus.COMPLETED;
       await this.repo.update(tournament);
       const winnerId = winners[0]?.userId ?? null;
-      this.gateway.emitTournamentCompleted(tournamentId, { tournamentId, winnerId });
+      this.gateway.emitTournamentCompleted(tournamentId, {
+        tournamentId,
+        winnerId,
+      });
 
-      const allParticipants = await this.repo.findParticipantsByTournament(tournamentId);
+      const allParticipants =
+        await this.repo.findParticipantsByTournament(tournamentId);
       void this.notificationService.notifyTournamentCompleted(
         allParticipants.map((p) => p.userId),
         winnerId,
@@ -75,12 +89,23 @@ export class AdvanceRoundUseCase {
     const savedRound = await this.repo.createRound(newRound);
 
     // Generate pairings
-    const stubs = this.bracket.generateNextRound(winners, savedRound.id, tournamentId);
+    const stubs = this.bracket.generateNextRound(
+      winners,
+      savedRound.id,
+      tournamentId,
+    );
 
     for (const stub of stubs) {
       const matchId = randomUUID();
-      const match = new TournamentMatch(matchId, stub.roundId, stub.tournamentId,
-        MatchStatus.PENDING, null, stub.player1Id, stub.player2Id);
+      const match = new TournamentMatch(
+        matchId,
+        stub.roundId,
+        stub.tournamentId,
+        MatchStatus.PENDING,
+        null,
+        stub.player1Id,
+        stub.player2Id,
+      );
       const saved = await this.repo.createMatch(match);
 
       if (stub.player1Id && stub.player2Id) {

@@ -169,7 +169,10 @@ export class AuthService {
     const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');
     let isVerified = user.isVerified;
     let accountType = user.accountType;
-    if (hasRealPhoneNumber && (!user.isVerified || user.accountType !== AccountType.REGISTERED)) {
+    if (
+      hasRealPhoneNumber &&
+      (!user.isVerified || user.accountType !== AccountType.REGISTERED)
+    ) {
       await this.prisma.user.update({
         where: { id: user.id },
         data: { isVerified: true, accountType: AccountType.REGISTERED },
@@ -520,6 +523,7 @@ export class AuthService {
     const displayName = username;
     const phoneNumber = `GUEST_${crypto.randomUUID().replace(/-/g, '')}`;
 
+    const now = new Date();
     const user = await this.prisma.user.create({
       data: {
         phoneNumber,
@@ -527,6 +531,7 @@ export class AuthService {
         displayName,
         isVerified: false,
         accountType: AccountType.GUEST,
+        lastLoginAt: now,
         rating: { create: { rating: 1200 } },
       },
       include: { rating: true },

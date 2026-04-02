@@ -52,7 +52,8 @@ export class AiProgressionService {
     return {
       highestAiLevelPlayed: rating.highestAiLevelPlayed ?? 0,
       highestAiLevelBeaten: rating.highestAiLevelBeaten ?? 0,
-      highestUnlockedAiLevel: rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS,
+      highestUnlockedAiLevel:
+        rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS,
       completedLevels: completed.map((entry) => entry.aiLevel),
       initialFreeLevels: INITIAL_FREE_AI_LEVELS,
       totalLevels: TOTAL_AI_LEVELS,
@@ -69,9 +70,12 @@ export class AiProgressionService {
 
     await this.ensureRating(userId);
     const rating = await this.getRatingProgress(userId);
-    const unlockedLevel = rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS;
+    const unlockedLevel =
+      rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS;
     if (aiLevel > unlockedLevel) {
-      throw new BadRequestException(`AI level ${aiLevel} is still locked for this user`);
+      throw new BadRequestException(
+        `AI level ${aiLevel} is still locked for this user`,
+      );
     }
 
     await this.prisma.$transaction([
@@ -105,11 +109,15 @@ export class AiProgressionService {
     }
 
     if (session.userId !== userId) {
-      throw new ForbiddenException('You cannot complete this AI challenge session');
+      throw new ForbiddenException(
+        'You cannot complete this AI challenge session',
+      );
     }
 
     if (session.completedAt) {
-      throw new BadRequestException('AI challenge session has already been completed');
+      throw new BadRequestException(
+        'AI challenge session has already been completed',
+      );
     }
 
     await this.ensureRating(userId);
@@ -122,9 +130,10 @@ export class AiProgressionService {
     if (result === 'WIN' && !undoUsed) {
       const rating = await this.getRatingProgress(userId);
       const nextUnlockedLevel =
-        (rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS) <= session.aiLevel
+        (rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS) <=
+        session.aiLevel
           ? Math.min(TOTAL_AI_LEVELS, session.aiLevel + 1)
-          : rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS;
+          : (rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS);
 
       await this.prisma.$executeRaw`
         UPDATE ratings
@@ -151,9 +160,7 @@ export class AiProgressionService {
           .map((level) => Number(level))
           .filter(
             (level) =>
-              Number.isInteger(level) &&
-              level >= 1 &&
-              level <= TOTAL_AI_LEVELS,
+              Number.isInteger(level) && level >= 1 && level <= TOTAL_AI_LEVELS,
           ),
       ),
     ).sort((a, b) => a - b);
@@ -166,7 +173,9 @@ export class AiProgressionService {
       ? normalizedCompleted[normalizedCompleted.length - 1]
       : 0;
 
-    const existingCompleted = await this.prisma.$queryRaw<Array<{ aiLevel: number }>>`
+    const existingCompleted = await this.prisma.$queryRaw<
+      Array<{ aiLevel: number }>
+    >`
       SELECT DISTINCT ai_level AS "aiLevel"
       FROM ai_challenge_sessions
       WHERE user_id = ${userId}
@@ -222,7 +231,9 @@ export class AiProgressionService {
     });
   }
 
-  private async getRatingProgress(userId: string): Promise<AiProgressRatingRow> {
+  private async getRatingProgress(
+    userId: string,
+  ): Promise<AiProgressRatingRow> {
     const [row] = await this.prisma.$queryRaw<AiProgressRatingRow[]>`
       SELECT
         highest_ai_level_played AS "highestAiLevelPlayed",
@@ -233,11 +244,13 @@ export class AiProgressionService {
       LIMIT 1
     `;
 
-    return row ?? {
-      highestAiLevelPlayed: 0,
-      highestAiLevelBeaten: 0,
-      highestUnlockedAiLevel: INITIAL_FREE_AI_LEVELS,
-    };
+    return (
+      row ?? {
+        highestAiLevelPlayed: 0,
+        highestAiLevelBeaten: 0,
+        highestUnlockedAiLevel: INITIAL_FREE_AI_LEVELS,
+      }
+    );
   }
 
   private async getSession(sessionId: string): Promise<AiSessionRow | null> {
@@ -255,8 +268,14 @@ export class AiProgressionService {
   }
 
   private assertAiLevel(aiLevel: number) {
-    if (!Number.isInteger(aiLevel) || aiLevel < 1 || aiLevel > TOTAL_AI_LEVELS) {
-      throw new BadRequestException(`AI level must be between 1 and ${TOTAL_AI_LEVELS}`);
+    if (
+      !Number.isInteger(aiLevel) ||
+      aiLevel < 1 ||
+      aiLevel > TOTAL_AI_LEVELS
+    ) {
+      throw new BadRequestException(
+        `AI level must be between 1 and ${TOTAL_AI_LEVELS}`,
+      );
     }
   }
 }

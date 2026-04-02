@@ -98,7 +98,10 @@ export class BeamAfricaService {
   /**
    * Send a tournament alert SMS (non-OTP). Fire-and-forget — never throws.
    */
-  async sendTournamentAlert(phoneNumber: string, message: string): Promise<void> {
+  async sendTournamentAlert(
+    phoneNumber: string,
+    message: string,
+  ): Promise<void> {
     try {
       await axios.post(
         `${this.baseUrl}/v1/send`,
@@ -117,7 +120,9 @@ export class BeamAfricaService {
         },
       );
     } catch (err) {
-      this.logger.warn(`Tournament SMS to ${phoneNumber} failed: ${err?.message}`);
+      this.logger.warn(
+        `Tournament SMS to ${phoneNumber} failed: ${err?.message}`,
+      );
       if (this.config.get('NODE_ENV') === 'development') {
         this.logger.log(`[DEV] Tournament SMS to ${phoneNumber}: ${message}`);
       }

@@ -25,7 +25,7 @@ class FakePrismaService {
     }): Promise<number> => {
       const statuses: GameStatus[] =
         typeof where.status === 'object'
-          ? where.status?.in ?? []
+          ? (where.status?.in ?? [])
           : where.status
             ? [where.status]
             : [];
@@ -73,7 +73,15 @@ describe('JoinQueueUseCase', () => {
       const matchmakingRepo = {
         removeStale: jest.fn().mockResolvedValue(undefined),
         remove: jest.fn().mockResolvedValue(undefined),
-        upsert: jest.fn().mockResolvedValue({ userId: 'B', timeMs: 300000, socketId: 's', joinedAt: new Date(), rating: null, rd: null, volatility: null }),
+        upsert: jest.fn().mockResolvedValue({
+          userId: 'B',
+          timeMs: 300000,
+          socketId: 's',
+          joinedAt: new Date(),
+          rating: null,
+          rd: null,
+          volatility: null,
+        }),
         findOldestMatch: jest.fn().mockResolvedValue(null),
         findAndClaimMatch: jest.fn().mockImplementation(async () => {
           // Both workers reach here concurrently; wait so they truly overlap
@@ -143,7 +151,11 @@ describe('JoinQueueUseCase', () => {
       matchmakingRepo = {
         removeStale: jest.fn().mockResolvedValue(undefined),
         remove: jest.fn().mockResolvedValue(undefined),
-        upsert: jest.fn().mockImplementation(async (e) => ({ ...e, id: e.userId, joinedAt: new Date() })),
+        upsert: jest.fn().mockImplementation(async (e) => ({
+          ...e,
+          id: e.userId,
+          joinedAt: new Date(),
+        })),
         findOldestMatch: jest.fn().mockResolvedValue(null),
         findAndClaimMatch: jest.fn().mockResolvedValue(null),
       };

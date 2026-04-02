@@ -4,7 +4,10 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import { EmailService } from '../../infrastructure/email/email.service';
 import { BeamAfricaService } from '../../infrastructure/sms/beam-africa.service';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
-import { Notification, NotificationType } from '../../domain/notification/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../../domain/notification/notification.entity';
 import type { INotificationRepository } from '../../domain/notification/repositories/notification.repository.interface';
 import type { Tournament } from '../../domain/tournament/entities/tournament.entity';
 import type { TournamentMatch } from '../../domain/tournament/entities/tournament-match.entity';
@@ -25,12 +28,19 @@ export class TournamentNotificationService {
 
   // ── Registration ─────────────────────────────────────────────────────────
 
-  async notifyRegistered(userId: string, tournament: Tournament): Promise<void> {
-    const notif = await this.persist(userId, NotificationType.TOURNAMENT_REGISTERED, {
-      title: 'Registration Confirmed',
-      body: `You are registered for "${tournament.name}".`,
-      meta: { tournamentId: tournament.id, tournamentName: tournament.name },
-    });
+  async notifyRegistered(
+    userId: string,
+    tournament: Tournament,
+  ): Promise<void> {
+    const notif = await this.persist(
+      userId,
+      NotificationType.TOURNAMENT_REGISTERED,
+      {
+        title: 'Registration Confirmed',
+        body: `You are registered for "${tournament.name}".`,
+        meta: { tournamentId: tournament.id, tournamentName: tournament.name },
+      },
+    );
     this.gateway.emitNotification(userId, notif);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -60,16 +70,27 @@ export class TournamentNotificationService {
 
     await Promise.all(
       users.map(async (user) => {
-        const notif = await this.persist(user.id, NotificationType.TOURNAMENT_STARTED, {
-          title: `${tournament.name} has started!`,
-          body: `Round 1 is now live with ${matchesCount} matches.`,
-          meta: { tournamentId: tournament.id, tournamentName: tournament.name },
-        });
+        const notif = await this.persist(
+          user.id,
+          NotificationType.TOURNAMENT_STARTED,
+          {
+            title: `${tournament.name} has started!`,
+            body: `Round 1 is now live with ${matchesCount} matches.`,
+            meta: {
+              tournamentId: tournament.id,
+              tournamentName: tournament.name,
+            },
+          },
+        );
         this.gateway.emitNotification(user.id, notif);
 
         if (user.email) {
           void this.emailService.sendTournamentStarted(
-            user.email, user.displayName, tournament.name, 1, matchesCount,
+            user.email,
+            user.displayName,
+            tournament.name,
+            1,
+            matchesCount,
           );
         }
         // SMS for tournament start
@@ -99,18 +120,34 @@ export class TournamentNotificationService {
     const p2 = users.find((u) => u.id === player2Id);
     if (!p1 || !p2) return;
 
-    for (const [player, opponent] of [[p1, p2], [p2, p1]] as const) {
-      const notif = await this.persist(player.id, NotificationType.MATCH_ASSIGNED, {
-        title: `Match vs ${opponent.displayName}`,
-        body: `Your Round ${roundNumber} match in "${tournament.name}" is ready. Open the app to play!`,
-        meta: { tournamentId: tournament.id, matchId: match.id, roundNumber, opponentId: opponent.id },
-      });
+    for (const [player, opponent] of [
+      [p1, p2],
+      [p2, p1],
+    ] as const) {
+      const notif = await this.persist(
+        player.id,
+        NotificationType.MATCH_ASSIGNED,
+        {
+          title: `Match vs ${opponent.displayName}`,
+          body: `Your Round ${roundNumber} match in "${tournament.name}" is ready. Open the app to play!`,
+          meta: {
+            tournamentId: tournament.id,
+            matchId: match.id,
+            roundNumber,
+            opponentId: opponent.id,
+          },
+        },
+      );
       this.gateway.emitNotification(player.id, notif);
 
       if (player.email) {
         void this.emailService.sendMatchAssigned(
-          player.email, player.displayName, opponent.displayName,
-          tournament.name, roundNumber, tournament.style,
+          player.email,
+          player.displayName,
+          opponent.displayName,
+          tournament.name,
+          roundNumber,
+          tournament.style,
         );
       }
       // SMS for match assignment
@@ -141,18 +178,32 @@ export class TournamentNotificationService {
       const isWinner = user.id === winnerId;
       const outcome = isWinner ? 'winner' : 'eliminated';
 
-      const notif = await this.persist(user.id, isWinner ? NotificationType.MATCH_RESULT : NotificationType.ELIMINATED, {
-        title: isWinner ? 'You won!' : 'Eliminated',
-        body: isWinner
-          ? `You won your Round ${roundNumber} match in "${tournament.name}" (${score}). You advance!`
-          : `You were eliminated from "${tournament.name}" in Round ${roundNumber} (${score}).`,
-        meta: { tournamentId: tournament.id, matchId: match.id, roundNumber, score },
-      });
+      const notif = await this.persist(
+        user.id,
+        isWinner ? NotificationType.MATCH_RESULT : NotificationType.ELIMINATED,
+        {
+          title: isWinner ? 'You won!' : 'Eliminated',
+          body: isWinner
+            ? `You won your Round ${roundNumber} match in "${tournament.name}" (${score}). You advance!`
+            : `You were eliminated from "${tournament.name}" in Round ${roundNumber} (${score}).`,
+          meta: {
+            tournamentId: tournament.id,
+            matchId: match.id,
+            roundNumber,
+            score,
+          },
+        },
+      );
       this.gateway.emitNotification(user.id, notif);
 
       if (user.email) {
         void this.emailService.sendMatchResult(
-          user.email, user.displayName, tournament.name, outcome, score, roundNumber,
+          user.email,
+          user.displayName,
+          tournament.name,
+          outcome,
+          score,
+          roundNumber,
         );
       }
     }
@@ -175,18 +226,27 @@ export class TournamentNotificationService {
     await Promise.all(
       users.map(async (user) => {
         const isChampion = user.id === winnerId;
-        const notif = await this.persist(user.id, NotificationType.TOURNAMENT_COMPLETED, {
-          title: isChampion ? `You won ${tournament.name}!` : `${tournament.name} has ended`,
-          body: isChampion
-            ? `Congratulations! You are the champion of "${tournament.name}"!`
-            : `"${tournament.name}" has concluded. Champion: ${winner?.displayName ?? 'Unknown'}.`,
-          meta: { tournamentId: tournament.id, winnerId },
-        });
+        const notif = await this.persist(
+          user.id,
+          NotificationType.TOURNAMENT_COMPLETED,
+          {
+            title: isChampion
+              ? `You won ${tournament.name}!`
+              : `${tournament.name} has ended`,
+            body: isChampion
+              ? `Congratulations! You are the champion of "${tournament.name}"!`
+              : `"${tournament.name}" has concluded. Champion: ${winner?.displayName ?? 'Unknown'}.`,
+            meta: { tournamentId: tournament.id, winnerId },
+          },
+        );
         this.gateway.emitNotification(user.id, notif);
 
         if (user.email) {
           void this.emailService.sendTournamentCompleted(
-            user.email, user.displayName, tournament.name, winner?.displayName ?? 'Unknown',
+            user.email,
+            user.displayName,
+            tournament.name,
+            winner?.displayName ?? 'Unknown',
           );
         }
       }),
@@ -206,11 +266,15 @@ export class TournamentNotificationService {
 
     await Promise.all(
       users.map(async (user) => {
-        const notif = await this.persist(user.id, NotificationType.TOURNAMENT_CANCELLED, {
-          title: `${tournament.name} was cancelled`,
-          body: `The tournament "${tournament.name}" has been cancelled by an admin.`,
-          meta: { tournamentId: tournament.id },
-        });
+        const notif = await this.persist(
+          user.id,
+          NotificationType.TOURNAMENT_CANCELLED,
+          {
+            title: `${tournament.name} was cancelled`,
+            body: `The tournament "${tournament.name}" has been cancelled by an admin.`,
+            meta: { tournamentId: tournament.id },
+          },
+        );
         this.gateway.emitNotification(user.id, notif);
 
         // SMS for cancellation
@@ -231,12 +295,32 @@ export class TournamentNotificationService {
   ): Promise<Notification> {
     try {
       return await this.notifRepo.create(
-        new Notification(randomUUID(), userId, type, opts.title, opts.body, opts.meta ?? null, false, new Date()),
+        new Notification(
+          randomUUID(),
+          userId,
+          type,
+          opts.title,
+          opts.body,
+          opts.meta ?? null,
+          false,
+          new Date(),
+        ),
       );
     } catch (err) {
-      this.logger.error(`Failed to persist notification for user ${userId}: ${err?.message}`);
+      this.logger.error(
+        `Failed to persist notification for user ${userId}: ${err?.message}`,
+      );
       // Return an unsaved instance so WS emit still works
-      return new Notification(randomUUID(), userId, type, opts.title, opts.body, opts.meta ?? null, false, new Date());
+      return new Notification(
+        randomUUID(),
+        userId,
+        type,
+        opts.title,
+        opts.body,
+        opts.meta ?? null,
+        false,
+        new Date(),
+      );
     }
   }
 }

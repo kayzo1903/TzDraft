@@ -1,36 +1,36 @@
 export const emailTheme = {
   colors: {
     // ── Backgrounds ────────────────────────────────────────────────────────
-    background: '#1c1917',   // stone-900  — outer page
-    surface: '#292524',      // stone-800  — card fill
-    surfaceHigh: '#44403c',  // stone-700  — elevated card / info box
-    overlay: '#1c1917cc',    // card overlay tone
+    background: '#1c1917', // stone-900  — outer page
+    surface: '#292524', // stone-800  — card fill
+    surfaceHigh: '#44403c', // stone-700  — elevated card / info box
+    overlay: '#1c1917cc', // card overlay tone
 
     // ── Text ───────────────────────────────────────────────────────────────
-    text: '#fafaf9',         // stone-50   — headings & strong copy
-    textMuted: '#d6d3d1',    // stone-300  — body copy
-    textSubtle: '#78716c',   // stone-500  — captions, footer
+    text: '#fafaf9', // stone-50   — headings & strong copy
+    textMuted: '#d6d3d1', // stone-300  — body copy
+    textSubtle: '#78716c', // stone-500  — captions, footer
 
     // ── Brand ──────────────────────────────────────────────────────────────
-    primary: '#f97316',      // orange-500 — Savanna Orange (main accent)
-    primaryDeep: '#c2410c',  // orange-700 — border / shadow
-    amber: '#fbbf24',        // amber-400  — gradient second stop (logo)
+    primary: '#f97316', // orange-500 — Savanna Orange (main accent)
+    primaryDeep: '#c2410c', // orange-700 — border / shadow
+    amber: '#fbbf24', // amber-400  — gradient second stop (logo)
 
     // ── Borders ────────────────────────────────────────────────────────────
-    border: '#3c3734',       // stone-750  — card borders
+    border: '#3c3734', // stone-750  — card borders
     borderSubtle: '#292524', // stone-800  — subtle dividers
 
     // ── States ─────────────────────────────────────────────────────────────
-    success: '#22c55e',      // green-500
-    successBg: '#052e16',    // green-950
-    error: '#ef4444',        // red-500
-    errorBg: '#1c0a0a',      // red-950
-    gold: '#f59e0b',         // amber-500  — champions
-    goldBg: '#1c1203',       // amber-950
+    success: '#22c55e', // green-500
+    successBg: '#052e16', // green-950
+    error: '#ef4444', // red-500
+    errorBg: '#1c0a0a', // red-950
+    gold: '#f59e0b', // amber-500  — champions
+    goldBg: '#1c1203', // amber-950
 
     // ── Board ──────────────────────────────────────────────────────────────
-    boardLight: '#fdba74',   // orange-300
-    boardDark: '#9a3412',    // orange-800
+    boardLight: '#fdba74', // orange-300
+    boardDark: '#9a3412', // orange-800
   },
   appName: 'TzDraft',
   appUrl: 'https://tzdraft.zetutech.co.tz',
@@ -45,7 +45,8 @@ export const emailTheme = {
 export const sharedStyles = {
   main: {
     backgroundColor: '#1c1917',
-    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif',
+    fontFamily:
+      '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,sans-serif',
     margin: '0',
     padding: '0',
   },
@@ -209,5 +210,62 @@ export const sharedStyles = {
   footerDivider: {
     margin: '0 8px',
     color: '#44403c',
+  },
+
+  /** Metric boxes for analytics */
+  metricBox: {
+    backgroundColor: '#44403c',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    textAlign: 'center' as const,
+    border: '1px solid #3c3734',
+  },
+
+  metricLabel: {
+    color: '#9ca3af',
+    fontSize: '12px',
+    fontWeight: '600',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    margin: '0 0 4px',
+  },
+
+  metricValue: {
+    color: '#fafaf9',
+    fontSize: '20px',
+    fontWeight: '800',
+    margin: '0',
+  },
+
+  /** Smaller metric boxes */
+  smallMetricBox: {
+    backgroundColor: '#3c3734',
+    borderRadius: '6px',
+    padding: '8px 12px',
+    textAlign: 'center' as const,
+  },
+
+  smallMetricLabel: {
+    color: '#9ca3af',
+    fontSize: '11px',
+    fontWeight: '600',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    margin: '0 0 2px',
+  },
+
+  smallMetricValue: {
+    color: '#fafaf9',
+    fontSize: '16px',
+    fontWeight: '700',
+    margin: '0',
+  },
+
+  h2: {
+    color: '#fafaf9',
+    fontSize: '18px',
+    fontWeight: '700',
+    margin: '0 0 16px',
+    letterSpacing: '-0.2px',
   },
 };

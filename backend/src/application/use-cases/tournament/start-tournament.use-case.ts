@@ -1,16 +1,43 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  forwardRef,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import type { IGameRepository } from '../../../domain/game/repositories/game.repository.interface';
-import { BracketGenerationService, MatchStub } from '../../../domain/tournament/services/bracket-generation.service';
-import { Tournament, TournamentStatus, TournamentStyle } from '../../../domain/tournament/entities/tournament.entity';
-import { TournamentRound, RoundStatus } from '../../../domain/tournament/entities/tournament-round.entity';
-import { TournamentMatch, MatchStatus, MatchResult } from '../../../domain/tournament/entities/tournament-match.entity';
+import {
+  BracketGenerationService,
+  MatchStub,
+} from '../../../domain/tournament/services/bracket-generation.service';
+import {
+  Tournament,
+  TournamentStatus,
+  TournamentStyle,
+} from '../../../domain/tournament/entities/tournament.entity';
+import {
+  TournamentRound,
+  RoundStatus,
+} from '../../../domain/tournament/entities/tournament-round.entity';
+import {
+  TournamentMatch,
+  MatchStatus,
+  MatchResult,
+} from '../../../domain/tournament/entities/tournament-match.entity';
 import { TournamentMatchGame } from '../../../domain/tournament/entities/tournament-match-game.entity';
-import { TournamentParticipant, ParticipantStatus } from '../../../domain/tournament/entities/tournament-participant.entity';
+import {
+  TournamentParticipant,
+  ParticipantStatus,
+} from '../../../domain/tournament/entities/tournament-participant.entity';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { Game } from '../../../domain/game/entities/game.entity';
-import { GameType, GameStatus, PlayerColor } from '../../../shared/constants/game.constants';
+import {
+  GameType,
+  GameStatus,
+  PlayerColor,
+} from '../../../shared/constants/game.constants';
 import { TournamentNotificationService } from '../../services/tournament-notification.service';
 
 const STYLE_TIME_MS: Record<TournamentStyle, number> = {
@@ -40,7 +67,8 @@ export class StartTournamentUseCase {
       throw new BadRequestException('Tournament is not in REGISTRATION status');
     }
 
-    const participants = await this.repo.findParticipantsByTournament(tournamentId);
+    const participants =
+      await this.repo.findParticipantsByTournament(tournamentId);
 
     if (participants.length < tournament.minPlayers) {
       tournament.status = TournamentStatus.CANCELLED;
@@ -53,11 +81,21 @@ export class StartTournamentUseCase {
     await Promise.all(seeded.map((p) => this.repo.updateParticipant(p)));
 
     // Create round 1
-    const round = new TournamentRound(randomUUID(), tournamentId, 1, RoundStatus.ACTIVE, new Date());
+    const round = new TournamentRound(
+      randomUUID(),
+      tournamentId,
+      1,
+      RoundStatus.ACTIVE,
+      new Date(),
+    );
     const savedRound = await this.repo.createRound(round);
 
     // Generate pairings
-    const stubs = this.bracket.generateRound1(seeded, savedRound.id, tournamentId);
+    const stubs = this.bracket.generateRound1(
+      seeded,
+      savedRound.id,
+      tournamentId,
+    );
 
     // Persist matches and spawn games
     for (const stub of stubs) {
@@ -76,7 +114,11 @@ export class StartTournamentUseCase {
 
     // Notify all participants
     const participantIds = seeded.map((p) => p.userId);
-    void this.notificationService.notifyTournamentStarted(participantIds, saved, stubs.length);
+    void this.notificationService.notifyTournamentStarted(
+      participantIds,
+      saved,
+      stubs.length,
+    );
 
     return saved;
   }
@@ -96,7 +138,12 @@ export class StartTournamentUseCase {
     const blackId = p1IsWhite ? player2Id : player1Id;
 
     const matchGameId = randomUUID();
-    const matchGame = new TournamentMatchGame(matchGameId, match.id, gameNumber, isExtra);
+    const matchGame = new TournamentMatchGame(
+      matchGameId,
+      match.id,
+      gameNumber,
+      isExtra,
+    );
     await this.repo.createMatchGame(matchGame);
 
     const initialTimeMs = STYLE_TIME_MS[tournament.style] || 600000;
@@ -183,7 +230,14 @@ export class StartTournamentUseCase {
     const savedMatch = await this.repo.createMatch(match);
 
     if (stub.player1Id && stub.player2Id) {
-      await this.spawnGameForMatch(savedMatch, tournament, 1, stub.player1Id, stub.player2Id, 1);
+      await this.spawnGameForMatch(
+        savedMatch,
+        tournament,
+        1,
+        stub.player1Id,
+        stub.player2Id,
+        1,
+      );
     }
   }
 }
