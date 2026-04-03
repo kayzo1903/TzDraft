@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { render } from '@react-email/render';
-import { AdminController } from '../../interface/http/controllers/admin.controller';
+import { AnalyticsService } from '../../admin/analytics.service';
 import { EmailService } from '../email/email.service';
 import { DailyReport } from './templates/daily-report';
 
@@ -10,7 +10,7 @@ export class DailyReportService {
   private readonly logger = new Logger(DailyReportService.name);
 
   constructor(
-    private adminController: AdminController,
+    private analyticsService: AnalyticsService,
     private emailService: EmailService,
   ) {}
 
@@ -24,7 +24,7 @@ export class DailyReportService {
       this.logger.log('Starting daily report generation...');
 
       // Get analytics data
-      const analytics = await this.adminController.getAnalytics();
+      const analytics = await this.analyticsService.getAnalytics();
 
       // Generate HTML report
       const html = await render(

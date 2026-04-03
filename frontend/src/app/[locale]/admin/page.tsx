@@ -105,6 +105,8 @@ function KpiCard({
     violet: "from-violet-500/20 to-violet-500/0 border-violet-500/30",
     rose: "from-rose-500/20 to-rose-500/0 border-rose-500/30",
     orange: "from-orange-500/20 to-orange-500/0 border-orange-500/30",
+    blue: "from-blue-500/20 to-blue-500/0 border-blue-500/30",
+    cyan: "from-cyan-500/20 to-cyan-500/0 border-cyan-500/30",
   };
   const iconColors: Record<string, string> = {
     amber: "text-amber-400 bg-amber-400/10 border-amber-400/20",
@@ -113,6 +115,8 @@ function KpiCard({
     violet: "text-violet-400 bg-violet-400/10 border-violet-400/20",
     rose: "text-rose-400 bg-rose-400/10 border-rose-400/20",
     orange: "text-orange-400 bg-orange-400/10 border-orange-400/20",
+    blue: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+    cyan: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20",
   };
 
   return (
@@ -654,7 +658,8 @@ export default function AdminDashboard() {
                 activeDot={{ r: 4, fill: "#f59e0b" }}
               />
               <Area
-                type="monotone"                dataKey="visits"
+                type="monotone"
+                dataKey="visits"
                 name="Visits"
                 stroke="#8b5cf6"
                 strokeWidth={2}
@@ -673,7 +678,8 @@ export default function AdminDashboard() {
                 activeDot={{ r: 4, fill: "#22d3ee" }}
               />
               <Area
-                type="monotone"                dataKey="searches"
+                type="monotone"
+                dataKey="searches"
                 name="Match Searches"
                 stroke="#38bdf8"
                 strokeWidth={2}
