@@ -72,9 +72,9 @@ model Rating {
     losses               Int  @default(0)
     draws                Int  @default(0)
     matchmakingWins      Int  @default(0) @map("matchmaking_wins")
-    highestAiLevelBeaten Int? @map("highest_ai_level_beaten")
+    highestAiLevelBeaten Int? @default(0) @map("highest_ai_level_beaten")
     highestAiLevelPlayed Int  @default(0) @map("highest_ai_level_played")
-    highestUnlockedAiLevel Int @default(5) @map("highest_unlocked_ai_level")
+    highestUnlockedAiLevel Int @default(3) @map("highest_unlocked_ai_level")
 
     @@index([rating])
     @@map("ratings")
