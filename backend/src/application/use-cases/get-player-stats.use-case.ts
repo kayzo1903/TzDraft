@@ -1,5 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
-import type { IGameRepository, PlayerStats } from '../../domain/game/repositories/game.repository.interface';
+import type {
+  IGameRepository,
+  PlayerStats,
+} from '../../domain/game/repositories/game.repository.interface';
 
 @Injectable()
 export class GetPlayerStatsUseCase {

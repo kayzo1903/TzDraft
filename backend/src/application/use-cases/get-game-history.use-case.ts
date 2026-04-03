@@ -1,5 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
-import type { IGameRepository, GameHistoryFilters } from '../../domain/game/repositories/game.repository.interface';
+import type {
+  IGameRepository,
+  GameHistoryFilters,
+} from '../../domain/game/repositories/game.repository.interface';
 import { UserService } from '../../domain/user/user.service';
 import { PlayerColor, Winner } from '../../shared/constants/game.constants';
 
@@ -29,12 +32,13 @@ export class GetGameHistoryUseCase {
     take: number,
     filters?: GameHistoryFilters,
   ): Promise<{ items: GameHistoryItem[]; total: number }> {
-    const { games, total } = await this.gameRepository.findCompletedGamesByPlayer(
-      playerId,
-      skip,
-      take,
-      filters,
-    );
+    const { games, total } =
+      await this.gameRepository.findCompletedGamesByPlayer(
+        playerId,
+        skip,
+        take,
+        filters,
+      );
 
     const items = await Promise.all(
       games.map(async (game) => {
@@ -55,7 +59,11 @@ export class GetGameHistoryUseCase {
           result = 'LOSS';
         }
 
-        let opponent: { id: string; displayName: string; elo: number | null } | null = null;
+        let opponent: {
+          id: string;
+          displayName: string;
+          elo: number | null;
+        } | null = null;
         if (opponentId) {
           const user = await this.userService.findById(opponentId);
           if (user) {

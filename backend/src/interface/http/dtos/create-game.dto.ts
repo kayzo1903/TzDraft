@@ -13,9 +13,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  PlayerColor,
-} from '../../../shared/constants/game.constants';
+import { PlayerColor } from '../../../shared/constants/game.constants';
 
 /**
  * Create Invite Game DTO
@@ -106,7 +104,8 @@ export class CompleteAiChallengeSessionDto {
 
 export class SyncAiProgressDto {
   @ApiProperty({
-    description: 'Levels completed locally without undo, to be merged into server progression',
+    description:
+      'Levels completed locally without undo, to be merged into server progression',
     type: [Number],
   })
   @IsArray()
@@ -136,6 +135,11 @@ export class RecordMoveDto {
 
 export class RecordGameDto {
   @IsIn(['WHITE', 'BLACK', 'DRAW']) winner: 'WHITE' | 'BLACK' | 'DRAW';
-  @IsOptional() @IsIn(['STALEMATE', 'CHECKMATE', 'RESIGN', 'TIME', 'DISCONNECT', 'DRAW']) endReason?: string;
-  @IsArray() @ValidateNested({ each: true }) @Type(() => RecordMoveDto) moves: RecordMoveDto[];
+  @IsOptional()
+  @IsIn(['STALEMATE', 'CHECKMATE', 'RESIGN', 'TIME', 'DISCONNECT', 'DRAW'])
+  endReason?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RecordMoveDto)
+  moves: RecordMoveDto[];
 }

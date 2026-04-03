@@ -41,6 +41,13 @@ import { BeamAfricaService } from '../infrastructure/sms/beam-africa.service';
     WsJwtGuard,
     AdminGuard,
   ],
-  exports: [JwtStrategy, PassportModule, JwtAuthGuard, WsJwtGuard, AuthService, AdminGuard],
+  exports: [
+    JwtStrategy,
+    PassportModule,
+    JwtAuthGuard,
+    WsJwtGuard,
+    AuthService,
+    AdminGuard,
+  ],
 })
 export class AuthModule {}

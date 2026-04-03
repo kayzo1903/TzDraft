@@ -62,7 +62,9 @@ export class CleanupService {
     });
 
     if (result.count > 0) {
-      this.logger.log(`Abandoned ${result.count} stale active game(s) (no activity for 1h+)`);
+      this.logger.log(
+        `Abandoned ${result.count} stale active game(s) (no activity for 1h+)`,
+      );
     }
   }
 

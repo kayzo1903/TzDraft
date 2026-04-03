@@ -57,11 +57,26 @@ export class MkaguziAdapter
       const bin = process.platform === 'win32' ? 'mkaguzi.exe' : 'mkaguzi';
       const candidates = [
         path.join(projectRoot, 'engines', 'core', 'build', 'Release', bin),
-        path.join(projectRoot, 'engines', 'core', 'build', 'Debug',   bin),
-        path.join(projectRoot, 'engines', 'core', 'build_mkaguzi', 'Release', bin),
-        path.join(projectRoot, 'engines', 'core', 'build_mkaguzi', 'Debug',   bin),
+        path.join(projectRoot, 'engines', 'core', 'build', 'Debug', bin),
+        path.join(
+          projectRoot,
+          'engines',
+          'core',
+          'build_mkaguzi',
+          'Release',
+          bin,
+        ),
+        path.join(
+          projectRoot,
+          'engines',
+          'core',
+          'build_mkaguzi',
+          'Debug',
+          bin,
+        ),
       ];
-      this.enginePath = candidates.find((p) => fs.existsSync(p)) ?? candidates[0];
+      this.enginePath =
+        candidates.find((p) => fs.existsSync(p)) ?? candidates[0];
     }
 
     if (!fs.existsSync(this.enginePath)) {
@@ -126,7 +141,9 @@ export class MkaguziAdapter
 
   private killProcess() {
     if (this.proc) {
-      try { this.proc.kill(); } catch {}
+      try {
+        this.proc.kill();
+      } catch {}
       this.proc = null;
     }
   }
@@ -186,7 +203,10 @@ export class MkaguziAdapter
    * The returned move (from/to) is in the same 1-32 PDN numbering so no
    * further conversion is needed.
    */
-  private piecesToFen(pieces: EnginePiece[], currentPlayer: 'WHITE' | 'BLACK'): string {
+  private piecesToFen(
+    pieces: EnginePiece[],
+    currentPlayer: 'WHITE' | 'BLACK',
+  ): string {
     // App WHITE = Mkaguzi BLACK (both at top, sqs 1-12)
     // App BLACK = Mkaguzi WHITE (both at bottom, sqs 21-32)
     const mkaguziStm = currentPlayer === 'WHITE' ? 'B' : 'W';
@@ -293,17 +313,39 @@ export class MkaguziAdapter
 
     if (request.aiLevel !== undefined && request.aiLevel !== null) {
       switch (request.aiLevel) {
-        case 10: timeMs =  400; break;
-        case 11: timeMs =  600; break;
-        case 12: timeMs =  800; break;
-        case 13: timeMs = 1000; break;
-        case 14: timeMs = 1200; break;
-        case 15: timeMs = 1500; break;
-        case 16: timeMs = 2000; break;
-        case 17: timeMs = 3000; break;
-        case 18: timeMs = 4500; break;
-        case 19: timeMs = 6000; break;
-        default: timeMs = request.timeLimitMs ?? 6000; break;
+        case 10:
+          timeMs = 400;
+          break;
+        case 11:
+          timeMs = 600;
+          break;
+        case 12:
+          timeMs = 800;
+          break;
+        case 13:
+          timeMs = 1000;
+          break;
+        case 14:
+          timeMs = 1200;
+          break;
+        case 15:
+          timeMs = 1500;
+          break;
+        case 16:
+          timeMs = 2000;
+          break;
+        case 17:
+          timeMs = 3000;
+          break;
+        case 18:
+          timeMs = 4500;
+          break;
+        case 19:
+          timeMs = 6000;
+          break;
+        default:
+          timeMs = request.timeLimitMs ?? 6000;
+          break;
       }
     }
 
@@ -356,13 +398,19 @@ export class MkaguziAdapter
       while (true) {
         const line = await this.nextLine(timeoutMs);
         let obj: any;
-        try { obj = JSON.parse(line); } catch { continue; }
+        try {
+          obj = JSON.parse(line);
+        } catch {
+          continue;
+        }
 
         if (obj.type === 'info') {
           const pv = Array.isArray(obj.pv) ? obj.pv : [];
           const rootMove = typeof pv[0] === 'string' ? pv[0] : null;
           const score = Number.isFinite(obj.score) ? Number(obj.score) : null;
-          const pvIndex = Number.isInteger(obj.pvIndex) ? Number(obj.pvIndex) : null;
+          const pvIndex = Number.isInteger(obj.pvIndex)
+            ? Number(obj.pvIndex)
+            : null;
           if (rootMove && score !== null && pvIndex !== null) {
             rootInfos.push({ move: rootMove, score, pvIndex });
           }
@@ -404,7 +452,10 @@ export class MkaguziAdapter
     }
   }
 
-  async analyze(pieces: EnginePiece[], currentPlayer: 'WHITE' | 'BLACK'): Promise<EngineAnalysis | null> {
+  async analyze(
+    pieces: EnginePiece[],
+    currentPlayer: 'WHITE' | 'BLACK',
+  ): Promise<EngineAnalysis | null> {
     if (!this.proc) {
       throw new Error('Mkaguzi engine not running. Build it first.');
     }
@@ -422,17 +473,21 @@ export class MkaguziAdapter
       while (true) {
         const line = await this.nextLine(5000);
         let obj: any;
-        try { obj = JSON.parse(line); } catch { continue; }
+        try {
+          obj = JSON.parse(line);
+        } catch {
+          continue;
+        }
 
         if (obj.type === 'evalTrace') {
           return {
-            material:   obj.material   ?? 0,
-            mobility:   obj.mobility   ?? 0,
-            structure:  obj.structure  ?? 0,
-            patterns:   obj.patterns   ?? 0,
+            material: obj.material ?? 0,
+            mobility: obj.mobility ?? 0,
+            structure: obj.structure ?? 0,
+            patterns: obj.patterns ?? 0,
             kingSafety: obj.kingSafety ?? 0,
-            tempo:      obj.tempo      ?? 0,
-            total:      obj.total      ?? 0,
+            tempo: obj.tempo ?? 0,
+            total: obj.total ?? 0,
           };
         }
         if (obj.type === 'error') {

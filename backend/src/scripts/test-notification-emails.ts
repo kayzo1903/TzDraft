@@ -14,6 +14,7 @@ import { MatchAssigned } from '../infrastructure/email/templates/match-assigned'
 import { TournamentResult } from '../infrastructure/email/templates/tournament-result';
 import { SupportNotification } from '../infrastructure/email/templates/support-notification';
 import { UserConfirmation } from '../infrastructure/email/templates/user-confirmation';
+import { DailyReport } from '../infrastructure/tasks/templates/daily-report';
 
 const toArg = process.argv.find((a) => a.startsWith('--to='));
 const TO = toArg ? toArg.replace('--to=', '') : 'kay@zetutech.co.tz';
@@ -115,7 +116,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 6. Tournament Completed — Champion ────────────────────────────────
     {
-      subject: '[Test] 6/8 – Tournament Over: You\'re the Champion!',
+      subject: "[Test] 6/8 – Tournament Over: You're the Champion!",
       html: () =>
         render(
           TournamentResult({
@@ -143,12 +144,63 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 8. Support confirmation (existing template sanity check) ──────────
     {
-      subject: '[Test] 8/8 – Support Request Confirmation',
+      subject: '[Test] 8/9 – Support Request Confirmation',
       html: () =>
         render(
           UserConfirmation({
             name: 'Kayzo',
             subject: 'Cannot join tournament',
+          }),
+        ),
+    },
+
+    // ── 9. Daily Analytics Report ─────────────────────────────────────────
+    {
+      subject: '[Test] 9/9 – Daily Analytics Report',
+      html: () =>
+        render(
+          DailyReport({
+            generatedAt: new Date().toISOString(),
+            overview: {
+              totalUsers: 1500,
+              totalRegisteredUsers: 1200,
+              activeGames: 45,
+              totalGames: 2500,
+              totalMatchmakingSearches: 800,
+              totalTournamentParticipants: 120,
+              totalTournamentGames: 240,
+              dailyVisits: 1250,
+              dailyGuestUsers: 340,
+              dailyRegisteredRevisits: 910,
+              dailyAiGames: 567,
+              dailyMatchPairings: 234,
+              dailyFriendMatches: 89,
+            },
+            liveBreakdown: {
+              ranked: 15,
+              casual: 20,
+              ai: 5,
+              tournament: 3,
+              friend: 2,
+            },
+            windows: [
+              {
+                days: 1,
+                visits: 1250,
+                guestUsers: 340,
+                revisitUsers: 910,
+                aiGames: 567,
+                gamesPlayed: 800,
+                friendGamesPlayed: 89,
+                matchPairings: 234,
+                searches: 400,
+                matchedSearches: 350,
+                expiredSearches: 50,
+                newRegisteredUsers: 25,
+                tournamentParticipants: 12,
+                tournamentGamesPlayed: 24,
+              },
+            ],
           }),
         ),
     },
@@ -162,9 +214,7 @@ async function run() {
     : null;
 
   const allCases = await buildCases();
-  const cases = only
-    ? allCases.filter((_, i) => only.has(i + 1))
-    : allCases;
+  const cases = only ? allCases.filter((_, i) => only.has(i + 1)) : allCases;
 
   console.log(`\n📧  Sending ${cases.length} test email(s) to ${TO}\n`);
 

@@ -18,7 +18,9 @@ export class RedisService implements OnModuleDestroy {
     const url = this.config.get<string>('REDIS_URL');
 
     if (!url) {
-      this.logger.warn('REDIS_URL not set — Redis disabled, using DB fallback only');
+      this.logger.warn(
+        'REDIS_URL not set — Redis disabled, using DB fallback only',
+      );
       this.client = null;
       return;
     }

@@ -1,11 +1,14 @@
 import { Piece } from './piece.vo';
 import { Position } from './position.vo';
-import { PieceType, PlayerColor } from '../../../shared/constants/game.constants';
+import {
+  PieceType,
+  PlayerColor,
+} from '../../../shared/constants/game.constants';
 
 describe('Piece', () => {
   const pos18 = new Position(18);
   const pos29 = new Position(29); // row 7 — WHITE promotion row
-  const pos1 = new Position(1);   // row 0 — BLACK promotion row
+  const pos1 = new Position(1); // row 0 — BLACK promotion row
 
   // ─── Type predicates ──────────────────────────────────────────────────────
 

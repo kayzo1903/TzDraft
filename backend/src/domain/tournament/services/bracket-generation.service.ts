@@ -17,7 +17,9 @@ export class BracketGenerationService {
    * Seed 1 = highest ELO.
    */
   assignSeeds(participants: TournamentParticipant[]): TournamentParticipant[] {
-    const sorted = [...participants].sort((a, b) => b.eloAtSignup - a.eloAtSignup);
+    const sorted = [...participants].sort(
+      (a, b) => b.eloAtSignup - a.eloAtSignup,
+    );
     sorted.forEach((p, i) => {
       p.seed = i + 1;
     });
@@ -44,7 +46,9 @@ export class BracketGenerationService {
 
     // Build padded array: indices 0..bracketSize-1
     // Seed k is at index k-1. Slots for "missing" seeds are null (BYE).
-    const slots: (TournamentParticipant | null)[] = new Array(bracketSize).fill(null);
+    const slots: (TournamentParticipant | null)[] = new Array(bracketSize).fill(
+      null,
+    );
     seededParticipants.forEach((p) => {
       slots[(p.seed ?? 1) - 1] = p;
     });
@@ -78,7 +82,9 @@ export class BracketGenerationService {
     tournamentId: string,
   ): MatchStub[] {
     // Sort by seed ascending so bracket order is preserved
-    const sorted = [...winners].sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999));
+    const sorted = [...winners].sort(
+      (a, b) => (a.seed ?? 999) - (b.seed ?? 999),
+    );
     const stubs: MatchStub[] = [];
 
     for (let i = 0; i < sorted.length; i += 2) {

@@ -17,11 +17,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { MkaguziAdapter } from '../../infrastructure/engine/mkaguzi.adapter';
-import {
-  replayGame,
-  MoveRecord,
-  PieceSnapshot,
-} from './board-reconstructor';
+import { replayGame, MoveRecord, PieceSnapshot } from './board-reconstructor';
 
 /** Minimum centipawn swing to flag a position as a puzzle candidate. */
 const PUZZLE_EVAL_THRESHOLD = 150;
@@ -60,11 +56,15 @@ export class PuzzleMinerService {
     force = false,
   ): Promise<{ games: number; candidates: number }> {
     if (this.running) {
-      this.logger.warn('Puzzle miner already running — skipping manual trigger');
+      this.logger.warn(
+        'Puzzle miner already running — skipping manual trigger',
+      );
       return { games: 0, candidates: 0 };
     }
     this.running = true;
-    this.logger.log(`Puzzle miner started (lookback: ${days} day(s), force: ${force})`);
+    this.logger.log(
+      `Puzzle miner started (lookback: ${days} day(s), force: ${force})`,
+    );
 
     try {
       if (force) {
@@ -73,7 +73,9 @@ export class PuzzleMinerService {
           where: { minedForPuzzles: true, endedAt: { gte: since } },
           data: { minedForPuzzles: false },
         });
-        this.logger.log(`Force mode: reset minedForPuzzles on ${count} game(s)`);
+        this.logger.log(
+          `Force mode: reset minedForPuzzles on ${count} game(s)`,
+        );
       }
       return await this.runMining(days);
     } catch (err) {
@@ -87,7 +89,9 @@ export class PuzzleMinerService {
 
   // ── Core mining logic ──────────────────────────────────────────────────────
 
-  private async runMining(days: number): Promise<{ games: number; candidates: number }> {
+  private async runMining(
+    days: number,
+  ): Promise<{ games: number; candidates: number }> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Find finished games within the lookback window that haven't been mined yet.

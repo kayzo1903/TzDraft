@@ -122,11 +122,17 @@ export class MakeMoveUseCase {
     // Draws only arise from the 30-move rule, three-kings rule, Art. 8.4 endgame rule,
     // or threefold repetition (enforced by the engine / client).
     if (!game.isGameOver()) {
-      if (this.gameRulesService.isDrawByThirtyMoveRule(game.reversibleMoveCount)) {
+      if (
+        this.gameRulesService.isDrawByThirtyMoveRule(game.reversibleMoveCount)
+      ) {
         game.endGame(Winner.DRAW, EndReason.DRAW_30_MOVE);
-      } else if (this.gameRulesService.isDrawByThreeKingsRule(game.threeKingsMoveCount)) {
+      } else if (
+        this.gameRulesService.isDrawByThreeKingsRule(game.threeKingsMoveCount)
+      ) {
         game.endGame(Winner.DRAW, EndReason.DRAW_THREE_KINGS);
-      } else if (this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)) {
+      } else if (
+        this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)
+      ) {
         game.endGame(Winner.DRAW, EndReason.DRAW_ENDGAME);
       }
     }
@@ -140,7 +146,8 @@ export class MakeMoveUseCase {
     } | null = null;
 
     if (game.clockInfo && !game.isPvE()) {
-      const elapsed = now.getTime() - new Date(game.clockInfo.lastMoveAt).getTime();
+      const elapsed =
+        now.getTime() - new Date(game.clockInfo.lastMoveAt).getTime();
       let newWhite = game.clockInfo.whiteTimeMs;
       let newBlack = game.clockInfo.blackTimeMs;
 
@@ -196,17 +203,22 @@ export class MakeMoveUseCase {
           )
           .catch((err: unknown) => {
             const message = err instanceof Error ? err.message : String(err);
-            console.error(`[MakeMove] Rating update failed for game ${gameId}: ${message}`);
+            console.error(
+              `[MakeMove] Rating update failed for game ${gameId}: ${message}`,
+            );
           }),
         this.reportTournamentResult
           .execute(gameId, game.winner, game.whitePlayerId, game.blackPlayerId)
-          .catch(() => { /* non-fatal: tournament progression is best-effort */ }),
+          .catch(() => {
+            /* non-fatal: tournament progression is best-effort */
+          }),
       ]);
 
       const reasonStr =
         game.endReason === EndReason.TIME
           ? 'timeout'
-          : (game.endReason === EndReason.NO_MOVES || game.endReason === EndReason.STALEMATE)
+          : game.endReason === EndReason.NO_MOVES ||
+              game.endReason === EndReason.STALEMATE
             ? 'no-moves'
             : game.endReason === EndReason.DRAW_REPETITION
               ? 'draw-repetition'
