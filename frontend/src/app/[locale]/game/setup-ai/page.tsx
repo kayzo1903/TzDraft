@@ -460,45 +460,72 @@ export default function SetupAiPage() {
         next: nextLockedBot.name,
       });
 
+  const isSw = locale === "sw";
+
   return (
-    <div className="min-h-[100svh] bg-[var(--background)] text-foreground">
-      <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-44 sm:pt-10">
+    <>
+    <main className="min-h-screen bg-[var(--background)] px-4 py-8 text-[var(--foreground)] sm:px-6 sm:py-10 lg:px-8 lg:py-14">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 lg:gap-8">
 
-        {/* Header */}
-        <header className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-[var(--primary)]" />
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-sm text-neutral-400">{t("subtitle")}</p>
-            <p className="mt-2 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
-              <Lock className="h-3.5 w-3.5" />
-              {headerUnlockInstruction}
-            </p>
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-5 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.16),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_26%)]" />
+          <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+            <div className="space-y-4 sm:space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-neutral-300">
+                <Trophy className="h-3.5 w-3.5 text-[var(--primary)]" />
+                {isSw ? "Fanya mazoezi na AI" : "Train with AI"}
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
+                  {t("title")}
+                </h1>
+                <p className="hidden max-w-2xl text-base leading-7 text-neutral-300 sm:block sm:text-lg">
+                  {t("subtitle")}
+                </p>
+              </div>
+              <div className="hidden flex-wrap gap-3 lg:flex">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
+                  <Swords className="h-4 w-4 text-sky-300" />
+                  {isSw ? "Panda ngazi moja baada ya nyingine" : "Climb one level at a time"}
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-neutral-200">
+                  <Lock className="h-4 w-4 text-amber-300" />
+                  {headerUnlockInstruction}
+                </div>
+              </div>
+              {/* Mobile: show unlock hint */}
+              <p className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 lg:hidden">
+                <Lock className="h-3.5 w-3.5 shrink-0" />
+                {headerUnlockInstruction}
+              </p>
+            </div>
+
+            {/* Stats — desktop only */}
+            <div className="hidden gap-3 lg:grid lg:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-2xl font-black text-white">{BOTS.length}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  {isSw ? "Wapinzani" : "Opponents"}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-2xl font-black text-white">{maxUnlockedLevel}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  {isSw ? "Ngazi zilizofunguliwa" : "Levels unlocked"}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <div className="text-2xl font-black text-amber-300">{completedLevels.size}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  {isSw ? "Zilizoshindwa" : "Beaten"}
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
 
-          {/* Progress badge */}
-          <div className="hidden sm:flex items-center gap-3 rounded-full border border-neutral-800 bg-neutral-900/40 px-4 py-2 text-xs text-neutral-300 shrink-0">
-            <span className="inline-flex items-center gap-1.5">
-              <Trophy className="h-3.5 w-3.5 text-primary" />
-              <span className="font-semibold text-white">{maxUnlockedLevel}</span>
-              <span className="text-neutral-500">{t("unlockedCount", { total: BOTS.length })}</span>
-            </span>
-            {completedLevels.size > 0 && (
-              <>
-                <span className="text-neutral-700">·</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Crown className="h-3.5 w-3.5 text-amber-400" />
-                  <span className="font-semibold text-amber-300">{completedLevels.size}</span>
-                  <span className="text-neutral-500">beaten</span>
-                </span>
-              </>
-            )}
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start pb-44">
 
           {/* ── Left: Bot roster ─────────────────────────────── */}
           <div className="space-y-8">
@@ -624,8 +651,9 @@ export default function SetupAiPage() {
           </aside>
         </div>
       </div>
+    </main>
 
-      {/* ── Sticky bottom bar ──────────────────────────────────────── */}
+    {/* ── Sticky bottom bar ──────────────────────────────────────── */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur-md">
         <div className="mx-auto w-full max-w-7xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
 
@@ -700,6 +728,6 @@ export default function SetupAiPage() {
           </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
