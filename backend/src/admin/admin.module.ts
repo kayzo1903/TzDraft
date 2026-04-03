@@ -8,10 +8,13 @@ import {
   PrismaHealthIndicator,
   RedisHealthIndicator,
 } from '../health/health.controller';
+import { AnalyticsService } from './analytics.service';
 
 @Module({
   imports: [TerminusModule, PrismaModule, RedisModule, AuthModule],
   controllers: [AdminController],
-  providers: [PrismaHealthIndicator, RedisHealthIndicator],
+  providers: [PrismaHealthIndicator, RedisHealthIndicator, AnalyticsService],
+  exports: [AnalyticsService],
 })
 export class AdminModule {}
+

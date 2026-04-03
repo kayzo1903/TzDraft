@@ -32,7 +32,10 @@ import {
 import { AdminUpdateTournamentUseCase } from '../../../application/use-cases/tournament/admin-update-tournament.use-case';
 import { AdminResolveTournamentMatchUseCase } from '../../../application/use-cases/tournament/admin-resolve-tournament-match.use-case';
 import { AdminCancelTournamentUseCase } from '../../../application/use-cases/tournament/admin-cancel-tournament.use-case';
-import { TournamentFormat, TournamentScope } from '../../../domain/tournament/entities/tournament.entity';
+import {
+  TournamentFormat,
+  TournamentScope,
+} from '../../../domain/tournament/entities/tournament.entity';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
 
 @Controller('tournaments')
@@ -55,8 +58,8 @@ export class TournamentController {
   async list(@Query() query: ListTournamentsQueryDto) {
     return this.listTournaments.execute({
       status: query.status,
-      format: query.format as TournamentFormat | undefined,
-      scope: query.scope as TournamentScope | undefined,
+      format: query.format,
+      scope: query.scope,
       country: query.country,
       region: query.region,
     });
@@ -71,11 +74,16 @@ export class TournamentController {
   @Post()
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateTournamentDto, @CurrentUser() user: { id: string }) {
+  async create(
+    @Body() dto: CreateTournamentDto,
+    @CurrentUser() user: { id: string },
+  ) {
     return this.createTournament.execute({
       ...dto,
       scheduledStartAt: new Date(dto.scheduledStartAt),
-      registrationDeadline: dto.registrationDeadline ? new Date(dto.registrationDeadline) : undefined,
+      registrationDeadline: dto.registrationDeadline
+        ? new Date(dto.registrationDeadline)
+        : undefined,
       createdById: user.id,
     });
   }
@@ -122,7 +130,9 @@ export class TournamentController {
       region: dto.region,
       maxPlayers: dto.maxPlayers,
       minPlayers: dto.minPlayers,
-      scheduledStartAt: dto.scheduledStartAt ? new Date(dto.scheduledStartAt) : undefined,
+      scheduledStartAt: dto.scheduledStartAt
+        ? new Date(dto.scheduledStartAt)
+        : undefined,
       registrationDeadline:
         dto.registrationDeadline === undefined
           ? undefined
@@ -135,10 +145,7 @@ export class TournamentController {
   @Delete(':id/participants/:userId')
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async adminRemove(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-  ) {
+  async adminRemove(@Param('id') id: string, @Param('userId') userId: string) {
     await this.adminRemoveParticipant.execute(id, userId);
   }
 

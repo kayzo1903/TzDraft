@@ -105,6 +105,8 @@ function KpiCard({
     violet: "from-violet-500/20 to-violet-500/0 border-violet-500/30",
     rose: "from-rose-500/20 to-rose-500/0 border-rose-500/30",
     orange: "from-orange-500/20 to-orange-500/0 border-orange-500/30",
+    blue: "from-blue-500/20 to-blue-500/0 border-blue-500/30",
+    cyan: "from-cyan-500/20 to-cyan-500/0 border-cyan-500/30",
   };
   const iconColors: Record<string, string> = {
     amber: "text-amber-400 bg-amber-400/10 border-amber-400/20",
@@ -113,6 +115,8 @@ function KpiCard({
     violet: "text-violet-400 bg-violet-400/10 border-violet-400/20",
     rose: "text-rose-400 bg-rose-400/10 border-rose-400/20",
     orange: "text-orange-400 bg-orange-400/10 border-orange-400/20",
+    blue: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+    cyan: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20",
   };
 
   return (
@@ -175,9 +179,13 @@ function WindowRow({ row }: { row: AnalyticsWindow }) {
       <td className="px-4 py-3 font-semibold text-white">
         {row.days === 1 ? "24h" : row.days === 365 ? "1yr" : `${row.days}d`}
       </td>
-      <td className="px-4 py-3 text-amber-300">{formatNumber(row.newRegisteredUsers)}</td>
+      <td className="px-4 py-3 text-sky-300">{formatNumber(row.visits)}</td>
+      <td className="px-4 py-3 text-indigo-300">{formatNumber(row.guestUsers)}</td>
+      <td className="px-4 py-3 text-emerald-300">{formatNumber(row.revisitUsers)}</td>
+      <td className="px-4 py-3 text-cyan-300">{formatNumber(row.aiGames)}</td>
       <td className="px-4 py-3 text-gray-300">{formatNumber(row.gamesPlayed)}</td>
       <td className="px-4 py-3 text-orange-300">{formatNumber(row.friendGamesPlayed)}</td>
+      <td className="px-4 py-3 text-violet-300">{formatNumber(row.matchPairings)}</td>
       <td className="px-4 py-3 text-sky-300">{formatNumber(row.searches)}</td>
       <td className="px-4 py-3 text-emerald-300">
         {formatNumber(row.matchedSearches)}
@@ -396,6 +404,52 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* ── KPI Row 1.1: Daily engagement -- */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard
+          label="Daily Visits"
+          value={analytics ? formatNumber(analytics.overview.dailyVisits) : "—"}
+          icon={Zap}
+          accent="violet"
+        />
+        <KpiCard
+          label="Daily Guest Users"
+          value={analytics ? formatNumber(analytics.overview.dailyGuestUsers) : "—"}
+          icon={Users}
+          accent="blue"
+        />
+        <KpiCard
+          label="Daily Registered Revisit"
+          value={analytics ? formatNumber(analytics.overview.dailyRegisteredRevisits) : "—"}
+          icon={TimerReset}
+          accent="emerald"
+        />
+        <KpiCard
+          label="Daily AI Games"
+          value={analytics ? formatNumber(analytics.overview.dailyAiGames) : "—"}
+          icon={Bot}
+          accent="cyan"
+        />
+      </div>
+
+      {/* ── KPI Row 1.2: Matching -- */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard
+          label="Daily Match Pairings"
+          value={analytics ? formatNumber(analytics.overview.dailyMatchPairings) : "—"}
+          icon={HandshakeIcon}
+          accent="sky"
+        />
+        <KpiCard
+          label="Daily Friend Matches"
+          value={analytics ? formatNumber(analytics.overview.dailyFriendMatches) : "—"}
+          icon={HandshakeIcon}
+          accent="orange"
+        />
+        <div />
+        <div />
+      </div>
+
       {/* ── KPI Row 2: Live ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
@@ -561,6 +615,14 @@ export default function AdminDashboard() {
                   <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="gradVisits" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradAiGames" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                </linearGradient>
                 <linearGradient id="gradSearches" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
@@ -594,6 +656,26 @@ export default function AdminDashboard() {
                 fill="url(#gradUsers)"
                 dot={false}
                 activeDot={{ r: 4, fill: "#f59e0b" }}
+              />
+              <Area
+                type="monotone"
+                dataKey="visits"
+                name="Visits"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                fill="url(#gradVisits)"
+                dot={false}
+                activeDot={{ r: 4, fill: "#8b5cf6" }}
+              />
+              <Area
+                type="monotone"
+                dataKey="aiGames"
+                name="AI Games"
+                stroke="#22d3ee"
+                strokeWidth={2}
+                fill="url(#gradAiGames)"
+                dot={false}
+                activeDot={{ r: 4, fill: "#22d3ee" }}
               />
               <Area
                 type="monotone"
@@ -679,9 +761,13 @@ export default function AdminDashboard() {
             <thead className="border-b border-gray-800 bg-black/20 text-gray-400">
               <tr>
                 <th className="px-4 py-3">Window</th>
-                <th className="px-4 py-3 text-amber-400">New Users</th>
+                <th className="px-4 py-3 text-sky-400">Visits</th>
+                <th className="px-4 py-3 text-indigo-400">Guest Users</th>
+                <th className="px-4 py-3 text-emerald-400">Revisit Users</th>
+                <th className="px-4 py-3 text-cyan-400">AI Games</th>
                 <th className="px-4 py-3">Games</th>
                 <th className="px-4 py-3 text-orange-400">Friend Games</th>
+                <th className="px-4 py-3 text-violet-400">Pairings</th>
                 <th className="px-4 py-3 text-sky-400">Searches</th>
                 <th className="px-4 py-3 text-emerald-400">Matched</th>
                 <th className="px-4 py-3 text-rose-400">Expired</th>

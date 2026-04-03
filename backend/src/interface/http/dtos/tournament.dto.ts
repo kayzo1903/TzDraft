@@ -9,24 +9,33 @@ import {
   ValidateIf,
   IsIn,
 } from 'class-validator';
-import { TournamentFormat, TournamentStyle, TournamentScope } from '../../../domain/tournament/entities/tournament.entity';
+import {
+  TournamentFormat,
+  TournamentStyle,
+  TournamentScope,
+} from '../../../domain/tournament/entities/tournament.entity';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
 import { MatchResult } from '../../../domain/tournament/entities/tournament-match.entity';
 
 export class CreateTournamentDto {
-  @IsString() @MinLength(3)
+  @IsString()
+  @MinLength(3)
   name: string;
 
-  @IsString() @MinLength(10)
+  @IsString()
+  @MinLength(10)
   descriptionEn: string;
 
-  @IsString() @MinLength(10)
+  @IsString()
+  @MinLength(10)
   descriptionSw: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   rulesEn?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   rulesSw?: string;
 
   @IsEnum(TournamentFormat)
@@ -35,68 +44,96 @@ export class CreateTournamentDto {
   @IsEnum(TournamentStyle)
   style: TournamentStyle;
 
-  @IsOptional() @IsEnum(TournamentScope)
+  @IsOptional()
+  @IsEnum(TournamentScope)
   scope?: TournamentScope;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   country?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   region?: string;
 
-  @IsInt() @Min(4)
+  @IsInt()
+  @Min(4)
   maxPlayers: number;
 
-  @IsOptional() @IsInt() @Min(4)
+  @IsOptional()
+  @IsInt()
+  @Min(4)
   minPlayers?: number;
 
   @IsDateString()
   scheduledStartAt: string;
 
-  @IsOptional() @IsDateString()
+  @IsOptional()
+  @IsDateString()
   registrationDeadline?: string;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   minElo?: number;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   maxElo?: number;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   minMatchmakingWins?: number;
 
-  @IsOptional() @IsInt() @Min(1)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
   minAiLevelBeaten?: number;
 
-  @IsOptional() @IsInt() @Min(1)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
   requiredAiLevelPlayed?: number;
 }
 
 export class ListTournamentsQueryDto {
-  @IsOptional() @IsEnum(TournamentStatus)
+  @IsOptional()
+  @IsEnum(TournamentStatus)
   status?: TournamentStatus;
 
-  @IsOptional() @IsEnum(TournamentFormat)
+  @IsOptional()
+  @IsEnum(TournamentFormat)
   format?: TournamentFormat;
 
-  @IsOptional() @IsEnum(TournamentScope)
+  @IsOptional()
+  @IsEnum(TournamentScope)
   scope?: TournamentScope;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   country?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   region?: string;
 }
 
 export class UpdateTournamentDto {
-  @IsOptional() @IsString() @MinLength(3)
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
   name?: string;
 
-  @IsOptional() @IsString() @MinLength(10)
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
   descriptionEn?: string;
 
-  @IsOptional() @IsString() @MinLength(10)
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
   descriptionSw?: string;
 
   @ValidateIf((_, value) => value !== undefined && value !== null)
@@ -107,10 +144,12 @@ export class UpdateTournamentDto {
   @IsString()
   rulesSw?: string | null;
 
-  @IsOptional() @IsEnum(TournamentStyle)
+  @IsOptional()
+  @IsEnum(TournamentStyle)
   style?: TournamentStyle;
 
-  @IsOptional() @IsEnum(TournamentScope)
+  @IsOptional()
+  @IsEnum(TournamentScope)
   scope?: TournamentScope;
 
   @ValidateIf((_, value) => value !== undefined && value !== null)
@@ -121,13 +160,18 @@ export class UpdateTournamentDto {
   @IsString()
   region?: string | null;
 
-  @IsOptional() @IsInt() @Min(4)
+  @IsOptional()
+  @IsInt()
+  @Min(4)
   maxPlayers?: number;
 
-  @IsOptional() @IsInt() @Min(4)
+  @IsOptional()
+  @IsInt()
+  @Min(4)
   minPlayers?: number;
 
-  @IsOptional() @IsDateString()
+  @IsOptional()
+  @IsDateString()
   scheduledStartAt?: string;
 
   @ValidateIf((_, value) => value !== undefined && value !== null)

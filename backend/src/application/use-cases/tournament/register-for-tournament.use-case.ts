@@ -1,4 +1,10 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
@@ -16,7 +22,10 @@ export class RegisterForTournamentUseCase {
     private readonly notificationService: TournamentNotificationService,
   ) {}
 
-  async execute(tournamentId: string, userId: string): Promise<TournamentParticipant> {
+  async execute(
+    tournamentId: string,
+    userId: string,
+  ): Promise<TournamentParticipant> {
     const tournament = await this.repo.findById(tournamentId);
     if (!tournament) throw new NotFoundException('Tournament not found');
     if (!tournament.isRegistrationOpen()) {

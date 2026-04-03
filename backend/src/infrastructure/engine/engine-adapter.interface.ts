@@ -52,7 +52,10 @@ export interface IEngineAdapter {
    * Return a static eval breakdown for the given position.
    * Optional — returns null if the adapter does not support analysis.
    */
-  analyze?(pieces: EnginePiece[], currentPlayer: 'WHITE' | 'BLACK'): Promise<EngineAnalysis | null>;
+  analyze?(
+    pieces: EnginePiece[],
+    currentPlayer: 'WHITE' | 'BLACK',
+  ): Promise<EngineAnalysis | null>;
 
   /**
    * Clean up any persistent resources (processes, DLLs, etc.).

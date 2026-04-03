@@ -43,9 +43,10 @@ async function bootstrap() {
         },
       },
       // HSTS: force HTTPS for 1 year (production only — skip in dev to avoid breaking local http)
-      strictTransportSecurity: process.env.NODE_ENV === 'production'
-        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
-        : false,
+      strictTransportSecurity:
+        process.env.NODE_ENV === 'production'
+          ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+          : false,
       // Referrer policy — don't leak path/query to third parties
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       crossOriginEmbedderPolicy: false, // allows cross-origin embeds (socket.io needs this)

@@ -110,7 +110,9 @@ export class OtpService {
 
     // Locked after too many failed attempts
     if (otpRecord.attempts >= OtpService.MAX_ATTEMPTS) {
-      throw new BadRequestException('Too many failed attempts. Please request a new code.');
+      throw new BadRequestException(
+        'Too many failed attempts. Please request a new code.',
+      );
     }
 
     // Check expiry before comparing the code

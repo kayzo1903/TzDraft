@@ -8,6 +8,10 @@ export interface AdminStats {
 
 export interface AnalyticsWindow {
   days: number;
+  visits: number;
+  guestUsers: number;
+  revisitUsers: number;
+  aiGames: number;
   gamesPlayed: number;
   searches: number;
   matchedSearches: number;
@@ -16,17 +20,23 @@ export interface AnalyticsWindow {
   tournamentParticipants: number;
   tournamentGamesPlayed: number;
   friendGamesPlayed: number;
+  matchPairings: number;
 }
 
 export interface AnalyticsTrendPoint {
   date: string;
   newRegisteredUsers: number;
+  visits: number;
+  guestUsers: number;
+  revisitUsers: number;
+  aiGames: number;
   gamesPlayed: number;
   searches: number;
   matchedSearches: number;
   tournamentParticipants: number;
   tournamentGamesPlayed: number;
   friendGamesPlayed: number;
+  matchPairings: number;
 }
 
 export interface TournamentWinner {
@@ -47,6 +57,12 @@ export interface AdminAnalyticsResponse {
     totalMatchmakingSearches: number;
     totalTournamentParticipants: number;
     totalTournamentGames: number;
+    dailyVisits: number;
+    dailyGuestUsers: number;
+    dailyRegisteredRevisits: number;
+    dailyAiGames: number;
+    dailyMatchPairings: number;
+    dailyFriendMatches: number;
   };
   liveBreakdown: {
     ranked: number;

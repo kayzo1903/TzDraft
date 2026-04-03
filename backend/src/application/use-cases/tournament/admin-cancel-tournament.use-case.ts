@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { TournamentStatus } from '../../../domain/tournament/entities/tournament.entity';
 import { TournamentNotificationService } from '../../services/tournament-notification.service';
@@ -21,13 +26,16 @@ export class AdminCancelTournamentUseCase {
       tournament.status !== TournamentStatus.DRAFT &&
       tournament.status !== TournamentStatus.REGISTRATION
     ) {
-      throw new BadRequestException('Only tournaments that have not started can be cancelled');
+      throw new BadRequestException(
+        'Only tournaments that have not started can be cancelled',
+      );
     }
 
     tournament.status = TournamentStatus.CANCELLED;
     const saved = await this.repo.update(tournament);
 
-    const participants = await this.repo.findParticipantsByTournament(tournamentId);
+    const participants =
+      await this.repo.findParticipantsByTournament(tournamentId);
     void this.notificationService.notifyTournamentCancelled(
       participants.map((p) => p.userId),
       saved,

@@ -1,10 +1,19 @@
-import { Injectable, Inject, BadRequestException, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  forwardRef,
+} from '@nestjs/common';
 import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
 import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
 import { Move } from '../../domain/game/entities/move.entity';
 import { Position } from '../../domain/game/value-objects/position.vo';
 import { randomUUID } from 'crypto';
-import { Winner, EndReason, GameStatus } from '../../shared/constants/game.constants';
+import {
+  Winner,
+  EndReason,
+  GameStatus,
+} from '../../shared/constants/game.constants';
 import { RatingService } from './rating.service';
 import { ReportTournamentResultUseCase } from './tournament/report-tournament-result.use-case';
 
@@ -43,8 +52,15 @@ export class EndGameUseCase {
 
     game.endGame(winner, EndReason.RESIGN);
     await this.gameRepository.update(game);
-    await this.ratingService.updateRatings(game.whitePlayerId, game.blackPlayerId, winner, game.gameType);
-    this.reportTournamentResult.execute(gameId, winner, game.whitePlayerId, game.blackPlayerId).catch(() => {});
+    await this.ratingService.updateRatings(
+      game.whitePlayerId,
+      game.blackPlayerId,
+      winner,
+      game.gameType,
+    );
+    this.reportTournamentResult
+      .execute(gameId, winner, game.whitePlayerId, game.blackPlayerId)
+      .catch(() => {});
     return { winner };
   }
 
@@ -64,8 +80,15 @@ export class EndGameUseCase {
 
     game.endGame(winner, EndReason.TIME);
     await this.gameRepository.update(game);
-    await this.ratingService.updateRatings(game.whitePlayerId, game.blackPlayerId, winner, game.gameType);
-    this.reportTournamentResult.execute(gameId, winner, game.whitePlayerId, game.blackPlayerId).catch(() => {});
+    await this.ratingService.updateRatings(
+      game.whitePlayerId,
+      game.blackPlayerId,
+      winner,
+      game.gameType,
+    );
+    this.reportTournamentResult
+      .execute(gameId, winner, game.whitePlayerId, game.blackPlayerId)
+      .catch(() => {});
   }
 
   /**
@@ -83,8 +106,15 @@ export class EndGameUseCase {
 
     game.endGame(Winner.DRAW, EndReason.DRAW);
     await this.gameRepository.update(game);
-    await this.ratingService.updateRatings(game.whitePlayerId, game.blackPlayerId, Winner.DRAW, game.gameType);
-    this.reportTournamentResult.execute(gameId, Winner.DRAW, game.whitePlayerId, game.blackPlayerId).catch(() => {});
+    await this.ratingService.updateRatings(
+      game.whitePlayerId,
+      game.blackPlayerId,
+      Winner.DRAW,
+      game.gameType,
+    );
+    this.reportTournamentResult
+      .execute(gameId, Winner.DRAW, game.whitePlayerId, game.blackPlayerId)
+      .catch(() => {});
   }
 
   /**

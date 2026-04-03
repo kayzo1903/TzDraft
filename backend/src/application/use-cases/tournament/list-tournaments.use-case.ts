@@ -1,5 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
-import type { ITournamentRepository, TournamentFilters } from '../../../domain/tournament/repositories/tournament.repository.interface';
+import type {
+  ITournamentRepository,
+  TournamentFilters,
+} from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { Tournament } from '../../../domain/tournament/entities/tournament.entity';
 
 @Injectable()

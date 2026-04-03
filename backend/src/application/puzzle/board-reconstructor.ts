@@ -25,16 +25,22 @@ export interface MoveRecord {
 
 /** Standard TZD opening position: 12 white men top, 12 black men bottom. */
 const INITIAL_POSITION: PieceSnapshot[] = [
-  ...Array.from({ length: 12 }, (_, i): PieceSnapshot => ({
-    type: 'MAN',
-    color: 'WHITE',
-    position: i + 1,
-  })),
-  ...Array.from({ length: 12 }, (_, i): PieceSnapshot => ({
-    type: 'MAN',
-    color: 'BLACK',
-    position: i + 21,
-  })),
+  ...Array.from(
+    { length: 12 },
+    (_, i): PieceSnapshot => ({
+      type: 'MAN',
+      color: 'WHITE',
+      position: i + 1,
+    }),
+  ),
+  ...Array.from(
+    { length: 12 },
+    (_, i): PieceSnapshot => ({
+      type: 'MAN',
+      color: 'BLACK',
+      position: i + 21,
+    }),
+  ),
 ];
 
 /**
@@ -42,7 +48,10 @@ const INITIAL_POSITION: PieceSnapshot[] = [
  * Captured pieces are removed immediately (TZD uses early removal for
  * chain captures). The moved piece is promoted if isPromotion is true.
  */
-export function applyMove(board: PieceSnapshot[], move: MoveRecord): PieceSnapshot[] {
+export function applyMove(
+  board: PieceSnapshot[],
+  move: MoveRecord,
+): PieceSnapshot[] {
   // Remove captured pieces
   let next = board.filter((p) => !move.capturedSquares.includes(p.position));
 
@@ -52,7 +61,11 @@ export function applyMove(board: PieceSnapshot[], move: MoveRecord): PieceSnapsh
 
   next = next.map((p) =>
     p.position === move.fromSquare
-      ? { ...p, position: move.toSquare, type: move.isPromotion ? 'KING' : p.type }
+      ? {
+          ...p,
+          position: move.toSquare,
+          type: move.isPromotion ? 'KING' : p.type,
+        }
       : p,
   );
 
