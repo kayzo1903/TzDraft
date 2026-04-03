@@ -12,7 +12,7 @@ export const BOT_TIERS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 export const TOTAL_BOT_LEVELS = 19;
-export const INITIAL_FREE_LEVELS = 5;
+export const INITIAL_FREE_LEVELS = 3;
 
 const clampLevel = (level: number) => Math.min(Math.max(level, 1), TOTAL_BOT_LEVELS);
 
@@ -66,7 +66,7 @@ export const getMaxUnlockedBotLevel = (): number => {
   // Migrate from legacy tier-based storage
   const tierRaw = window.localStorage.getItem(UNLOCKED_TIER_KEY);
   const tierParsed = Number(tierRaw);
-  if (!tierRaw && typeof window !== "undefined") {
+  if (!tierRaw) {
     const legacyRaw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
     const legacyLevel = Number(legacyRaw);
     if (legacyRaw && !Number.isNaN(legacyLevel)) {
