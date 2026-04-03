@@ -41,7 +41,9 @@ export class AdminResolveTournamentMatchUseCase {
     }
 
     if (tournament.status !== TournamentStatus.ACTIVE) {
-      throw new BadRequestException('Manual result entry is only available for active tournaments');
+      throw new BadRequestException(
+        'Manual result entry is only available for active tournaments',
+      );
     }
 
     const match = await this.repo.findMatchById(matchId);
@@ -49,12 +51,17 @@ export class AdminResolveTournamentMatchUseCase {
       throw new NotFoundException('Tournament match not found');
     }
 
-    if (match.status === MatchStatus.COMPLETED || match.status === MatchStatus.BYE) {
+    if (
+      match.status === MatchStatus.COMPLETED ||
+      match.status === MatchStatus.BYE
+    ) {
       throw new BadRequestException('This match is already resolved');
     }
 
     if (!match.player1Id || !match.player2Id) {
-      throw new BadRequestException('Cannot manually resolve a match without two assigned players');
+      throw new BadRequestException(
+        'Cannot manually resolve a match without two assigned players',
+      );
     }
 
     if (match.currentGameId) {
@@ -99,13 +106,17 @@ export class AdminResolveTournamentMatchUseCase {
       }
     }
 
-    this.gateway.emitTournamentMatchCompleted(savedMatch.player1Id!, savedMatch.player2Id!, {
-      matchId: savedMatch.id,
-      winnerId,
-      score: 'Admin override',
-      tournamentId,
-      manuallyResolved: true,
-    });
+    this.gateway.emitTournamentMatchCompleted(
+      savedMatch.player1Id!,
+      savedMatch.player2Id!,
+      {
+        matchId: savedMatch.id,
+        winnerId,
+        score: 'Admin override',
+        tournamentId,
+        manuallyResolved: true,
+      },
+    );
 
     const allMatches = await this.repo.findMatchesByRound(savedMatch.roundId);
     const allDone = allMatches.every((roundMatch) => roundMatch.isComplete());

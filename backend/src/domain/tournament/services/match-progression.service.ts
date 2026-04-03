@@ -1,10 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { TournamentMatch, MatchGameResult, MatchResult } from '../entities/tournament-match.entity';
+import {
+  TournamentMatch,
+  MatchGameResult,
+  MatchResult,
+} from '../entities/tournament-match.entity';
 import { TournamentMatchGame } from '../entities/tournament-match-game.entity';
 
 export type ProgressionDecision =
   | { action: 'SPAWN_NEXT'; gameNumber: number; isExtra: boolean }
-  | { action: 'END_MATCH'; result: MatchResult; winnerId: string; loserId: string | null; score: string };
+  | {
+      action: 'END_MATCH';
+      result: MatchResult;
+      winnerId: string;
+      loserId: string | null;
+      score: string;
+    };
 
 @Injectable()
 export class MatchProgressionService {
@@ -38,7 +48,11 @@ export class MatchProgressionService {
       }
       // Tied — spawn extra game
       const nextGameNumber = m.gamesPlayed + 1;
-      return { action: 'SPAWN_NEXT', gameNumber: nextGameNumber, isExtra: true };
+      return {
+        action: 'SPAWN_NEXT',
+        gameNumber: nextGameNumber,
+        isExtra: true,
+      };
     }
 
     // Still within the base 3 games
@@ -54,7 +68,10 @@ export class MatchProgressionService {
     match: TournamentMatch,
     gameResult: MatchGameResult,
   ): TournamentMatch {
-    const copy = Object.assign(Object.create(Object.getPrototypeOf(match)), match) as TournamentMatch;
+    const copy = Object.assign(
+      Object.create(Object.getPrototypeOf(match)),
+      match,
+    ) as TournamentMatch;
 
     (copy as any).gamesPlayed = match.gamesPlayed + 1;
 
@@ -75,10 +92,21 @@ export class MatchProgressionService {
     return copy;
   }
 
-  private endMatch(match: TournamentMatch, result: MatchResult): ProgressionDecision {
-    const winnerId = result === MatchResult.PLAYER1_WIN ? match.player1Id! : match.player2Id!;
-    const loserId = result === MatchResult.PLAYER1_WIN ? match.player2Id : match.player1Id;
+  private endMatch(
+    match: TournamentMatch,
+    result: MatchResult,
+  ): ProgressionDecision {
+    const winnerId =
+      result === MatchResult.PLAYER1_WIN ? match.player1Id! : match.player2Id!;
+    const loserId =
+      result === MatchResult.PLAYER1_WIN ? match.player2Id : match.player1Id;
     const score = `${match.player1Wins}–${match.player2Wins}`;
-    return { action: 'END_MATCH', result, winnerId, loserId: loserId ?? null, score };
+    return {
+      action: 'END_MATCH',
+      result,
+      winnerId,
+      loserId: loserId ?? null,
+      score,
+    };
   }
 }

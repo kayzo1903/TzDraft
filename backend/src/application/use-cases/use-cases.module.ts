@@ -38,7 +38,13 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
  * Provides all application use cases
  */
 @Module({
-  imports: [RepositoryModule, forwardRef(() => MessagingModule), UserModule, PrismaModule, EmailModule],
+  imports: [
+    RepositoryModule,
+    forwardRef(() => MessagingModule),
+    UserModule,
+    PrismaModule,
+    EmailModule,
+  ],
   providers: [
     RatingService,
     CreateGameUseCase,

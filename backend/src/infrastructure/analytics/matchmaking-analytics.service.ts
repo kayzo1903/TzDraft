@@ -49,7 +49,9 @@ export class MatchmakingAnalyticsService {
       ]);
     } catch (error) {
       if (this.isMissingTable(error)) {
-        this.logger.warn('matchmaking_searches table missing — skipping startSearch analytics');
+        this.logger.warn(
+          'matchmaking_searches table missing — skipping startSearch analytics',
+        );
         return;
       }
       throw error;
@@ -79,10 +81,14 @@ export class MatchmakingAnalyticsService {
 
   async markMatchedUsers(userIds: string[], gameId: string): Promise<void> {
     try {
-      await Promise.all(userIds.map((userId) => this.markMatched(userId, gameId)));
+      await Promise.all(
+        userIds.map((userId) => this.markMatched(userId, gameId)),
+      );
     } catch (error) {
       if (this.isMissingTable(error)) {
-        this.logger.warn('matchmaking_searches table missing — skipping markMatchedUsers analytics');
+        this.logger.warn(
+          'matchmaking_searches table missing — skipping markMatchedUsers analytics',
+        );
         return;
       }
       throw error;
@@ -103,7 +109,8 @@ export class MatchmakingAnalyticsService {
       if (!openSearch) return;
 
       const now = new Date();
-      const elapsedMs = now.getTime() - new Date(openSearch.started_at).getTime();
+      const elapsedMs =
+        now.getTime() - new Date(openSearch.started_at).getTime();
       const isExpired = elapsedMs >= SEARCH_TIMEOUT_MS;
 
       await this.prisma.$executeRaw`
@@ -116,7 +123,9 @@ export class MatchmakingAnalyticsService {
       `;
     } catch (error) {
       if (this.isMissingTable(error)) {
-        this.logger.warn('matchmaking_searches table missing — skipping closeSearch analytics');
+        this.logger.warn(
+          'matchmaking_searches table missing — skipping closeSearch analytics',
+        );
         return;
       }
       throw error;
@@ -125,6 +134,8 @@ export class MatchmakingAnalyticsService {
 
   private isMissingTable(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
-    return error.message.includes('relation "matchmaking_searches" does not exist');
+    return error.message.includes(
+      'relation "matchmaking_searches" does not exist',
+    );
   }
 }

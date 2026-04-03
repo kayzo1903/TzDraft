@@ -43,10 +43,7 @@ export class NotificationController {
 
   @Patch(':id/read')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async markRead(
-    @Param('id') id: string,
-    @CurrentUser() user: { id: string },
-  ) {
+  async markRead(@Param('id') id: string, @CurrentUser() user: { id: string }) {
     await this.notifRepo.markRead(id, user.id);
   }
 

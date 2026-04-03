@@ -6,10 +6,27 @@ import {
   TournamentFilters,
   TournamentScheduleUpdate,
 } from '../../domain/tournament/repositories/tournament.repository.interface';
-import { Tournament, TournamentFormat, TournamentStyle, TournamentStatus, TournamentScope } from '../../domain/tournament/entities/tournament.entity';
-import { TournamentParticipant, ParticipantStatus } from '../../domain/tournament/entities/tournament-participant.entity';
-import { TournamentRound, RoundStatus } from '../../domain/tournament/entities/tournament-round.entity';
-import { TournamentMatch, MatchStatus, MatchResult, MatchGameResult } from '../../domain/tournament/entities/tournament-match.entity';
+import {
+  Tournament,
+  TournamentFormat,
+  TournamentStyle,
+  TournamentStatus,
+  TournamentScope,
+} from '../../domain/tournament/entities/tournament.entity';
+import {
+  TournamentParticipant,
+  ParticipantStatus,
+} from '../../domain/tournament/entities/tournament-participant.entity';
+import {
+  TournamentRound,
+  RoundStatus,
+} from '../../domain/tournament/entities/tournament-round.entity';
+import {
+  TournamentMatch,
+  MatchStatus,
+  MatchResult,
+  MatchGameResult,
+} from '../../domain/tournament/entities/tournament-match.entity';
 import { TournamentMatchGame } from '../../domain/tournament/entities/tournament-match-game.entity';
 import type { Prisma } from '@prisma/client';
 
@@ -20,7 +37,9 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   // ── Tournament ──────────────────────────────────────────────
 
   async create(tournament: Tournament): Promise<Tournament> {
-    const row = await this.prisma.tournament.create({ data: this.toTournamentData(tournament) });
+    const row = await this.prisma.tournament.create({
+      data: this.toTournamentData(tournament),
+    });
     return this.toDomainTournament(row);
   }
 
@@ -36,7 +55,10 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     if (filters?.scope) where.scope = filters.scope as any;
     if (filters?.country) where.country = filters.country;
     if (filters?.region) where.region = filters.region;
-    const rows = await this.prisma.tournament.findMany({ where, orderBy: { scheduledStartAt: 'asc' } });
+    const rows = await this.prisma.tournament.findMany({
+      where,
+      orderBy: { scheduledStartAt: 'asc' },
+    });
     return rows.map((r) => this.toDomainTournament(r));
   }
 
@@ -48,7 +70,10 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     return this.toDomainTournament(row);
   }
 
-  async updateSchedule(id: string, schedule: TournamentScheduleUpdate): Promise<Tournament> {
+  async updateSchedule(
+    id: string,
+    schedule: TournamentScheduleUpdate,
+  ): Promise<Tournament> {
     const row = await this.prisma.tournament.update({
       where: { id },
       data: {
@@ -60,7 +85,10 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     return this.toDomainTournament(row);
   }
 
-  async updateDetails(id: string, details: TournamentAdminUpdate): Promise<Tournament> {
+  async updateDetails(
+    id: string,
+    details: TournamentAdminUpdate,
+  ): Promise<Tournament> {
     const row = await this.prisma.tournament.update({
       where: { id },
       data: {
@@ -85,19 +113,28 @@ export class PrismaTournamentRepository implements ITournamentRepository {
 
   // ── Participants ─────────────────────────────────────────────
 
-  async createParticipant(p: TournamentParticipant): Promise<TournamentParticipant> {
-    const row = await this.prisma.tournamentParticipant.create({ data: this.toParticipantData(p) });
+  async createParticipant(
+    p: TournamentParticipant,
+  ): Promise<TournamentParticipant> {
+    const row = await this.prisma.tournamentParticipant.create({
+      data: this.toParticipantData(p),
+    });
     return this.toDomainParticipant(row);
   }
 
-  async findParticipant(tournamentId: string, userId: string): Promise<TournamentParticipant | null> {
+  async findParticipant(
+    tournamentId: string,
+    userId: string,
+  ): Promise<TournamentParticipant | null> {
     const row = await this.prisma.tournamentParticipant.findUnique({
       where: { tournamentId_userId: { tournamentId, userId } },
     });
     return row ? this.toDomainParticipant(row) : null;
   }
 
-  async findParticipantsByTournament(tournamentId: string): Promise<TournamentParticipant[]> {
+  async findParticipantsByTournament(
+    tournamentId: string,
+  ): Promise<TournamentParticipant[]> {
     const rows = await this.prisma.tournamentParticipant.findMany({
       where: { tournamentId },
       orderBy: { seed: 'asc' },
@@ -105,9 +142,13 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     return rows.map((r) => this.toDomainParticipant(r));
   }
 
-  async updateParticipant(p: TournamentParticipant): Promise<TournamentParticipant> {
+  async updateParticipant(
+    p: TournamentParticipant,
+  ): Promise<TournamentParticipant> {
     const row = await this.prisma.tournamentParticipant.update({
-      where: { tournamentId_userId: { tournamentId: p.tournamentId, userId: p.userId } },
+      where: {
+        tournamentId_userId: { tournamentId: p.tournamentId, userId: p.userId },
+      },
       data: {
         seed: p.seed,
         status: p.status as any,
@@ -133,11 +174,15 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   // ── Rounds ───────────────────────────────────────────────────
 
   async createRound(round: TournamentRound): Promise<TournamentRound> {
-    const row = await this.prisma.tournamentRound.create({ data: this.toRoundData(round) });
+    const row = await this.prisma.tournamentRound.create({
+      data: this.toRoundData(round),
+    });
     return this.toDomainRound(row);
   }
 
-  async findRoundsByTournament(tournamentId: string): Promise<TournamentRound[]> {
+  async findRoundsByTournament(
+    tournamentId: string,
+  ): Promise<TournamentRound[]> {
     const rows = await this.prisma.tournamentRound.findMany({
       where: { tournamentId },
       orderBy: { roundNumber: 'asc' },
@@ -145,7 +190,10 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     return rows.map((r) => this.toDomainRound(r));
   }
 
-  async findRoundByNumber(tournamentId: string, roundNumber: number): Promise<TournamentRound | null> {
+  async findRoundByNumber(
+    tournamentId: string,
+    roundNumber: number,
+  ): Promise<TournamentRound | null> {
     const row = await this.prisma.tournamentRound.findUnique({
       where: { tournamentId_roundNumber: { tournamentId, roundNumber } },
     });
@@ -155,7 +203,11 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   async updateRound(round: TournamentRound): Promise<TournamentRound> {
     const row = await this.prisma.tournamentRound.update({
       where: { id: round.id },
-      data: { status: round.status as any, startedAt: round.startedAt, completedAt: round.completedAt },
+      data: {
+        status: round.status as any,
+        startedAt: round.startedAt,
+        completedAt: round.completedAt,
+      },
     });
     return this.toDomainRound(row);
   }
@@ -163,7 +215,9 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   // ── Matches ──────────────────────────────────────────────────
 
   async createMatch(match: TournamentMatch): Promise<TournamentMatch> {
-    const row = await this.prisma.tournamentMatch.create({ data: this.toMatchData(match) });
+    const row = await this.prisma.tournamentMatch.create({
+      data: this.toMatchData(match),
+    });
     return this.toDomainMatch(row);
   }
 
@@ -173,12 +227,18 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   }
 
   async findMatchesByRound(roundId: string): Promise<TournamentMatch[]> {
-    const rows = await this.prisma.tournamentMatch.findMany({ where: { roundId } });
+    const rows = await this.prisma.tournamentMatch.findMany({
+      where: { roundId },
+    });
     return rows.map((r) => this.toDomainMatch(r));
   }
 
-  async findMatchesByTournament(tournamentId: string): Promise<TournamentMatch[]> {
-    const rows = await this.prisma.tournamentMatch.findMany({ where: { tournamentId } });
+  async findMatchesByTournament(
+    tournamentId: string,
+  ): Promise<TournamentMatch[]> {
+    const rows = await this.prisma.tournamentMatch.findMany({
+      where: { tournamentId },
+    });
     return rows.map((r) => this.toDomainMatch(r));
   }
 
@@ -203,7 +263,9 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     return this.toDomainMatch(row);
   }
 
-  async findMatchByCurrentGameId(gameId: string): Promise<TournamentMatch | null> {
+  async findMatchByCurrentGameId(
+    gameId: string,
+  ): Promise<TournamentMatch | null> {
     const row = await this.prisma.tournamentMatch.findFirst({
       where: { currentGameId: gameId },
     });
@@ -214,7 +276,12 @@ export class PrismaTournamentRepository implements ITournamentRepository {
 
   async createMatchGame(mg: TournamentMatchGame): Promise<TournamentMatchGame> {
     const row = await this.prisma.tournamentMatchGame.create({
-      data: { id: mg.id, matchId: mg.matchId, gameNumber: mg.gameNumber, isExtra: mg.isExtra },
+      data: {
+        id: mg.id,
+        matchId: mg.matchId,
+        gameNumber: mg.gameNumber,
+        isExtra: mg.isExtra,
+      },
     });
     return this.toDomainMatchGame(row);
   }
@@ -239,85 +306,163 @@ export class PrismaTournamentRepository implements ITournamentRepository {
 
   private toDomainTournament(row: any): Tournament {
     return new Tournament(
-      row.id, row.name, row.descriptionEn, row.descriptionSw,
-      row.format as TournamentFormat, row.style as TournamentStyle,
-      row.status as TournamentStatus, row.scope as TournamentScope,
-      row.maxPlayers, row.minPlayers, row.scheduledStartAt, row.createdById,
-      row.createdAt, row.country, row.region, row.rulesEn, row.rulesSw,
-      row.minElo, row.maxElo, row.minMatchmakingWins, row.minAiLevelBeaten,
-      row.requiredAiLevelPlayed, row.registrationDeadline,
+      row.id,
+      row.name,
+      row.descriptionEn,
+      row.descriptionSw,
+      row.format as TournamentFormat,
+      row.style as TournamentStyle,
+      row.status as TournamentStatus,
+      row.scope as TournamentScope,
+      row.maxPlayers,
+      row.minPlayers,
+      row.scheduledStartAt,
+      row.createdById,
+      row.createdAt,
+      row.country,
+      row.region,
+      row.rulesEn,
+      row.rulesSw,
+      row.minElo,
+      row.maxElo,
+      row.minMatchmakingWins,
+      row.minAiLevelBeaten,
+      row.requiredAiLevelPlayed,
+      row.registrationDeadline,
     );
   }
 
   private toDomainParticipant(row: any): TournamentParticipant {
     return new TournamentParticipant(
-      row.id, row.tournamentId, row.userId, row.eloAtSignup, row.registeredAt,
-      row.status as ParticipantStatus, row.seed, row.matchWins, row.matchLosses,
-      row.totalGamePoints, row.tiebreakScore,
+      row.id,
+      row.tournamentId,
+      row.userId,
+      row.eloAtSignup,
+      row.registeredAt,
+      row.status as ParticipantStatus,
+      row.seed,
+      row.matchWins,
+      row.matchLosses,
+      row.totalGamePoints,
+      row.tiebreakScore,
     );
   }
 
   private toDomainRound(row: any): TournamentRound {
-    return new TournamentRound(row.id, row.tournamentId, row.roundNumber,
-      row.status as RoundStatus, row.startedAt, row.completedAt);
+    return new TournamentRound(
+      row.id,
+      row.tournamentId,
+      row.roundNumber,
+      row.status as RoundStatus,
+      row.startedAt,
+      row.completedAt,
+    );
   }
 
   private toDomainMatch(row: any): TournamentMatch {
     return new TournamentMatch(
-      row.id, row.roundId, row.tournamentId,
-      row.status as MatchStatus, row.result as MatchResult | null,
-      row.player1Id, row.player2Id,
-      row.player1Wins, row.player2Wins,
-      row.player1ConsecLoss, row.player2ConsecLoss,
-      row.gamesPlayed, row.player1GamePoints, row.player2GamePoints,
-      row.currentGameId, row.startedAt, row.completedAt,
+      row.id,
+      row.roundId,
+      row.tournamentId,
+      row.status as MatchStatus,
+      row.result as MatchResult | null,
+      row.player1Id,
+      row.player2Id,
+      row.player1Wins,
+      row.player2Wins,
+      row.player1ConsecLoss,
+      row.player2ConsecLoss,
+      row.gamesPlayed,
+      row.player1GamePoints,
+      row.player2GamePoints,
+      row.currentGameId,
+      row.startedAt,
+      row.completedAt,
     );
   }
 
   private toDomainMatchGame(row: any): TournamentMatchGame {
     return new TournamentMatchGame(
-      row.id, row.matchId, row.gameNumber, row.isExtra,
+      row.id,
+      row.matchId,
+      row.gameNumber,
+      row.isExtra,
       row.result as MatchGameResult | null,
     );
   }
 
   private toTournamentData(t: Tournament) {
     return {
-      id: t.id, name: t.name, descriptionEn: t.descriptionEn, descriptionSw: t.descriptionSw,
-      rulesEn: t.rulesEn, rulesSw: t.rulesSw, format: t.format as any, style: t.style as any,
-      status: t.status as any, scope: t.scope as any, country: t.country, region: t.region,
-      minElo: t.minElo, maxElo: t.maxElo, minMatchmakingWins: t.minMatchmakingWins,
-      minAiLevelBeaten: t.minAiLevelBeaten, requiredAiLevelPlayed: t.requiredAiLevelPlayed,
-      maxPlayers: t.maxPlayers, minPlayers: t.minPlayers, registrationDeadline: t.registrationDeadline,
-      scheduledStartAt: t.scheduledStartAt, createdById: t.createdById,
+      id: t.id,
+      name: t.name,
+      descriptionEn: t.descriptionEn,
+      descriptionSw: t.descriptionSw,
+      rulesEn: t.rulesEn,
+      rulesSw: t.rulesSw,
+      format: t.format as any,
+      style: t.style as any,
+      status: t.status as any,
+      scope: t.scope as any,
+      country: t.country,
+      region: t.region,
+      minElo: t.minElo,
+      maxElo: t.maxElo,
+      minMatchmakingWins: t.minMatchmakingWins,
+      minAiLevelBeaten: t.minAiLevelBeaten,
+      requiredAiLevelPlayed: t.requiredAiLevelPlayed,
+      maxPlayers: t.maxPlayers,
+      minPlayers: t.minPlayers,
+      registrationDeadline: t.registrationDeadline,
+      scheduledStartAt: t.scheduledStartAt,
+      createdById: t.createdById,
     };
   }
 
   private toParticipantData(p: TournamentParticipant) {
     return {
-      id: p.id, tournamentId: p.tournamentId, userId: p.userId, seed: p.seed,
-      eloAtSignup: p.eloAtSignup, status: p.status as any, matchWins: p.matchWins,
-      matchLosses: p.matchLosses, totalGamePoints: p.totalGamePoints, tiebreakScore: p.tiebreakScore,
+      id: p.id,
+      tournamentId: p.tournamentId,
+      userId: p.userId,
+      seed: p.seed,
+      eloAtSignup: p.eloAtSignup,
+      status: p.status as any,
+      matchWins: p.matchWins,
+      matchLosses: p.matchLosses,
+      totalGamePoints: p.totalGamePoints,
+      tiebreakScore: p.tiebreakScore,
     };
   }
 
   private toRoundData(r: TournamentRound) {
     return {
-      id: r.id, tournamentId: r.tournamentId, roundNumber: r.roundNumber,
-      status: r.status as any, startedAt: r.startedAt, completedAt: r.completedAt,
+      id: r.id,
+      tournamentId: r.tournamentId,
+      roundNumber: r.roundNumber,
+      status: r.status as any,
+      startedAt: r.startedAt,
+      completedAt: r.completedAt,
     };
   }
 
   private toMatchData(m: TournamentMatch) {
     return {
-      id: m.id, roundId: m.roundId, tournamentId: m.tournamentId,
-      player1Id: m.player1Id, player2Id: m.player2Id, status: m.status as any,
+      id: m.id,
+      roundId: m.roundId,
+      tournamentId: m.tournamentId,
+      player1Id: m.player1Id,
+      player2Id: m.player2Id,
+      status: m.status as any,
       result: m.result as any,
-      player1Wins: m.player1Wins, player2Wins: m.player2Wins,
-      player1ConsecLoss: m.player1ConsecLoss, player2ConsecLoss: m.player2ConsecLoss,
-      gamesPlayed: m.gamesPlayed, player1GamePoints: m.player1GamePoints,
-      player2GamePoints: m.player2GamePoints, currentGameId: m.currentGameId,
-      startedAt: m.startedAt, completedAt: m.completedAt,
+      player1Wins: m.player1Wins,
+      player2Wins: m.player2Wins,
+      player1ConsecLoss: m.player1ConsecLoss,
+      player2ConsecLoss: m.player2ConsecLoss,
+      gamesPlayed: m.gamesPlayed,
+      player1GamePoints: m.player1GamePoints,
+      player2GamePoints: m.player2GamePoints,
+      currentGameId: m.currentGameId,
+      startedAt: m.startedAt,
+      completedAt: m.completedAt,
     };
   }
 }

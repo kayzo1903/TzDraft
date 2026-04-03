@@ -1,7 +1,10 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { MatchProgressionService } from '../../../domain/tournament/services/match-progression.service';
-import { MatchGameResult, MatchStatus } from '../../../domain/tournament/entities/tournament-match.entity';
+import {
+  MatchGameResult,
+  MatchStatus,
+} from '../../../domain/tournament/entities/tournament-match.entity';
 import { ParticipantStatus } from '../../../domain/tournament/entities/tournament-participant.entity';
 import { RoundStatus } from '../../../domain/tournament/entities/tournament-round.entity';
 import { Tournament } from '../../../domain/tournament/entities/tournament.entity';
@@ -114,12 +117,16 @@ export class ReportTournamentResultUseCase {
     }
 
     // Emit match complete
-    this.gateway.emitTournamentMatchCompleted(match.player1Id!, match.player2Id!, {
-      matchId: match.id,
-      winnerId: decision.winnerId,
-      score: decision.score,
-      tournamentId: match.tournamentId,
-    });
+    this.gateway.emitTournamentMatchCompleted(
+      match.player1Id!,
+      match.player2Id!,
+      {
+        matchId: match.id,
+        winnerId: decision.winnerId,
+        score: decision.score,
+        tournamentId: match.tournamentId,
+      },
+    );
 
     // Notify match result
     const score = `${match.player1Wins}-${match.player2Wins}`;
@@ -149,9 +156,13 @@ export class ReportTournamentResultUseCase {
 
     const whiteIsPlayer1 = match.player1Id === whitePlayerId;
     if (winner === Winner.WHITE) {
-      return whiteIsPlayer1 ? MatchGameResult.PLAYER1_WIN : MatchGameResult.PLAYER2_WIN;
+      return whiteIsPlayer1
+        ? MatchGameResult.PLAYER1_WIN
+        : MatchGameResult.PLAYER2_WIN;
     }
     // Winner.BLACK
-    return whiteIsPlayer1 ? MatchGameResult.PLAYER2_WIN : MatchGameResult.PLAYER1_WIN;
+    return whiteIsPlayer1
+      ? MatchGameResult.PLAYER2_WIN
+      : MatchGameResult.PLAYER1_WIN;
   }
 }

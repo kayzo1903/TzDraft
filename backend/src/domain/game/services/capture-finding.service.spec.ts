@@ -2,7 +2,10 @@ import { CaptureFindingService } from './capture-finding.service';
 import { BoardState } from '../value-objects/board-state.vo';
 import { Piece } from '../value-objects/piece.vo';
 import { Position } from '../value-objects/position.vo';
-import { PlayerColor, PieceType } from '../../../shared/constants/game.constants';
+import {
+  PlayerColor,
+  PieceType,
+} from '../../../shared/constants/game.constants';
 
 // Board coordinate quick-reference (position → row,col):
 //   pos 6  → (1,2)   pos 10 → (2,3)   pos 14 → (3,2)
@@ -187,35 +190,26 @@ describe('CaptureFindingService', () => {
   describe('isValidCapture', () => {
     it('returns true for a matching capture', () => {
       const b = board(wp(18), bp(22));
-      const result = service.isValidCapture(
-        b,
-        wp(18),
-        new Position(25),
-        [new Position(22)],
-      );
+      const result = service.isValidCapture(b, wp(18), new Position(25), [
+        new Position(22),
+      ]);
       expect(result).toBe(true);
     });
 
     it('returns false when destination does not match', () => {
       const b = board(wp(18), bp(22));
-      const result = service.isValidCapture(
-        b,
-        wp(18),
-        new Position(26),
-        [new Position(22)],
-      );
+      const result = service.isValidCapture(b, wp(18), new Position(26), [
+        new Position(22),
+      ]);
       expect(result).toBe(false);
     });
 
     it('returns false when captured squares do not match', () => {
       const b = board(wp(18), bp(22));
       // Correct destination (25) but wrong captured square
-      const result = service.isValidCapture(
-        b,
-        wp(18),
-        new Position(25),
-        [new Position(21)],
-      );
+      const result = service.isValidCapture(b, wp(18), new Position(25), [
+        new Position(21),
+      ]);
       expect(result).toBe(false);
     });
   });

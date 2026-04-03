@@ -25,11 +25,21 @@ import { TurnModule } from './turn/turn.module';
     }),
     LoggerModule.forRoot({
       pinoHttp: {
-        level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+        level:
+          process.env.LOG_LEVEL ??
+          (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
         // Pretty-print in dev; structured JSON in production
-        transport: process.env.NODE_ENV !== 'production'
-          ? { target: 'pino-pretty', options: { colorize: true, singleLine: true, ignore: 'pid,hostname' } }
-          : undefined,
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  colorize: true,
+                  singleLine: true,
+                  ignore: 'pid,hostname',
+                },
+              }
+            : undefined,
         customProps: () => ({ service: 'tzdraft-backend' }),
         serializers: {
           req: (req) => ({ id: req.id, method: req.method, url: req.url }),
@@ -51,7 +61,7 @@ import { TurnModule } from './turn/turn.module';
     UserModule,
     HttpModule,
     EngineModule, // Provides MkaguziAdapter globally
-    TasksModule,  // Scheduled cleanup jobs
+    TasksModule, // Scheduled cleanup jobs
     HealthModule,
     AdminModule,
     TurnModule,

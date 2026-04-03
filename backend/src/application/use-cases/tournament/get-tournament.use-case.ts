@@ -37,7 +37,9 @@ export class GetTournamentUseCase {
     ]);
 
     const users = await this.prisma.user.findMany({
-      where: { id: { in: participants.map((participant) => participant.userId) } },
+      where: {
+        id: { in: participants.map((participant) => participant.userId) },
+      },
       select: {
         id: true,
         displayName: true,
@@ -46,14 +48,16 @@ export class GetTournamentUseCase {
     });
 
     const userMap = new Map(users.map((user) => [user.id, user]));
-    const participantViews: TournamentParticipantView[] = participants.map((participant) => {
-      const user = userMap.get(participant.userId);
-      return {
-        ...participant,
-        displayName: user?.displayName ?? participant.userId.slice(0, 8),
-        username: user?.username ?? participant.userId.slice(0, 8),
-      };
-    });
+    const participantViews: TournamentParticipantView[] = participants.map(
+      (participant) => {
+        const user = userMap.get(participant.userId);
+        return {
+          ...participant,
+          displayName: user?.displayName ?? participant.userId.slice(0, 8),
+          username: user?.username ?? participant.userId.slice(0, 8),
+        };
+      },
+    );
 
     return { tournament, participants: participantViews, rounds, matches };
   }

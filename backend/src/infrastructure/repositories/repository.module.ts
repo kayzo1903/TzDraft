@@ -50,6 +50,12 @@ import { PrismaNotificationRepository } from './prisma-notification.repository';
       useClass: PrismaNotificationRepository,
     },
   ],
-  exports: ['IGameRepository', 'IMoveRepository', 'IMatchmakingRepository', 'ITournamentRepository', 'INotificationRepository'],
+  exports: [
+    'IGameRepository',
+    'IMoveRepository',
+    'IMatchmakingRepository',
+    'ITournamentRepository',
+    'INotificationRepository',
+  ],
 })
 export class RepositoryModule {}

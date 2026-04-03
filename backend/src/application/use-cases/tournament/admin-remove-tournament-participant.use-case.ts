@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
 import { ParticipantStatus } from '../../../domain/tournament/entities/tournament-participant.entity';
 
@@ -14,7 +19,9 @@ export class AdminRemoveTournamentParticipantUseCase {
     if (!tournament) throw new NotFoundException('Tournament not found');
 
     if (!tournament.isRegistrationOpen()) {
-      throw new BadRequestException('Players can only be removed before the tournament starts');
+      throw new BadRequestException(
+        'Players can only be removed before the tournament starts',
+      );
     }
 
     const participant = await this.repo.findParticipant(tournamentId, userId);

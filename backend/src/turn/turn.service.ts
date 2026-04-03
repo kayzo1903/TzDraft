@@ -39,10 +39,7 @@ export class TurnService {
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         {
-          urls: [
-            `turn:${serverUrl}:3478`,
-            `turns:${serverUrl}:5349`,
-          ],
+          urls: [`turn:${serverUrl}:3478`, `turns:${serverUrl}:5349`],
           username,
           credential,
         },

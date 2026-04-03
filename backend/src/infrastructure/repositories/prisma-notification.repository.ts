@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma/prisma.service';
-import { Notification, NotificationType } from '../../domain/notification/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../../domain/notification/notification.entity';
 import type { INotificationRepository } from '../../domain/notification/repositories/notification.repository.interface';
 
 @Injectable()
@@ -23,7 +26,11 @@ export class PrismaNotificationRepository implements INotificationRepository {
     return this.toDomain(row);
   }
 
-  async findByUserId(userId: string, limit = 20, offset = 0): Promise<Notification[]> {
+  async findByUserId(
+    userId: string,
+    limit = 20,
+    offset = 0,
+  ): Promise<Notification[]> {
     const rows = await this.prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },

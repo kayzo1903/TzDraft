@@ -7,7 +7,10 @@ import {
   PlayerStats,
 } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
-import { BoardState, PieceSnapshot } from '../../domain/game/value-objects/board-state.vo';
+import {
+  BoardState,
+  PieceSnapshot,
+} from '../../domain/game/value-objects/board-state.vo';
 import {
   GameStatus,
   GameType,
@@ -107,7 +110,13 @@ export class PrismaGameRepository implements IGameRepository {
         game.status === GameStatus.ABORTED;
       const ttl = isFinished ? FINISHED_GAME_CACHE_TTL : ACTIVE_GAME_CACHE_TTL;
       this.redisService
-        .setex(gameCacheKey(id), ttl, JSON.stringify(game, (_, v) => (typeof v === 'bigint' ? v.toString() : v)))
+        .setex(
+          gameCacheKey(id),
+          ttl,
+          JSON.stringify(game, (_, v) =>
+            typeof v === 'bigint' ? v.toString() : v,
+          ),
+        )
         .catch(() => {
           // Non-fatal — DB is the source of truth
         });
@@ -396,7 +405,9 @@ export class PrismaGameRepository implements IGameRepository {
       CASUAL: { ...empty },
     };
 
-    let wins = 0, losses = 0, draws = 0;
+    let wins = 0,
+      losses = 0,
+      draws = 0;
 
     for (const g of finished) {
       const isWhite = g.whitePlayerId === playerId;
@@ -456,7 +467,9 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.blackElo,
       prismaGame.aiLevel,
       // Use persisted game initial time; fall back only for pre-migration rows.
-      Number(prismaGame.initialTimeMs ?? prismaGame.clock?.whiteTimeMs ?? 600000),
+      Number(
+        prismaGame.initialTimeMs ?? prismaGame.clock?.whiteTimeMs ?? 600000,
+      ),
 
       prismaGame.clock
         ? {

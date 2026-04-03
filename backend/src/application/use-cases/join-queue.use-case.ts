@@ -1,6 +1,9 @@
 import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import type { IMatchmakingRepository, MatchmakingEntry } from '../../domain/game/repositories/matchmaking.repository.interface';
+import type {
+  IMatchmakingRepository,
+  MatchmakingEntry,
+} from '../../domain/game/repositories/matchmaking.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { GameStatus, GameType } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
@@ -107,14 +110,21 @@ export class JoinQueueUseCase {
           where: { id: gameId },
           include: { moves: { take: 1 } },
         });
-        if (!game || game.status !== GameStatus.ACTIVE || game.moves.length > 0) return;
+        if (!game || game.status !== GameStatus.ACTIVE || game.moves.length > 0)
+          return;
 
         await this.prisma.game.update({
           where: { id: gameId },
           data: { status: GameStatus.ABORTED, endedAt: new Date() },
         });
-        this.gateway?.emitGameOver(gameId, { gameId, winner: 'NONE', reason: 'no_show' });
-        this.logger.log(`[NO-SHOW] Auto-aborted game ${gameId} — no moves after 30s`);
+        this.gateway?.emitGameOver(gameId, {
+          gameId,
+          winner: 'NONE',
+          reason: 'no_show',
+        });
+        this.logger.log(
+          `[NO-SHOW] Auto-aborted game ${gameId} — no moves after 30s`,
+        );
       } catch (err) {
         this.logger.error(`[NO-SHOW] Check failed for game ${gameId}`, err);
       }
@@ -129,7 +139,9 @@ export class JoinQueueUseCase {
     socketId: string,
     userRating?: number | null,
   ): Promise<JoinQueueResult> {
-    this.logger.log(`[QUEUE] user=${userId} timeMs=${timeMs} rating=${userRating ?? 'null'}`);
+    this.logger.log(
+      `[QUEUE] user=${userId} timeMs=${timeMs} rating=${userRating ?? 'null'}`,
+    );
 
     // 1. Remove stale entries (Redis TTL handles this automatically, but
     //    we also clean up explicitly to keep queue counts accurate).
@@ -148,7 +160,9 @@ export class JoinQueueUseCase {
       },
     });
     if (selfActiveGameCount > 0) {
-      this.logger.warn(`[QUEUE] user=${userId} blocked — already in ACTIVE game`);
+      this.logger.warn(
+        `[QUEUE] user=${userId} blocked — already in ACTIVE game`,
+      );
       return { status: 'waiting' };
     }
 
@@ -162,7 +176,9 @@ export class JoinQueueUseCase {
       userId,
       userRating,
     );
-    this.logger.log(`[QUEUE] step4 user=${userId} opponent=${opponent?.userId ?? 'null'}`);
+    this.logger.log(
+      `[QUEUE] step4 user=${userId} opponent=${opponent?.userId ?? 'null'}`,
+    );
 
     if (opponent) {
       // 5. Double-check the opponent is not already in a live game.
@@ -219,7 +235,9 @@ export class JoinQueueUseCase {
         [userId, opponentUserId],
         gameId,
       );
-      this.logger.log(`[QUEUE] step6 matched user=${userId} vs ${opponentUserId} gameId=${gameId}`);
+      this.logger.log(
+        `[QUEUE] step6 matched user=${userId} vs ${opponentUserId} gameId=${gameId}`,
+      );
       return { status: 'matched', gameId, opponentUserId };
     }
 
@@ -241,7 +259,9 @@ export class JoinQueueUseCase {
       userId,
       userRating,
     );
-    this.logger.log(`[QUEUE] step7b user=${userId} lateOpponent=${lateOpponent?.userId ?? 'null'}`);
+    this.logger.log(
+      `[QUEUE] step7b user=${userId} lateOpponent=${lateOpponent?.userId ?? 'null'}`,
+    );
 
     if (lateOpponent) {
       const { gameId, opponentUserId } = await this.createMatchedGame(
@@ -256,7 +276,9 @@ export class JoinQueueUseCase {
       // The opponent is waiting in the queue (not making an HTTP call), so we
       // must push the matchFound event to them via the WebSocket gateway.
       // We return the opponent's userId so the controller can do the emit.
-      this.logger.log(`[QUEUE] step7b matched user=${userId} vs ${opponentUserId} gameId=${gameId}`);
+      this.logger.log(
+        `[QUEUE] step7b matched user=${userId} vs ${opponentUserId} gameId=${gameId}`,
+      );
       return { status: 'matched', gameId, opponentUserId };
     }
 

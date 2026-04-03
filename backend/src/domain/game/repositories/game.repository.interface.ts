@@ -1,8 +1,5 @@
 import { Game } from '../entities/game.entity';
-import {
-  GameStatus,
-  GameType,
-} from '../../../shared/constants/game.constants';
+import { GameStatus, GameType } from '../../../shared/constants/game.constants';
 
 export interface GameHistoryFilters {
   result?: 'WIN' | 'LOSS' | 'DRAW';

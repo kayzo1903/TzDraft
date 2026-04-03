@@ -39,12 +39,17 @@ export class TournamentMatch {
   ) {}
 
   isComplete(): boolean {
-    return this.status === MatchStatus.COMPLETED || this.status === MatchStatus.BYE;
+    return (
+      this.status === MatchStatus.COMPLETED || this.status === MatchStatus.BYE
+    );
   }
 
   getWinnerId(): string | null {
     if (!this.result) return null;
-    if (this.result === MatchResult.PLAYER1_WIN || this.result === MatchResult.BYE) {
+    if (
+      this.result === MatchResult.PLAYER1_WIN ||
+      this.result === MatchResult.BYE
+    ) {
       return this.player1Id;
     }
     return this.player2Id;

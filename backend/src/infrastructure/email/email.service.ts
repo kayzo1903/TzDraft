@@ -104,14 +104,19 @@ export class EmailService {
 
   private get fromEmail(): string {
     const authDomain =
-      this.configService.get<string>('RESEND_AUTH_DOMAIN') || 'onboarding@resend.dev';
+      this.configService.get<string>('RESEND_AUTH_DOMAIN') ||
+      'onboarding@resend.dev';
     return authDomain === 'onboarding@resend.dev'
       ? authDomain
       : `noreply@${authDomain}`;
   }
 
   /** Fire-and-forget helper — logs error but never throws. */
-  private async sendQuiet(to: string, subject: string, html: string): Promise<void> {
+  private async sendQuiet(
+    to: string,
+    subject: string,
+    html: string,
+  ): Promise<void> {
     try {
       await this.resend.emails.send({
         from: `TzDraft <${this.fromEmail}>`,
@@ -132,8 +137,20 @@ export class EmailService {
     format: string,
     style: string,
   ): Promise<void> {
-    const html = await render(TournamentRegistered({ name, tournamentName, scheduledStartAt, format, style }));
-    await this.sendQuiet(userEmail, `You're registered for ${tournamentName}!`, html);
+    const html = await render(
+      TournamentRegistered({
+        name,
+        tournamentName,
+        scheduledStartAt,
+        format,
+        style,
+      }),
+    );
+    await this.sendQuiet(
+      userEmail,
+      `You're registered for ${tournamentName}!`,
+      html,
+    );
   }
 
   async sendTournamentStarted(
@@ -143,8 +160,14 @@ export class EmailService {
     roundNumber: number,
     matchesCount: number,
   ): Promise<void> {
-    const html = await render(TournamentStarted({ name, tournamentName, roundNumber, matchesCount }));
-    await this.sendQuiet(userEmail, `${tournamentName} has started — Round ${roundNumber} is live!`, html);
+    const html = await render(
+      TournamentStarted({ name, tournamentName, roundNumber, matchesCount }),
+    );
+    await this.sendQuiet(
+      userEmail,
+      `${tournamentName} has started — Round ${roundNumber} is live!`,
+      html,
+    );
   }
 
   async sendMatchAssigned(
@@ -155,8 +178,20 @@ export class EmailService {
     roundNumber: number,
     style: string,
   ): Promise<void> {
-    const html = await render(MatchAssigned({ name, opponentDisplayName, tournamentName, roundNumber, style }));
-    await this.sendQuiet(userEmail, `Your Round ${roundNumber} match vs ${opponentDisplayName} is ready!`, html);
+    const html = await render(
+      MatchAssigned({
+        name,
+        opponentDisplayName,
+        tournamentName,
+        roundNumber,
+        style,
+      }),
+    );
+    await this.sendQuiet(
+      userEmail,
+      `Your Round ${roundNumber} match vs ${opponentDisplayName} is ready!`,
+      html,
+    );
   }
 
   async sendMatchResult(
@@ -167,10 +202,13 @@ export class EmailService {
     score?: string,
     roundNumber?: number,
   ): Promise<void> {
-    const html = await render(TournamentResult({ name, tournamentName, outcome, score, roundNumber }));
-    const subject = outcome === 'winner'
-      ? `You won your Round ${roundNumber} match in ${tournamentName}!`
-      : `You've been eliminated from ${tournamentName}`;
+    const html = await render(
+      TournamentResult({ name, tournamentName, outcome, score, roundNumber }),
+    );
+    const subject =
+      outcome === 'winner'
+        ? `You won your Round ${roundNumber} match in ${tournamentName}!`
+        : `You've been eliminated from ${tournamentName}`;
     await this.sendQuiet(userEmail, subject, html);
   }
 
@@ -180,7 +218,40 @@ export class EmailService {
     tournamentName: string,
     winnerDisplayName: string,
   ): Promise<void> {
-    const html = await render(TournamentResult({ name, tournamentName, outcome: 'completed', winnerDisplayName }));
-    await this.sendQuiet(userEmail, `${tournamentName} is over — see the results!`, html);
+    const html = await render(
+      TournamentResult({
+        name,
+        tournamentName,
+        outcome: 'completed',
+        winnerDisplayName,
+      }),
+    );
+    await this.sendQuiet(
+      userEmail,
+      `${tournamentName} is over — see the results!`,
+      html,
+    );
+  }
+
+  async sendAnalyticsReport(html: string, reportDate: string) {
+    try {
+      const { error } = await this.resend.emails.send({
+        from: `TzDraft <${this.fromEmail}>`,
+        to: 'kay@zetutech.co.tz',
+        subject: `TzDraft Daily Report - ${reportDate}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send analytics report email:', error);
+        throw error;
+      }
+
+      this.logger.log('Analytics report email sent successfully');
+      return { success: true };
+    } catch (error) {
+      this.logger.error('Failed to send analytics report email', error);
+      throw error;
+    }
   }
 }
