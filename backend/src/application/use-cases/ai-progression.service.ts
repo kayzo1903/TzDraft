@@ -5,11 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { AiChallengeResult } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 
-const INITIAL_FREE_AI_LEVELS = 5;
+const INITIAL_FREE_AI_LEVELS = 3;
 const TOTAL_AI_LEVELS = 19;
-type AiChallengeResult = 'WIN' | 'LOSS' | 'DRAW';
 
 interface AiProgressRatingRow {
   highestAiLevelPlayed: number | null;
@@ -121,11 +121,14 @@ export class AiProgressionService {
     }
 
     await this.ensureRating(userId);
-    await this.prisma.$executeRaw`
-      UPDATE ai_challenge_sessions
-      SET result = ${result}, undo_used = ${undoUsed}, completed_at = NOW()
-      WHERE id = ${sessionId}
-    `;
+    await this.prisma.aiChallengeSession.update({
+      where: { id: sessionId },
+      data: {
+        result,
+        undoUsed,
+        completedAt: new Date(),
+      },
+    });
 
     if (result === 'WIN' && !undoUsed) {
       const rating = await this.getRatingProgress(userId);
@@ -147,6 +150,10 @@ export class AiProgressionService {
     return this.getProgression(userId);
   }
 
+  // NOTE: offline wins cannot be server-verified. This method trusts the
+  // client-provided completedLevels by design (guests play without a session).
+  // A user could claim arbitrary levels via this endpoint; this is an accepted
+  // trade-off for offline play support.
   async syncLocalProgress(
     userId: string,
     completedLevels: number[],

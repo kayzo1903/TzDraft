@@ -110,6 +110,8 @@ export class SyncAiProgressDto {
   })
   @IsArray()
   @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(19, { each: true })
   completedLevels: number[];
 
   @ApiProperty({
