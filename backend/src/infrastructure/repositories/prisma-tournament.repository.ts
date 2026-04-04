@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../database/prisma/prisma.service';
 import {
   ITournamentRepository,
   TournamentAdminUpdate,
   TournamentFilters,
+  TournamentPrizeInput,
   TournamentScheduleUpdate,
 } from '../../domain/tournament/repositories/tournament.repository.interface';
 import {
@@ -13,6 +15,10 @@ import {
   TournamentStatus,
   TournamentScope,
 } from '../../domain/tournament/entities/tournament.entity';
+import {
+  TournamentPrize,
+  PrizeCurrency,
+} from '../../domain/tournament/entities/tournament-prize.entity';
 import {
   TournamentParticipant,
   ParticipantStatus,
@@ -44,7 +50,10 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   }
 
   async findById(id: string): Promise<Tournament | null> {
-    const row = await this.prisma.tournament.findUnique({ where: { id } });
+    const row = await this.prisma.tournament.findUnique({
+      where: { id },
+      include: { prizes: { orderBy: { placement: 'asc' } } },
+    });
     return row ? this.toDomainTournament(row) : null;
   }
 
@@ -55,9 +64,12 @@ export class PrismaTournamentRepository implements ITournamentRepository {
     if (filters?.scope) where.scope = filters.scope as any;
     if (filters?.country) where.country = filters.country;
     if (filters?.region) where.region = filters.region;
+    // Public view excludes hidden tournaments; admin view shows all
+    if (!filters?.adminView) where.hidden = false;
     const rows = await this.prisma.tournament.findMany({
       where,
       orderBy: { scheduledStartAt: 'asc' },
+      include: { prizes: { orderBy: { placement: 'asc' } } },
     });
     return rows.map((r) => this.toDomainTournament(r));
   }
@@ -109,6 +121,41 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       },
     });
     return this.toDomainTournament(row);
+  }
+
+  async setPrizes(
+    tournamentId: string,
+    prizes: TournamentPrizeInput[],
+  ): Promise<TournamentPrize[]> {
+    await this.prisma.tournamentPrize.deleteMany({ where: { tournamentId } });
+    const rows = await Promise.all(
+      prizes.map((p) =>
+        this.prisma.tournamentPrize.create({
+          data: {
+            id: randomUUID(),
+            tournamentId,
+            placement: p.placement,
+            amount: p.amount,
+            currency: p.currency as any,
+            label: p.label ?? null,
+          },
+        }),
+      ),
+    );
+    return rows.map((r) => this.toDomainPrize(r));
+  }
+
+  async setHidden(id: string, hidden: boolean): Promise<Tournament> {
+    const row = await this.prisma.tournament.update({
+      where: { id },
+      data: { hidden, updatedAt: new Date() },
+      include: { prizes: { orderBy: { placement: 'asc' } } },
+    });
+    return this.toDomainTournament(row);
+  }
+
+  async deleteTournament(id: string): Promise<void> {
+    await this.prisma.tournament.delete({ where: { id } });
   }
 
   // ── Participants ─────────────────────────────────────────────
@@ -305,6 +352,9 @@ export class PrismaTournamentRepository implements ITournamentRepository {
   // ── Domain mappers ───────────────────────────────────────────
 
   private toDomainTournament(row: any): Tournament {
+    const prizes: TournamentPrize[] = (row.prizes ?? []).map((p: any) =>
+      this.toDomainPrize(p),
+    );
     return new Tournament(
       row.id,
       row.name,
@@ -329,6 +379,19 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       row.minAiLevelBeaten,
       row.requiredAiLevelPlayed,
       row.registrationDeadline,
+      prizes,
+      row.hidden ?? false,
+    );
+  }
+
+  private toDomainPrize(row: any): TournamentPrize {
+    return new TournamentPrize(
+      row.id,
+      row.tournamentId,
+      row.placement,
+      Number(row.amount),
+      row.currency as PrizeCurrency,
+      row.label ?? null,
     );
   }
 
@@ -414,6 +477,7 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       minPlayers: t.minPlayers,
       registrationDeadline: t.registrationDeadline,
       scheduledStartAt: t.scheduledStartAt,
+      hidden: t.hidden,
       createdById: t.createdById,
     };
   }

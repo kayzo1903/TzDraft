@@ -167,6 +167,10 @@ export const useOnlineGame = (gameId: string) => {
 
   const captureCleanupRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
+  // Stable ref for flipBoard so fetchGameState and the WS effect don't need it
+  // as a dependency — avoids tearing down and re-registering the gameStateUpdated
+  // listener every time myColor resolves on initial load.
+  const flipBoardRef = useRef(false);
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
   const captureAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -224,6 +228,7 @@ export const useOnlineGame = (gameId: string) => {
   // Black starts at engine rows 5-7 which are already at the screen bottom (no flip needed).
   // Spectators see board from Black's natural orientation (no flip).
   const flipBoard = myColor === PlayerColor.WHITE;
+  flipBoardRef.current = flipBoard;
 
   // Infer current player from move count (WHITE goes first)
   const currentPlayer = useMemo(
@@ -367,7 +372,7 @@ export const useOnlineGame = (gameId: string) => {
                   : PlayerColor.WHITE;
               return {
                 id: ++captureGhostIdRef.current,
-                index: positionToIndex(pos, flipBoard),
+                index: positionToIndex(pos, flipBoardRef.current),
                 piece: { color: toUiColor(capturedColor), isKing: undefined },
               };
             });
@@ -435,7 +440,7 @@ export const useOnlineGame = (gameId: string) => {
     } catch (err) {
       console.error("Failed to fetch game state:", err);
     }
-  }, [applyClockSnapshot, gameId, flipBoard]);
+  }, [applyClockSnapshot, gameId]);
 
   /* ── Initial load ──────────────────────────────────────────────────── */
   useEffect(() => {
@@ -553,7 +558,7 @@ export const useOnlineGame = (gameId: string) => {
               const ghosts: CaptureGhost[] = move.capturedSquares.map(
                 (pos) => ({
                   id: ++captureGhostIdRef.current,
-                  index: positionToIndex(pos, flipBoard),
+                  index: positionToIndex(pos, flipBoardRef.current),
                   piece: {
                     color: toUiColor(capturedColor),
                     isKing: undefined,
@@ -779,7 +784,7 @@ export const useOnlineGame = (gameId: string) => {
       socket.off("rematchCancelled", handleRematchCancelled);
       socket.off("autoRequeue", handleAutoRequeue);
     };
-  }, [socket, gameId, fetchGameState, flipBoard, applyClockSnapshot]);
+  }, [socket, gameId, fetchGameState, applyClockSnapshot]);
 
   /* ── Audio ─────────────────────────────────────────────────────────── */
   useEffect(() => {

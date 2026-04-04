@@ -5,6 +5,7 @@ import {
   TournamentScope,
 } from '../entities/tournament.entity';
 import { TournamentParticipant } from '../entities/tournament-participant.entity';
+import { TournamentPrize } from '../entities/tournament-prize.entity';
 import { TournamentRound } from '../entities/tournament-round.entity';
 import { TournamentMatch } from '../entities/tournament-match.entity';
 import { TournamentMatchGame } from '../entities/tournament-match-game.entity';
@@ -15,6 +16,15 @@ export interface TournamentFilters {
   scope?: TournamentScope;
   country?: string;
   region?: string;
+  /** When true (admin view), hidden tournaments are included */
+  adminView?: boolean;
+}
+
+export interface TournamentPrizeInput {
+  placement: number;
+  amount: number;
+  currency: string;
+  label?: string;
 }
 
 export interface TournamentScheduleUpdate {
@@ -52,6 +62,9 @@ export interface ITournamentRepository {
     id: string,
     details: TournamentAdminUpdate,
   ): Promise<Tournament>;
+  setPrizes(tournamentId: string, prizes: TournamentPrizeInput[]): Promise<TournamentPrize[]>;
+  setHidden(id: string, hidden: boolean): Promise<Tournament>;
+  deleteTournament(id: string): Promise<void>;
 
   // Participants
   createParticipant(
