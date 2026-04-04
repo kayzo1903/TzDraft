@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, Crown, Loader2, RefreshCw, Trophy } from "lucide-react";
+import { AlertTriangle, Crown, EyeOff, Eye, Loader2, RefreshCw, Trash2, Trophy } from "lucide-react";
 import {
   tournamentService,
   type Tournament,
@@ -12,8 +12,16 @@ import {
   type TournamentParticipant,
   type TournamentScope,
   type TournamentStyle,
+  type PrizeCurrency,
 } from "@/services/tournament.service";
 import { REPOST_DRAFT_STORAGE_KEY, buildRepostFormState } from "../tournament-admin.utils";
+
+interface PrizeEntry {
+  placement: number;
+  amount: string;
+  currency: PrizeCurrency;
+  label: string;
+}
 
 function badgeClass(status: string) {
   const tone: Record<string, string> = {
@@ -76,6 +84,12 @@ function buildEditForm(tournament: Tournament) {
     minPlayers: `${tournament.minPlayers}`,
     scheduledStartAt: toDateTimeLocalValue(tournament.scheduledStartAt),
     registrationDeadline: toDateTimeLocalValue(tournament.registrationDeadline),
+    prizes: (tournament.prizes ?? []).map((p) => ({
+      placement: p.placement,
+      amount: `${p.amount}`,
+      currency: p.currency as PrizeCurrency,
+      label: p.label ?? "",
+    })) as PrizeEntry[],
   };
 }
 
@@ -268,9 +282,14 @@ export default function AdminTournamentMonitorPage() {
     registrationDeadline: null,
     scheduledStartAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
+    hidden: false,
+    prizes: [],
   }));
   const [savingEdit, setSavingEdit] = useState(false);
   const [editDirty, setEditDirty] = useState(false);
+  const editDirtyRef = useRef(false);
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const [deletingTournament, setDeletingTournament] = useState(false);
   const [dialog, setDialog] = useState<{
     title: string;
     message: string;
@@ -285,9 +304,11 @@ export default function AdminTournamentMonitorPage() {
     try {
       const data = await tournamentService.get(id);
       setDetail(data);
-      if (!editDirty || !isRefresh) {
+      // Use ref so this callback doesn't re-create on every edit keystroke
+      if (!editDirtyRef.current || !isRefresh) {
         setEditForm(buildEditForm(data.tournament));
         setEditDirty(false);
+        editDirtyRef.current = false;
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || "Failed to load tournament.");
@@ -295,7 +316,7 @@ export default function AdminTournamentMonitorPage() {
       if (isRefresh) setRefreshing(false);
       else setLoading(false);
     }
-  }, [editDirty, id]);
+  }, [id]); // no longer depends on editDirty — ref is used instead
 
   useEffect(() => {
     loadTournament();
@@ -496,10 +517,60 @@ export default function AdminTournamentMonitorPage() {
 
   const handleEditChange = (
     field: keyof typeof editForm,
-    value: string | TournamentStyle | TournamentScope,
+    value: string | TournamentStyle | TournamentScope | PrizeEntry[],
   ) => {
     setEditForm((current) => ({ ...current, [field]: value }));
+    editDirtyRef.current = true;
     setEditDirty(true);
+  };
+
+  const handleToggleHidden = async () => {
+    if (!detail) return;
+    setTogglingVisibility(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await tournamentService.setVisibility(detail.tournament.id, !detail.tournament.hidden);
+      setActionSuccess(
+        detail.tournament.hidden
+          ? locale === "sw" ? "Mashindano yanaonekana tena." : "Tournament is now visible."
+          : locale === "sw" ? "Mashindano yamefichwa." : "Tournament is now hidden.",
+      );
+      await loadTournament(true);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || err?.message || "Failed to update visibility.");
+    } finally {
+      setTogglingVisibility(false);
+    }
+  };
+
+  const confirmDeleteTournament = () => {
+    if (!detail) return;
+    setDialog({
+      title: locale === "sw" ? "Futa mashindano?" : "Delete tournament?",
+      message:
+        locale === "sw"
+          ? `Hii itafuta mashindano yote ya "${detail.tournament.name}" ikiwemo raundi, mechi, na washiriki. Haiwezekani kubatilisha.`
+          : `This will permanently delete "${detail.tournament.name}" including all rounds, matches, and participants. This cannot be undone.`,
+      confirmLabel: locale === "sw" ? "Ndiyo, futa" : "Yes, delete permanently",
+      onConfirm: () => {
+        closeDialog();
+        void handleDeleteTournament();
+      },
+    });
+  };
+
+  const handleDeleteTournament = async () => {
+    if (!detail) return;
+    setDeletingTournament(true);
+    setActionError(null);
+    try {
+      await tournamentService.deleteTournament(detail.tournament.id);
+      router.push(`/${locale}/admin/tournaments`);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || err?.message || "Failed to delete tournament.");
+      setDeletingTournament(false);
+    }
   };
 
   const handleSaveTournament = async () => {
@@ -508,6 +579,15 @@ export default function AdminTournamentMonitorPage() {
     setActionSuccess(null);
     setSavingEdit(true);
     try {
+      const prizes = (editForm.prizes as PrizeEntry[])
+        .filter((p) => p.amount.trim() !== "")
+        .map((p) => ({
+          placement: p.placement,
+          amount: Number(p.amount),
+          currency: p.currency,
+          label: p.label.trim() || undefined,
+        }));
+
       const payload = canEditBeforeStart
         ? {
             name: editForm.name.trim(),
@@ -525,6 +605,7 @@ export default function AdminTournamentMonitorPage() {
             registrationDeadline: editForm.registrationDeadline
               ? new Date(editForm.registrationDeadline).toISOString()
               : null,
+            prizes,
           }
         : {
             name: editForm.name.trim(),
@@ -536,6 +617,7 @@ export default function AdminTournamentMonitorPage() {
 
       await tournamentService.update(detail.tournament.id, payload);
       setEditDirty(false);
+      editDirtyRef.current = false;
       setActionSuccess(
         locale === "sw"
           ? "Maelezo ya mashindano yamesasishwa."
@@ -624,6 +706,27 @@ export default function AdminTournamentMonitorPage() {
               Repost as new tournament
             </button>
           )}
+          <button
+            type="button"
+            onClick={handleToggleHidden}
+            disabled={togglingVisibility}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-300 transition hover:border-gray-500 hover:text-white disabled:opacity-50"
+          >
+            {detail.tournament.hidden
+              ? <><Eye className="h-4 w-4" /> Unhide</>
+              : <><EyeOff className="h-4 w-4" /> Hide</>
+            }
+          </button>
+          <button
+            type="button"
+            onClick={confirmDeleteTournament}
+            disabled={deletingTournament || detail.tournament.status === "ACTIVE"}
+            title={detail.tournament.status === "ACTIVE" ? "Cancel the tournament before deleting" : undefined}
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-200 transition hover:border-rose-400/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            {deletingTournament ? "Deleting..." : "Delete"}
+          </button>
           <button
             type="button"
             onClick={() => loadTournament(true)}
@@ -912,6 +1015,102 @@ export default function AdminTournamentMonitorPage() {
             </p>
           </label>
         </div>
+
+        <div className="mt-6 rounded-2xl border border-gray-800 bg-black/10 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-white">
+                {locale === "sw" ? "Zawadi" : "Prize Pool"}
+              </span>
+              {canEditBeforeStart && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleEditChange("prizes", [
+                      ...(editForm.prizes as PrizeEntry[]),
+                      {
+                        placement: (editForm.prizes as PrizeEntry[]).length + 1,
+                        amount: "",
+                        currency: "TSH" as PrizeCurrency,
+                        label: "",
+                      },
+                    ])
+                  }
+                  className="inline-flex items-center gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:border-emerald-400/50 hover:text-white"
+                >
+                  + Add placement
+                </button>
+              )}
+            </div>
+            {(editForm.prizes as PrizeEntry[]).length === 0 ? (
+              <p className="mt-3 text-xs text-gray-500">
+                {canEditBeforeStart ? "No prizes set." : "No prizes were set for this tournament."}
+              </p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {(editForm.prizes as PrizeEntry[]).map((prize, idx) => (
+                  <div key={prize.placement} className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-[52px] text-xs font-semibold text-amber-300">
+                      {prize.placement === 1 ? "1st" : prize.placement === 2 ? "2nd" : prize.placement === 3 ? "3rd" : `${prize.placement}th`}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Amount"
+                      value={prize.amount}
+                      disabled={!canEditBeforeStart || savingEdit}
+                      onChange={(e) => {
+                        const next = (editForm.prizes as PrizeEntry[]).map((p, i) =>
+                          i === idx ? { ...p, amount: e.target.value } : p,
+                        );
+                        handleEditChange("prizes", next);
+                      }}
+                      className="w-28 rounded-xl border border-gray-700 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-300 disabled:opacity-60"
+                    />
+                    <select
+                      value={prize.currency}
+                      disabled={!canEditBeforeStart || savingEdit}
+                      onChange={(e) => {
+                        const next = (editForm.prizes as PrizeEntry[]).map((p, i) =>
+                          i === idx ? { ...p, currency: e.target.value as PrizeCurrency } : p,
+                        );
+                        handleEditChange("prizes", next);
+                      }}
+                      className="rounded-xl border border-gray-700 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-300 disabled:opacity-60"
+                    >
+                      <option value="TSH">TSH</option>
+                      <option value="USD">USD</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Label (optional)"
+                      value={prize.label}
+                      disabled={!canEditBeforeStart || savingEdit}
+                      onChange={(e) => {
+                        const next = (editForm.prizes as PrizeEntry[]).map((p, i) =>
+                          i === idx ? { ...p, label: e.target.value } : p,
+                        );
+                        handleEditChange("prizes", next);
+                      }}
+                      className="flex-1 min-w-[100px] rounded-xl border border-gray-700 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-300 disabled:opacity-60"
+                    />
+                    <button
+                      type="button"
+                      disabled={!canEditBeforeStart || savingEdit}
+                      onClick={() => {
+                        const next = (editForm.prizes as PrizeEntry[])
+                          .filter((_, i) => i !== idx)
+                          .map((p, i) => ({ ...p, placement: i + 1 }));
+                        handleEditChange("prizes", next);
+                      }}
+                      className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-2 py-2 text-xs font-semibold text-rose-300 transition hover:border-rose-400/50 hover:text-white disabled:opacity-50"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
           <button

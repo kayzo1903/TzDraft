@@ -11,6 +11,8 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
+import { AdminSetTournamentVisibilityUseCase } from '../../../application/use-cases/tournament/admin-set-tournament-visibility.use-case';
+import { AdminDeleteTournamentUseCase } from '../../../application/use-cases/tournament/admin-delete-tournament.use-case';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../../auth/guards/admin.guard';
 import { Throttle } from '@nestjs/throttler';
@@ -27,6 +29,7 @@ import {
   CreateTournamentDto,
   ListTournamentsQueryDto,
   UpdateTournamentDto,
+  AdminSetVisibilityDto,
   AdminResolveTournamentMatchDto,
 } from '../dtos/tournament.dto';
 import { AdminUpdateTournamentUseCase } from '../../../application/use-cases/tournament/admin-update-tournament.use-case';
@@ -51,12 +54,27 @@ export class TournamentController {
     private readonly adminUpdateTournament: AdminUpdateTournamentUseCase,
     private readonly adminCancelTournament: AdminCancelTournamentUseCase,
     private readonly adminResolveMatch: AdminResolveTournamentMatchUseCase,
+    private readonly adminSetVisibility: AdminSetTournamentVisibilityUseCase,
+    private readonly adminDeleteTournament: AdminDeleteTournamentUseCase,
   ) {}
 
   @Get()
   @Public()
   async list(@Query() query: ListTournamentsQueryDto) {
     return this.listTournaments.execute({
+      status: query.status,
+      format: query.format,
+      scope: query.scope,
+      country: query.country,
+      region: query.region,
+    });
+  }
+
+  /** Admin-only list — includes hidden tournaments */
+  @Get('admin/list')
+  @UseGuards(AdminGuard)
+  async adminList(@Query() query: ListTournamentsQueryDto) {
+    return this.listTournaments.executeAdmin({
       status: query.status,
       format: query.format,
       scope: query.scope,
@@ -139,6 +157,7 @@ export class TournamentController {
           : dto.registrationDeadline
             ? new Date(dto.registrationDeadline)
             : null,
+      prizes: dto.prizes,
     });
   }
 
@@ -147,6 +166,22 @@ export class TournamentController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async adminRemove(@Param('id') id: string, @Param('userId') userId: string) {
     await this.adminRemoveParticipant.execute(id, userId);
+  }
+
+  @Patch(':id/visibility')
+  @UseGuards(AdminGuard)
+  async setVisibility(
+    @Param('id') id: string,
+    @Body() dto: AdminSetVisibilityDto,
+  ) {
+    return this.adminSetVisibility.execute(id, dto.hidden);
+  }
+
+  @Delete(':id')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteTournament(@Param('id') id: string) {
+    await this.adminDeleteTournament.execute(id);
   }
 
   @Post(':id/matches/:matchId/manual-result')

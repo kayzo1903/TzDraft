@@ -157,9 +157,12 @@ export class UserService {
   }> {
     const { skip = 0, take = 50, country, region } = options;
 
+    const EXCLUDED_USERNAMES = ['admin', 'teste', 'tester01'];
+
     const userFilter: Record<string, any> = {
       accountType: AccountType.REGISTERED,
       isVerified: true,
+      username: { notIn: EXCLUDED_USERNAMES },
     };
     if (country) userFilter.country = country;
     if (region) userFilter.region = region;

@@ -588,4 +588,24 @@ export class AuthService {
 
     return { accessToken, refreshToken };
   }
+
+  /**
+   * Bump last_login_at for visit analytics.
+   * Called on GET /auth/me (every page load) — fire-and-forget so it never
+   * slows down the response. Only updates once per hour to avoid thrashing.
+   */
+  touchLastLogin(userId: string): void {
+    // No await — intentionally fire-and-forget
+    this.prisma.user
+      .updateMany({
+        where: {
+          id: userId,
+          lastLoginAt: { lt: new Date(Date.now() - 60 * 60 * 1000) },
+        },
+        data: { lastLoginAt: new Date() },
+      })
+      .catch(() => {
+        // Non-fatal — analytics is best-effort
+      });
+  }
 }

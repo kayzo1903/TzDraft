@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Query,
+  ServiceUnavailableException,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -269,7 +270,12 @@ export class AdminController {
 
   @Get('analytics')
   async getAnalytics() {
-    return this.analyticsService.getAnalytics();
+    try {
+      return await this.analyticsService.getAnalytics();
+    } catch (err) {
+      this.logger.error('Analytics query failed', err);
+      throw new ServiceUnavailableException('Database unavailable');
+    }
   }
 
   @Get('health')

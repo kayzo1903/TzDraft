@@ -26,6 +26,8 @@ import { AdminRemoveTournamentParticipantUseCase } from './tournament/admin-remo
 import { AdminUpdateTournamentUseCase } from './tournament/admin-update-tournament.use-case';
 import { AdminCancelTournamentUseCase } from './tournament/admin-cancel-tournament.use-case';
 import { AdminResolveTournamentMatchUseCase } from './tournament/admin-resolve-tournament-match.use-case';
+import { AdminSetTournamentVisibilityUseCase } from './tournament/admin-set-tournament-visibility.use-case';
+import { AdminDeleteTournamentUseCase } from './tournament/admin-delete-tournament.use-case';
 import { AiProgressionService } from './ai-progression.service';
 import { EligibilityCheckService } from '../../domain/tournament/services/eligibility-check.service';
 import { BracketGenerationService } from '../../domain/tournament/services/bracket-generation.service';
@@ -77,6 +79,8 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     AdminUpdateTournamentUseCase,
     AdminCancelTournamentUseCase,
     AdminResolveTournamentMatchUseCase,
+    AdminSetTournamentVisibilityUseCase,
+    AdminDeleteTournamentUseCase,
   ],
   exports: [
     RatingService,
@@ -103,6 +107,8 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     AdminUpdateTournamentUseCase,
     AdminCancelTournamentUseCase,
     AdminResolveTournamentMatchUseCase,
+    AdminSetTournamentVisibilityUseCase,
+    AdminDeleteTournamentUseCase,
   ],
 })
 export class UseCasesModule {}
