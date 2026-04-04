@@ -6,16 +6,13 @@ import { allSlugsQuery } from "@/sanity/queries";
 
 const publicPaths = [
   "",
-  "/play",
   "/leaderboard",
   "/learn",
   "/rules",
   "/policy",
   "/support",
   "/community/tournament",
-  "/game/setup-online",
-  "/game/setup-friend",
-  "/game/setup-ai",
+  "/puzzles",
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -30,15 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     items.push(entry);
   };
 
-  pushSitemapEntry({
-    url: new URL("/", siteUrl).toString(),
-    lastModified,
-    changeFrequency: "daily",
-    priority: 1,
-    alternates: {
-      languages: getLanguageAlternates("", siteUrl),
-    },
-  });
+  // Root "/" is intentionally excluded — it redirects to a locale URL (/en/ or /sw/)
+  // and Google flags redirect URLs in sitemaps as errors.
 
   // Static public routes
   for (const locale of routing.locales) {
@@ -53,19 +43,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               ? "daily"
               : path === "/leaderboard"
                 ? "hourly"
-                : "weekly",
+                : path === "/puzzles"
+                  ? "daily"
+                  : "weekly",
         priority:
           path === ""
             ? 1
-            : path === "/game/setup-online"
-              ? 0.9
-              : path === "/leaderboard"
-                ? 0.85
-                : path === "/learn" || path === "/community/tournament"
-                  ? 0.8
-                  : path === "/game/setup-friend" || path === "/game/setup-ai"
-                    ? 0.75
-                    : 0.7,
+            : path === "/leaderboard"
+              ? 0.85
+              : path === "/learn" || path === "/community/tournament" || path === "/puzzles"
+                ? 0.8
+                : 0.7,
         alternates: {
           languages: getLanguageAlternates(path, siteUrl),
         },
