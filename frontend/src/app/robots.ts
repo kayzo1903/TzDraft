@@ -26,7 +26,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    host: siteUrl.toString(),
+    host: siteUrl.hostname,
     sitemap: new URL("/sitemap.xml", siteUrl).toString(),
   };
 }
