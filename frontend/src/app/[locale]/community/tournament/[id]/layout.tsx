@@ -56,6 +56,10 @@ export async function generateMetadata({
   const description = `${baseDesc}${prizeSnippet}`;
   const title = `${tournament.name} | TzDraft`;
 
+  const dateStr = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(tournament.scheduledStartAt));
+  const topPrize = prizes[0] ? `${prizes[0].amount.toLocaleString()} ${prizes[0].currency}` : "";
+  const ogImageUrl = `${siteUrl.toString().replace(/\/$/, "")}/api/og/tournament?name=${encodeURIComponent(tournament.name)}&format=${encodeURIComponent(tournament.format)}&date=${encodeURIComponent(dateStr)}&players=${tournament.maxPlayers}${topPrize ? `&prize=${encodeURIComponent(topPrize)}` : ""}`;
+
   return {
     metadataBase: siteUrl,
     title,
@@ -94,13 +98,13 @@ export async function generateMetadata({
       locale: ogLocale,
       alternateLocale: [locale === "sw" ? "en_TZ" : "sw_TZ"],
       type: "website",
-      images: [{ url: new URL("/logo/logo.png", siteUrl).toString(), width: 1200, height: 630, alt: `${tournament.name} — TzDraft` }],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `${tournament.name} — TzDraft` }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [new URL("/logo/logo.png", siteUrl).toString()],
+      images: [ogImageUrl],
     },
     other: {
       "revisit-after": "1 day",

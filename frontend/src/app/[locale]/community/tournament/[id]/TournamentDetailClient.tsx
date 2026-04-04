@@ -398,13 +398,13 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
     const prizes = tournament.prizes ?? [];
     const prizeText = prizes.length > 0
       ? (locale === "sw"
-          ? ` 🏆 Zawadi: ${prizes.map((p) => `${p.placement === 1 ? "1st" : p.placement === 2 ? "2nd" : `${p.placement}th`} ${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`
-          : ` 🏆 Prizes: ${prizes.map((p) => `${p.placement === 1 ? "1st" : p.placement === 2 ? "2nd" : `${p.placement}th`} ${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`)
+          ? ` | Zawadi: ${prizes.map((p) => `${p.placement === 1 ? "1st" : p.placement === 2 ? "2nd" : `${p.placement}th`} ${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`
+          : ` | Prizes: ${prizes.map((p) => `${p.placement === 1 ? "1st" : p.placement === 2 ? "2nd" : `${p.placement}th`} ${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`)
       : "";
     const dateStr = new Intl.DateTimeFormat(locale === "sw" ? "sw-TZ" : "en-US", { dateStyle: "medium" }).format(new Date(tournament.scheduledStartAt));
     const text = locale === "sw"
-      ? `🎯 ${tournament.name} — mashindano ya Drafti kwenye TzDraft!\n📅 ${dateStr} | 👥 ${participants.length}/${tournament.maxPlayers} wachezaji${prizeText}`
-      : `🎯 ${tournament.name} — Tanzania Drafti tournament on TzDraft!\n📅 ${dateStr} | 👥 ${participants.length}/${tournament.maxPlayers} players${prizeText}`;
+      ? `${tournament.name} — mashindano ya Drafti kwenye TzDraft!\n${dateStr} | ${participants.length}/${tournament.maxPlayers} wachezaji${prizeText}`
+      : `${tournament.name} — Tanzania Drafti tournament on TzDraft!\n${dateStr} | ${participants.length}/${tournament.maxPlayers} players${prizeText}`;
     return { url, text };
   }
 
@@ -886,29 +886,32 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
                   {[...tournament.prizes]
                     .sort((a, b) => a.placement - b.placement)
                     .map((prize) => {
-                      const medals = ["🥇", "🥈", "🥉"];
-                      const medal = medals[prize.placement - 1] ?? `#${prize.placement}`;
+                      const medalColors = [
+                        "bg-amber-400 text-gray-950",
+                        "bg-neutral-300 text-gray-950",
+                        "bg-orange-700 text-white",
+                      ];
+                      const medalColor = medalColors[prize.placement - 1] ?? "bg-white/10 text-neutral-300";
                       const placementLabel =
                         prize.placement === 1
-                          ? locale === "sw" ? "1. Nafasi" : "1st Place"
+                          ? locale === "sw" ? "1. Nafasi" : "1st"
                           : prize.placement === 2
-                            ? locale === "sw" ? "2. Nafasi" : "2nd Place"
+                            ? locale === "sw" ? "2. Nafasi" : "2nd"
                             : prize.placement === 3
-                              ? locale === "sw" ? "3. Nafasi" : "3rd Place"
-                              : `${prize.placement}${locale === "sw" ? ". Nafasi" : "th Place"}`;
+                              ? locale === "sw" ? "3. Nafasi" : "3rd"
+                              : `${prize.placement}${locale === "sw" ? ". Nafasi" : "th"}`;
                       return (
                         <div
                           key={prize.id}
                           className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-xl">{medal}</span>
-                            <div>
-                              <p className="text-sm font-semibold text-white">{placementLabel}</p>
-                              {prize.label && (
-                                <p className="text-xs text-neutral-400">{prize.label}</p>
-                              )}
-                            </div>
+                            <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${medalColor}`}>
+                              {placementLabel}
+                            </span>
+                            {prize.label && (
+                              <p className="text-sm text-neutral-400">{prize.label}</p>
+                            )}
                           </div>
                           <p className="text-sm font-black text-amber-300">
                             {prize.amount.toLocaleString()} {prize.currency}
