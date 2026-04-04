@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "@/i18n/routing";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { HeroBoard } from "@/components/hero/HeroBoard";
 import { Button } from "@/components/ui/Button";
 import { getTranslations } from "next-intl/server";
@@ -199,9 +200,47 @@ export default async function Home({
   const { locale } = await params;
   const t = await getTranslations("hero");
   const isSw = locale === "sw";
+  const siteUrl = getSiteUrl();
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "TzDraft",
+    "url": siteUrl.toString(),
+    "inLanguage": isSw ? "sw-TZ" : "en-TZ",
+    "description": isSw ? "Jukwaa la mchezo wa Tanzania Drafti mtandaoni." : "Tanzania Draughts online gaming platform."
+  };
+
+  const softwareAppSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "TzDraft",
+    "applicationCategory": "GameApplication",
+    "genre": "Board Games",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": isSw ? "Jukwaa la kucheza Tanzania Drafti (8x8) mtandaoni." : "Platform to play Tanzania Drafti (8x8) online.",
+    "url": siteUrl.toString()
+  };
+
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "TzDraft",
+    "url": siteUrl.toString(),
+    "logo": new URL("/logo/logo.png", siteUrl).toString()
+  };
 
   return (
-    <main className="flex flex-col bg-[var(--background)]">
+    <>
+      <JsonLd data={websiteSchema} />
+      <JsonLd data={softwareAppSchema} />
+      <JsonLd data={organizationSchema} />
+      <main className="flex flex-col bg-[var(--background)]">
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <section className="relative flex min-h-[calc(100vh-64px)] items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
@@ -518,5 +557,6 @@ export default async function Home({
       </section>
 
     </main>
+    </>
   );
 }
