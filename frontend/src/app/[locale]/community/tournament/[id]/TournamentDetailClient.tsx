@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -16,6 +16,7 @@ import {
   Trophy,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import { useTournament } from "@/hooks/useTournament";
 import { useAuth } from "@/hooks/useAuth";
@@ -259,6 +260,18 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
   const [withdrawing, setWithdrawing] = useState(false);
   const [dialog, setDialog] = useState<FeedbackDialogState | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const sharePanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (sharePanelRef.current && !sharePanelRef.current.contains(e.target as Node)) {
+        setShowSharePanel(false);
+      }
+    }
+    if (showSharePanel) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSharePanel]);
 
   const detail = data ?? initialData;
 
@@ -380,32 +393,50 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
     }
   }
 
-  async function handleShare() {
+  function buildShareText() {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    const shareData = {
-      title: tournament.name,
-      text:
-        locale === "sw"
-          ? `Jiunge na mashindano haya ya TzDraft: ${tournament.name}`
-          : `Join this TzDraft tournament: ${tournament.name}`,
-      url,
-    };
+    const prizes = tournament.prizes ?? [];
+    const prizeText = prizes.length > 0
+      ? (locale === "sw"
+          ? ` 🏆 Zawadi: ${prizes.map((p) => `${p.placement === 1 ? "1st" : p.placement === 2 ? "2nd" : `${p.placement}th`} ${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`
+          : ` 🏆 Prizes: ${prizes.map((p) => `${p.placement === 1 ? "1st" : p.placement === 2 ? "2nd" : `${p.placement}th`} ${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`)
+      : "";
+    const dateStr = new Intl.DateTimeFormat(locale === "sw" ? "sw-TZ" : "en-US", { dateStyle: "medium" }).format(new Date(tournament.scheduledStartAt));
+    const text = locale === "sw"
+      ? `🎯 ${tournament.name} — mashindano ya Drafti kwenye TzDraft!\n📅 ${dateStr} | 👥 ${participants.length}/${tournament.maxPlayers} wachezaji${prizeText}`
+      : `🎯 ${tournament.name} — Tanzania Drafti tournament on TzDraft!\n📅 ${dateStr} | 👥 ${participants.length}/${tournament.maxPlayers} players${prizeText}`;
+    return { url, text };
+  }
 
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // user cancelled — do nothing
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // clipboard unavailable — silently fail
-      }
+  async function handleCopyLink() {
+    const { url } = buildShareText();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable
     }
+  }
+
+  function shareToWhatsApp() {
+    const { url, text } = buildShareText();
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`, "_blank");
+  }
+
+  function shareToTwitter() {
+    const { url, text } = buildShareText();
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
+  }
+
+  function shareToFacebook() {
+    const { url } = buildShareText();
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank");
+  }
+
+  function shareToTelegram() {
+    const { url, text } = buildShareText();
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
   }
 
   return (
@@ -429,25 +460,69 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
               {locale === "sw" ? "Mashindano yote" : "All tournaments"}
             </Link>
 
-            <button
-              type="button"
-              onClick={handleShare}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:border-white/20 hover:bg-white/10"
-            >
-              {copied ? (
-                <>
-                  <Link2 className="h-4 w-4 text-emerald-400" />
-                  <span className="text-emerald-400">
-                    {locale === "sw" ? "Imenakiliwa!" : "Copied!"}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-4 w-4" />
-                  {locale === "sw" ? "Shiriki" : "Share"}
-                </>
+            <div className="relative" ref={sharePanelRef}>
+              <button
+                type="button"
+                onClick={() => setShowSharePanel((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:border-white/20 hover:bg-white/10"
+              >
+                <Share2 className="h-4 w-4" />
+                {locale === "sw" ? "Shiriki" : "Share"}
+              </button>
+
+              {showSharePanel && (
+                <div className="absolute right-0 top-11 z-50 w-64 rounded-2xl border border-white/10 bg-neutral-950 p-4 shadow-2xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">
+                      {locale === "sw" ? "Shiriki kupitia" : "Share via"}
+                    </span>
+                    <button type="button" onClick={() => setShowSharePanel(false)}>
+                      <X className="h-4 w-4 text-neutral-500 hover:text-white" />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={shareToWhatsApp}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+                    >
+                      <span className="text-base">💬</span> WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={shareToTwitter}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+                    >
+                      <span className="text-base">𝕏</span> Twitter / X
+                    </button>
+                    <button
+                      type="button"
+                      onClick={shareToFacebook}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+                    >
+                      <span className="text-base">📘</span> Facebook
+                    </button>
+                    <button
+                      type="button"
+                      onClick={shareToTelegram}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+                    >
+                      <span className="text-base">✈️</span> Telegram
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+                    >
+                      {copied
+                        ? <><Link2 className="h-4 w-4 text-emerald-400" /><span className="text-emerald-400">{locale === "sw" ? "Imenakiliwa!" : "Copied!"}</span></>
+                        : <><Link2 className="h-4 w-4" />{locale === "sw" ? "Nakili kiungo" : "Copy link"}</>
+                      }
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
@@ -795,6 +870,52 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
                       </div>
                     );
                   })}
+                </div>
+              </section>
+            )}
+
+            {(tournament.prizes?.length ?? 0) > 0 && (
+              <section className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-6">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-amber-300" />
+                  <h2 className="text-xl font-black text-white">
+                    {locale === "sw" ? "Zawadi" : "Prize Pool"}
+                  </h2>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {[...tournament.prizes]
+                    .sort((a, b) => a.placement - b.placement)
+                    .map((prize) => {
+                      const medals = ["🥇", "🥈", "🥉"];
+                      const medal = medals[prize.placement - 1] ?? `#${prize.placement}`;
+                      const placementLabel =
+                        prize.placement === 1
+                          ? locale === "sw" ? "1. Nafasi" : "1st Place"
+                          : prize.placement === 2
+                            ? locale === "sw" ? "2. Nafasi" : "2nd Place"
+                            : prize.placement === 3
+                              ? locale === "sw" ? "3. Nafasi" : "3rd Place"
+                              : `${prize.placement}${locale === "sw" ? ". Nafasi" : "th Place"}`;
+                      return (
+                        <div
+                          key={prize.id}
+                          className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{medal}</span>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{placementLabel}</p>
+                              {prize.label && (
+                                <p className="text-xs text-neutral-400">{prize.label}</p>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm font-black text-amber-300">
+                            {prize.amount.toLocaleString()} {prize.currency}
+                          </p>
+                        </div>
+                      );
+                    })}
                 </div>
               </section>
             )}
