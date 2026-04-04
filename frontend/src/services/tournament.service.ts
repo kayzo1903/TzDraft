@@ -123,6 +123,7 @@ export interface CreateTournamentInput {
   minMatchmakingWins?: number;
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
+  prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
 }
 
 export interface UpdateTournamentInput {
