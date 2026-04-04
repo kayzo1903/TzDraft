@@ -59,6 +59,7 @@ jobs:
         run: pnpm test
         env:
           DATABASE_URL: postgresql://tzdraft:tzdraft_test@localhost:5432/tzdraft_test
+          DIRECT_URL: postgresql://tzdraft:tzdraft_test@localhost:5432/tzdraft_test
           NODE_ENV: test
           JWT_SECRET: ci_test_secret
           BETTER_AUTH_SECRET: ci_test_secret
