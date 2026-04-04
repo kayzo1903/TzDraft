@@ -4,11 +4,16 @@ import {
   IsOptional,
   IsInt,
   IsDateString,
+  IsBoolean,
+  IsArray,
+  IsNumber,
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
   IsIn,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import {
   TournamentFormat,
   TournamentStyle,
@@ -177,6 +182,34 @@ export class UpdateTournamentDto {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsDateString()
   registrationDeadline?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TournamentPrizeDto)
+  prizes?: TournamentPrizeDto[];
+}
+
+export class TournamentPrizeDto {
+  @IsInt()
+  @Min(1)
+  placement: number;
+
+  @IsNumber()
+  @Min(0)
+  amount: number;
+
+  @IsEnum(['TSH', 'USD'])
+  currency: 'TSH' | 'USD';
+
+  @IsOptional()
+  @IsString()
+  label?: string;
+}
+
+export class AdminSetVisibilityDto {
+  @IsBoolean()
+  hidden: boolean;
 }
 
 export class AdminResolveTournamentMatchDto {

@@ -4,7 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { ITournamentRepository } from '../../../domain/tournament/repositories/tournament.repository.interface';
+import type {
+  ITournamentRepository,
+  TournamentPrizeInput,
+} from '../../../domain/tournament/repositories/tournament.repository.interface';
 import {
   FORMAT_MAX_PLAYERS,
   TournamentScope,
@@ -26,6 +29,7 @@ export interface AdminUpdateTournamentDto {
   minPlayers?: number;
   scheduledStartAt?: Date;
   registrationDeadline?: Date | null;
+  prizes?: TournamentPrizeInput[];
 }
 
 @Injectable()
@@ -144,7 +148,7 @@ export class AdminUpdateTournamentUseCase {
       }
     }
 
-    return this.repo.updateDetails(tournament.id, {
+    const updated = await this.repo.updateDetails(tournament.id, {
       name,
       descriptionEn,
       descriptionSw,
@@ -159,5 +163,11 @@ export class AdminUpdateTournamentUseCase {
       scheduledStartAt,
       registrationDeadline: registrationDeadline ?? null,
     });
+
+    if (dto.prizes !== undefined) {
+      await this.repo.setPrizes(tournament.id, dto.prizes);
+    }
+
+    return updated;
   }
 }
