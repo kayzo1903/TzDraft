@@ -46,7 +46,14 @@ export async function generateMetadata({
     };
   }
 
-  const description = locale === "sw" ? tournament.descriptionSw : tournament.descriptionEn;
+  const baseDesc = locale === "sw" ? tournament.descriptionSw : tournament.descriptionEn;
+  const prizes: { placement: number; amount: number; currency: string }[] = tournament.prizes ?? [];
+  const prizeSnippet = prizes.length > 0
+    ? (locale === "sw"
+        ? ` | Zawadi: ${prizes.slice(0, 2).map((p) => `${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`
+        : ` | Prizes: ${prizes.slice(0, 2).map((p) => `${p.amount.toLocaleString()} ${p.currency}`).join(", ")}`)
+    : "";
+  const description = `${baseDesc}${prizeSnippet}`;
   const title = `${tournament.name} | TzDraft`;
 
   return {
