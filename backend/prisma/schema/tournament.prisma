@@ -30,6 +30,7 @@ model Tournament {
 
     registrationDeadline DateTime? @map("registration_deadline")
     scheduledStartAt     DateTime  @map("scheduled_start_at")
+    hidden               Boolean   @default(false)
     createdById          String    @map("created_by_id")
     createdAt            DateTime  @default(now()) @map("created_at")
     updatedAt            DateTime  @updatedAt @map("updated_at")
@@ -37,8 +38,23 @@ model Tournament {
     createdBy    User                   @relation("TournamentCreator", fields: [createdById], references: [id])
     participants TournamentParticipant[]
     rounds       TournamentRound[]
+    prizes       TournamentPrize[]
 
     @@map("tournaments")
+}
+
+model TournamentPrize {
+    id           String        @id @default(uuid())
+    tournamentId String        @map("tournament_id")
+    placement    Int
+    amount       Decimal       @db.Decimal(12, 2)
+    currency     PrizeCurrency @default(TSH)
+    label        String?
+
+    tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+    @@unique([tournamentId, placement])
+    @@map("tournament_prizes")
 }
 
 model TournamentParticipant {
@@ -135,6 +151,11 @@ model TournamentMatchGame {
 // ============================================
 // TOURNAMENT ENUMS
 // ============================================
+
+enum PrizeCurrency {
+    TSH
+    USD
+}
 
 enum TournamentFormat {
     SINGLE_ELIMINATION

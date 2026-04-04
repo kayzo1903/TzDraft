@@ -88,6 +88,9 @@ static bool genCaptureFrom(
                 // and landing on squares beyond it — check the remaining ray for blockers.
                 if (blocking & (1U << land)) break; // blocked — no further landing
 
+                // Guard against overflowing the fixed-size captures/path arrays.
+                if (partial.capLen >= 12 || partial.pathLen >= 12) break;
+
                 foundFurther = true;
 
                 int  savedCapLen  = partial.capLen;
@@ -125,6 +128,7 @@ static bool genCaptureFrom(
 
             if (!(enemies & overMask)) continue;   // no capturable enemy here
             if (blocking & landMask)   continue;   // landing occupied
+            if (partial.capLen >= 12 || partial.pathLen >= 12) continue; // array full
 
             foundFurther = true;
 

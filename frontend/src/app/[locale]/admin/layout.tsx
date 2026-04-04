@@ -11,15 +11,22 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, hasHydrated } = useAuthStore();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
 
   useEffect(() => {
+    if (!hasHydrated) return;
     if (!isAuthenticated || user?.role !== "ADMIN") {
       router.replace(`/${locale}`);
     }
-  }, [isAuthenticated, user, router, locale]);
+  }, [hasHydrated, isAuthenticated, user, router, locale]);
+
+  // Don't render or redirect until the persisted store has rehydrated —
+  // avoids the flash-redirect caused by the initial isAuthenticated=false state.
+  if (!hasHydrated) {
+    return null;
+  }
 
   if (!isAuthenticated || user?.role !== "ADMIN") {
     return null;

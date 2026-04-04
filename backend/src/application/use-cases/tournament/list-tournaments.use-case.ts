@@ -15,4 +15,8 @@ export class ListTournamentsUseCase {
   async execute(filters?: TournamentFilters): Promise<Tournament[]> {
     return this.repo.findAll(filters);
   }
+
+  async executeAdmin(filters?: TournamentFilters): Promise<Tournament[]> {
+    return this.repo.findAll({ ...filters, adminView: true });
+  }
 }

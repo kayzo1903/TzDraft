@@ -9,7 +9,9 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Link2,
   LoaderCircle,
+  Share2,
   Swords,
   Trophy,
   UserPlus,
@@ -256,6 +258,7 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
   const [registering, setRegistering] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [dialog, setDialog] = useState<FeedbackDialogState | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const detail = data ?? initialData;
 
@@ -377,6 +380,34 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
     }
   }
 
+  async function handleShare() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const shareData = {
+      title: tournament.name,
+      text:
+        locale === "sw"
+          ? `Jiunge na mashindano haya ya TzDraft: ${tournament.name}`
+          : `Join this TzDraft tournament: ${tournament.name}`,
+      url,
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // user cancelled — do nothing
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // clipboard unavailable — silently fail
+      }
+    }
+  }
+
   return (
     <main className="bg-[var(--background)]">
       {dialog && (
@@ -389,13 +420,35 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
       <section className="relative overflow-hidden border-b border-white/5 px-4 py-12 sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.12),transparent_28%)]" />
         <div className="relative mx-auto max-w-6xl space-y-8">
-          <Link
-            href={`/${locale}/community/tournament`}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-300 transition hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {locale === "sw" ? "Mashindano yote" : "All tournaments"}
-          </Link>
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href={`/${locale}/community/tournament`}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-300 transition hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {locale === "sw" ? "Mashindano yote" : "All tournaments"}
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleShare}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:border-white/20 hover:bg-white/10"
+            >
+              {copied ? (
+                <>
+                  <Link2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-emerald-400">
+                    {locale === "sw" ? "Imenakiliwa!" : "Copied!"}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-4 w-4" />
+                  {locale === "sw" ? "Shiriki" : "Share"}
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
             <div className="space-y-5">

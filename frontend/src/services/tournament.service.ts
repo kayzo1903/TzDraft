@@ -6,6 +6,16 @@ export type TournamentFormat = "SINGLE_ELIMINATION" | "ROUND_ROBIN" | "SWISS" | 
 export type TournamentStyle = "BLITZ" | "RAPID" | "CLASSICAL" | "UNLIMITED";
 export type TournamentStatus = "DRAFT" | "REGISTRATION" | "ACTIVE" | "COMPLETED" | "CANCELLED";
 export type TournamentScope = "GLOBAL" | "COUNTRY" | "REGION";
+export type PrizeCurrency = "TSH" | "USD";
+
+export interface TournamentPrize {
+  id: string;
+  tournamentId: string;
+  placement: number;
+  amount: number;
+  currency: PrizeCurrency;
+  label: string | null;
+}
 export type MatchStatus = "PENDING" | "ACTIVE" | "COMPLETED" | "BYE";
 export type MatchResult = "PLAYER1_WIN" | "PLAYER2_WIN" | "BYE";
 export type MatchGameResult = "PLAYER1_WIN" | "PLAYER2_WIN" | "DRAW";
@@ -35,6 +45,8 @@ export interface Tournament {
   registrationDeadline: string | null;
   scheduledStartAt: string;
   createdAt: string;
+  hidden: boolean;
+  prizes: TournamentPrize[];
 }
 
 export interface TournamentParticipant {
@@ -111,6 +123,7 @@ export interface CreateTournamentInput {
   minMatchmakingWins?: number;
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
+  prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
 }
 
 export interface UpdateTournamentInput {
@@ -127,6 +140,7 @@ export interface UpdateTournamentInput {
   minPlayers?: number;
   scheduledStartAt?: string;
   registrationDeadline?: string | null;
+  prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
 }
 
 export interface ListTournamentsQuery {
@@ -194,5 +208,20 @@ export const tournamentService = {
       { result }
     );
     return response.data;
+  },
+
+  /** Admin-only list — includes hidden tournaments */
+  async listAdmin(query?: ListTournamentsQuery): Promise<Tournament[]> {
+    const response = await axiosInstance.get("/tournaments/admin/list", { params: query });
+    return response.data;
+  },
+
+  async setVisibility(id: string, hidden: boolean): Promise<Tournament> {
+    const response = await axiosInstance.patch(`/tournaments/${id}/visibility`, { hidden });
+    return response.data;
+  },
+
+  async deleteTournament(id: string): Promise<void> {
+    await axiosInstance.delete(`/tournaments/${id}`);
   },
 };
