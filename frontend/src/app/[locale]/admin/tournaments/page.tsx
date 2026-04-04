@@ -202,7 +202,7 @@ export default function AdminTournamentsPage() {
                     <span className="rounded-full bg-white/5 px-3 py-1.5">{prettyFormat(tournament.format)}</span>
                     <span className="rounded-full bg-white/5 px-3 py-1.5">{tournament.style}</span>
                     <span className="rounded-full bg-white/5 px-3 py-1.5">{tournament.maxPlayers} players</span>
-                    {tournament.prizes.length > 0 && (
+                    {(tournament.prizes?.length ?? 0) > 0 && (
                       <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-amber-300">
                         {tournament.prizes.length} prize{tournament.prizes.length !== 1 ? "s" : ""}
                       </span>
