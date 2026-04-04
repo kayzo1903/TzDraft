@@ -101,6 +101,12 @@ export class CreateTournamentDto {
   @IsInt()
   @Min(1)
   requiredAiLevelPlayed?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TournamentPrizeDto)
+  prizes?: TournamentPrizeDto[];
 }
 
 export class ListTournamentsQueryDto {

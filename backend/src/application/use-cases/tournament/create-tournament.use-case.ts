@@ -9,6 +9,10 @@ import {
   TournamentScope,
   FORMAT_MAX_PLAYERS,
 } from '../../../domain/tournament/entities/tournament.entity';
+import {
+  TournamentPrize,
+  PrizeCurrency,
+} from '../../../domain/tournament/entities/tournament-prize.entity';
 
 export interface CreateTournamentDto {
   name: string;
@@ -31,6 +35,7 @@ export interface CreateTournamentDto {
   minMatchmakingWins?: number;
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
+  prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
 }
 
 @Injectable()
@@ -54,8 +59,21 @@ export class CreateTournamentUseCase {
       );
     }
 
+    const tournamentId = randomUUID();
+    const prizes: TournamentPrize[] = (dto.prizes ?? []).map(
+      (p) =>
+        new TournamentPrize(
+          randomUUID(),
+          tournamentId,
+          p.placement,
+          p.amount,
+          p.currency,
+          p.label ?? null,
+        ),
+    );
+
     const tournament = new Tournament(
-      randomUUID(),
+      tournamentId,
       dto.name,
       dto.descriptionEn,
       dto.descriptionSw,
@@ -78,6 +96,7 @@ export class CreateTournamentUseCase {
       dto.minAiLevelBeaten ?? null,
       dto.requiredAiLevelPlayed ?? null,
       dto.registrationDeadline ?? null,
+      prizes,
     );
 
     return this.repo.create(tournament);
