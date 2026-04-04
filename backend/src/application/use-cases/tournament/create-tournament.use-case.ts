@@ -35,7 +35,7 @@ export interface CreateTournamentDto {
   minMatchmakingWins?: number;
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
-  prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
+  prizes?: { placement: number; amount: number; currency: string; label?: string }[];
 }
 
 @Injectable()
@@ -67,7 +67,7 @@ export class CreateTournamentUseCase {
           tournamentId,
           p.placement,
           p.amount,
-          p.currency,
+          p.currency as PrizeCurrency,
           p.label ?? null,
         ),
     );
