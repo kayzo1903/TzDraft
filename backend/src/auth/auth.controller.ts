@@ -177,6 +177,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     res.setHeader('Cache-Control', 'no-store');
+    this.authService.touchLastLogin(user.id);
     return user;
   }
 
