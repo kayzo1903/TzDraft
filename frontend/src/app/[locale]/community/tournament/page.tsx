@@ -1,6 +1,8 @@
 import { CalendarDays, Clock3, Trophy, Users } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Tournament, TournamentDetail } from "@/services/tournament.service";
+import type { Metadata } from "next";
+import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -228,6 +230,55 @@ function TournamentCard({
   );
 }
 
+const META = {
+  sw: {
+    title: "Mashindano ya Jamii | TzDraft",
+    description: "Jiunge na mashindano yetu ya jamii na ushindane na wachezaji wengine kwa zawadi na umaarufu. Pata ratiba kamili hapa.",
+  },
+  en: {
+    title: "Community Tournaments | TzDraft",
+    description: "Join our community tournaments and compete against other players for prizes and glory. View the full schedule here.",
+  },
+} as const;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isAppLocale(locale)) return {};
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/community/tournament", siteUrl);
+  const m = META[locale as keyof typeof META] ?? META.en;
+  const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
+  const ogLocaleAlt = locale === "sw" ? "en_TZ" : "sw_TZ";
+
+  return {
+    title: m.title,
+    description: m.description,
+    alternates: {
+      canonical,
+      languages: getLanguageAlternates("/community/tournament", siteUrl),
+    },
+    openGraph: {
+      title: m.title,
+      description: m.description,
+      url: canonical,
+      siteName: "TzDraft",
+      locale: ogLocale,
+      alternateLocale: [ogLocaleAlt],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: m.title,
+      description: m.description,
+    },
+  };
+}
+
 export default async function TournamentsPage({
   params,
 }: {
@@ -276,6 +327,26 @@ export default async function TournamentsPage({
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-10 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "itemListElement": ordered.slice(0, 10).map((t, index) => ({
+              "@type": "ListItem",
+              "position": index + 1,
+              "item": {
+                "@type": "SportsEvent",
+                "name": t.name,
+                "description": locale === "sw" ? t.descriptionSw : t.descriptionEn,
+                "startDate": t.scheduledStartAt,
+                "url": `${getSiteUrl()}/${locale}/community/tournament/${t.id}`
+              }
+            }))
+          })
+        }}
+      />
       <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-6xl flex-col space-y-10">
         <div className="rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(17,24,39,0.98),rgba(37,99,235,0.10),rgba(249,115,22,0.12))] p-6 sm:p-8">
           <h1 className="text-4xl font-black text-white">{copy.title}</h1>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
+import { JsonLd } from "@/components/seo/JsonLd";
 import {
   getCanonicalUrl,
   getLanguageAlternates,
@@ -124,9 +125,27 @@ export default async function SetupOnlineLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const siteUrl = getSiteUrl();
+
+  const softwareAppSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": locale === "sw" ? "Cheza Drafti Mtandaoni" : "TzDraft Online Matchmaking",
+    "applicationCategory": "GameApplication",
+    "genre": "Board Games",
+    "operatingSystem": "Any",
+    "description": locale === "sw" ? "Cheza mechi za Drafti tanzania mtandaoni dhidi ya wapinzani wengine." : "Play online Tanzania Drafti matches against live opponents.",
+    "url": `${siteUrl}/${locale}/game/setup-online`,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  };
 
   return (
     <>
+      <JsonLd data={softwareAppSchema} />
       {isAppLocale(locale) && (
         <BreadcrumbJsonLd
           locale={locale}

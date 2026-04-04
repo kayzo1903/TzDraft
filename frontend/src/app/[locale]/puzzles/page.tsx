@@ -1,5 +1,8 @@
 import { ArrowRight, Star } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -62,6 +65,55 @@ function themeColor(theme: string | null) {
   );
 }
 
+const PUZZLE_META = {
+  sw: {
+    title: "Mafumbo & Mbinu za Drafti | TzDraft Puzzles",
+    description: "Jifunze mbinu za ushindi kupitia mafumbo halisi ya Tanzania Drafti. Boresha kiwango chako cha uchezaji.",
+  },
+  en: {
+    title: "Drafti Puzzles & Tactics | TzDraft",
+    description: "Master winning tactics with real Tanzania Drafti puzzles. Sharpen your game and train with daily challenges.",
+  },
+} as const;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isAppLocale(locale)) return {};
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/puzzles", siteUrl);
+  const m = PUZZLE_META[locale as keyof typeof PUZZLE_META] ?? PUZZLE_META.en;
+  const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
+  const ogLocaleAlt = locale === "sw" ? "en_TZ" : "sw_TZ";
+
+  return {
+    title: m.title,
+    description: m.description,
+    alternates: {
+      canonical,
+      languages: getLanguageAlternates("/puzzles", siteUrl),
+    },
+    openGraph: {
+      title: m.title,
+      description: m.description,
+      url: canonical,
+      siteName: "TzDraft",
+      locale: ogLocale,
+      alternateLocale: [ogLocaleAlt],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: m.title,
+      description: m.description,
+    },
+  };
+}
+
 export default async function PuzzlesPage({
   params,
   searchParams,
@@ -80,9 +132,26 @@ export default async function PuzzlesPage({
 
   const totalPages = Math.ceil(total / 24);
 
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": locale === "sw" ? "Mafumbo ya TzDraft" : "TzDraft Puzzles",
+    "itemListElement": puzzles.slice(0, 10).map((p, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Game",
+        "name": p.title ?? (locale === "sw" ? `Fumbo la Drafti #${p.id.slice(0,6)}` : `Drafti Puzzle #${p.id.slice(0,6)}`),
+        "url": `${getSiteUrl()}/${locale}/puzzles/${p.id}`
+      }
+    }))
+  };
+
   return (
-    <main className="bg-[var(--background)] min-h-screen">
-      {/* Hero */}
+    <>
+      <JsonLd data={itemListSchema} />
+      <main className="bg-[var(--background)] min-h-screen">
+        {/* Hero */}
       <section className="relative overflow-hidden border-b border-white/5 px-4 py-12 sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.14),_transparent_32%)]" />
         <div className="relative mx-auto max-w-6xl">
@@ -240,5 +309,6 @@ export default async function PuzzlesPage({
         </div>
       </section>
     </main>
+    </>
   );
 }
