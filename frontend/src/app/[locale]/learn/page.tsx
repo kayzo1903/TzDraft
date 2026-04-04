@@ -2,6 +2,8 @@ import { client, isSanityConfigured } from "@/sanity/client";
 import { allArticlesQuery } from "@/sanity/queries";
 import { ArticleCard } from "@/components/blog/ArticleCard";
 import { BookOpen } from "lucide-react";
+import type { Metadata } from "next";
+import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
 
 // Revalidate every 60 seconds — new posts appear without a redeploy
 export const revalidate = 60;
@@ -15,6 +17,55 @@ interface ArticleSummary {
   featured?: boolean;
   author?: string;
   category?: { slug: string; title: { sw?: string; en?: string } } | null;
+}
+
+const META = {
+  sw: {
+    title: "Makala & Mwongozo | TzDraft",
+    description: "Jifunze zaidi kuhusu Drafti ya Tanzania — sheria, historia, na mikakati kupitia makala zetu maalumu.",
+  },
+  en: {
+    title: "Articles & Guides | TzDraft",
+    description: "Learn more about Tanzania Drafti — rules, history, and strategy through our dedicated articles and guides.",
+  },
+} as const;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isAppLocale(locale)) return {};
+
+  const siteUrl = getSiteUrl();
+  const canonical = getCanonicalUrl(locale, "/learn", siteUrl);
+  const m = META[locale as keyof typeof META] ?? META.en;
+  const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
+  const ogLocaleAlt = locale === "sw" ? "en_TZ" : "sw_TZ";
+
+  return {
+    title: m.title,
+    description: m.description,
+    alternates: {
+      canonical,
+      languages: getLanguageAlternates("/learn", siteUrl),
+    },
+    openGraph: {
+      title: m.title,
+      description: m.description,
+      url: canonical,
+      siteName: "TzDraft",
+      locale: ogLocale,
+      alternateLocale: [ogLocaleAlt],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: m.title,
+      description: m.description,
+    },
+  };
 }
 
 export default async function LearnPage({
@@ -48,6 +99,25 @@ export default async function LearnPage({
 
   return (
     <main className="min-h-screen bg-[var(--background)] py-14 px-4 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "itemListElement": articles.slice(0, 10).map((a, index) => ({
+              "@type": "ListItem",
+              "position": index + 1,
+              "item": {
+                "@type": "Article",
+                "headline": locale === "sw" ? (a.title.sw || a.title.en) : (a.title.en || a.title.sw),
+                "description": locale === "sw" ? (a.description?.sw || a.description?.en) : (a.description?.en || a.description?.sw),
+                "url": `${getSiteUrl()}/${locale}/learn/${a.slug}`
+              }
+            }))
+          })
+        }}
+      />
       <div className="max-w-5xl mx-auto space-y-12">
 
         {/* Header */}
