@@ -1,3 +1,6 @@
+import { TournamentPrize } from './tournament-prize.entity';
+export { TournamentPrize };
+
 export enum TournamentFormat {
   SINGLE_ELIMINATION = 'SINGLE_ELIMINATION',
   ROUND_ROBIN = 'ROUND_ROBIN',
@@ -58,6 +61,8 @@ export class Tournament {
     public readonly minAiLevelBeaten: number | null = null,
     public readonly requiredAiLevelPlayed: number | null = null,
     public readonly registrationDeadline: Date | null = null,
+    public readonly prizes: TournamentPrize[] = [],
+    public readonly hidden: boolean = false,
   ) {}
 
   isRegistrationOpen(): boolean {
