@@ -23,6 +23,7 @@ services:
       NODE_ENV: production
       PORT: 3002
       DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
       REDIS_URL: redis://redis:6379
       CORS_ORIGINS: ${CORS_ORIGINS}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
