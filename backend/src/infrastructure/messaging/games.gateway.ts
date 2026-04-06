@@ -914,6 +914,62 @@ export class GamesGateway
     this.server.to(`user:${userId}`).emit('notification', notification);
   }
 
+  /* ── League events ───────────────────────────────────────────────────── */
+
+  @SubscribeMessage('joinLeague')
+  handleJoinLeague(
+    @MessageBody() leagueId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`league:${leagueId}`);
+    this.logger.log(`Socket ${client.id} joined league room: ${leagueId}`);
+  }
+
+  /** Game 1 done — notify both players that Game 2 is ready to start. */
+  emitLeagueGame2Ready(player1Id: string, player2Id: string, payload: any) {
+    this.server
+      .to(`user:${player1Id}`)
+      .to(`user:${player2Id}`)
+      .emit('leagueGame2Ready', payload);
+  }
+
+  /** Both games done — match result finalised. */
+  emitLeagueMatchCompleted(player1Id: string, player2Id: string, payload: any) {
+    this.server
+      .to(`user:${player1Id}`)
+      .to(`user:${player2Id}`)
+      .emit('leagueMatchCompleted', payload);
+  }
+
+  /** A match or game was forfeited. */
+  emitLeagueGameForfeited(player1Id: string, player2Id: string, payload: any) {
+    this.server
+      .to(`user:${player1Id}`)
+      .to(`user:${player2Id}`)
+      .emit('leagueGameForfeited', payload);
+  }
+
+  /** Standings changed — broadcast to everyone in the league room. */
+  emitLeagueStandingsUpdated(leagueId: string, payload: any) {
+    this.server
+      .to(`league:${leagueId}`)
+      .emit('leagueStandingsUpdated', payload);
+  }
+
+  /** Round advanced to next round. */
+  emitLeagueRoundAdvanced(leagueId: string, payload: any) {
+    this.server
+      .to(`league:${leagueId}`)
+      .emit('leagueRoundAdvanced', payload);
+  }
+
+  /** League finished — all 11 rounds complete. */
+  emitLeagueCompleted(leagueId: string, payload: any) {
+    this.server
+      .to(`league:${leagueId}`)
+      .emit('leagueCompleted', payload);
+  }
+
   /* ── Helpers ─────────────────────────────────────────────────────────── */
 
   private isWsRateLimited(socketId: string): boolean {
