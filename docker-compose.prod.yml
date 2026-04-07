@@ -22,6 +22,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3002
+      NODE_OPTIONS: "--trace-uncaught --trace-warnings"
       DATABASE_URL: ${DATABASE_URL}
       DIRECT_URL: ${DIRECT_URL}
       REDIS_URL: redis://redis:6379
