@@ -36,7 +36,7 @@ RUN pnpm build
 # Stage 2: Production
 FROM node:22-slim AS production
 
-RUN apt-get update && apt-get install -y --no-install-recommends openssl && \
+RUN apt-get update && apt-get install -y --no-install-recommends openssl curl && \
     rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable
