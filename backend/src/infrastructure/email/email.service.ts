@@ -233,12 +233,12 @@ export class EmailService {
     );
   }
 
-  async sendAnalyticsReport(html: string, reportDate: string) {
+  async sendAnalyticsReport(html: string, reportDate: string, reportType: 'Daily' | 'Weekly' | 'Monthly' = 'Daily') {
     try {
       const { error } = await this.resend.emails.send({
         from: `TzDraft <${this.fromEmail}>`,
         to: 'kay@zetutech.co.tz',
-        subject: `TzDraft Daily Report - ${reportDate}`,
+        subject: `TzDraft ${reportType} Report - ${reportDate}`,
         html,
       });
 

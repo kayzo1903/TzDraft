@@ -572,6 +572,7 @@ export default function AddTournamentPage() {
                     <div className="space-y-2">
                       <p>Tournament created successfully.</p>
                       <div className="flex flex-wrap gap-3 text-xs font-semibold">
+                        <Link href={`/${locale}/admin/tournaments`} className="text-emerald-100 underline underline-offset-2">Open tournament list</Link>
                         <Link href={`/${locale}/admin/tournaments/${createdId}`} className="text-emerald-100 underline underline-offset-2">Open admin monitor</Link>
                         <Link href={`/${locale}/community/tournament/${createdId}`} className="text-emerald-100 underline underline-offset-2">Open detail page</Link>
                       </div>

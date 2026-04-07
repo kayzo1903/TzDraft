@@ -48,6 +48,8 @@ model User {
     matchmakingSearches    MatchmakingSearch[]
     notifications          Notification[]         @relation("UserNotifications")
     puzzleAttempts         PuzzleAttempt[]
+    leaguesCreated         League[]               @relation("LeagueCreator")
+    leagueParticipants     LeagueParticipant[]    @relation("LeagueParticipants")
 
     @@index([country])
     @@index([country, region])
