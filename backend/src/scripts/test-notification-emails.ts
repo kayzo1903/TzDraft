@@ -14,7 +14,7 @@ import { MatchAssigned } from '../infrastructure/email/templates/match-assigned'
 import { TournamentResult } from '../infrastructure/email/templates/tournament-result';
 import { SupportNotification } from '../infrastructure/email/templates/support-notification';
 import { UserConfirmation } from '../infrastructure/email/templates/user-confirmation';
-import { DailyReport } from '../infrastructure/tasks/templates/daily-report';
+import { AnalyticsReport } from '../infrastructure/tasks/templates/analytics-report';
 
 const toArg = process.argv.find((a) => a.startsWith('--to='));
 const TO = toArg ? toArg.replace('--to=', '') : 'kay@zetutech.co.tz';
@@ -39,10 +39,86 @@ interface EmailCase {
 }
 
 async function buildCases(): Promise<EmailCase[]> {
+  const dummyOverview = {
+    totalUsers: 1500,
+    totalRegisteredUsers: 1200,
+    activeGames: 45,
+    totalGames: 2500,
+    totalMatchmakingSearches: 800,
+    totalTournamentParticipants: 120,
+    totalTournamentGames: 240,
+    dailyVisits: 1250,
+    dailyGuestUsers: 340,
+    dailyRegisteredRevisits: 910,
+    dailyAiGames: 567,
+    dailyMatchmakingSearches: 450,
+    dailyMatchPairings: 234,
+    dailyFriendMatches: 89,
+  };
+
+  const dummyLiveBreakdown = {
+    ranked: 15,
+    casual: 20,
+    ai: 5,
+    tournament: 3,
+    friend: 2,
+  };
+
+  const dummyWindows = [
+    {
+      days: 1,
+      visits: 1250,
+      guestUsers: 340,
+      revisitUsers: 910,
+      aiGames: 567,
+      gamesPlayed: 800,
+      friendGamesPlayed: 89,
+      matchPairings: 234,
+      searches: 400,
+      matchedSearches: 350,
+      expiredSearches: 50,
+      newRegisteredUsers: 25,
+      tournamentParticipants: 12,
+      tournamentGamesPlayed: 24,
+    },
+    {
+      days: 7,
+      visits: 8250,
+      guestUsers: 1340,
+      revisitUsers: 6910,
+      aiGames: 2567,
+      gamesPlayed: 3800,
+      friendGamesPlayed: 589,
+      matchPairings: 1234,
+      searches: 2400,
+      matchedSearches: 2350,
+      expiredSearches: 50,
+      newRegisteredUsers: 125,
+      tournamentParticipants: 42,
+      tournamentGamesPlayed: 124,
+    },
+    {
+      days: 30,
+      visits: 38250,
+      guestUsers: 5340,
+      revisitUsers: 26910,
+      aiGames: 12567,
+      gamesPlayed: 13800,
+      friendGamesPlayed: 1589,
+      matchPairings: 5234,
+      searches: 12400,
+      matchedSearches: 12350,
+      expiredSearches: 50,
+      newRegisteredUsers: 625,
+      tournamentParticipants: 242,
+      tournamentGamesPlayed: 524,
+    },
+  ];
+
   return [
     // ── 1. Tournament Registered ───────────────────────────────────────────
     {
-      subject: '[Test] 1/8 – Tournament Registration Confirmed',
+      subject: '[Test] 1/11 – Tournament Registration Confirmed',
       html: () =>
         render(
           TournamentRegistered({
@@ -57,7 +133,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 2. Tournament Started ──────────────────────────────────────────────
     {
-      subject: '[Test] 2/8 – Tournament Has Started',
+      subject: '[Test] 2/11 – Tournament Has Started',
       html: () =>
         render(
           TournamentStarted({
@@ -71,7 +147,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 3. Match Assigned ─────────────────────────────────────────────────
     {
-      subject: '[Test] 3/8 – Match Assigned (Round 1)',
+      subject: '[Test] 3/11 – Match Assigned (Round 1)',
       html: () =>
         render(
           MatchAssigned({
@@ -86,7 +162,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 4. Match Result — Win ─────────────────────────────────────────────
     {
-      subject: '[Test] 4/8 – Match Result: You Won!',
+      subject: '[Test] 4/11 – Match Result: You Won!',
       html: () =>
         render(
           TournamentResult({
@@ -101,7 +177,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 5. Match Result — Eliminated ──────────────────────────────────────
     {
-      subject: '[Test] 5/8 – Match Result: Eliminated',
+      subject: '[Test] 5/11 – Match Result: Eliminated',
       html: () =>
         render(
           TournamentResult({
@@ -116,7 +192,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 6. Tournament Completed — Champion ────────────────────────────────
     {
-      subject: "[Test] 6/8 – Tournament Over: You're the Champion!",
+      subject: "[Test] 6/11 – Tournament Over: You're the Champion!",
       html: () =>
         render(
           TournamentResult({
@@ -130,7 +206,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 7. Tournament Completed — Non-champion ────────────────────────────
     {
-      subject: '[Test] 7/8 – Tournament Over (not champion)',
+      subject: '[Test] 7/11 – Tournament Over (not champion)',
       html: () =>
         render(
           TournamentResult({
@@ -144,7 +220,7 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 8. Support confirmation (existing template sanity check) ──────────
     {
-      subject: '[Test] 8/9 – Support Request Confirmation',
+      subject: '[Test] 8/11 – Support Request Confirmation',
       html: () =>
         render(
           UserConfirmation({
@@ -156,51 +232,45 @@ async function buildCases(): Promise<EmailCase[]> {
 
     // ── 9. Daily Analytics Report ─────────────────────────────────────────
     {
-      subject: '[Test] 9/9 – Daily Analytics Report',
+      subject: '[Test] 9/11 – Daily Analytics Report',
       html: () =>
         render(
-          DailyReport({
+          AnalyticsReport({
+            reportType: 'Daily',
             generatedAt: new Date().toISOString(),
-            overview: {
-              totalUsers: 1500,
-              totalRegisteredUsers: 1200,
-              activeGames: 45,
-              totalGames: 2500,
-              totalMatchmakingSearches: 800,
-              totalTournamentParticipants: 120,
-              totalTournamentGames: 240,
-              dailyVisits: 1250,
-              dailyGuestUsers: 340,
-              dailyRegisteredRevisits: 910,
-              dailyAiGames: 567,
-              dailyMatchPairings: 234,
-              dailyFriendMatches: 89,
-            },
-            liveBreakdown: {
-              ranked: 15,
-              casual: 20,
-              ai: 5,
-              tournament: 3,
-              friend: 2,
-            },
-            windows: [
-              {
-                days: 1,
-                visits: 1250,
-                guestUsers: 340,
-                revisitUsers: 910,
-                aiGames: 567,
-                gamesPlayed: 800,
-                friendGamesPlayed: 89,
-                matchPairings: 234,
-                searches: 400,
-                matchedSearches: 350,
-                expiredSearches: 50,
-                newRegisteredUsers: 25,
-                tournamentParticipants: 12,
-                tournamentGamesPlayed: 24,
-              },
-            ],
+            overview: dummyOverview,
+            liveBreakdown: dummyLiveBreakdown,
+            windows: dummyWindows,
+          }),
+        ),
+    },
+
+    // ── 10. Weekly Analytics Report ───────────────────────────────────────
+    {
+      subject: '[Test] 10/11 – Weekly Analytics Report',
+      html: () =>
+        render(
+          AnalyticsReport({
+            reportType: 'Weekly',
+            generatedAt: new Date().toISOString(),
+            overview: dummyOverview,
+            liveBreakdown: dummyLiveBreakdown,
+            windows: dummyWindows,
+          }),
+        ),
+    },
+
+    // ── 11. Monthly Analytics Report ──────────────────────────────────────
+    {
+      subject: '[Test] 11/11 – Monthly Analytics Report',
+      html: () =>
+        render(
+          AnalyticsReport({
+            reportType: 'Monthly',
+            generatedAt: new Date().toISOString(),
+            overview: dummyOverview,
+            liveBreakdown: dummyLiveBreakdown,
+            windows: dummyWindows,
           }),
         ),
     },

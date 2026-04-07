@@ -61,6 +61,7 @@ export interface AdminAnalyticsResponse {
     dailyGuestUsers: number;
     dailyRegisteredRevisits: number;
     dailyAiGames: number;
+    dailyMatchmakingSearches: number;
     dailyMatchPairings: number;
     dailyFriendMatches: number;
   };

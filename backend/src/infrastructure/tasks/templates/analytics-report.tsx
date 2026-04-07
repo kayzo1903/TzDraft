@@ -4,7 +4,8 @@ import {
 } from '@react-email/components';
 import { emailTheme, sharedStyles as s } from '../../email/templates/theme';
 
-interface DailyReportProps {
+interface AnalyticsReportProps {
+    reportType?: 'Daily' | 'Weekly' | 'Monthly';
     generatedAt: string;
     overview: {
         totalUsers: number;
@@ -18,6 +19,7 @@ interface DailyReportProps {
         dailyGuestUsers: number;
         dailyRegisteredRevisits: number;
         dailyAiGames: number;
+        dailyMatchmakingSearches: number;
         dailyMatchPairings: number;
         dailyFriendMatches: number;
     };
@@ -46,12 +48,13 @@ interface DailyReportProps {
     }>;
 }
 
-export const DailyReport = ({
+export const AnalyticsReport = ({
+    reportType = 'Daily',
     generatedAt,
     overview,
     liveBreakdown,
     windows,
-}: DailyReportProps) => {
+}: AnalyticsReportProps) => {
     const reportDate = new Date(generatedAt).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -61,10 +64,16 @@ export const DailyReport = ({
 
     const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
 
+    const isDaily = reportType === 'Daily';
+    
+    // Choose the target window for "Highlights" based on reportType
+    const targetDays = isDaily ? 1 : (reportType === 'Weekly' ? 7 : 30);
+    const windowStats = windows.find(w => w.days === targetDays) || windows[0];
+
     return (
         <Html lang="en">
             <Head />
-            <Preview children={`TzDraft Daily Analytics Report - ${reportDate}`} />
+            <Preview children={`TzDraft ${reportType} Analytics Report - ${reportDate}`} />
             <Body style={s.main}>
                 <Container style={s.container}>
 
@@ -76,49 +85,59 @@ export const DailyReport = ({
                         <Heading style={s.wordmark}>
                             Tz<span style={{ color: '#fbbf24' }}>Draft</span>
                         </Heading>
-                        <Text style={s.tagline}>Daily Analytics Report</Text>
+                        <Text style={s.tagline}>{reportType} Analytics Report</Text>
                     </Section>
 
                     {/* Main card */}
                     <Section style={s.card}>
-                        <Text style={s.eyebrow}>Daily Report</Text>
+                        <Text style={s.eyebrow}>{reportType} Report</Text>
                         <Heading style={s.h1}>{reportDate}</Heading>
                         <Text style={s.body}>
-                            Here's your daily TzDraft analytics summary. All metrics exclude admin activity.
+                            Here's your {reportType.toLowerCase()} TzDraft analytics summary. All metrics exclude admin activity.
                         </Text>
 
-                        {/* Daily Highlights */}
+                        {/* Highlights */}
                         <Section style={{ margin: '24px 0' }}>
-                            <Heading style={{ ...s.h2, marginBottom: '16px' }}>📊 Daily Highlights</Heading>
+                            <Heading style={{ ...s.h2, marginBottom: '16px' }}>📊 {reportType} Highlights</Heading>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                                 <div style={s.metricBox}>
-                                    <Text style={s.metricLabel}>Daily Visits</Text>
-                                    <Text style={s.metricValue}>{formatNumber(overview.dailyVisits)}</Text>
+                                    <Text style={s.metricLabel}>New Visits</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyVisits : windowStats.visits)}</Text>
                                 </div>
                                 <div style={s.metricBox}>
                                     <Text style={s.metricLabel}>Guest Users</Text>
-                                    <Text style={s.metricValue}>{formatNumber(overview.dailyGuestUsers)}</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyGuestUsers : windowStats.guestUsers)}</Text>
                                 </div>
                                 <div style={s.metricBox}>
                                     <Text style={s.metricLabel}>Registered Revisits</Text>
-                                    <Text style={s.metricValue}>{formatNumber(overview.dailyRegisteredRevisits)}</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyRegisteredRevisits : windowStats.revisitUsers)}</Text>
                                 </div>
                                 <div style={s.metricBox}>
                                     <Text style={s.metricLabel}>AI Games</Text>
-                                    <Text style={s.metricValue}>{formatNumber(overview.dailyAiGames)}</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyAiGames : windowStats.aiGames)}</Text>
+                                </div>
+                                <div style={s.metricBox}>
+                                    <Text style={s.metricLabel}>{reportType} Searches</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyMatchmakingSearches : windowStats.searches)}</Text>
                                 </div>
                                 <div style={s.metricBox}>
                                     <Text style={s.metricLabel}>Match Pairings</Text>
-                                    <Text style={s.metricValue}>{formatNumber(overview.dailyMatchPairings)}</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyMatchPairings : windowStats.matchPairings)}</Text>
                                 </div>
                                 <div style={s.metricBox}>
                                     <Text style={s.metricLabel}>Friend Matches</Text>
-                                    <Text style={s.metricValue}>{formatNumber(overview.dailyFriendMatches)}</Text>
+                                    <Text style={s.metricValue}>{formatNumber(isDaily ? overview.dailyFriendMatches : windowStats.friendGamesPlayed)}</Text>
                                 </div>
+                                {!isDaily && (
+                                    <div style={s.metricBox}>
+                                        <Text style={s.metricLabel}>New Registered</Text>
+                                        <Text style={s.metricValue}>{formatNumber(windowStats.newRegisteredUsers)}</Text>
+                                    </div>
+                                )}
                             </div>
                         </Section>
 
-                        {/* Live Games Breakdown */}
+                        {/* Live Games Breakdown (Relevant for all reports, good to see current state) */}
                         <Section style={{ margin: '24px 0' }}>
                             <Heading style={{ ...s.h2, marginBottom: '16px' }}>🎮 Live Games Right Now</Heading>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -149,31 +168,59 @@ export const DailyReport = ({
                             </div>
                         </Section>
 
-                        {/* 7-Day Trends */}
-                        <Section style={{ margin: '24px 0' }}>
-                            <Heading style={{ ...s.h2, marginBottom: '16px' }}>📈 7-Day Trends</Heading>
-                            {windows.filter(w => w.days === 7).map(window => (
-                                <div key={window.days} style={{ marginBottom: '16px' }}>
-                                    <Text style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '8px' }}>
-                                        Last 7 days (rolling totals)
-                                    </Text>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                                        <div style={s.smallMetricBox}>
-                                            <Text style={s.smallMetricLabel}>Visits</Text>
-                                            <Text style={s.smallMetricValue}>{formatNumber(window.visits)}</Text>
-                                        </div>
-                                        <div style={s.smallMetricBox}>
-                                            <Text style={s.smallMetricLabel}>AI Games</Text>
-                                            <Text style={s.smallMetricValue}>{formatNumber(window.aiGames)}</Text>
-                                        </div>
-                                        <div style={s.smallMetricBox}>
-                                            <Text style={s.smallMetricLabel}>Pairings</Text>
-                                            <Text style={s.smallMetricValue}>{formatNumber(window.matchPairings)}</Text>
+                        {/* Trend sections depending on report type */}
+                        {isDaily && (
+                            <Section style={{ margin: '24px 0' }}>
+                                <Heading style={{ ...s.h2, marginBottom: '16px' }}>📈 7-Day Trends</Heading>
+                                {windows.filter(w => w.days === 7).map(window => (
+                                    <div key={window.days} style={{ marginBottom: '16px' }}>
+                                        <Text style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '8px' }}>
+                                            Last 7 days (rolling totals)
+                                        </Text>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                            <div style={s.smallMetricBox}>
+                                                <Text style={s.smallMetricLabel}>Visits</Text>
+                                                <Text style={s.smallMetricValue}>{formatNumber(window.visits)}</Text>
+                                            </div>
+                                            <div style={s.smallMetricBox}>
+                                                <Text style={s.smallMetricLabel}>AI Games</Text>
+                                                <Text style={s.smallMetricValue}>{formatNumber(window.aiGames)}</Text>
+                                            </div>
+                                            <div style={s.smallMetricBox}>
+                                                <Text style={s.smallMetricLabel}>Pairings</Text>
+                                                <Text style={s.smallMetricValue}>{formatNumber(window.matchPairings)}</Text>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </Section>
+                                ))}
+                            </Section>
+                        )}
+                        {!isDaily && (
+                            <Section style={{ margin: '24px 0' }}>
+                                <Heading style={{ ...s.h2, marginBottom: '16px' }}>📈 30-Day Trends</Heading>
+                                {windows.filter(w => w.days === 30).map(window => (
+                                    <div key={window.days} style={{ marginBottom: '16px' }}>
+                                        <Text style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '8px' }}>
+                                            Last 30 days (rolling totals)
+                                        </Text>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                            <div style={s.smallMetricBox}>
+                                                <Text style={s.smallMetricLabel}>Visits</Text>
+                                                <Text style={s.smallMetricValue}>{formatNumber(window.visits)}</Text>
+                                            </div>
+                                            <div style={s.smallMetricBox}>
+                                                <Text style={s.smallMetricLabel}>AI Games</Text>
+                                                <Text style={s.smallMetricValue}>{formatNumber(window.aiGames)}</Text>
+                                            </div>
+                                            <div style={s.smallMetricBox}>
+                                                <Text style={s.smallMetricLabel}>Pairings</Text>
+                                                <Text style={s.smallMetricValue}>{formatNumber(window.matchPairings)}</Text>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </Section>
+                        )}
 
                         {/* Overall Stats */}
                         <Section style={{ margin: '24px 0' }}>

@@ -600,7 +600,10 @@ export class AuthService {
       .updateMany({
         where: {
           id: userId,
-          lastLoginAt: { lt: new Date(Date.now() - 60 * 60 * 1000) },
+          OR: [
+            { lastLoginAt: null },
+            { lastLoginAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } },
+          ],
         },
         data: { lastLoginAt: new Date() },
       })

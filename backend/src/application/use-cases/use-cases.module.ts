@@ -34,6 +34,7 @@ import { BracketGenerationService } from '../../domain/tournament/services/brack
 import { MatchProgressionService } from '../../domain/tournament/services/match-progression.service';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matchmaking-analytics.service';
+import { LeagueUseCasesModule } from './league/league-use-cases.module';
 
 /**
  * Use Cases Module
@@ -46,6 +47,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     UserModule,
     PrismaModule,
     EmailModule,
+    LeagueUseCasesModule,
   ],
   providers: [
     RatingService,
@@ -109,6 +111,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     AdminResolveTournamentMatchUseCase,
     AdminSetTournamentVisibilityUseCase,
     AdminDeleteTournamentUseCase,
+    LeagueUseCasesModule,
   ],
 })
 export class UseCasesModule {}

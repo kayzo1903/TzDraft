@@ -35,6 +35,10 @@ model Game {
     tournamentMatchGameId String?             @unique @map("tournament_match_game_id")
     tournamentMatchGame   TournamentMatchGame? @relation(fields: [tournamentMatchGameId], references: [id])
 
+    // League link — null for non-league games
+    leagueGameId String?     @unique @map("league_game_id")
+    leagueGame   LeagueGame? @relation(fields: [leagueGameId], references: [id])
+
     // Puzzle mining
     minedForPuzzles   Boolean   @default(false) @map("mined_for_puzzles")
     puzzles           Puzzle[]
@@ -77,6 +81,7 @@ enum GameType {
     CASUAL
     AI
     TOURNAMENT
+    LEAGUE
 }
 
 enum Winner {
