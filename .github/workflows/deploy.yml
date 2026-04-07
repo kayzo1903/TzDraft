@@ -120,8 +120,17 @@ jobs:
             # Pull new images (IMAGE_TAG=latest so compose picks them up)
             IMAGE_TAG=latest docker compose -f docker-compose.prod.yml pull
 
-            # Restart containers with zero manual downtime
+            # Restart containers — do NOT use set -e here so we can capture logs on failure
+            set +e
             IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            COMPOSE_EXIT=$?
+            set -e
+
+            if [ $COMPOSE_EXIT -ne 0 ]; then
+              echo "❌ docker compose up failed (exit $COMPOSE_EXIT). Backend logs:"
+              docker compose -f docker-compose.prod.yml logs backend --tail=80
+              exit $COMPOSE_EXIT
+            fi
 
             # Clean up old dangling images to reclaim disk space
             docker image prune -f
