@@ -446,7 +446,12 @@ export default function AdminDashboard() {
           icon={HandshakeIcon}
           accent="orange"
         />
-        <div />
+        <KpiCard
+          label="Daily Match Searches"
+          value={analytics ? formatNumber(analytics.overview.dailyMatchmakingSearches) : "—"}
+          icon={Search}
+          accent="violet"
+        />
         <div />
       </div>
 

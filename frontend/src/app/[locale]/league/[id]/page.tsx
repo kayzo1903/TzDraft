@@ -154,8 +154,8 @@ export default function LeagueStandingsPage() {
                   </td>
                   <td className="px-6 py-4 font-medium text-white">
                     <div className="flex flex-col">
-                      <span>{p.user.username}</span>
-                      <span className="text-xs text-gray-500">Rating: {p.user.rating}</span>
+                      <span>{p.user?.username || "Unknown"}</span>
+                      <span className="text-xs text-gray-500">Rating: {p.user?.rating || 1200}</span>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-center text-gray-400">{p.matchesPlayed}</td>
