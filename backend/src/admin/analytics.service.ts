@@ -35,8 +35,8 @@ export class AnalyticsService {
       ? await this.countMatchmakingSearches()
       : 0;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use a rolling 24-hour window instead of local midnight so stats don't wipe every morning
+    const today = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const dailyVisits = await this.countUsersByLastLoginSince(today);
     const dailyGuestUsers = await this.countUsersByLastLoginSince(
@@ -47,10 +47,9 @@ export class AnalyticsService {
       today,
       Prisma.sql`"account_type" <> 'GUEST' AND "role" <> 'ADMIN' AND "created_at" < ${today}`,
     );
-    const dailyAiGames = await this.prisma.game.count({
+    const dailyAiGames = await this.prisma.aiChallengeSession.count({
       where: {
-        gameType: GameType.AI,
-        createdAt: { gte: today },
+        startedAt: { gte: today },
       },
     });
     const dailyMatchPairings = matchmakingEnabled
@@ -62,12 +61,15 @@ export class AnalyticsService {
         createdAt: { gte: today },
       },
     });
+    const dailyMatchmakingSearches = matchmakingEnabled
+      ? await this.countMatchmakingSearchesSince(today)
+      : 0;
 
     const [liveRanked, liveCasual, liveAi, liveTournament, liveFriend] =
       await Promise.all([
         this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'RANKED' } }),
         this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'CASUAL' } }),
-        this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'AI' } }),
+        this.prisma.aiChallengeSession.count({ where: { completedAt: null } }),
         this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'TOURNAMENT' } }),
         this.prisma.game.count({ where: { status: 'ACTIVE', inviteCode: { not: null } } }),
       ]);
@@ -95,6 +97,7 @@ export class AnalyticsService {
         dailyGuestUsers,
         dailyRegisteredRevisits,
         dailyAiGames,
+        dailyMatchmakingSearches,
         dailyMatchPairings,
         dailyFriendMatches,
       },
@@ -218,9 +221,8 @@ export class AnalyticsService {
     );
     const revisitUsers = await this.getWindowRevisitCounts();
     const aiGames = await this.getWindowCounts(
-      'games',
-      'created_at',
-      Prisma.sql`"game_type" = 'AI'`,
+      'ai_challenge_sessions',
+      'started_at',
     );
     const friendGames = await this.getWindowCounts(
       'games',
@@ -285,10 +287,9 @@ export class AnalyticsService {
     const revisitTrend = await this.getDailyRevisitCounts(days);
     const gameTrend = await this.getDailyCounts('games', 'created_at', days);
     const aiGameTrend = await this.getDailyCounts(
-      'games',
-      'created_at',
+      'ai_challenge_sessions',
+      'started_at',
       days,
-      Prisma.sql`"game_type" = 'AI'`,
     );
     const tournamentGameTrend = await this.getDailyCounts(
       'games',
@@ -544,6 +545,16 @@ export class AnalyticsService {
       FROM "matchmaking_searches"
       WHERE "status" = 'MATCHED'
         AND "matched_at" >= ${since}
+    `);
+
+    return Number(row?.count ?? 0n);
+  }
+
+  private async countMatchmakingSearchesSince(since: Date): Promise<number> {
+    const [row] = await this.prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS count
+      FROM "matchmaking_searches"
+      WHERE "started_at" >= ${since}
     `);
 
     return Number(row?.count ?? 0n);
