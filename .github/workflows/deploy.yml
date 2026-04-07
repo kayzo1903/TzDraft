@@ -128,7 +128,7 @@ jobs:
 
             if [ $COMPOSE_EXIT -ne 0 ]; then
               echo "❌ docker compose up failed (exit $COMPOSE_EXIT). Backend logs:"
-              docker compose -f docker-compose.prod.yml logs backend --tail=80
+              docker compose -f docker-compose.prod.yml logs backend --tail=300
               exit $COMPOSE_EXIT
             fi
 
