@@ -19,5 +19,6 @@ import { UseCasesModule } from '../../application/use-cases/use-cases.module';
     PuzzleMinerService, 
     TournamentTasksService,
   ],
+  exports: [ReportService],
 })
 export class TasksModule {}
