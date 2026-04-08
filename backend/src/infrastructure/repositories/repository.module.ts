@@ -9,7 +9,6 @@ import { RedisMatchmakingRepository } from './redis-matchmaking.repository';
 import { PrismaMatchmakingRepository } from './prisma-matchmaking.repository';
 import { PrismaTournamentRepository } from './prisma-tournament.repository';
 import { PrismaNotificationRepository } from './prisma-notification.repository';
-
 /**
  * Repository Module
  * Provides repository implementations.

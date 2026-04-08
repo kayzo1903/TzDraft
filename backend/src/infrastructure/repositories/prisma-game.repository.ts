@@ -489,6 +489,7 @@ export class PrismaGameRepository implements IGameRepository {
       prismaGame.inviteCode ?? null,
       (prismaGame.creatorColor as PlayerColor | null) ?? null,
       prismaGame.tournamentMatchGameId ?? null,
+      prismaGame.leagueGameId ?? null,
     );
 
     // Restore board state: use the stored snapshot when available (O(1)),

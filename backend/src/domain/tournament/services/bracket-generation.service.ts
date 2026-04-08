@@ -100,6 +100,67 @@ export class BracketGenerationService {
     return stubs;
   }
 
+  /**
+   * Generate ALL rounds for a Round Robin format using cyclic scheduling.
+   * Player count is adjusted to even by inserting a BYE (null).
+   */
+  generateRoundRobinSchedules(
+    participants: TournamentParticipant[],
+    tournamentId: string,
+  ): MatchStub[][] {
+    const stubsPerRound: MatchStub[][] = [];
+    const n = participants.length;
+    const isOdd = n % 2 !== 0;
+    const playerCount = isOdd ? n + 1 : n;
+
+    // Use sorted seeds as baseline order
+    const sorted = [...participants].sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999));
+    const ids: (string | null)[] = sorted.map((p) => p.userId);
+    if (isOdd) ids.push(null);
+
+    const totalRounds = playerCount - 1;
+    const matchesPerRound = playerCount / 2;
+
+    for (let round = 0; round < totalRounds; round++) {
+      const matchStubs: MatchStub[] = [];
+      for (let match = 0; match < matchesPerRound; match++) {
+        const home = (round + match) % (playerCount - 1);
+        let away = (playerCount - 1 - match + round) % (playerCount - 1);
+
+        if (match === 0) {
+          away = playerCount - 1;
+        }
+
+        const id1 = ids[home];
+        const id2 = ids[away];
+
+        // Alternating home/away
+        const player1Id = match % 2 === 0 ? id1 : id2;
+        const player2Id = match % 2 === 0 ? id2 : id1;
+
+        if (player1Id === null || player2Id === null) {
+          matchStubs.push({
+            roundId: '', // placeholder, assigned during persistence
+            tournamentId,
+            player1Id: player1Id ?? player2Id, // The non-null gets p1
+            player2Id: null,
+            isBye: true,
+          });
+        } else {
+          matchStubs.push({
+            roundId: '',
+            tournamentId,
+            player1Id,
+            player2Id,
+            isBye: false,
+          });
+        }
+      }
+      stubsPerRound.push(matchStubs);
+    }
+    return stubsPerRound;
+  }
+
   totalRounds(playerCount: number): number {
     return Math.ceil(Math.log2(playerCount));
   }
