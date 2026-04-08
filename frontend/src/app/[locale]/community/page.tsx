@@ -24,7 +24,7 @@ async function fetchDailyPuzzle(): Promise<DailyPuzzle | null> {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-async function fetchTournaments(): Promise<Tournament[]> {
+async function fetchTournaments(): Promise<any[]> {
   try {
     const res = await fetch(`${API_URL}/tournaments`, {
       cache: "no-store",
@@ -186,16 +186,21 @@ export default async function CommunityPage({
     fetchTournaments(),
     fetchDailyPuzzle(),
   ]);
+
+  const allCompetitions = [
+    ...tournaments.map(t => ({ ...t, isLeague: false })),
+  ].sort((a, b) => new Date(b.scheduledStartAt).getTime() - new Date(a.scheduledStartAt).getTime());
+
   const decorated = await Promise.all(
-    tournaments.map(async (tournament) => {
-      const detail = await fetchTournamentDetail(tournament.id);
+    allCompetitions.map(async (comp) => {
+      const detail = await fetchTournamentDetail(comp.id);
       return {
-        ...tournament,
+        ...comp,
         detail,
-        publicStatus: publicTournamentStatus(tournament),
-        closureNote: closureMessage(tournament, detail, locale),
+        publicStatus: publicTournamentStatus(comp),
+        closureNote: closureMessage(comp, detail, locale),
       };
-    }),
+    })
   );
 
   const featured = [...decorated].sort(
@@ -207,11 +212,7 @@ export default async function CommunityPage({
   const completed = decorated.filter((t) => t.publicStatus === "COMPLETED");
 
   const spotlight = [featured, ...decorated.filter((t) => t.id !== featured?.id)]
-    .filter((value): value is (Tournament & {
-      detail: TournamentDetail | null;
-      publicStatus: TournamentStatus | "COMPLETED";
-      closureNote: string | null;
-    }) => Boolean(value))
+    .filter((value) => Boolean(value))
     .slice(0, 3);
 
   const copy = {
@@ -308,8 +309,8 @@ export default async function CommunityPage({
                 {
                   icon: Users,
                   label: locale === "sw" ? "Viti vya juu" : "Biggest field",
-                  value: tournaments.length ? `${Math.max(...tournaments.map((t) => t.maxPlayers))}` : "00",
-                  hint: locale === "sw" ? "Uwezo wa juu wa mashindano." : "Largest tournament size available.",
+                  value: allCompetitions.length ? `${Math.max(...allCompetitions.map((t) => t.maxPlayers))}` : "00",
+                  hint: locale === "sw" ? "Uwezo wa juu wa mashindano." : "Largest competition size available.",
                   accent: "text-orange-300",
                 },
               ].map(({ icon: Icon, label, value, hint, accent }) => (
@@ -389,7 +390,7 @@ export default async function CommunityPage({
                       </div>
                     </div>
                   </div>
-                  <Link href={`/community/tournament/${featured.id}`} className="inline-flex">
+                  <Link href={`/${locale}/${featured.isLeague ? 'league' : 'community/tournament'}/${featured.id}`} className="inline-flex">
                     <Button className="w-full gap-2 justify-center">
                       {locale === "sw" ? "Fungua ukurasa wa mashindano" : "Open tournament page"}
                       <ArrowRight className="h-4 w-4" />
@@ -428,7 +429,7 @@ export default async function CommunityPage({
               {spotlight.map((tournament) => (
                 <Link
                   key={tournament.id}
-                  href={`/community/tournament/${tournament.id}`}
+                  href={`/${locale}/${tournament.isLeague ? 'league' : 'community/tournament'}/${tournament.id}`}
                   className="group rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-5 transition duration-200 hover:-translate-y-1 hover:border-orange-400/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.04))]"
                 >
                   <div className="flex items-start justify-between gap-3">

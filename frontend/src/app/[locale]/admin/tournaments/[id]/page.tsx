@@ -90,6 +90,9 @@ function buildEditForm(tournament: Tournament) {
       currency: p.currency as PrizeCurrency,
       label: p.label ?? "",
     })) as PrizeEntry[],
+    roundDurationDays: tournament.roundDurationMinutes ? Math.floor(tournament.roundDurationMinutes / 1440).toString() : "0",
+    roundDurationHours: tournament.roundDurationMinutes ? Math.floor((tournament.roundDurationMinutes % 1440) / 60).toString() : "0",
+    roundDurationMinutes: tournament.roundDurationMinutes ? (tournament.roundDurationMinutes % 60).toString() : "0",
   };
 }
 
@@ -284,6 +287,8 @@ export default function AdminTournamentMonitorPage() {
     createdAt: new Date().toISOString(),
     hidden: false,
     prizes: [],
+    currentRound: 0,
+    roundDurationMinutes: 10080,
   }));
   const [savingEdit, setSavingEdit] = useState(false);
   const [editDirty, setEditDirty] = useState(false);

@@ -73,8 +73,10 @@ export const MkaguziEngine = {
         if (result.status === 'ongoing')
             return null;
         if (result.status === 'win') {
-            const winner = result.winner === 'white' ? Winner.WHITE :
-                result.winner === 'black' ? Winner.BLACK :
+            // appFenToMkaguziFen swaps white↔black piece labels, so the engine's
+            // 'white' winner corresponds to the app's BLACK, and vice versa.
+            const winner = result.winner === 'white' ? Winner.BLACK :
+                result.winner === 'black' ? Winner.WHITE :
                     Winner.DRAW;
             return { winner, reason: EndReason.STALEMATE };
         }

@@ -16,7 +16,6 @@ import {
 } from '../../shared/constants/game.constants';
 import { RatingService } from './rating.service';
 import { ReportTournamentResultUseCase } from './tournament/report-tournament-result.use-case';
-
 /**
  * End Game Use Case
  * Handles game termination (resignation, timeout, etc.)
