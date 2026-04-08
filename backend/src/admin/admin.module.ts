@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { AdminController } from '../interface/http/controllers/admin.controller';
 import { AuthModule } from '../auth/auth.module';
@@ -9,9 +9,16 @@ import {
   RedisHealthIndicator,
 } from '../health/health.controller';
 import { AnalyticsService } from './analytics.service';
+import { TasksModule } from '../infrastructure/tasks/tasks.module';
 
 @Module({
-  imports: [TerminusModule, PrismaModule, RedisModule, AuthModule],
+  imports: [
+    TerminusModule, 
+    PrismaModule, 
+    RedisModule, 
+    AuthModule, 
+    forwardRef(() => TasksModule)
+  ],
   controllers: [AdminController],
   providers: [PrismaHealthIndicator, RedisHealthIndicator, AnalyticsService],
   exports: [AnalyticsService],

@@ -6,10 +6,14 @@ import {
   Logger,
   Param,
   Patch,
+  Post,
   Query,
   ServiceUnavailableException,
+  BadRequestException,
   UseGuards,
   Req,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { HealthCheckService } from '@nestjs/terminus';
@@ -28,6 +32,7 @@ import {
   UpdateUserRoleDto,
 } from '../dtos/admin.dto';
 import { AnalyticsService } from '../../../admin/analytics.service';
+import { ReportService } from '../../../infrastructure/tasks/report.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -40,7 +45,27 @@ export class AdminController {
     private readonly prismaIndicator: PrismaHealthIndicator,
     private readonly redisIndicator: RedisHealthIndicator,
     private readonly analyticsService: AnalyticsService,
+    @Inject(forwardRef(() => ReportService))
+    private readonly reportService: ReportService,
   ) {}
+
+  @Post('analytics/trigger-report')
+  async triggerReport(@Body('type') type: 'Daily' | 'Weekly' | 'Monthly') {
+    if (!['Daily', 'Weekly', 'Monthly'].includes(type)) {
+      throw new BadRequestException('Invalid report type. Expected Daily, Weekly, or Monthly.');
+    }
+    
+    // Trigger the report asynchronously
+    this.reportService.triggerReport(type).catch(err => {
+      this.logger.error(`Manual ${type} report trigger failed:`, err);
+    });
+
+    return { 
+      success: true, 
+      message: `${type} report generation triggered. The email will be sent to the administrator shortly.` 
+    };
+  }
+
 
   @Get('stats')
   async getStats() {
