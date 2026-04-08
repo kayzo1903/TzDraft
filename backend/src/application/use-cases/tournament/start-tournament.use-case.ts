@@ -80,26 +80,52 @@ export class StartTournamentUseCase {
     const seeded = this.bracket.assignSeeds(participants);
     await Promise.all(seeded.map((p) => this.repo.updateParticipant(p)));
 
-    // Create round 1
-    const round = new TournamentRound(
-      randomUUID(),
-      tournamentId,
-      1,
-      RoundStatus.ACTIVE,
-      new Date(),
-    );
-    const savedRound = await this.repo.createRound(round);
+    // Generate rounds and matches depending on the format
+    const isRoundRobin = tournament.format === 'ROUND_ROBIN';
+    let matchCountTotal = 0;
 
-    // Generate pairings
-    const stubs = this.bracket.generateRound1(
-      seeded,
-      savedRound.id,
-      tournamentId,
-    );
+    if (isRoundRobin) {
+      const scheduleLines = this.bracket.generateRoundRobinSchedules(seeded, tournamentId);
+      
+      for (let i = 0; i < scheduleLines.length; i++) {
+        const roundNumber = i + 1;
+        const round = new TournamentRound(
+          randomUUID(),
+          tournamentId,
+          roundNumber,
+          roundNumber === 1 ? RoundStatus.ACTIVE : RoundStatus.PENDING,
+          roundNumber === 1 ? new Date() : null,
+        );
+        const savedRound = await this.repo.createRound(round);
 
-    // Persist matches and spawn games
-    for (const stub of stubs) {
-      await this.createMatchFromStub(stub, tournament, seeded);
+        const stubs = scheduleLines[i] ?? [];
+        for (const stub of stubs) {
+          stub.roundId = savedRound.id;
+          await this.createMatchFromStub(stub, tournament, seeded, roundNumber === 1);
+        }
+        matchCountTotal += stubs.length;
+      }
+    } else {
+      // SINGLE_ELIMINATION
+      const round = new TournamentRound(
+        randomUUID(),
+        tournamentId,
+        1,
+        RoundStatus.ACTIVE,
+        new Date(),
+      );
+      const savedRound = await this.repo.createRound(round);
+
+      const stubs = this.bracket.generateRound1(
+        seeded,
+        savedRound.id,
+        tournamentId,
+      );
+
+      for (const stub of stubs) {
+        await this.createMatchFromStub(stub, tournament, seeded, true);
+      }
+      matchCountTotal += stubs.length;
     }
 
     // Mark tournament active
@@ -112,12 +138,11 @@ export class StartTournamentUseCase {
       tournamentId,
     });
 
-    // Notify all participants
     const participantIds = seeded.map((p) => p.userId);
     void this.notificationService.notifyTournamentStarted(
       participantIds,
       saved,
-      stubs.length,
+      matchCountTotal,
     );
 
     return saved;
@@ -200,6 +225,7 @@ export class StartTournamentUseCase {
     stub: MatchStub,
     tournament: Tournament,
     participants: TournamentParticipant[],
+    spawnGame: boolean = true,
   ): Promise<void> {
     const matchId = randomUUID();
     const match = new TournamentMatch(
@@ -229,7 +255,7 @@ export class StartTournamentUseCase {
 
     const savedMatch = await this.repo.createMatch(match);
 
-    if (stub.player1Id && stub.player2Id) {
+    if (stub.player1Id && stub.player2Id && spawnGame) {
       await this.spawnGameForMatch(
         savedMatch,
         tournament,

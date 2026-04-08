@@ -31,6 +31,11 @@ model Tournament {
     registrationDeadline DateTime? @map("registration_deadline")
     scheduledStartAt     DateTime  @map("scheduled_start_at")
     hidden               Boolean   @default(false)
+    
+    currentRound         Int @default(0) @map("current_round")
+    roundDurationDays    Int @default(7) @map("round_duration_days")
+    roundDurationMinutes Int @default(10080) @map("round_duration_minutes")
+
     createdById          String    @map("created_by_id")
     createdAt            DateTime  @default(now()) @map("created_at")
     updatedAt            DateTime  @updatedAt @map("updated_at")
@@ -74,6 +79,15 @@ model TournamentParticipant {
 
     // Swiss Buchholz tiebreak — unused in Phase 1 SE
     tiebreakScore Float @default(0) @map("tiebreak_score")
+    
+    // Football-style Round Robin specific trackers
+    matchPoints       Int     @default(0) @map("match_points")
+    matchDraws        Int     @default(0) @map("match_draws")
+    matchesPlayed     Int     @default(0) @map("matches_played")
+    consecutiveMissed Int     @default(0) @map("consecutive_missed")
+    goalsFor          Decimal @default(0) @map("goals_for") @db.Decimal(5, 1)
+    goalsAgainst      Decimal @default(0) @map("goals_against") @db.Decimal(5, 1)
+    goalDifference    Decimal @default(0) @map("goal_difference") @db.Decimal(5, 1)
 
     registeredAt DateTime @default(now()) @map("registered_at")
 
@@ -203,6 +217,7 @@ enum MatchStatus {
     ACTIVE
     COMPLETED
     BYE
+    FORFEIT
 }
 
 enum MatchResult {
