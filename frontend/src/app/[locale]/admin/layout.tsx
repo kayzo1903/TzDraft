@@ -35,6 +35,7 @@ export default function AdminLayout({
   const nav = [
     { href: `/${locale}/admin`, label: "Dashboard", icon: LayoutDashboard },
     { href: `/${locale}/admin/tournaments`, label: "Tournaments", icon: Trophy },
+
     { href: `/${locale}/admin/puzzles`, label: "Puzzles", icon: Puzzle },
     { href: `/${locale}/admin/users`, label: "Users", icon: Users },
     { href: `/${locale}/admin/health`, label: "Health", icon: Activity },

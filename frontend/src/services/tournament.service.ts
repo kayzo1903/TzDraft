@@ -46,6 +46,8 @@ export interface Tournament {
   scheduledStartAt: string;
   createdAt: string;
   hidden: boolean;
+  roundDurationMinutes: number;
+  currentRound: number;
   prizes: TournamentPrize[];
 }
 
@@ -123,6 +125,7 @@ export interface CreateTournamentInput {
   minMatchmakingWins?: number;
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
+  roundDurationMinutes?: number;
   prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
 }
 
@@ -140,6 +143,7 @@ export interface UpdateTournamentInput {
   minPlayers?: number;
   scheduledStartAt?: string;
   registrationDeadline?: string | null;
+  roundDurationMinutes?: number;
   prizes?: { placement: number; amount: number; currency: PrizeCurrency; label?: string }[];
 }
 

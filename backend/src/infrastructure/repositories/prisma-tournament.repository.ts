@@ -395,6 +395,8 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       row.registrationDeadline,
       prizes,
       row.hidden ?? false,
+      row.currentRound ?? 0,
+      row.roundDurationMinutes ?? 10080,
     );
   }
 
@@ -493,6 +495,8 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       scheduledStartAt: t.scheduledStartAt,
       hidden: t.hidden,
       createdById: t.createdById,
+      currentRound: t.currentRound,
+      roundDurationMinutes: t.roundDurationMinutes,
     };
   }
 

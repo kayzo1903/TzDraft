@@ -4,6 +4,7 @@ import type { Tournament, PrizeCurrency } from "@/services/tournament.service";
 
 export const REPOST_DRAFT_STORAGE_KEY = "admin_tournament_repost_draft";
 
+export type CompetitionFormat = "SINGLE_ELIMINATION" | "ROUND_ROBIN";
 export type TournamentStyle = "BLITZ" | "RAPID" | "CLASSICAL" | "UNLIMITED";
 export type TournamentScope = "GLOBAL" | "COUNTRY" | "REGION";
 
@@ -15,6 +16,7 @@ export interface PrizeEntry {
 }
 
 export interface FormState {
+  format: CompetitionFormat;
   name: string;
   descriptionEn: string;
   descriptionSw: string;
@@ -35,6 +37,9 @@ export interface FormState {
   minMatchmakingWins: string;
   minAiLevelBeaten: string;
   requiredAiLevelPlayed: string;
+  roundDurationDays: string;
+  roundDurationHours: string;
+  roundDurationMinutes: string;
   prizes: PrizeEntry[];
 }
 
@@ -42,6 +47,7 @@ export type FormErrorKey = keyof FormState | "scheduledStartAt" | "registrationD
 export type FormErrors = Partial<Record<FormErrorKey, string>>;
 
 export const initialState: FormState = {
+  format: "SINGLE_ELIMINATION",
   name: "",
   descriptionEn: "",
   descriptionSw: "",
@@ -62,6 +68,9 @@ export const initialState: FormState = {
   minMatchmakingWins: "",
   minAiLevelBeaten: "",
   requiredAiLevelPlayed: "",
+  roundDurationDays: "7",
+  roundDurationHours: "0",
+  roundDurationMinutes: "0",
   prizes: [],
 };
 
@@ -73,6 +82,7 @@ export function combineLocalDateTime(date: string, time: string) {
 
 export const tournamentFormSchema = z
   .object({
+    format: z.enum(["SINGLE_ELIMINATION", "ROUND_ROBIN"]),
     name: z.string().trim().min(3, "Tournament name must be at least 3 characters."),
     descriptionEn: z.string().trim().min(10, "English description must be at least 10 characters."),
     descriptionSw: z.string().trim().min(10, "Swahili description must be at least 10 characters."),
@@ -93,24 +103,35 @@ export const tournamentFormSchema = z
     minMatchmakingWins: z.string(),
     minAiLevelBeaten: z.string(),
     requiredAiLevelPlayed: z.string(),
+    roundDurationDays: z.string(),
+    roundDurationHours: z.string(),
+    roundDurationMinutes: z.string(),
   })
   .superRefine((data, ctx) => {
     const maxPlayers = Number(data.maxPlayers);
     const minPlayers = Number(data.minPlayers);
-
-    if (!Number.isFinite(maxPlayers) || maxPlayers < 4 || maxPlayers > 32) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["maxPlayers"],
-        message: "Max players must be between 4 and 32.",
-      });
-    }
 
     if (!Number.isFinite(minPlayers) || minPlayers < 4) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["minPlayers"],
         message: "Min players must be at least 4.",
+      });
+    }
+
+    if (data.format === "SINGLE_ELIMINATION" && maxPlayers > 32) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxPlayers"],
+        message: "Max players for Elimination is 32.",
+      });
+    }
+
+    if (data.format === "ROUND_ROBIN" && maxPlayers > 12) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxPlayers"],
+        message: "Max players for League is 12.",
       });
     }
 
@@ -127,6 +148,19 @@ export const tournamentFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ["country"],
         message: "Country is required for COUNTRY and REGION tournaments.",
+      });
+    }
+
+    const totalMinutes = 
+      (Number(data.roundDurationDays) || 0) * 1440 + 
+      (Number(data.roundDurationHours) || 0) * 60 + 
+      (Number(data.roundDurationMinutes) || 0);
+
+    if (totalMinutes < 45) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["roundDurationMinutes"],
+        message: "Total round duration must be at least 45 minutes.",
       });
     }
 
@@ -265,6 +299,7 @@ export function formatLocalDateTime(value: string) {
 
 export function buildRepostFormState(tournament: Tournament): FormState {
   return {
+    format: "SINGLE_ELIMINATION", // Re-posts always default to elimination since only tournaments use this correctly currently
     name: `${tournament.name} (Repost)`,
     descriptionEn: tournament.descriptionEn,
     descriptionSw: tournament.descriptionSw,
@@ -285,6 +320,9 @@ export function buildRepostFormState(tournament: Tournament): FormState {
     minMatchmakingWins: "",
     minAiLevelBeaten: "",
     requiredAiLevelPlayed: "",
+    roundDurationDays: Math.floor((tournament.roundDurationMinutes || 0) / 1440).toString(),
+    roundDurationHours: Math.floor(((tournament.roundDurationMinutes || 0) % 1440) / 60).toString(),
+    roundDurationMinutes: ((tournament.roundDurationMinutes || 0) % 60).toString(),
     prizes: (tournament.prizes ?? []).map((p) => ({
       placement: p.placement,
       amount: `${p.amount}`,

@@ -103,6 +103,11 @@ export class CreateTournamentDto {
   requiredAiLevelPlayed?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(45)
+  roundDurationMinutes?: number;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TournamentPrizeDto)
@@ -188,6 +193,11 @@ export class UpdateTournamentDto {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsDateString()
   registrationDeadline?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(45)
+  roundDurationMinutes?: number;
 
   @IsOptional()
   @IsArray()

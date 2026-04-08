@@ -20,7 +20,6 @@ import {
 import { ValidationError } from '../../domain/game/types/validation-error.type';
 import { RatingService } from './rating.service';
 import { ReportTournamentResultUseCase } from './tournament/report-tournament-result.use-case';
-
 /**
  * Make Move Use Case
  * Handles move validation and execution

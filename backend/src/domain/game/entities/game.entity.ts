@@ -56,6 +56,7 @@ export class Game {
     public readonly inviteCode: string | null = null,
     public readonly creatorColor: PlayerColor | null = null,
     public readonly tournamentMatchGameId: string | null = null,
+    public readonly leagueGameId: string | null = null,
   ) {
     this._status = status;
     this._board = BoardState.createInitialBoard();
@@ -446,6 +447,8 @@ export class Game {
       createdAt: this.createdAt,
       inviteCode: this.inviteCode,
       creatorColor: this.creatorColor,
+      tournamentMatchGameId: this.tournamentMatchGameId,
+      leagueGameId: this.leagueGameId,
       status: this._status,
       winner: this._winner,
       endReason: this._endReason,

@@ -67,4 +67,15 @@ WORKDIR /app/backend
 
 EXPOSE 3002
 
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/src/main"]
+CMD ["sh", "-c", "\
+  echo '>>> Running prisma migrate deploy...' && \
+  node_modules/.bin/prisma migrate deploy; \
+  PRISMA_EXIT=$?; \
+  echo \">>> prisma migrate deploy exited with code: $PRISMA_EXIT\"; \
+  if [ \"$PRISMA_EXIT\" != \"0\" ]; then exit $PRISMA_EXIT; fi; \
+  echo '>>> Starting node dist/src/main...'; \
+  node dist/src/main; \
+  NODE_EXIT=$?; \
+  echo \">>> node dist/src/main exited with code: $NODE_EXIT (137=OOM 139=SIGSEGV 1=AppError)\"; \
+  exit $NODE_EXIT \
+"]
