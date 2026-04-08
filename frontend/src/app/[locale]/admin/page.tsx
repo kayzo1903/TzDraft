@@ -27,6 +27,7 @@ import {
   Bot,
   Gamepad2,
   HandshakeIcon,
+  Mail,
   RefreshCw,
   Search,
   TimerReset,
@@ -37,6 +38,8 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
+
+import { Dialog } from "@/components/ui/Dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -287,6 +290,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [secondsAgo, setSecondsAgo] = useState(0);
+  const [reportLoading, setReportLoading] = useState<"Daily" | "Weekly" | "Monthly" | null>(null);
+  const [reportMessage, setReportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [confirmingReport, setConfirmingReport] = useState<"Daily" | "Weekly" | "Monthly" | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const tickRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -306,6 +312,31 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   }, []);
+
+  const handleTriggerReport = (type: "Daily" | "Weekly" | "Monthly") => {
+    setConfirmingReport(type);
+  };
+
+  const confirmedTriggerReport = async () => {
+    if (!confirmingReport) return;
+    const type = confirmingReport;
+    
+    setConfirmingReport(null);
+    setReportLoading(type);
+    setReportMessage(null);
+    try {
+      const res = await adminService.triggerReport(type);
+      setReportMessage({ type: "success", text: res.message });
+      setTimeout(() => setReportMessage(null), 5000);
+    } catch (err: any) {
+      setReportMessage({
+        type: "error",
+        text: err.response?.data?.message || `Failed to trigger ${type} report`,
+      });
+    } finally {
+      setReportLoading(null);
+    }
+  };
 
   // Auto-refresh every 30s
   useEffect(() => {
@@ -788,6 +819,82 @@ export default function AdminDashboard() {
           </table>
         </div>
       </section>
+
+      {/* ── Report Controls ── */}
+      <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Manual Report Requests</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Trigger an immediate analytics summary email to the administrator.
+            </p>
+          </div>
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-2.5">
+            <Mail className="h-4 w-4 text-amber-300" />
+          </div>
+        </div>
+
+        {reportMessage && (
+          <div
+            className={`mb-6 rounded-xl border px-4 py-3 text-sm font-medium ${
+              reportMessage.type === "success"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+            }`}
+          >
+            {reportMessage.text}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <button
+            onClick={() => handleTriggerReport("Daily")}
+            disabled={!!reportLoading}
+            className="group relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-gray-800 bg-black/40 p-6 transition-all hover:border-amber-500/50 hover:bg-black/60 active:scale-95 disabled:opacity-50"
+          >
+            <div className="rounded-full bg-amber-500/10 p-3 group-hover:bg-amber-500/20">
+              <RefreshCw className={`h-5 w-5 text-amber-400 ${reportLoading === "Daily" ? "animate-spin" : ""}`} />
+            </div>
+            <span className="text-sm font-semibold text-white">Daily Report</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-widest">Send Now</span>
+          </button>
+
+          <button
+            onClick={() => handleTriggerReport("Weekly")}
+            disabled={!!reportLoading}
+            className="group relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-gray-800 bg-black/40 p-6 transition-all hover:border-indigo-500/50 hover:bg-black/60 active:scale-95 disabled:opacity-50"
+          >
+            <div className="rounded-full bg-indigo-500/10 p-3 group-hover:bg-indigo-500/20">
+              <RefreshCw className={`h-5 w-5 text-indigo-400 ${reportLoading === "Weekly" ? "animate-spin" : ""}`} />
+            </div>
+            <span className="text-sm font-semibold text-white">Weekly Report</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-widest">Send Now</span>
+          </button>
+
+          <button
+            onClick={() => handleTriggerReport("Monthly")}
+            disabled={!!reportLoading}
+            className="group relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-gray-800 bg-black/40 p-6 transition-all hover:border-emerald-500/50 hover:bg-black/60 active:scale-95 disabled:opacity-50"
+          >
+            <div className="rounded-full bg-emerald-500/10 p-3 group-hover:bg-emerald-500/20">
+              <RefreshCw className={`h-5 w-5 text-emerald-400 ${reportLoading === "Monthly" ? "animate-spin" : ""}`} />
+            </div>
+            <span className="text-sm font-semibold text-white">Monthly Report</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-widest">Send Now</span>
+          </button>
+        </div>
+      </section>
+
+      {/* ── Confirmation Dialog ── */}
+      <Dialog
+        open={!!confirmingReport}
+        onClose={() => setConfirmingReport(null)}
+        onConfirm={confirmedTriggerReport}
+        title={`Trigger ${confirmingReport} Report?`}
+        description={`This will immediately generate and send the ${confirmingReport?.toLowerCase()} analytics summary email to the administrator. This action cannot be undone.`}
+        confirmText="Yes, send report"
+        confirmVariant="primary"
+      />
     </div>
   );
 }

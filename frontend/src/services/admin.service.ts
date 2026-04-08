@@ -183,4 +183,9 @@ export const adminService = {
     const response = await axiosInstance.get("/admin/health");
     return response.data;
   },
+
+  async triggerReport(type: "Daily" | "Weekly" | "Monthly"): Promise<{ success: boolean; message: string }> {
+    const response = await axiosInstance.post("/admin/analytics/trigger-report", { type });
+    return response.data;
+  },
 };
