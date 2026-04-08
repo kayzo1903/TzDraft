@@ -7,7 +7,7 @@
  * getBestMove() is now async; callers in useLocalGame should await it.
  */
 
-import { BoardState, Move, PlayerColor, Position } from "@tzdraft/mkaguzi-engine";
+import { BoardState, Move, PlayerColor, Position, MkaguziEngine } from "@tzdraft/mkaguzi-engine";
 import type { RawSearchResult } from "@tzdraft/mkaguzi-engine";
 
 // ─── Worker management ────────────────────────────────────────────────────
@@ -88,27 +88,27 @@ function getOrCreateWorker(): Worker {
 
 const LEVEL_PARAMS: Record<
   number,
-  { timeMs: number; depth: number; level: number; randomness: number }
+  { timeMs: number; depth: number; level: number; randomness: number; blunderChance: number }
 > = {
-  1:  { timeMs: 150,   depth: 0, level: 15, randomness: 30 },
-  2:  { timeMs: 200,   depth: 0, level: 15, randomness: 24 },
-  3:  { timeMs: 300,   depth: 0, level: 15, randomness: 18 },
-  4:  { timeMs: 400,   depth: 0, level: 16, randomness: 14 },
-  5:  { timeMs: 600,   depth: 0, level: 16, randomness: 10 },
-  6:  { timeMs: 800,   depth: 0, level: 16, randomness: 7  },
-  7:  { timeMs: 1000,  depth: 0, level: 17, randomness: 5  },
-  8:  { timeMs: 1200,  depth: 0, level: 17, randomness: 3  },
-  9:  { timeMs: 1500,  depth: 0, level: 18, randomness: 2  },
-  10: { timeMs: 2000,  depth: 0, level: 18, randomness: 1  },
-  11: { timeMs: 2500,  depth: 0, level: 18, randomness: 1  },
-  12: { timeMs: 3000,  depth: 0, level: 19, randomness: 0  },
-  13: { timeMs: 3500,  depth: 0, level: 19, randomness: 0  },
-  14: { timeMs: 4000,  depth: 0, level: 19, randomness: 0  },
-  15: { timeMs: 5000,  depth: 0, level: 19, randomness: 0  },
-  16: { timeMs: 6000,  depth: 0, level: 19, randomness: 0  },
-  17: { timeMs: 7000,  depth: 0, level: 19, randomness: 0  },
-  18: { timeMs: 8000,  depth: 0, level: 19, randomness: 0  },
-  19: { timeMs: 9000,  depth: 0, level: 19, randomness: 0  },
+  1:  { timeMs: 150,   depth: 0, level: 15, randomness: 250, blunderChance: 0.70 }, // 70% random
+  2:  { timeMs: 200,   depth: 0, level: 15, randomness: 125, blunderChance: 0.40 }, // 40% random
+  3:  { timeMs: 350,   depth: 0, level: 15, randomness: 75,  blunderChance: 0.15 }, // 15% random
+  4:  { timeMs: 500,   depth: 0, level: 16, randomness: 40,  blunderChance: 0.05 }, // 5% random
+  5:  { timeMs: 750,   depth: 0, level: 16, randomness: 25,  blunderChance: 0    },
+  6:  { timeMs: 1000,  depth: 0, level: 16, randomness: 15,  blunderChance: 0    },
+  7:  { timeMs: 1500,  depth: 0, level: 17, randomness: 8,   blunderChance: 0    },
+  8:  { timeMs: 2000,  depth: 0, level: 17, randomness: 4,   blunderChance: 0    },
+  9:  { timeMs: 2500,  depth: 0, level: 18, randomness: 2,   blunderChance: 0    },
+  10: { timeMs: 3000,  depth: 0, level: 18, randomness: 1,   blunderChance: 0    },
+  11: { timeMs: 3500,  depth: 0, level: 18, randomness: 0,   blunderChance: 0    },
+  12: { timeMs: 4000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  13: { timeMs: 4500,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  14: { timeMs: 5000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  15: { timeMs: 5500,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  16: { timeMs: 6000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  17: { timeMs: 7000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  18: { timeMs: 8000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
+  19: { timeMs: 9000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
 };
 
 function getParams(level: number) {
@@ -131,6 +131,18 @@ export async function getBestMove(
   level: number,
   fenHistory: string[] = [],
 ): Promise<Move | null> {
+  const params = getParams(level);
+
+  // ─── Human Blunder Logic ────────────────────────────────────────────────
+  // If a blunder is triggered, we pick a completely random legal move
+  // instead of asking the engine. This ensures beginners can win.
+  if (params.blunderChance > 0 && Math.random() < params.blunderChance) {
+    const legalMoves = MkaguziEngine.generateLegalMoves(board, player);
+    if (legalMoves.length > 0) {
+      return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+    }
+  }
+
   const worker = getOrCreateWorker();
 
   // If the worker isn't ready yet, wait briefly then try inline WASM
@@ -142,7 +154,6 @@ export async function getBestMove(
         const { wasmSearch, isEngineReady } = await import("@tzdraft/mkaguzi-engine");
         if (isEngineReady()) {
           const fen = board.toFen(player);
-          const params = getParams(level);
           const raw = wasmSearch(fen, fenHistory, params.timeMs, params.depth, params.level, params.randomness);
           if (!raw) return null;
           const from = new Position(raw.from);
@@ -156,7 +167,6 @@ export async function getBestMove(
   }
 
   const id = `${Date.now()}-${Math.random()}`;
-  const params = getParams(level);
   const fen = board.toFen(player);
 
   return new Promise<Move | null>((resolve, reject) => {
