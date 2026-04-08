@@ -63,6 +63,8 @@ export class Tournament {
     public readonly registrationDeadline: Date | null = null,
     public readonly prizes: TournamentPrize[] = [],
     public readonly hidden: boolean = false,
+    public currentRound: number = 0,
+    public readonly roundDurationMinutes: number = 10080,
   ) {}
 
   isRegistrationOpen(): boolean {

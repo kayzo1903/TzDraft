@@ -152,13 +152,12 @@ export default function AddTournamentPage() {
     );
 
     try {
-      const created = await tournamentService.create({
+      const payload = {
         name: values.name.trim(),
         descriptionEn: values.descriptionEn.trim(),
         descriptionSw: values.descriptionSw.trim(),
         rulesEn: values.rulesEn.trim() || undefined,
         rulesSw: values.rulesSw.trim() || undefined,
-        format: "SINGLE_ELIMINATION",
         style: values.style,
         scope: values.scope,
         country: values.scope === "GLOBAL" ? undefined : values.country.trim() || undefined,
@@ -174,6 +173,10 @@ export default function AddTournamentPage() {
         minMatchmakingWins: toOptionalNumber(values.minMatchmakingWins),
         minAiLevelBeaten: toOptionalNumber(values.minAiLevelBeaten),
         requiredAiLevelPlayed: toOptionalNumber(values.requiredAiLevelPlayed),
+        roundDurationMinutes: 
+          (Number(values.roundDurationDays) || 0) * 1440 + 
+          (Number(values.roundDurationHours) || 0) * 60 + 
+          (Number(values.roundDurationMinutes) || 0),
         prizes: form.prizes
           .filter((p) => p.amount.trim() !== "")
           .map((p) => ({
@@ -182,6 +185,11 @@ export default function AddTournamentPage() {
             currency: p.currency,
             label: p.label.trim() || undefined,
           })),
+      };
+
+      const created = await tournamentService.create({
+        ...payload,
+        format: values.format,
       });
 
       setCreatedId(created.id);
@@ -212,7 +220,7 @@ export default function AddTournamentPage() {
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-400" />
-            {repostSourceName ? `Reposting from "${repostSourceName}"` : "New Tournament"}
+            {repostSourceName ? `Reposting from "${repostSourceName}"` : "New Competition"}
           </h1>
           {repostSourceName && (
             <p className="mt-1 text-sm text-sky-300">
@@ -233,11 +241,25 @@ export default function AddTournamentPage() {
               <div className="mt-5 grid gap-5">
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-gray-200">
-                    Tournament name
-                    <FieldTooltip text="A clear, unique name shown on the tournament list and detail page. At least 3 characters." />
+                    Competition Name
+                    <FieldTooltip text="A clear, unique name shown on the competition list. At least 3 characters." />
                   </span>
-                  <input className={inputClassName()} value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder="Dar Open 2026" />
+                  <input className={inputClassName()} value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder="Summer Championship 2026" />
                   <FieldError message={fieldErrors.name} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-gray-200">
+                    Format Mode
+                    <FieldTooltip text="Tournaments are sudden-death brackets (max 12). Leagues are rigorous point-based round robins (max 32)." />
+                  </span>
+                  <select
+                    className={inputClassName()}
+                    value={form.format}
+                    onChange={(e) => updateField("format", e.target.value as any)}
+                  >
+                    <option value="SINGLE_ELIMINATION">Tournament (Single Elimination Knockout)</option>
+                    <option value="ROUND_ROBIN">League (Football-style Round Robin)</option>
+                  </select>
                 </label>
                 <div className="grid gap-5 lg:grid-cols-2">
                   <label className="space-y-2">
@@ -329,17 +351,7 @@ export default function AddTournamentPage() {
                 <FieldTooltip text="Define how the bracket is structured and when the tournament runs. All times use your device's local timezone." />
               </h2>
               <div className="mt-5 grid gap-5">
-                <label className="space-y-2 text-sm text-gray-300">
-                  <span className="font-medium text-gray-200">
-                    Tournament format
-                    <FieldTooltip text="Phase 1 only supports Single Elimination — one loss and you're out. More formats (Round Robin, Swiss) are coming in future phases." />
-                  </span>
-                  <input
-                    className={`${inputClassName()} text-amber-300`}
-                    value="SINGLE_ELIMINATION"
-                    disabled
-                  />
-                </label>
+
                 <label className="space-y-2 text-sm text-gray-300">
                   <span className="font-medium text-gray-200">
                     Time control
@@ -352,13 +364,34 @@ export default function AddTournamentPage() {
                     <option value="UNLIMITED">UNLIMITED</option>
                   </select>
                 </label>
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-gray-200">
+                    Round Duration
+                    <FieldTooltip text="Minimum 45 minutes. The total time allocated for all matches in a single round to be completed." />
+                  </span>
+                  <div className="grid grid-cols-3 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Days</span>
+                      <input type="number" className={inputClassName()} value={form.roundDurationDays} onChange={(e) => updateField("roundDurationDays", e.target.value)} min={0} placeholder="0" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Hours</span>
+                      <input type="number" className={inputClassName()} value={form.roundDurationHours} onChange={(e) => updateField("roundDurationHours", e.target.value)} min={0} max={23} placeholder="0" />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Mins</span>
+                      <input type="number" className={inputClassName()} value={form.roundDurationMinutes} onChange={(e) => updateField("roundDurationMinutes", e.target.value)} min={0} max={59} placeholder="45" />
+                    </label>
+                  </div>
+                  <FieldError message={fieldErrors.roundDurationMinutes} />
+                </div>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-gray-300">
                     <span className="font-medium text-gray-200">
                       Maximum players
-                      <FieldTooltip text="Hard cap — registration closes once this number is reached. Maximum allowed is 32 for Single Elimination." />
+                      <FieldTooltip text={`Hard cap — registration closes once this number is reached. Maximum allowed is ${form.format === "ROUND_ROBIN" ? 12 : 32} for the selected format.`} />
                     </span>
-                    <input type="number" className={inputClassName()} value={form.maxPlayers} onChange={(e) => updateField("maxPlayers", e.target.value)} min={4} max={32} placeholder="Enter max players" />
+                    <input type="number" className={inputClassName()} value={form.maxPlayers} onChange={(e) => updateField("maxPlayers", e.target.value)} min={4} max={form.format === "ROUND_ROBIN" ? 12 : 32} placeholder="Enter max players" />
                     <FieldError message={fieldErrors.maxPlayers} />
                   </label>
                   <label className="space-y-2 text-sm text-gray-300">
@@ -366,7 +399,7 @@ export default function AddTournamentPage() {
                       Minimum players to start
                       <FieldTooltip text="The tournament cannot be started until at least this many players have registered. Must be at least 4." />
                     </span>
-                    <input type="number" className={inputClassName()} value={form.minPlayers} onChange={(e) => updateField("minPlayers", e.target.value)} min={4} max={32} placeholder="Enter minimum players" />
+                    <input type="number" className={inputClassName()} value={form.minPlayers} onChange={(e) => updateField("minPlayers", e.target.value)} min={4} max={form.format === "ROUND_ROBIN" ? 12 : 32} placeholder="Enter minimum players" />
                     <FieldError message={fieldErrors.minPlayers} />
                   </label>
                 </div>

@@ -36,6 +36,7 @@ export interface CreateTournamentDto {
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
   prizes?: { placement: number; amount: number; currency: string; label?: string }[];
+  roundDurationMinutes?: number;
 }
 
 @Injectable()
@@ -46,9 +47,12 @@ export class CreateTournamentUseCase {
   ) {}
 
   async execute(dto: CreateTournamentDto): Promise<Tournament> {
-    if (dto.format !== TournamentFormat.SINGLE_ELIMINATION) {
+    if (
+      dto.format !== TournamentFormat.SINGLE_ELIMINATION &&
+      dto.format !== TournamentFormat.ROUND_ROBIN
+    ) {
       throw new BadRequestException(
-        `Phase 1 currently supports only ${TournamentFormat.SINGLE_ELIMINATION}`,
+        `Phase 1 currently supports only SINGLE_ELIMINATION and ROUND_ROBIN`,
       );
     }
 
@@ -97,6 +101,9 @@ export class CreateTournamentUseCase {
       dto.requiredAiLevelPlayed ?? null,
       dto.registrationDeadline ?? null,
       prizes,
+      false,
+      0,
+      dto.roundDurationMinutes ?? 10080,
     );
 
     return this.repo.create(tournament);
