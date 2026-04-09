@@ -149,7 +149,3 @@ export default async function RulesPage({
     </>
   );
 }
-
-    },
-  },
-};
