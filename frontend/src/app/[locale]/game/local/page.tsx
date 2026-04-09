@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo, useEffect, useState } from "react";
-import { useSearchParams, useParams, useRouter } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { Board } from "@/components/game/Board";
 import { Button } from "@/components/ui/Button";
 import { useLocalGame } from "@/hooks/useLocalGame";
@@ -437,7 +438,7 @@ export default function LocalGamePage() {
   const router = useRouter();
   const paramsRoute = useParams<{ locale: string }>();
   const locale = paramsRoute?.locale ?? "en";
-  const setupAiPath = `/${locale}/game/setup-ai`;
+  const setupAiPath = "/game/setup-ai";
   const params = useSearchParams();
   const level = useMemo(() => parseLevel(params.get("level")), [params]);
   const playerColorParam = useMemo(() => params.get("color"), [params]);
@@ -816,7 +817,7 @@ export default function LocalGamePage() {
             timeSeconds={timeSeconds}
             undoUsed={state.undoUsed}
             onPlayAgain={handleResetGame}
-            onNextBot={() => { reset(); router.push(`/${locale}/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
+            onNextBot={() => { reset(); router.push(`/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
             onChangeBots={() => router.push(setupAiPath)}
             t={t}
           />

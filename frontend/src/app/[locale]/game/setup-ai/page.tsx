@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import {
@@ -434,7 +435,7 @@ export default function SetupAiPage() {
       let finalColor = selectedColor;
       if (finalColor === "RANDOM") finalColor = Math.random() < 0.5 ? "WHITE" : "BLACK";
       const timeSeconds = selectedTime === 0 ? 0 : selectedTime * 60;
-      router.push(`/${locale}/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`);
+      router.push(`/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`);
     } catch (error) {
       console.error("Failed to create game:", error);
     } finally {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { CheckCircle, XCircle, RotateCcw, ArrowLeft, ArrowRight, Lightbulb } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -268,7 +268,7 @@ export function PuzzleClient({
     <main className="min-h-screen bg-[var(--background)] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <Link
-          href={`/${locale}/puzzles`}
+          href="/puzzles"
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -388,7 +388,7 @@ export function PuzzleClient({
                 Reset
               </button>
               <Link
-                href={`/${locale}/puzzles`}
+                href="/puzzles"
                 className="inline-flex items-center gap-2 rounded-xl border border-orange-400/30 bg-orange-500/20 px-4 py-2.5 text-sm font-semibold text-orange-200 transition-colors hover:bg-orange-500/30"
               >
                 Next puzzle

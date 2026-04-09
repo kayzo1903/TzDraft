@@ -1,5 +1,5 @@
 import { ArrowRight, Star } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import type { Metadata } from "next";
 import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -170,7 +170,7 @@ export default async function PuzzlesPage({
             </div>
             {daily && (
               <Link
-                href={`/${locale}/puzzles/${daily.id}`}
+                href={`/puzzles/${daily.id}`}
                 className="hidden lg:flex shrink-0 flex-col gap-3 rounded-2xl border border-orange-400/30 bg-orange-400/10 p-5 w-56 hover:border-orange-400/50 transition-colors"
               >
                 <span className="text-xs font-bold tracking-widest text-orange-300 uppercase">
@@ -201,7 +201,7 @@ export default async function PuzzlesPage({
           {DIFFICULTIES.map((d) => (
             <Link
               key={d}
-              href={`/${locale}/puzzles?difficulty=${d}${sp.theme ? `&theme=${sp.theme}` : ""}`}
+              href={`/puzzles?difficulty=${d}${sp.theme ? `&theme=${sp.theme}` : ""}`}
               className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors
                 ${Number(sp.difficulty) === d
                   ? "border-orange-400/60 bg-orange-400/20 text-orange-200"
@@ -216,7 +216,7 @@ export default async function PuzzlesPage({
           {THEMES.map((t) => (
             <Link
               key={t}
-              href={`/${locale}/puzzles?theme=${t}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}`}
+              href={`/puzzles?theme=${t}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}`}
               className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors capitalize
                 ${sp.theme === t
                   ? "border-orange-400/60 bg-orange-400/20 text-orange-200"
@@ -228,7 +228,7 @@ export default async function PuzzlesPage({
           ))}
           {(sp.difficulty || sp.theme) && (
             <Link
-              href={`/${locale}/puzzles`}
+              href="/puzzles"
               className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-neutral-500 hover:text-white transition-colors"
             >
               Clear
@@ -253,7 +253,7 @@ export default async function PuzzlesPage({
               {puzzles.map((puzzle) => (
                 <Link
                   key={puzzle.id}
-                  href={`/${locale}/puzzles/${puzzle.id}`}
+                  href={`/puzzles/${puzzle.id}`}
                   className="group rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-5 transition duration-200 hover:-translate-y-1 hover:border-orange-400/30"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -287,7 +287,7 @@ export default async function PuzzlesPage({
             <div className="mt-10 flex items-center justify-center gap-3">
               {currentPage > 1 && (
                 <Link
-                  href={`/${locale}/puzzles?page=${currentPage - 1}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}${sp.theme ? `&theme=${sp.theme}` : ""}`}
+                  href={`/puzzles?page=${currentPage - 1}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}${sp.theme ? `&theme=${sp.theme}` : ""}`}
                   className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-300 hover:bg-white/10 transition-colors"
                 >
                   Previous
@@ -298,7 +298,7 @@ export default async function PuzzlesPage({
               </span>
               {currentPage < totalPages && (
                 <Link
-                  href={`/${locale}/puzzles?page=${currentPage + 1}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}${sp.theme ? `&theme=${sp.theme}` : ""}`}
+                  href={`/puzzles?page=${currentPage + 1}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}${sp.theme ? `&theme=${sp.theme}` : ""}`}
                   className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-300 hover:bg-white/10 transition-colors"
                 >
                   Next
