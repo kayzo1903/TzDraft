@@ -66,3 +66,13 @@ export const pageBySlugQuery = groq`
     }
   }
 `;
+
+// All playbook tactics
+export const allTacticsQuery = groq`
+  *[_type == "tactic"] | order(title asc) {
+    "slug": slug.current,
+    title,
+    description,
+    difficulty
+  }
+`;
