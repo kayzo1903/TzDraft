@@ -1,6 +1,7 @@
 import { blockContent } from "./blockContent";
 import { categorySchema } from "./category";
 import { articleSchema } from "./article";
+import { pageSchema } from "./page";
 
 export const schema = {
   types: [
@@ -9,5 +10,6 @@ export const schema = {
     categorySchema,
     // Documents
     articleSchema,
+    pageSchema,
   ],
 };
