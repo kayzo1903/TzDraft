@@ -23,34 +23,34 @@ import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from 
 
 const HOME_META = {
   sw: {
-    title: "TzDraft | Cheza Drafti ya Tanzania Mtandaoni — Bure Kabisa",
+    title: "TzDraft | Nyumbani Rasmi kwa Drafti ya Tanzania Mtandaoni",
     description:
-      "Jukwaa bora la kucheza Tanzania Drafti (8×8) mtandaoni. Pambana na AI, mualike marafiki, au shindana na wachezaji wa kweli kutoka Tanzania nzima.",
+      "Jukwaa rasmi la kucheza Tanzania Drafti (8×8) mtandaoni. Jifunze sheria rasmi, mbinu za ushindi, na pambana na wachezaji bora Tanzania nzima. Bure kabisa.",
     keywords: [
       "tzdraft",
       "drafti tanzania",
       "cheza drafti mtandaoni",
-      "mchezo wa drafti",
-      "drafti bure mtandaoni",
-      "mchezo wa checkers tanzania",
-      "cheza drafti na AI",
+      "sheria za drafti tanzania",
+      "mbinu za kushinda drafti",
+      "drafti mchezo rasmi",
+      "cheza drafti bure",
     ],
-    ogAlt: "TzDraft — Jukwaa la Drafti ya Tanzania Mtandaoni",
+    ogAlt: "TzDraft — Nyumbani Rasmi kwa Drafti ya Tanzania Mtandaoni",
   },
   en: {
-    title: "TzDraft | Play Tanzania Drafti Online Free — Matches, AI & Tournaments",
+    title: "TzDraft | Official Home of Tanzania Drafti (8×8) Online",
     description:
-      "The home of Tanzania Drafti (8×8) online. Challenge AI, invite friends, or compete against real players from across Tanzania. Free to play, no signup required.",
+      "Play on the official platform for Tanzania Drafti. Master the game with official rules and strategies, challenge AI, or compete in national leagues. Free & optimized for mobile.",
     keywords: [
       "tzdraft",
-      "tanzania drafti online",
-      "play drafti free",
-      "tanzania draughts game",
-      "drafti checkers online",
-      "play drafti vs AI",
-      "tanzania board game online",
+      "tanzania drafti official",
+      "play tanzania draughts",
+      "tanzania drafti rules",
+      "winning drafti strategies",
+      "play drafti online free",
+      "tanzania checkers",
     ],
-    ogAlt: "TzDraft — Tanzania Drafti Online Platform",
+    ogAlt: "TzDraft — Official Tanzania Drafti Platform",
   },
 } as const;
 
