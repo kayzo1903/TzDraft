@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import {
   Bug,
   ChevronDown,
@@ -281,7 +281,7 @@ export default function SupportPageClient() {
                     <div className="mt-3 text-sm font-semibold text-[var(--primary)]">{SUPPORT_EMAIL}</div>
                   </a>
                   <Link
-                    href={`/${locale}/policy`}
+                    href="/policy"
                     className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/8"
                   >
                     <div className="text-sm font-black text-white">{t("contactMethods.policy")}</div>

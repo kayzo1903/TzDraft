@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { CheckCircle, XCircle, Eye, Clock, Zap, PlayCircle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -26,7 +25,6 @@ interface PuzzleStats {
 }
 
 export default function AdminPuzzlesPage() {
-  const { locale } = useParams<{ locale: string }>();
   const [puzzles, setPuzzles] = useState<PuzzleCandidate[]>([]);
   const [stats, setStats] = useState<PuzzleStats | null>(null);
   const [total, setTotal] = useState(0);
@@ -213,7 +211,7 @@ export default function AdminPuzzlesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
                       <Link
-                        href={`/${locale}/admin/puzzles/${p.id}`}
+                        href={`/admin/puzzles/${p.id}`}
                         className="inline-flex items-center gap-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-gray-700 transition-colors"
                       >
                         <Eye className="h-3 w-3" />

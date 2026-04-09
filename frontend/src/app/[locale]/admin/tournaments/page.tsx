@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, Link } from "@/i18n/routing";
+import { useParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -108,7 +108,7 @@ export default function AdminTournamentsPage() {
         form: repostForm,
       })
     );
-    router.push(`/${locale}/admin/tournament/add`);
+    router.push("/admin/tournament/add");
   };
 
   return (
@@ -154,7 +154,7 @@ export default function AdminTournamentsPage() {
             Refresh
           </button>
           <Link
-            href={`/${locale}/admin/tournament/add`}
+            href="/admin/tournament/add"
             className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-gray-950 transition hover:bg-amber-300"
           >
             <Plus className="h-4 w-4" />
@@ -182,7 +182,7 @@ export default function AdminTournamentsPage() {
                 }`}
               >
                 <Link
-                  href={`/${locale}/admin/tournaments/${tournament.id}`}
+                  href={`/admin/tournaments/${tournament.id}`}
                   className="absolute inset-0 rounded-2xl"
                   aria-label={`Open ${tournament.name}`}
                 />
@@ -211,7 +211,7 @@ export default function AdminTournamentsPage() {
                 </div>
                 <div className="relative z-10 flex flex-wrap gap-2">
                   <Link
-                    href={`/${locale}/admin/tournaments/${tournament.id}`}
+                    href={`/admin/tournaments/${tournament.id}`}
                     className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-amber-300"
                   >
                     <Pencil className="h-3.5 w-3.5" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { useParams } from "next/navigation";
 import {
   Area,
@@ -550,7 +550,7 @@ export default function AdminDashboard() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href={`/${locale}/admin/tournaments`}
+              href="/admin/tournaments"
               className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-gray-950 transition hover:bg-amber-300"
             >
               Open tournament admin
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
             </Link>
             {latestTournament && (
               <Link
-                href={`/${locale}/admin/tournaments/${latestTournament.id}`}
+                href={`/admin/tournaments/${latestTournament.id}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition hover:border-gray-500 hover:text-white"
               >
                 Latest monitor

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import { useState, useRef, useEffect } from "react";
 import {
   AlertTriangle,
@@ -283,7 +283,7 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
             {locale === "sw" ? "Mashindano hayakupatikana." : "Tournament not found."}
           </h1>
           <Link
-            href={`/${locale}/community/tournament`}
+            href="/community/tournament"
             className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-300"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -453,7 +453,7 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
         <div className="relative mx-auto max-w-6xl space-y-8">
           <div className="flex items-center justify-between gap-4">
             <Link
-              href={`/${locale}/community/tournament`}
+              href="/community/tournament"
               className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-300 transition hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
