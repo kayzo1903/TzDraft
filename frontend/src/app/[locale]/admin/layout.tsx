@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, Link } from "@/i18n/routing";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { LayoutDashboard, Users, Activity, Trophy, Puzzle } from "lucide-react";
 
@@ -13,14 +12,13 @@ export default function AdminLayout({
 }) {
   const { user, isAuthenticated, hasHydrated } = useAuthStore();
   const router = useRouter();
-  const { locale } = useParams<{ locale: string }>();
 
   useEffect(() => {
     if (!hasHydrated) return;
     if (!isAuthenticated || user?.role !== "ADMIN") {
-      router.replace(`/${locale}`);
+      router.replace("/");
     }
-  }, [hasHydrated, isAuthenticated, user, router, locale]);
+  }, [hasHydrated, isAuthenticated, user, router]);
 
   // Don't render or redirect until the persisted store has rehydrated —
   // avoids the flash-redirect caused by the initial isAuthenticated=false state.
@@ -33,12 +31,12 @@ export default function AdminLayout({
   }
 
   const nav = [
-    { href: `/${locale}/admin`, label: "Dashboard", icon: LayoutDashboard },
-    { href: `/${locale}/admin/tournaments`, label: "Tournaments", icon: Trophy },
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
 
-    { href: `/${locale}/admin/puzzles`, label: "Puzzles", icon: Puzzle },
-    { href: `/${locale}/admin/users`, label: "Users", icon: Users },
-    { href: `/${locale}/admin/health`, label: "Health", icon: Activity },
+    { href: "/admin/puzzles", label: "Puzzles", icon: Puzzle },
+    { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin/health", label: "Health", icon: Activity },
   ];
 
   return (

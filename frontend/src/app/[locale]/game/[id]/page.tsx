@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { Board } from "@/components/game/Board";
 import { ConnectionStatus } from "@/components/game/ConnectionStatus";
 import { useOnlineGame } from "@/hooks/useOnlineGame";
@@ -785,7 +786,7 @@ export default function OnlineGamePage() {
     if (!autoRequeue) return;
     const t = setTimeout(() => {
       router.push(
-        `/${locale}/game/setup-online?autoSearch=true&timeMs=${autoRequeue.timeMs}`,
+        `/game/setup-online?autoSearch=true&timeMs=${autoRequeue.timeMs}`,
       );
     }, 3000);
     return () => clearTimeout(t);
@@ -800,15 +801,15 @@ export default function OnlineGamePage() {
 
   // Dynamic back path based on game type
   const backPath = useMemo(() => {
-    if (!game) return `/${locale}/game/setup-friend`;
+    if (!game) return "/game/setup-friend";
     if (game.whitePlayerId === "AI" || game.blackPlayerId === "AI") {
-      return `/${locale}/game/setup-ai`;
+      return "/game/setup-ai";
     }
     if (game.inviteCode) {
-      return `/${locale}/game/setup-friend`;
+      return "/game/setup-friend";
     }
-    return `/${locale}/game/setup-online`;
-  }, [game, locale]);
+    return "/game/setup-online";
+  }, [game]);
 
   const handleCancelGame = useCallback(async () => {
     try {
@@ -821,7 +822,7 @@ export default function OnlineGamePage() {
   // Navigate to the new game when rematch is accepted by either player
   useEffect(() => {
     if (state.rematchNewGameId) {
-      router.push(`/${locale}/game/${state.rematchNewGameId}`);
+      router.push(`/game/${state.rematchNewGameId}`);
     }
   }, [state.rematchNewGameId, router, locale]);
 

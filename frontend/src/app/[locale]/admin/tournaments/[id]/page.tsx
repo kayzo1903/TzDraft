@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, Link } from "@/i18n/routing";
+import { useParams } from "next/navigation";
 import { AlertTriangle, Crown, EyeOff, Eye, Loader2, RefreshCw, Trash2, Trophy } from "lucide-react";
 import {
   tournamentService,
@@ -375,7 +375,7 @@ export default function AdminTournamentMonitorPage() {
         form: buildRepostFormState(detail.tournament),
       }),
     );
-    router.push(`/${locale}/admin/tournaments#publish`);
+    router.push("/admin/tournaments#publish");
   };
 
   const handleStart = async () => {
@@ -571,7 +571,7 @@ export default function AdminTournamentMonitorPage() {
     setActionError(null);
     try {
       await tournamentService.deleteTournament(detail.tournament.id);
-      router.push(`/${locale}/admin/tournaments`);
+      router.push("/admin/tournaments");
     } catch (err: any) {
       setActionError(err?.response?.data?.message || err?.message || "Failed to delete tournament.");
       setDeletingTournament(false);
@@ -648,7 +648,7 @@ export default function AdminTournamentMonitorPage() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-rose-300">{error ?? "Tournament not found."}</p>
-        <Link href={`/${locale}/admin/tournaments`} className="text-sm text-amber-300 underline underline-offset-2">
+        <Link href="/admin/tournaments" className="text-sm text-amber-300 underline underline-offset-2">
           Back to tournaments
         </Link>
       </div>
@@ -669,7 +669,7 @@ export default function AdminTournamentMonitorPage() {
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-4">
-          <Link href={`/${locale}/admin/tournaments`} className="text-sm text-amber-300 underline underline-offset-2">
+          <Link href="/admin/tournaments" className="text-sm text-amber-300 underline underline-offset-2">
             Back to tournaments
           </Link>
           <div className="flex flex-wrap items-center gap-3">

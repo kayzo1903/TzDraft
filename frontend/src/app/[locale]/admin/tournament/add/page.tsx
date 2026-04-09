@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import Link from "next/link";
+import { useRouter, Link } from "@/i18n/routing";
+import { useParams } from "next/navigation";
 import { ChevronLeft, Trophy, CheckCircle2 } from "lucide-react";
 import { tournamentService, type PrizeCurrency } from "@/services/tournament.service";
 import {
@@ -212,7 +212,7 @@ export default function AddTournamentPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href={`/${locale}/admin/tournaments`}
+          href="/admin/tournaments"
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-700 text-gray-400 transition hover:border-gray-500 hover:text-white"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -605,9 +605,9 @@ export default function AddTournamentPage() {
                     <div className="space-y-2">
                       <p>Tournament created successfully.</p>
                       <div className="flex flex-wrap gap-3 text-xs font-semibold">
-                        <Link href={`/${locale}/admin/tournaments`} className="text-emerald-100 underline underline-offset-2">Open tournament list</Link>
-                        <Link href={`/${locale}/admin/tournaments/${createdId}`} className="text-emerald-100 underline underline-offset-2">Open admin monitor</Link>
-                        <Link href={`/${locale}/community/tournament/${createdId}`} className="text-emerald-100 underline underline-offset-2">Open detail page</Link>
+                        <Link href="/admin/tournaments" className="text-emerald-100 underline underline-offset-2">Open tournament list</Link>
+                        <Link href={`/admin/tournaments/${createdId}`} className="text-emerald-100 underline underline-offset-2">Open admin monitor</Link>
+                        <Link href={`/community/tournament/${createdId}`} className="text-emerald-100 underline underline-offset-2">Open detail page</Link>
                       </div>
                     </div>
                   </div>
