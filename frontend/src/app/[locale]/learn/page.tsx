@@ -1,7 +1,7 @@
 import { client, isSanityConfigured } from "@/sanity/client";
-import { allArticlesQuery } from "@/sanity/queries";
+import { allArticlesQuery, allTacticsQuery } from "@/sanity/queries";
 import { ArticleCard } from "@/components/blog/ArticleCard";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Sparkles, Target } from "lucide-react";
 import type { Metadata } from "next";
 import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
 
@@ -17,6 +17,13 @@ interface ArticleSummary {
   featured?: boolean;
   author?: string;
   category?: { slug: string; title: { sw?: string; en?: string } } | null;
+}
+
+interface TacticSummary {
+  slug: string;
+  title: string;
+  description: { sw?: string; en?: string };
+  difficulty: "beginner" | "intermediate" | "pro";
 }
 
 const META = {
@@ -75,15 +82,19 @@ export default async function LearnPage({
 }) {
   const { locale } = await params;
   let articles: ArticleSummary[] = [];
+  let tactics: TacticSummary[] = [];
+
   if (isSanityConfigured) {
     try {
-      articles = await client.fetch(
-        allArticlesQuery,
-        {},
-        { next: { revalidate: 60 } },
-      );
+      const [receivedArticles, receivedTactics] = await Promise.all([
+        client.fetch(allArticlesQuery, {}, { next: { revalidate: 60 } }),
+        client.fetch(allTacticsQuery, {}, { next: { revalidate: 60 } }),
+      ]);
+      articles = receivedArticles;
+      tactics = receivedTactics;
     } catch {
       articles = [];
+      tactics = [];
     }
   }
 
@@ -95,6 +106,18 @@ export default async function LearnPage({
     subheading: locale === "sw" ? "Jifunze zaidi kuhusu Drafti ya Tanzania — sheria, historia, na mikakati." : "Learn more about Tanzania Drafti — rules, history, and strategy.",
     empty:      locale === "sw" ? "Hakuna makala bado. Rudi hivi karibuni."                                  : "No articles yet. Check back soon.",
     more:       locale === "sw" ? "Makala Zaidi"                                                             : "More Articles",
+    playbookTitle: locale === "sw" ? "Drafti Playbook (Mbinu Rasmi)" : "Drafti Playbook (Official Tactics)",
+    playbookSub: locale === "sw" 
+      ? "Kusanya mbinu na 'copy' maarufu zinazotumiwa na mabingwa hapa nchini." 
+      : "Discover the authentic 'copies' and tactics used by champions in Tanzania.",
+  };
+
+  const getDifficultyColor = (diff: string) => {
+    switch(diff) {
+      case 'beginner': return 'text-green-400 border-green-400/20 bg-green-400/10';
+      case 'pro': return 'text-red-400 border-red-400/20 bg-red-400/10';
+      default: return 'text-[var(--primary)] border-[var(--primary)]/20 bg-[var(--primary)]/10';
+    }
   };
 
   return (
@@ -118,7 +141,7 @@ export default async function LearnPage({
           })
         }}
       />
-      <div className="max-w-5xl mx-auto space-y-12">
+      <div className="max-w-5xl mx-auto space-y-16">
 
         {/* Header */}
         <div className="space-y-3">
@@ -126,7 +149,7 @@ export default async function LearnPage({
             <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-[var(--primary)]" />
             </div>
-            <h1 className="text-4xl font-black text-white">{ui.heading}</h1>
+            <h1 className="text-4xl font-black text-white uppercase tracking-tight">{ui.heading}</h1>
           </div>
           <p className="text-neutral-400 text-lg max-w-xl">{ui.subheading}</p>
         </div>
@@ -144,7 +167,9 @@ export default async function LearnPage({
             {restArticles.length > 0 && (
               <section className="space-y-6">
                 {featuredArticle && (
-                  <h2 className="text-lg font-bold text-white">{ui.more}</h2>
+                  <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[var(--primary)]" /> {ui.more}
+                  </h2>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {restArticles.map((article) => (
@@ -154,6 +179,40 @@ export default async function LearnPage({
               </section>
             )}
           </>
+        )}
+
+        {/* Tactics Playbook Section */}
+        {tactics.length > 0 && (
+          <section className="pt-8 space-y-8 border-t border-white/5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <Target className="w-6 h-6 text-[var(--primary)]" />
+                <h2 className="text-2xl font-black text-white uppercase tracking-wide">
+                  {ui.playbookTitle}
+                </h2>
+              </div>
+              <p className="text-neutral-500 text-sm max-w-2xl">{ui.playbookSub}</p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              {tactics.map((t) => (
+                <div 
+                  key={t.slug} 
+                  className="group bg-[#1c1917] hover:bg-[#292524] border border-[#44403c] p-4 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-default"
+                >
+                  <div className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border mb-3 w-fit ${getDifficultyColor(t.difficulty)}`}>
+                    {t.difficulty}
+                  </div>
+                  <h3 className="text-white font-bold text-lg group-hover:text-[var(--primary)] transition-colors">
+                    {t.title}
+                  </h3>
+                  <p className="text-[10px] text-neutral-500 line-clamp-2 mt-1">
+                    {locale === "sw" ? t.description.sw : t.description.en}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
       </div>
