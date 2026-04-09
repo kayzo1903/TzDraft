@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import {
   Check,
   Clock3,
@@ -239,7 +240,7 @@ function LocalTab() {
   const handlePlay = () => {
     const timeSeconds = time * 60;
     router.push(
-      `/${locale}/game/local-pvp?color=${color}&time=${timeSeconds}&passDevice=${passDevice ? "1" : "0"}`,
+      `/game/local-pvp?color=${color}&time=${timeSeconds}&passDevice=${passDevice ? "1" : "0"}`,
     );
   };
 
@@ -372,7 +373,7 @@ function OnlineTab() {
     setView("joining-loading");
     try {
       const res = await gameService.joinInvite(joinCode.trim().toUpperCase());
-      router.push(`/${routeLocale}/game/${res.data.gameId}`);
+      router.push(`/game/${res.data.gameId}`);
     } catch {
       setError(t("online.invalidOrExpiredCode"));
       setView("joining");
@@ -380,7 +381,7 @@ function OnlineTab() {
   };
 
   const handleGoToGame = () => {
-    router.push(`/${routeLocale}/game/${gameId}`);
+    router.push(`/game/${gameId}`);
   };
 
   const copyLink = () => {
