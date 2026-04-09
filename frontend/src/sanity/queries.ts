@@ -50,3 +50,19 @@ export const allCategoriesQuery = groq`
     title,
   }
 `;
+
+// Single static page by slug (Rules, Policy, etc.)
+export const pageBySlugQuery = groq`
+  *[_type == "page" && slug.current == $slug][0] {
+    "slug": slug.current,
+    title,
+    lastUpdated,
+    sections[] {
+      ...,
+      body {
+        sw[] { ..., _type == "image" => { ..., "asset": asset->{ url } } },
+        en[] { ..., _type == "image" => { ..., "asset": asset->{ url } } }
+      }
+    }
+  }
+`;
