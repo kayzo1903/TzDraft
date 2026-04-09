@@ -390,7 +390,7 @@ export default async function CommunityPage({
                       </div>
                     </div>
                   </div>
-                  <Link href={`/${locale}/${featured.isLeague ? 'league' : 'community/tournament'}/${featured.id}`} className="inline-flex">
+                  <Link href={`/${featured.isLeague ? 'league' : 'community/tournament'}/${featured.id}`} className="inline-flex">
                     <Button className="w-full gap-2 justify-center">
                       {locale === "sw" ? "Fungua ukurasa wa mashindano" : "Open tournament page"}
                       <ArrowRight className="h-4 w-4" />
@@ -429,7 +429,7 @@ export default async function CommunityPage({
               {spotlight.map((tournament) => (
                 <Link
                   key={tournament.id}
-                  href={`/${locale}/${tournament.isLeague ? 'league' : 'community/tournament'}/${tournament.id}`}
+                  href={`/${tournament.isLeague ? 'league' : 'community/tournament'}/${tournament.id}`}
                   className="group rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-5 transition duration-200 hover:-translate-y-1 hover:border-orange-400/30 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.04))]"
                 >
                   <div className="flex items-start justify-between gap-3">
