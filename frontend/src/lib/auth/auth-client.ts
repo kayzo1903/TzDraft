@@ -1,4 +1,4 @@
-import axiosInstance from "../axios";
+import axiosInstance, { refreshAccessToken } from "../axios";
 import { useAuthStore } from "./auth-store";
 import { RegisterData, LoginData } from "./types";
 import { hasLocalBotProgressToSync, getLocalBotProgressSnapshot } from "../game/bot-progression";
@@ -28,9 +28,17 @@ export const authClient = {
     try {
       const response = await axiosInstance.get("/auth/me");
       useAuthStore.getState().setAuth(response.data);
+      return;
     } catch {
-      // Cookie missing or expired — user is not logged in
-      useAuthStore.getState().clearAuth();
+      try {
+        await refreshAccessToken();
+        const response = await axiosInstance.get("/auth/me");
+        useAuthStore.getState().setAuth(response.data);
+        return;
+      } catch {
+        // Cookie missing or expired — user is not logged in
+        useAuthStore.getState().clearAuth();
+      }
     }
   },
 

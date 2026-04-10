@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth/auth-store";
-import axiosInstance from "@/lib/axios";
+import axiosInstance, { refreshAccessToken } from "@/lib/axios";
 
 export default function OAuthCallbackPage() {
     const router = useRouter();
@@ -16,7 +16,7 @@ export default function OAuthCallbackPage() {
                 // Backend already set httpOnly cookies via the OAuth redirect.
                 // Trigger a refresh to ensure both cookies are current, then
                 // fetch the user profile.
-                await axiosInstance.post("/auth/refresh", {});
+                await refreshAccessToken();
                 const response = await axiosInstance.get("/auth/me");
                 setAuth(response.data);
                 router.push("/");

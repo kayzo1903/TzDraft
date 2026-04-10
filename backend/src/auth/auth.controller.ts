@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
-import type { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { GoogleOAuthGuard } from './guards/google-oauth.guard';
@@ -31,6 +31,9 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UserService } from '../domain/user/user.service';
 
+const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
+const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -40,21 +43,10 @@ export class AuthController {
   ) {}
 
   private getCookie(req: Request, name: string): string | undefined {
-    const raw = req.headers.cookie;
-    if (!raw) return undefined;
-
-    const parts = raw.split(';');
-    for (const part of parts) {
-      const [key, ...rest] = part.trim().split('=');
-      if (key === name) {
-        return rest.join('=');
-      }
-    }
-
-    return undefined;
+    return (req as any).cookies?.[name];
   }
 
-  private getCookieOptions() {
+  private getCookieBaseOptions(): CookieOptions {
     const isProd = process.env.NODE_ENV === 'production';
     const cookieDomain = process.env.COOKIE_DOMAIN;
 
@@ -67,14 +59,50 @@ export class AuthController {
     };
   }
 
+  private getAccessTokenCookieOptions(): CookieOptions {
+    return {
+      ...this.getCookieBaseOptions(),
+      maxAge: ACCESS_TOKEN_MAX_AGE_MS,
+      expires: new Date(Date.now() + ACCESS_TOKEN_MAX_AGE_MS),
+    };
+  }
+
+  private getRefreshTokenCookieOptions(): CookieOptions {
+    return {
+      ...this.getCookieBaseOptions(),
+      maxAge: REFRESH_TOKEN_MAX_AGE_MS,
+      expires: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_MS),
+    };
+  }
+
+  private setAuthCookies(
+    res: Response,
+    tokens: { accessToken: string; refreshToken: string },
+  ): void {
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.getAccessTokenCookieOptions(),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.getRefreshTokenCookieOptions(),
+    );
+  }
+
+  private clearAuthCookies(res: Response): void {
+    const opts = this.getCookieBaseOptions();
+    res.clearCookie('accessToken', opts);
+    res.clearCookie('refreshToken', opts);
+  }
+
   @Public()
   @Post('guest')
   @HttpCode(HttpStatus.CREATED)
   async createGuest(@Res({ passthrough: true }) res: Response) {
     const result = await this.authService.createGuestUser();
-    const opts = this.getCookieOptions();
-    res.cookie('accessToken', result.accessToken, opts);
-    res.cookie('refreshToken', result.refreshToken, opts);
+    this.setAuthCookies(res, result);
     return result;
   }
 
@@ -86,9 +114,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.register(dto);
-    const opts = this.getCookieOptions();
-    res.cookie('accessToken', result.accessToken, opts);
-    res.cookie('refreshToken', result.refreshToken, opts);
+    this.setAuthCookies(res, result);
     return result;
   }
 
@@ -101,9 +127,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(dto);
-    const opts = this.getCookieOptions();
-    res.cookie('accessToken', result.accessToken, opts);
-    res.cookie('refreshToken', result.refreshToken, opts);
+    this.setAuthCookies(res, result);
     return result;
   }
 
@@ -143,9 +167,7 @@ export class AuthController {
 
     // Smooth OAuth flow: allow refresh via httpOnly cookie (cross-subdomain).
     // Also set access token cookie so cookie-auth can work without localStorage if desired.
-    const opts = this.getCookieOptions();
-    res.cookie('accessToken', next.accessToken, opts);
-    res.cookie('refreshToken', next.refreshToken, opts);
+    this.setAuthCookies(res, next);
 
     return next;
   }
@@ -165,9 +187,7 @@ export class AuthController {
       await this.authService.logout(user.id, token);
     }
 
-    const opts = this.getCookieOptions();
-    res.clearCookie('accessToken', opts);
-    res.clearCookie('refreshToken', opts);
+    this.clearAuthCookies(res);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -265,9 +285,7 @@ export class AuthController {
         await this.authService.generateTokens(user.id);
 
       // Production-friendly: store tokens in httpOnly cookies and redirect to frontend.
-      const opts = this.getCookieOptions();
-      res.cookie('accessToken', accessToken, opts);
-      res.cookie('refreshToken', refreshToken, opts);
+      this.setAuthCookies(res, { accessToken, refreshToken });
 
       return res.redirect(redirectUrl);
     } catch {
