@@ -142,6 +142,19 @@ export class EndGameUseCase {
   }
 
   /**
+   * Force abort a game (system-level cleanup).
+   * Bypasses participant/move checks.
+   */
+  async forceAbort(gameId: string, reason: string): Promise<void> {
+    const game = await this.gameRepository.findById(gameId);
+    if (!game) return;
+
+    game.abort();
+    // Use endedAt as a proxy for cleanup time if needed
+    await this.gameRepository.update(game);
+  }
+
+  /**
    * Finalise an AI game: save all moves + set winner/endReason/FINISHED.
    * No Elo update (AI games don't affect ratings).
    */

@@ -24,7 +24,7 @@ import { GameStatus, GameType } from '../../shared/constants/game.constants';
 /** Grace period for a player who has made moves and then disconnects. */
 const ABANDON_TIMEOUT_MS = 40_000;
 /** Grace period for a player who disconnected without ever making a move. */
-const ABORT_TIMEOUT_MS = 20_000;
+const ABORT_TIMEOUT_MS = 60_000;
 /** Tick interval for broadcasting abandon countdown to opponent. */
 const ABANDON_TICK_MS = 1_000;
 
@@ -36,6 +36,7 @@ const WS_RATE_WINDOW_MS = 60_000;
 const K_DRAW = (gameId: string) => `ws:draw:offer:${gameId}`;
 const K_REMATCH = (gameId: string) => `ws:rematch:offer:${gameId}`;
 const K_USER_GAME = (userId: string) => `ws:user:game:${userId}`;
+const K_SIGNAL = 'ws:internal:signal';
 /** TTL (seconds) for transient WS keys — longer than any game duration. */
 const KEY_TTL_S = 24 * 60 * 60; // 24 h
 
@@ -141,7 +142,23 @@ export class GamesGateway
     const rootServer =
       (server as unknown as { server: Server }).server ?? server;
     rootServer.adapter(createAdapter(this.pubClient, this.subClient));
-    this.logger.log('Socket.IO Redis adapter initialized');
+
+    // Handle cross-instance signals (e.g. cancel abandonment on other instances)
+    this.subClient.subscribe(K_SIGNAL);
+    this.subClient.on('message', (channel, message) => {
+      if (channel !== K_SIGNAL) return;
+      try {
+        const { type, userId } = JSON.parse(message);
+        if (type === 'CANCEL_ABANDON' && userId) {
+          this.clearUserTimers(userId);
+          this.logger.debug(`Signal received: Cancel abandon for user ${userId}`);
+        }
+      } catch (err) {
+        this.logger.error(`Signal processing failed: ${err.message}`);
+      }
+    });
+
+    this.logger.log('Socket.IO Redis adapter and internal signals initialized');
   }
 
   handleConnection(client: Socket) {
@@ -256,6 +273,20 @@ export class GamesGateway
     this.disconnectTickIntervals.set(userId, tickInterval);
 
     const timer = setTimeout(async () => {
+      // Re-fetch sockets for this user room across the entire cluster.
+      // If the user reconnected to ANY instance, fetchSockets() will return them.
+      const liveSockets = await this.server
+        .in(`user:${userId}`)
+        .fetchSockets();
+      if (liveSockets.length > 0) {
+        this.logger.log(
+          `Abandonment cancelled for user ${userId}: Reconnection detected cluster-wide`,
+        );
+        this.disconnectTimers.delete(userId);
+        this.clearUserTimers(userId);
+        return;
+      }
+
       this.disconnectTimers.delete(userId);
       this.clearUserTimers(userId);
       if (this.pubClient) {
@@ -328,6 +359,15 @@ export class GamesGateway
       // Cancel any pending abandonment timer + tick (player reconnected)
       const wasDisconnected = this.disconnectTimers.has(userId);
       this.clearUserTimers(userId);
+      
+      // Signal other instances to also clear their local timers for this user
+      if (this.pubClient) {
+        this.pubClient.publish(
+          K_SIGNAL,
+          JSON.stringify({ type: 'CANCEL_ABANDON', userId }),
+        );
+      }
+
       if (wasDisconnected) {
         this.server.to(gameId).emit('opponentReconnected', { userId });
         this.logger.log(`User ${userId} reconnected to game ${gameId}`);

@@ -9,9 +9,13 @@ import { GameStatus, GameType } from '../../shared/constants/game.constants';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matchmaking-analytics.service';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
+import { EndGameUseCase } from './end-game.use-case';
 
 /** Stale queue entries older than this are removed on each enqueue. */
 const STALE_QUEUE_AGE_MS = 1 * 60 * 1000; // 1 minute
+
+/** Games older than this with no moves are considered "zombies" and auto-aborted. */
+const ZOMBIE_THRESHOLD_MS = 60 * 1000; // 60 seconds (aligned with noShowCheck)
 
 export type JoinQueueResult =
   | { status: 'waiting' }
@@ -28,6 +32,7 @@ export class JoinQueueUseCase {
     private readonly matchmakingAnalytics: MatchmakingAnalyticsService,
     @Inject(forwardRef(() => GamesGateway))
     private readonly gateway: GamesGateway,
+    private readonly endGameUseCase: EndGameUseCase,
   ) {}
 
   /**
@@ -91,7 +96,7 @@ export class JoinQueueUseCase {
   }
 
   /**
-   * 30-second server-side safety net: if neither player makes a move after
+   * 60-second server-side safety net: if neither player makes a move after
    * matchmaking, auto-abort the game so the waiting player isn't stranded.
    * The frontend abort (on cancel/timeout) covers the normal case; this
    * covers tab-close and network drop at the exact moment of matching.
@@ -123,14 +128,39 @@ export class JoinQueueUseCase {
           reason: 'no_show',
         });
         this.logger.log(
-          `[NO-SHOW] Auto-aborted game ${gameId} — no moves after 30s`,
+          `[NO-SHOW] Auto-aborted game ${gameId} — no moves after 60s`,
         );
       } catch (err) {
         this.logger.error(`[NO-SHOW] Check failed for game ${gameId}`, err);
       }
-    }, 30_000);
+    }, 60_000);
 
     timer.unref?.();
+  }
+
+  /**
+   * Check if an active game is a "zombie" (old, no activity).
+   */
+  private async isZombieGame(gameId: string): Promise<boolean> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { moves: { take: 1 }, clock: true },
+    });
+
+    if (!game || game.status !== GameStatus.ACTIVE) return true;
+
+    // 1. Terminal states (safety guard)
+    const TERMINAL_STATES = [GameStatus.FINISHED, GameStatus.ABORTED];
+    if (TERMINAL_STATES.includes(game.status as any)) return true;
+
+    // 2. 0 moves AND older than threshold
+    if (game.moves.length === 0) {
+      const ageMs = Date.now() - (game.startedAt || game.createdAt).getTime();
+      if (ageMs > ZOMBIE_THRESHOLD_MS) return true;
+    }
+
+    // 3. Optional: presence check could go here later
+    return false;
   }
 
   async execute(
@@ -152,18 +182,41 @@ export class JoinQueueUseCase {
 
     // 3. Prevent queueing while already in an ACTIVE game.
     //    WAITING games are solo invite lobbies — they must not block matchmaking.
-    const selfActiveGameCount = await this.prisma.game.count({
+    const selfActiveGame = await this.prisma.game.findFirst({
       where: {
         status: GameStatus.ACTIVE,
         gameType: { not: 'AI' },
         OR: [{ whitePlayerId: userId }, { blackPlayerId: userId }],
       },
     });
-    if (selfActiveGameCount > 0) {
-      this.logger.warn(
-        `[QUEUE] user=${userId} blocked — already in ACTIVE game`,
-      );
-      return { status: 'waiting' };
+
+    if (selfActiveGame) {
+      const isZombie = await this.isZombieGame(selfActiveGame.id);
+      if (isZombie) {
+        this.logger.warn(
+          `[QUEUE] user=${userId} found zombie game ${selfActiveGame.id} — force aborting`,
+        );
+        await this.endGameUseCase.forceAbort(selfActiveGame.id, 'stale_zombie');
+        // Proceeding — zombie cleared
+      } else {
+        // Legitimate active game exists — recover it instead of blocking.
+        // This handles race conditions where Player B's join request arrives
+        // after Player A has already created the game.
+        const opponentId =
+          selfActiveGame.whitePlayerId === userId
+            ? selfActiveGame.blackPlayerId
+            : selfActiveGame.whitePlayerId;
+
+        this.logger.log(
+          `[QUEUE] user=${userId} already in active game ${selfActiveGame.id} — recovering match`,
+        );
+
+        return {
+          status: 'matched',
+          gameId: selfActiveGame.id,
+          opponentUserId: opponentId!,
+        };
+      }
     }
 
     await this.matchmakingAnalytics.startSearch(userId, timeMs);
