@@ -203,6 +203,13 @@ export class PrismaTournamentRepository implements ITournamentRepository {
         matchLosses: p.matchLosses,
         totalGamePoints: p.totalGamePoints,
         tiebreakScore: p.tiebreakScore,
+        matchesPlayed: p.matchesPlayed,
+        matchDraws: p.matchDraws,
+        matchPoints: p.matchPoints,
+        consecutiveMissed: p.consecutiveMissed,
+        goalsFor: p.goalsFor,
+        goalsAgainst: p.goalsAgainst,
+        goalDifference: p.goalDifference,
       },
     });
     return this.toDomainParticipant(row);
@@ -410,6 +417,13 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       row.matchLosses,
       row.totalGamePoints,
       row.tiebreakScore,
+      row.matchesPlayed,
+      row.matchDraws,
+      row.matchPoints,
+      row.consecutiveMissed,
+      Number(row.goalsFor),
+      Number(row.goalsAgainst),
+      Number(row.goalDifference),
     );
   }
 
@@ -498,6 +512,13 @@ export class PrismaTournamentRepository implements ITournamentRepository {
       matchLosses: p.matchLosses,
       totalGamePoints: p.totalGamePoints,
       tiebreakScore: p.tiebreakScore,
+      matchesPlayed: p.matchesPlayed,
+      matchDraws: p.matchDraws,
+      matchPoints: p.matchPoints,
+      consecutiveMissed: p.consecutiveMissed,
+      goalsFor: p.goalsFor,
+      goalsAgainst: p.goalsAgainst,
+      goalDifference: p.goalDifference,
     };
   }
 

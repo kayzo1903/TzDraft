@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter, Link } from "@/i18n/routing";
 import { useParams } from "next/navigation";
 import { ChevronLeft, Trophy, CheckCircle2 } from "lucide-react";
+import { COUNTRIES, REGIONS_BY_COUNTRY, hasRegions } from "@tzdraft/shared-client";
 import { tournamentService, type PrizeCurrency } from "@/services/tournament.service";
 import {
   REPOST_DRAFT_STORAGE_KEY,
@@ -250,7 +251,7 @@ export default function AddTournamentPage() {
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-gray-200">
                     Format Mode
-                    <FieldTooltip text="Tournaments are sudden-death brackets (max 12). Leagues are rigorous point-based round robins (max 32)." />
+                    <FieldTooltip text="Tournaments are sudden-death brackets (max 32). Leagues are rigorous point-based round robins (max 12)." />
                   </span>
                   <select
                     className={inputClassName()}
@@ -576,22 +577,52 @@ export default function AddTournamentPage() {
                     <option value="REGION">REGION</option>
                   </select>
                 </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-gray-200">
-                    Country
-                    <FieldTooltip text="Required when scope is COUNTRY or REGION. Use the country code set on player profiles (e.g. TZ for Tanzania)." />
-                  </span>
-                  <input className={inputClassName()} value={form.country} onChange={(e) => updateField("country", e.target.value)} placeholder="e.g. TZ" />
-                  <FieldError message={fieldErrors.country} />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-gray-200">
-                    Region
-                    <FieldTooltip text="Only active when scope is set to REGION. Enter the region name exactly as stored on player profiles." />
-                  </span>
-                  <input className={inputClassName()} value={form.region} onChange={(e) => updateField("region", e.target.value)} placeholder="e.g. Dar es Salaam" disabled={form.scope !== "REGION"} />
-                  <FieldError message={fieldErrors.region} />
-                </label>
+                {(form.scope === "COUNTRY" || form.scope === "REGION") && (
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-gray-200">
+                      Country
+                      <FieldTooltip text="Required when scope is COUNTRY or REGION. Select the country to restrict registration to." />
+                    </span>
+                    <select
+                      className={inputClassName()}
+                      value={form.country}
+                      onChange={(e) => updateField("country", e.target.value)}
+                    >
+                      <option value="">— Select Country —</option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={fieldErrors.country} />
+                  </label>
+                )}
+                {form.scope === "REGION" && (
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-gray-200">
+                      Region
+                      <FieldTooltip text="Only active when scope is set to REGION. Select the region to restrict registration to." />
+                    </span>
+                    <select
+                      className={inputClassName()}
+                      value={form.region}
+                      onChange={(e) => updateField("region", e.target.value)}
+                      disabled={!form.country}
+                    >
+                      <option value="">— Select Region —</option>
+                      {form.country &&
+                        REGIONS_BY_COUNTRY[form.country as keyof typeof REGIONS_BY_COUNTRY]?.map(
+                          (r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ),
+                        )}
+                    </select>
+                    <FieldError message={fieldErrors.region} />
+                  </label>
+                )}
               </div>
             </section>
 

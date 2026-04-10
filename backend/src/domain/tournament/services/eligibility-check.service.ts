@@ -77,22 +77,24 @@ export class EligibilityCheckService {
     if (tournament.scope === 'COUNTRY' && tournament.country) {
       checks.push({
         key: 'country',
-        passed: user.country === tournament.country,
+        passed: user.country?.toLowerCase() === tournament.country.toLowerCase(),
         required: tournament.country,
         current: user.country,
       });
     }
 
     if (tournament.scope === 'REGION' && tournament.region) {
-      checks.push({
-        key: 'country',
-        passed: user.country === tournament.country,
-        required: tournament.country,
-        current: user.country,
-      });
+      if (tournament.country) {
+        checks.push({
+          key: 'country',
+          passed: user.country?.toLowerCase() === tournament.country.toLowerCase(),
+          required: tournament.country,
+          current: user.country,
+        });
+      }
       checks.push({
         key: 'region',
-        passed: user.region === tournament.region,
+        passed: user.region?.toLowerCase() === tournament.region.toLowerCase(),
         required: tournament.region,
         current: user.region,
       });
