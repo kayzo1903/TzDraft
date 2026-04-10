@@ -3,6 +3,7 @@ import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -19,6 +20,8 @@ async function bootstrap() {
 
   // Wire in the pino logger so all NestJS Logger calls go through pino
   app.useLogger(app.get(Logger));
+
+  app.use(cookieParser());
 
   const configService = app.get(ConfigService);
 
