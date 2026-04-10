@@ -8,12 +8,14 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { AccountType } from '@prisma/client';
+import { AccountType, Prisma } from '@prisma/client';
 import { PrismaService } from '../infrastructure/database/prisma/prisma.service';
 import { UserService } from '../domain/user/user.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { normalizePhoneNumber } from '../shared/utils/phone.util';
 import * as crypto from 'crypto';
+
+type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class AuthService {
@@ -218,23 +220,41 @@ export class AuthService {
   async refreshTokens(
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    // Verify refresh token
-    const tokenRecord = await this.prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-      include: { user: true },
-    });
-
-    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
+    let payload: { sub?: string; type?: string };
+    try {
+      payload = this.jwtService.verify(refreshToken, {
+        secret: this.config.get('JWT_REFRESH_SECRET'),
+      });
+    } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Delete old refresh token
-    await this.prisma.refreshToken.deleteMany({
-      where: { id: tokenRecord.id },
-    });
+    if (payload.type !== 'refresh' || !payload.sub) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-    // Generate new tokens
-    return this.generateTokens(tokenRecord.userId);
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Rotate the refresh token atomically so only one concurrent refresh wins.
+        const deleted = await tx.refreshToken.deleteMany({
+          where: {
+            token: refreshToken,
+            userId: payload.sub!,
+            expiresAt: { gt: new Date() },
+          },
+        });
+
+        if (deleted.count !== 1) {
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+
+        return this.generateTokens(payload.sub!, tx);
+      },
+      {
+        maxWait: 15000, // Wait up to 15s to get a connection
+        timeout: 20000, // Allow up to 20s to finish the rotation
+      },
+    );
   }
 
   async logout(userId: string, refreshToken: string): Promise<void> {
@@ -558,6 +578,7 @@ export class AuthService {
 
   async generateTokens(
     userId: string,
+    db: PrismaClientLike = this.prisma,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     // Generate access token (short-lived)
     const accessToken = this.jwtService.sign(
@@ -578,7 +599,7 @@ export class AuthService {
     );
 
     // Store refresh token
-    await this.prisma.refreshToken.create({
+    await db.refreshToken.create({
       data: {
         userId,
         token: refreshToken,
