@@ -17,11 +17,9 @@ jest.mock(
 jest.mock('@nestjs/jwt', () => ({ JwtService: class JwtService {} }), {
   virtual: true,
 });
-jest.mock(
-  '@nestjs/config',
-  () => ({ ConfigService: class ConfigService {} }),
-  { virtual: true },
-);
+jest.mock('@nestjs/config', () => ({ ConfigService: class ConfigService {} }), {
+  virtual: true,
+});
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
   compare: jest.fn(),
@@ -30,13 +28,15 @@ jest.mock('./dto', () => ({}));
 jest.mock('../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../domain/user/user.service', () => ({ UserService: class UserService {} }));
+jest.mock('../domain/user/user.service', () => ({
+  UserService: class UserService {},
+}));
 jest.mock('../shared/utils/phone.util', () => ({
   normalizePhoneNumber: (value: string) => value,
 }));
 
-const { UnauthorizedException } = require('@nestjs/common');
-const { AuthService } = require('./auth.service');
+import { UnauthorizedException } from '@nestjs/common';
+import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   afterEach(() => {
@@ -46,8 +46,11 @@ describe('AuthService', () => {
   it('rotates a refresh token only once under concurrent refresh attempts', async () => {
     const refreshToken = 'refresh-token';
     const liveTokens = new Set([refreshToken]);
-    const createdTokens: Array<{ userId: string; token: string; expiresAt: Date }> =
-      [];
+    const createdTokens: Array<{
+      userId: string;
+      token: string;
+      expiresAt: Date;
+    }> = [];
 
     let deleteCalls = 0;
     let releaseDeletes: (() => void) | null = null;
@@ -129,7 +132,9 @@ describe('AuthService', () => {
     ]);
 
     const fulfilled = results.filter(
-      (result): result is PromiseFulfilledResult<{
+      (
+        result,
+      ): result is PromiseFulfilledResult<{
         accessToken: string;
         refreshToken: string;
       }> => result.status === 'fulfilled',

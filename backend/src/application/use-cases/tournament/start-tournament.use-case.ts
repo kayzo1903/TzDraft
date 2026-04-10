@@ -85,8 +85,11 @@ export class StartTournamentUseCase {
     let matchCountTotal = 0;
 
     if (isRoundRobin) {
-      const scheduleLines = this.bracket.generateRoundRobinSchedules(seeded, tournamentId);
-      
+      const scheduleLines = this.bracket.generateRoundRobinSchedules(
+        seeded,
+        tournamentId,
+      );
+
       for (let i = 0; i < scheduleLines.length; i++) {
         const roundNumber = i + 1;
         const round = new TournamentRound(
@@ -101,7 +104,12 @@ export class StartTournamentUseCase {
         const stubs = scheduleLines[i] ?? [];
         for (const stub of stubs) {
           stub.roundId = savedRound.id;
-          await this.createMatchFromStub(stub, tournament, seeded, roundNumber === 1);
+          await this.createMatchFromStub(
+            stub,
+            tournament,
+            seeded,
+            roundNumber === 1,
+          );
         }
         matchCountTotal += stubs.length;
       }
