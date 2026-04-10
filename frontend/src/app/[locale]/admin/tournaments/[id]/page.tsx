@@ -14,6 +14,7 @@ import {
   type TournamentStyle,
   type PrizeCurrency,
 } from "@/services/tournament.service";
+import { COUNTRIES, REGIONS_BY_COUNTRY } from "@tzdraft/shared-client";
 import { REPOST_DRAFT_STORAGE_KEY, buildRepostFormState } from "../tournament-admin.utils";
 
 interface PrizeEntry {
@@ -931,13 +932,22 @@ export default function AdminTournamentMonitorPage() {
               <span className="text-sm font-semibold text-white">
                 {locale === "sw" ? "Nchi" : "Country"}
               </span>
-              <input
-                type="text"
+              <select
                 value={editForm.country}
-                onChange={(event) => handleEditChange("country", event.target.value)}
                 disabled={!canEditBeforeStart || savingEdit}
+                onChange={(event) => {
+                  handleEditChange("country", event.target.value);
+                  handleEditChange("region", "");
+                }}
                 className="w-full rounded-xl border border-gray-700 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-              />
+              >
+                <option value="" className="bg-gray-950 text-white">— Select Country —</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code} className="bg-gray-950 text-white">
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </label>
           )}
 
@@ -946,13 +956,22 @@ export default function AdminTournamentMonitorPage() {
               <span className="text-sm font-semibold text-white">
                 {locale === "sw" ? "Mkoa" : "Region"}
               </span>
-              <input
-                type="text"
+              <select
                 value={editForm.region}
+                disabled={!canEditBeforeStart || savingEdit || !editForm.country}
                 onChange={(event) => handleEditChange("region", event.target.value)}
-                disabled={!canEditBeforeStart || savingEdit}
                 className="w-full rounded-xl border border-gray-700 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-              />
+              >
+                <option value="" className="bg-gray-950 text-white">— Select Region —</option>
+                {editForm.country &&
+                  REGIONS_BY_COUNTRY[editForm.country as keyof typeof REGIONS_BY_COUNTRY]?.map(
+                    (r) => (
+                      <option key={r} value={r} className="bg-gray-950 text-white">
+                        {r}
+                      </option>
+                    ),
+                  )}
+              </select>
             </label>
           )}
 

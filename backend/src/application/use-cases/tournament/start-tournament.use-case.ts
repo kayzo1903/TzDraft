@@ -171,7 +171,7 @@ export class StartTournamentUseCase {
     );
     await this.repo.createMatchGame(matchGame);
 
-    const initialTimeMs = STYLE_TIME_MS[tournament.style] || 600000;
+    const initialTimeMs = STYLE_TIME_MS[tournament.style] ?? 600000;
     const game = new Game(
       randomUUID(),
       whiteId,
@@ -180,7 +180,7 @@ export class StartTournamentUseCase {
       null,
       null,
       null,
-      initialTimeMs === 0 ? 0 : initialTimeMs,
+      initialTimeMs,
       undefined,
       new Date(),
       null,
