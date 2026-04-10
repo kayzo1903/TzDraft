@@ -63,7 +63,7 @@ class FakePrismaService {
       );
     },
 
-    findUnique: async ({ where }: { where: any }): Promise<any | null> => {
+    findUnique: async ({ where }: { where: any }): Promise<any> => {
       const g = this.gameRows.find((row) => row.id === where.id);
       if (!g) return null;
       return { ...g, moves: [] }; // Mock moves for noShowCheck

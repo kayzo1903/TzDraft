@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsNumber, Min, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  IsOptional,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateLeagueDto {
@@ -95,7 +101,9 @@ export class StartGameDto {
 }
 
 export class ClaimForfeitDto {
-  @ApiPropertyOptional({ description: 'Player ID to forfeit (used by system/admin only)' })
+  @ApiPropertyOptional({
+    description: 'Player ID to forfeit (used by system/admin only)',
+  })
   @IsString()
   @IsOptional()
   forfeitedPlayerId?: string;

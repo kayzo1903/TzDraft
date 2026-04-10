@@ -67,15 +67,25 @@ export class AnalyticsService {
 
     const [liveRanked, liveCasual, liveAi, liveTournament, liveFriend] =
       await Promise.all([
-        this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'RANKED' } }),
-        this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'CASUAL' } }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', gameType: 'RANKED' },
+        }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', gameType: 'CASUAL' },
+        }),
         this.prisma.aiChallengeSession.count({ where: { completedAt: null } }),
-        this.prisma.game.count({ where: { status: 'ACTIVE', gameType: 'TOURNAMENT' } }),
-        this.prisma.game.count({ where: { status: 'ACTIVE', inviteCode: { not: null } } }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', gameType: 'TOURNAMENT' },
+        }),
+        this.prisma.game.count({
+          where: { status: 'ACTIVE', inviteCode: { not: null } },
+        }),
       ]);
 
     const [friendGamesActive, friendGamesTotal] = await Promise.all([
-      this.prisma.game.count({ where: { status: 'ACTIVE', inviteCode: { not: null } } }),
+      this.prisma.game.count({
+        where: { status: 'ACTIVE', inviteCode: { not: null } },
+      }),
       this.prisma.game.count({ where: { inviteCode: { not: null } } }),
     ]);
 
@@ -277,7 +287,11 @@ export class AnalyticsService {
       days,
       Prisma.sql`"account_type" <> 'GUEST'`,
     );
-    const visitTrend = await this.getDailyCounts('users', 'last_login_at', days);
+    const visitTrend = await this.getDailyCounts(
+      'users',
+      'last_login_at',
+      days,
+    );
     const guestTrend = await this.getDailyCounts(
       'users',
       'last_login_at',
