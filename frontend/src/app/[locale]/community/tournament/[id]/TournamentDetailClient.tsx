@@ -82,9 +82,9 @@ function localizeDialogMessage(message: string, locale: string) {
   return knownMessages[message] ?? message;
 }
 
-function isRegistrationWindowOpen(tournament: TournamentDetail["tournament"]) {
+function getRegistrationStatus(tournament: TournamentDetail["tournament"], participantsCount: number) {
   if (tournament.status !== "REGISTRATION") {
-    return false;
+    return "NOT_STARTED";
   }
 
   const now = Date.now();
@@ -93,15 +93,19 @@ function isRegistrationWindowOpen(tournament: TournamentDetail["tournament"]) {
     : null;
   const scheduledStartAt = new Date(tournament.scheduledStartAt).getTime();
 
+  if (participantsCount >= tournament.maxPlayers) {
+    return "FULL";
+  }
+
   if (registrationDeadline !== null && registrationDeadline <= now) {
-    return false;
+    return "DEADLINE_PASSED";
   }
 
   if (scheduledStartAt <= now) {
-    return false;
+    return "STARTED";
   }
 
-  return true;
+  return "OPEN";
 }
 
 function formatTournamentType(value: string) {
@@ -297,11 +301,12 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
   const { tournament, participants, rounds, matches } = detail;
   const description = locale === "sw" ? tournament.descriptionSw : tournament.descriptionEn;
   const rules = locale === "sw" ? tournament.rulesSw : tournament.rulesEn;
-  const registrationOpen = isRegistrationWindowOpen(tournament);
+  const registrationStatus = getRegistrationStatus(tournament, participants.length);
+  const registrationOpen = registrationStatus === "OPEN";
   const participantMap = Object.fromEntries(participants.map((p) => [p.userId, p]));
   const isRegistered = user ? participants.some((participant) => participant.userId === user.id) : false;
   const canRegister = registrationOpen && !isRegistered;
-  const canWithdraw = registrationOpen && isRegistered;
+  const canWithdraw = registrationStatus !== "NOT_STARTED" && registrationStatus !== "STARTED" && isRegistered;
   const myMatches = user
     ? matches.filter((match) => match.player1Id === user.id || match.player2Id === user.id)
     : [];
@@ -647,17 +652,56 @@ export default function TournamentDetailClient({ id, locale, initialData }: Prop
                 )}
                 {!canRegister && !canWithdraw && (
                   <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-300">
-                    {isRegistered
-                      ? locale === "sw"
-                        ? "Umesajiliwa tayari kwa mashindano haya."
-                        : "You are already registered for this tournament."
-                      : tournament.status === "REGISTRATION" && !registrationOpen
-                        ? locale === "sw"
-                          ? "Dirisha la usajili limefungwa kwa mashindano haya."
-                          : "Registration has closed for this tournament."
-                      : locale === "sw"
-                        ? "Usajili haupo wazi kwa sasa."
-                        : "Registration is not open right now."}
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                      <div>
+                        {isRegistered ? (
+                          <p>
+                            {locale === "sw"
+                              ? "Umesajiliwa tayari kwa mashindano haya."
+                              : "You are already registered for this tournament."}
+                          </p>
+                        ) : (
+                          <>
+                            {registrationStatus === "FULL" && (
+                              <p>
+                                {locale === "sw"
+                                  ? "Mashindano yamejaa. Hakuna nafasi zaidi zilizobaki."
+                                  : "This tournament is full. No more slots available."}
+                              </p>
+                            )}
+                            {registrationStatus === "DEADLINE_PASSED" && (
+                              <p>
+                                {locale === "sw"
+                                  ? "Muda wa mwisho wa usajili umepita."
+                                  : "The registration deadline has passed."}
+                              </p>
+                            )}
+                            {registrationStatus === "STARTED" && (
+                              <p>
+                                {locale === "sw"
+                                  ? "Mashindano tayari yameanza."
+                                  : "The tournament has already started."}
+                              </p>
+                            )}
+                            {registrationStatus === "NOT_STARTED" && (
+                              <p>
+                                {locale === "sw"
+                                  ? "Usajili haupo wazi kwa hali hii."
+                                  : "Registration is not open for this status."}
+                              </p>
+                            )}
+                            {registrationStatus === "OPEN" && !user && (
+                              <p>
+                                {locale === "sw"
+                                  ? "Tafadhali ingia ili ujisajili."
+                                  : "Please sign in to register."}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
