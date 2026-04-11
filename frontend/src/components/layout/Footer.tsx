@@ -1,9 +1,9 @@
 
 "use client";
 
-import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
+import Image from 'next/image';
 
 export const Footer: React.FC = () => {
     const t = useTranslations('footer');
@@ -12,7 +12,22 @@ export const Footer: React.FC = () => {
     return (
         <footer className="w-full bg-[var(--background)] border-t border-[var(--secondary)] py-8 mt-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="relative w-8 h-8">
+                            <Image
+                                src="/logo/tzdraft-logo-transparent.png"
+                                alt="TzDraft"
+                                fill
+                                sizes="32px"
+                                className="object-contain"
+                            />
+                        </div>
+                        <span className="text-xl font-bold tracking-tight text-white/90">
+                            TzDraft
+                        </span>
+                    </Link>
+
                     <div className="text-[#999999] text-sm">
                         © {currentYear} TzDraft. {t('rights')}
                     </div>

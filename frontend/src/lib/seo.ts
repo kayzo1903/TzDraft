@@ -3,7 +3,7 @@ import { routing } from "@/i18n/routing";
 
 const DEFAULT_SITE_URL = "https://www.tzdraft.co.tz";
 export const SITE_NAME = "TzDraft";
-export const DEFAULT_OG_IMAGE_PATH = "/logo/logo.png";
+export const DEFAULT_OG_IMAGE_PATH = "/logo/tzdraft-logo-solid.png";
 
 export type AppLocale = (typeof routing.locales)[number];
 

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter, Link } from "@/i18n/routing";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { LayoutDashboard, Users, Activity, Trophy, Puzzle } from "lucide-react";
+import Image from "next/image";
 
 export default function AdminLayout({
   children,
@@ -43,10 +44,24 @@ export default function AdminLayout({
     <div className="flex min-h-screen bg-gray-950 text-gray-100">
       {/* Sidebar */}
       <aside className="w-56 shrink-0 border-r border-gray-800 bg-gray-900 flex flex-col">
-        <div className="px-5 py-4 border-b border-gray-800">
-          <span className="text-sm font-semibold text-amber-400 uppercase tracking-widest">
-            Admin
-          </span>
+        <div className="px-5 py-6 border-b border-gray-800 space-y-4">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <div className="relative w-7 h-7">
+              <Image
+                src="/logo/tzdraft-logo-transparent.png"
+                alt="TzDraft"
+                fill
+                sizes="28px"
+                className="object-contain"
+              />
+            </div>
+            <span className="text-sm font-black tracking-tight text-white">TzDraft</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+              Admin Panel
+            </span>
+          </div>
         </div>
         <nav className="flex-1 py-4 space-y-1 px-3">
           {nav.map(({ href, label, icon: Icon }) => (

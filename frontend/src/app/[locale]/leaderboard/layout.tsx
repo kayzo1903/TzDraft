@@ -103,7 +103,7 @@ export async function generateMetadata({
       type: "website",
       images: [
         {
-          url: new URL("/logo/logo.png", siteUrl).toString(),
+          url: new URL("/logo/logo-universal.png", siteUrl).toString(),
           width: 1200,
           height: 630,
           alt:
@@ -118,7 +118,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: m.title,
       description: m.description,
-      images: [new URL("/logo/logo.png", siteUrl).toString()],
+      images: [new URL("/logo/logo-universal.png", siteUrl).toString()],
     },
 
     other: {
@@ -192,7 +192,7 @@ export default async function LeaderboardLayout({
       url: siteUrl.toString(),
       logo: {
         "@type": "ImageObject",
-        url: new URL("/logo/logo.png", siteUrl).toString(),
+        url: new URL("/logo/logo-universal.png", siteUrl).toString(),
       },
     },
   };

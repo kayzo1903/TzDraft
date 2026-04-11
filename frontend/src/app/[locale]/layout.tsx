@@ -88,7 +88,7 @@ export async function generateMetadata({
       alternateLocale: [ogLocaleAlt],
       images: [
         {
-          url: new URL("/logo/logo.png", siteUrl).toString(),
+          url: new URL("/logo/tzdraft-logo-solid.png", siteUrl).toString(),
           width: 1200,
           height: 630,
           alt: "TzDraft — Tanzania Drafti Online",
@@ -99,10 +99,10 @@ export async function generateMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: [new URL("/logo/logo.png", siteUrl).toString()],
+      images: [new URL("/logo/tzdraft-logo-solid.png", siteUrl).toString()],
     },
     icons: {
-      icon: "/logo/logo.png",
+      icon: "/logo/tzdraft-logo-solid.png",
     },
   };
 }
@@ -112,7 +112,7 @@ const organizationSchema = {
   "@type": "Organization",
   name: "TzDraft",
   url: "https://www.tzdraft.co.tz",
-  logo: "https://www.tzdraft.co.tz/logo/logo.png",
+  logo: "https://www.tzdraft.co.tz/logo/tzdraft-logo-solid.png",
   description:
     "Tanzania's dedicated online Drafti gaming platform. Play against AI or friends for free.",
   address: {
@@ -129,7 +129,7 @@ const gameSchema = {
   description:
     "Cheza Drafti mtandaoni Tanzania. Piga vita AI au marafiki wako bila malipo.",
   url: "https://www.tzdraft.co.tz",
-  image: "https://www.tzdraft.co.tz/logo/logo.png",
+  image: "https://www.tzdraft.co.tz/logo/tzdraft-logo-solid.png",
   numberOfPlayers: {
     "@type": "QuantitativeValue",
     minValue: 1,
