@@ -11,12 +11,19 @@ import { TournamentTasksService } from './tournament-tasks.service';
 import { UseCasesModule } from '../../application/use-cases/use-cases.module';
 
 @Module({
-  imports: [PrismaModule, EmailModule, AdminModule, MessagingModule, RepositoryModule, UseCasesModule],
+  imports: [
+    PrismaModule,
+    EmailModule,
+    AdminModule,
+    MessagingModule,
+    RepositoryModule,
+    UseCasesModule,
+  ],
   // MkaguziAdapter is injected from the global EngineModule
   providers: [
-    CleanupService, 
-    ReportService, 
-    PuzzleMinerService, 
+    CleanupService,
+    ReportService,
+    PuzzleMinerService,
     TournamentTasksService,
   ],
   exports: [ReportService],

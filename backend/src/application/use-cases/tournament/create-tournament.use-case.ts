@@ -35,7 +35,12 @@ export interface CreateTournamentDto {
   minMatchmakingWins?: number;
   minAiLevelBeaten?: number;
   requiredAiLevelPlayed?: number;
-  prizes?: { placement: number; amount: number; currency: string; label?: string }[];
+  prizes?: {
+    placement: number;
+    amount: number;
+    currency: string;
+    label?: string;
+  }[];
   roundDurationMinutes?: number;
 }
 

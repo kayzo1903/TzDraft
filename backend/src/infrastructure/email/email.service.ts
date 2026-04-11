@@ -233,7 +233,11 @@ export class EmailService {
     );
   }
 
-  async sendAnalyticsReport(html: string, reportDate: string, reportType: 'Daily' | 'Weekly' | 'Monthly' = 'Daily') {
+  async sendAnalyticsReport(
+    html: string,
+    reportDate: string,
+    reportType: 'Daily' | 'Weekly' | 'Monthly' = 'Daily',
+  ) {
     try {
       const { error } = await this.resend.emails.send({
         from: `TzDraft <${this.fromEmail}>`,

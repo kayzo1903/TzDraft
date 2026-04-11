@@ -13,15 +13,14 @@ import { TasksModule } from '../infrastructure/tasks/tasks.module';
 
 @Module({
   imports: [
-    TerminusModule, 
-    PrismaModule, 
-    RedisModule, 
-    AuthModule, 
-    forwardRef(() => TasksModule)
+    TerminusModule,
+    PrismaModule,
+    RedisModule,
+    AuthModule,
+    forwardRef(() => TasksModule),
   ],
   controllers: [AdminController],
   providers: [PrismaHealthIndicator, RedisHealthIndicator, AnalyticsService],
   exports: [AnalyticsService],
 })
 export class AdminModule {}
-
