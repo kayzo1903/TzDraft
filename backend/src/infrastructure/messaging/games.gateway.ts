@@ -151,7 +151,9 @@ export class GamesGateway
         const { type, userId } = JSON.parse(message);
         if (type === 'CANCEL_ABANDON' && userId) {
           this.clearUserTimers(userId);
-          this.logger.debug(`Signal received: Cancel abandon for user ${userId}`);
+          this.logger.debug(
+            `Signal received: Cancel abandon for user ${userId}`,
+          );
         }
       } catch (err) {
         this.logger.error(`Signal processing failed: ${err.message}`);
@@ -275,9 +277,7 @@ export class GamesGateway
     const timer = setTimeout(async () => {
       // Re-fetch sockets for this user room across the entire cluster.
       // If the user reconnected to ANY instance, fetchSockets() will return them.
-      const liveSockets = await this.server
-        .in(`user:${userId}`)
-        .fetchSockets();
+      const liveSockets = await this.server.in(`user:${userId}`).fetchSockets();
       if (liveSockets.length > 0) {
         this.logger.log(
           `Abandonment cancelled for user ${userId}: Reconnection detected cluster-wide`,
@@ -359,7 +359,7 @@ export class GamesGateway
       // Cancel any pending abandonment timer + tick (player reconnected)
       const wasDisconnected = this.disconnectTimers.has(userId);
       this.clearUserTimers(userId);
-      
+
       // Signal other instances to also clear their local timers for this user
       if (this.pubClient) {
         this.pubClient.publish(
@@ -998,16 +998,12 @@ export class GamesGateway
 
   /** Round advanced to next round. */
   emitLeagueRoundAdvanced(leagueId: string, payload: any) {
-    this.server
-      .to(`league:${leagueId}`)
-      .emit('leagueRoundAdvanced', payload);
+    this.server.to(`league:${leagueId}`).emit('leagueRoundAdvanced', payload);
   }
 
   /** League finished — all 11 rounds complete. */
   emitLeagueCompleted(leagueId: string, payload: any) {
-    this.server
-      .to(`league:${leagueId}`)
-      .emit('leagueCompleted', payload);
+    this.server.to(`league:${leagueId}`).emit('leagueCompleted', payload);
   }
 
   /* ── Helpers ─────────────────────────────────────────────────────────── */

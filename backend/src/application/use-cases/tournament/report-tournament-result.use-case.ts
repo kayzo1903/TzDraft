@@ -101,21 +101,41 @@ export class ReportTournamentResultUseCase {
     const loser = decision.loserId;
 
     if (tournament.format === 'ROUND_ROBIN') {
-      const p1 = match.player1Id ? await this.repo.findParticipant(match.tournamentId, match.player1Id) : null;
-      const p2 = match.player2Id ? await this.repo.findParticipant(match.tournamentId, match.player2Id) : null;
+      const p1 = match.player1Id
+        ? await this.repo.findParticipant(match.tournamentId, match.player1Id)
+        : null;
+      const p2 = match.player2Id
+        ? await this.repo.findParticipant(match.tournamentId, match.player2Id)
+        : null;
 
       if (p1) p1.matchesPlayed = (p1.matchesPlayed || 0) + 1;
       if (p2) p2.matchesPlayed = (p2.matchesPlayed || 0) + 1;
 
       if (decision.result === MatchResult.DRAW) {
-        if (p1) { p1.matchDraws = (p1.matchDraws || 0) + 1; p1.matchPoints = (p1.matchPoints || 0) + 1; }
-        if (p2) { p2.matchDraws = (p2.matchDraws || 0) + 1; p2.matchPoints = (p2.matchPoints || 0) + 1; }
+        if (p1) {
+          p1.matchDraws = (p1.matchDraws || 0) + 1;
+          p1.matchPoints = (p1.matchPoints || 0) + 1;
+        }
+        if (p2) {
+          p2.matchDraws = (p2.matchDraws || 0) + 1;
+          p2.matchPoints = (p2.matchPoints || 0) + 1;
+        }
       } else if (decision.winnerId === match.player1Id) {
-        if (p1) { p1.matchWins = (p1.matchWins || 0) + 1; p1.matchPoints = (p1.matchPoints || 0) + 3; }
-        if (p2) { p2.matchLosses = (p2.matchLosses || 0) + 1; }
+        if (p1) {
+          p1.matchWins = (p1.matchWins || 0) + 1;
+          p1.matchPoints = (p1.matchPoints || 0) + 3;
+        }
+        if (p2) {
+          p2.matchLosses = (p2.matchLosses || 0) + 1;
+        }
       } else if (decision.winnerId === match.player2Id) {
-        if (p2) { p2.matchWins = (p2.matchWins || 0) + 1; p2.matchPoints = (p2.matchPoints || 0) + 3; }
-        if (p1) { p1.matchLosses = (p1.matchLosses || 0) + 1; }
+        if (p2) {
+          p2.matchWins = (p2.matchWins || 0) + 1;
+          p2.matchPoints = (p2.matchPoints || 0) + 3;
+        }
+        if (p1) {
+          p1.matchLosses = (p1.matchLosses || 0) + 1;
+        }
       }
 
       if (p1) await this.repo.updateParticipant(p1);

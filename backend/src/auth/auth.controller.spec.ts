@@ -55,7 +55,7 @@ jest.mock('../domain/user/user.service', () => ({
   UserService: class UserService {},
 }));
 
-const { AuthController } = require('./auth.controller');
+import { AuthController } from './auth.controller';
 
 describe('AuthController', () => {
   afterEach(() => {
@@ -113,8 +113,9 @@ describe('AuthController', () => {
       }),
     );
 
-    const [refreshName, refreshValue, refreshOptions] = (res.cookie as jest.Mock)
-      .mock.calls[1];
+    const [refreshName, refreshValue, refreshOptions] = (
+      res.cookie as jest.Mock
+    ).mock.calls[1];
     expect(refreshName).toBe('refreshToken');
     expect(refreshValue).toBe('refresh-1');
     expect(refreshOptions).toEqual(

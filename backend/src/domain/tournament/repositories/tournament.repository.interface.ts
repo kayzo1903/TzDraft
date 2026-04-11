@@ -62,7 +62,10 @@ export interface ITournamentRepository {
     id: string,
     details: TournamentAdminUpdate,
   ): Promise<Tournament>;
-  setPrizes(tournamentId: string, prizes: TournamentPrizeInput[]): Promise<TournamentPrize[]>;
+  setPrizes(
+    tournamentId: string,
+    prizes: TournamentPrizeInput[],
+  ): Promise<TournamentPrize[]>;
   setHidden(id: string, hidden: boolean): Promise<Tournament>;
   deleteTournament(id: string): Promise<void>;
 

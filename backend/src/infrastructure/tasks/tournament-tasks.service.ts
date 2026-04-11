@@ -2,14 +2,14 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../database/prisma/prisma.service';
 import type { ITournamentRepository } from '../../domain/tournament/repositories/tournament.repository.interface';
-import { 
-  TournamentFormat, 
-  TournamentStatus 
+import {
+  TournamentFormat,
+  TournamentStatus,
 } from '../../domain/tournament/entities/tournament.entity';
 import { RoundStatus } from '../../domain/tournament/entities/tournament-round.entity';
-import { 
-  MatchStatus, 
-  MatchResult 
+import {
+  MatchStatus,
+  MatchResult,
 } from '../../domain/tournament/entities/tournament-match.entity';
 import { ParticipantStatus } from '../../domain/tournament/entities/tournament-participant.entity';
 import { AdvanceRoundUseCase } from '../../application/use-cases/tournament/advance-round.use-case';
@@ -52,7 +52,7 @@ export class TournamentTasksService {
 
       if (now > expiresAt) {
         this.logger.warn(
-          `Round ${round.roundNumber} of tournament ${round.tournamentId} has expired. Resolving pending matches...`
+          `Round ${round.roundNumber} of tournament ${round.tournamentId} has expired. Resolving pending matches...`,
         );
         await this.resolveExpiredRound(round);
       }
@@ -61,10 +61,14 @@ export class TournamentTasksService {
 
   private async resolveExpiredRound(round: any) {
     const matches = await this.repo.findMatchesByRound(round.id);
-    const pendingMatches = matches.filter(m => m.status !== MatchStatus.COMPLETED);
+    const pendingMatches = matches.filter(
+      (m) => m.status !== MatchStatus.COMPLETED,
+    );
 
     for (const match of pendingMatches) {
-      this.logger.log(`Auto-resolving match ${match.id} (Tournament: ${match.tournamentId})`);
+      this.logger.log(
+        `Auto-resolving match ${match.id} (Tournament: ${match.tournamentId})`,
+      );
 
       if (round.tournament.format === TournamentFormat.ROUND_ROBIN) {
         // ROUND_ROBIN: Always a DRAW (0-0)
@@ -77,7 +81,10 @@ export class TournamentTasksService {
         // SINGLE_ELIMINATION: Higher seed or leader wins
         const winnerId = await this.determineKnockoutWinner(match);
         match.status = MatchStatus.COMPLETED;
-        match.result = winnerId === match.player1Id ? MatchResult.PLAYER1_WIN : MatchResult.PLAYER2_WIN;
+        match.result =
+          winnerId === match.player1Id
+            ? MatchResult.PLAYER1_WIN
+            : MatchResult.PLAYER2_WIN;
         match.completedAt = new Date();
         await this.repo.updateMatch(match);
         await this.updateKnockoutParticipants(match, winnerId);
@@ -89,8 +96,12 @@ export class TournamentTasksService {
   }
 
   private async updateRoundRobinStandings(match: any) {
-    const p1 = match.player1Id ? await this.repo.findParticipant(match.tournamentId, match.player1Id) : null;
-    const p2 = match.player2Id ? await this.repo.findParticipant(match.tournamentId, match.player2Id) : null;
+    const p1 = match.player1Id
+      ? await this.repo.findParticipant(match.tournamentId, match.player1Id)
+      : null;
+    const p2 = match.player2Id
+      ? await this.repo.findParticipant(match.tournamentId, match.player2Id)
+      : null;
 
     if (p1) {
       p1.matchesPlayed = (p1.matchesPlayed || 0) + 1;
@@ -112,8 +123,12 @@ export class TournamentTasksService {
     if (match.player2Wins > match.player1Wins) return match.player2Id!;
 
     // Otherwise, fetch participants to check seeds
-    const p1 = match.player1Id ? await this.repo.findParticipant(match.tournamentId, match.player1Id) : null;
-    const p2 = match.player2Id ? await this.repo.findParticipant(match.tournamentId, match.player2Id) : null;
+    const p1 = match.player1Id
+      ? await this.repo.findParticipant(match.tournamentId, match.player1Id)
+      : null;
+    const p2 = match.player2Id
+      ? await this.repo.findParticipant(match.tournamentId, match.player2Id)
+      : null;
 
     // Favor lower seed number (stronger player)
     if (p1 && p2) {
@@ -125,10 +140,13 @@ export class TournamentTasksService {
   }
 
   private async updateKnockoutParticipants(match: any, winnerId: string) {
-    const participants = await this.repo.findParticipantsByTournament(match.tournamentId);
-    const winner = participants.find(p => p.userId === winnerId);
-    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
-    const loser = participants.find(p => p.userId === loserId);
+    const participants = await this.repo.findParticipantsByTournament(
+      match.tournamentId,
+    );
+    const winner = participants.find((p) => p.userId === winnerId);
+    const loserId =
+      winnerId === match.player1Id ? match.player2Id : match.player1Id;
+    const loser = participants.find((p) => p.userId === loserId);
 
     if (winner) {
       winner.matchWins += 1;

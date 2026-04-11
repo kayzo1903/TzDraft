@@ -114,7 +114,9 @@ export class BracketGenerationService {
     const playerCount = isOdd ? n + 1 : n;
 
     // Use sorted seeds as baseline order
-    const sorted = [...participants].sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999));
+    const sorted = [...participants].sort(
+      (a, b) => (a.seed ?? 999) - (b.seed ?? 999),
+    );
     const ids: (string | null)[] = sorted.map((p) => p.userId);
     if (isOdd) ids.push(null);
 
