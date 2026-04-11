@@ -85,13 +85,13 @@ export async function generateMetadata({
       locale: ogLocale,
       alternateLocale: [locale === "sw" ? "en_TZ" : "sw_TZ"],
       type: "article",
-      images: [{ url: new URL("/logo/logo.png", siteUrl).toString(), width: 1200, height: 630, alt: "Tanzania Drafti Rules — TzDraft" }],
+      images: [{ url: new URL("/logo/logo-universal.png", siteUrl).toString(), width: 1200, height: 630, alt: "Tanzania Drafti Rules — TzDraft" }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [new URL("/logo/logo.png", siteUrl).toString()],
+      images: [new URL("/logo/logo-universal.png", siteUrl).toString()],
     },
     other: {
       "revisit-after": "1 week",

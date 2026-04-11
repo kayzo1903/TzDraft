@@ -84,13 +84,13 @@ export async function generateMetadata({
       locale: ogLocale,
       alternateLocale: [locale === "sw" ? "en_TZ" : "sw_TZ"],
       type: "website",
-      images: [{ url: new URL("/logo/logo.png", siteUrl).toString(), width: 1200, height: 630, alt: "TzDraft — Tanzania Drafti Articles" }],
+      images: [{ url: new URL("/logo/logo-universal.png", siteUrl).toString(), width: 1200, height: 630, alt: "TzDraft — Tanzania Drafti Articles" }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [new URL("/logo/logo.png", siteUrl).toString()],
+      images: [new URL("/logo/logo-universal.png", siteUrl).toString()],
     },
     other: {
       "revisit-after": "3 days",

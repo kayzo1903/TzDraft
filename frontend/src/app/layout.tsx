@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     images: [
       {
-        url: getAbsoluteUrl("/logo/logo.png"),
+        url: getAbsoluteUrl("/logo/tzdraft-logo-solid.png"),
         width: 1200,
         height: 630,
         alt: `${SITE_NAME} logo`,
@@ -41,10 +41,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    images: [getAbsoluteUrl("/logo/logo.png")],
+    images: [getAbsoluteUrl("/logo/tzdraft-logo-solid.png")],
   },
   icons: {
-    icon: "/logo/logo.png",
+    icon: "/logo/tzdraft-logo-solid.png",
   },
 };
 

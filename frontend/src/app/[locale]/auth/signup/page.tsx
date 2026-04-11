@@ -28,6 +28,7 @@ import {
   UserCircle,
   Lock,
 } from "lucide-react";
+import Image from "next/image";
 
 const quickStats = [
   { labelKey: "signup.quickStats.liveTournaments", value: "12" },
@@ -161,8 +162,22 @@ export default function SignupPage() {
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-16 lg:py-20 space-y-10 lg:space-y-0 lg:flex lg:items-stretch lg:gap-10">
           <div className="hidden lg:block lg:w-1/2 space-y-8">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.5em] text-neutral-500">
-              <span>{t("signup.academy")}</span>
-              <span>Chapter {step === "phone" ? "01" : step === "otp" ? "02" : "03"}</span>
+              <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <div className="relative w-8 h-8">
+                  <Image
+                    src="/logo/tzdraft-logo-transparent.png"
+                    alt="TzDraft"
+                    fill
+                    sizes="32px"
+                    className="object-contain"
+                  />
+                </div>
+                <span className="text-sm font-black tracking-tight text-white">TzDraft</span>
+              </Link>
+              <div className="flex gap-4">
+                <span>{t("signup.academy")}</span>
+                <span>Chapter {step === "phone" ? "01" : step === "otp" ? "02" : "03"}</span>
+              </div>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-5xl font-black leading-tight text-white">
               {t("signup.heroTitle")}
