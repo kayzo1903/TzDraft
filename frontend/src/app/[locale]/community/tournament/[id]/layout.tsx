@@ -108,9 +108,12 @@ export async function generateMetadata({
       title,
       description,
       images: [ogImageUrl],
+<<<<<<< HEAD
     },
     icons: {
       icon: "/logo/tzdraft-logo-solid.png",
+=======
+>>>>>>> origin/develop
     },
     other: {
       "revisit-after": "1 day",
