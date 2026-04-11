@@ -276,6 +276,9 @@ export async function generateMetadata({
       title: m.title,
       description: m.description,
     },
+    icons: {
+      icon: "/logo/tzdraft-logo-solid.png",
+    },
   };
 }
 
