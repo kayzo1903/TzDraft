@@ -44,7 +44,21 @@ export class PrismaTournamentRepository implements ITournamentRepository {
 
   async create(tournament: Tournament): Promise<Tournament> {
     const row = await this.prisma.tournament.create({
-      data: this.toTournamentData(tournament),
+      data: {
+        ...this.toTournamentData(tournament),
+        ...(tournament.prizes.length > 0 && {
+          prizes: {
+            create: tournament.prizes.map((p) => ({
+              id: p.id,
+              placement: p.placement,
+              amount: p.amount,
+              currency: p.currency as any,
+              label: p.label,
+            })),
+          },
+        }),
+      },
+      include: { prizes: { orderBy: { placement: 'asc' } } },
     });
     return this.toDomainTournament(row);
   }
