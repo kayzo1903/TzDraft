@@ -36,7 +36,7 @@ export interface OnlineGameState {
   currentPlayer: PlayerColor;
   myColor: PlayerColor | null;
   moveCount: number;
-  result: { winner: Winner; reason?: string } | null;
+  result: { winner: Winner | null; reason?: string } | null;
   /** Time remaining in **milliseconds** for each player. */
   timeLeft: { WHITE: number; BLACK: number } | null;
   isWaiting: boolean;
@@ -149,7 +149,7 @@ export const useOnlineGame = (gameId: string) => {
   );
   const [moveCount, setMoveCount] = useState(0);
   const [result, setResult] = useState<{
-    winner: Winner;
+    winner: Winner | null;
     reason?: string;
   } | null>(null);
   const [autoRequeue, setAutoRequeue] = useState<{ timeMs: number } | null>(null);
@@ -185,7 +185,7 @@ export const useOnlineGame = (gameId: string) => {
     receivedAt: number;
   } | null>(null);
   const currentPlayerRef = useRef<PlayerColor>(PlayerColor.WHITE);
-  const resultRef = useRef<{ winner: Winner; reason?: string } | null>(null);
+  const resultRef = useRef<{ winner: Winner | null; reason?: string } | null>(null);
   const isWaitingRef = useRef<boolean>(true);
   const clockTimerRef = useRef<number | null>(null);
   // Stable refs for use inside the 50ms clock interval closure
@@ -418,7 +418,7 @@ export const useOnlineGame = (gameId: string) => {
         };
         setResult({ winner: winnerMap[game.winner as string] ?? Winner.DRAW });
       } else if (game.status === "ABORTED") {
-        setResult({ winner: Winner.DRAW, reason: "aborted" });
+        setResult({ winner: null, reason: "aborted" });
       }
       // If game.winner is null and not aborted we leave the existing result in place;
       // this prevents a race-condition fetch from dismissing the result card.
@@ -633,22 +633,21 @@ export const useOnlineGame = (gameId: string) => {
 
     const handleGameOver = (data: unknown) => {
       const d = data as Record<string, unknown>;
-      const winnerMap: Record<string, Winner> = {
+      const winnerMap: Record<string, Winner | null> = {
         WHITE: Winner.WHITE,
         BLACK: Winner.BLACK,
         DRAW: Winner.DRAW,
       };
       const winnerStr = d?.winner as string | null | undefined;
       if (winnerStr) {
-        // Normal game-over: timeout, resign, draw, abandon…
         setResult({
-          winner: winnerMap[winnerStr] ?? Winner.DRAW,
+          winner: winnerMap[winnerStr] ?? null,
           reason: d.reason as string | undefined,
         });
       } else {
         // winner is null/undefined — treat as aborted (or fall back to HTTP)
         setResult({
-          winner: Winner.DRAW, // no winner for aborted games
+          winner: null, // no winner for aborted games
           reason: (d?.reason as string | undefined) ?? "aborted",
         });
       }

@@ -19,12 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         // Primary: httpOnly cookie (XSS-safe)
-        (req: any) => {
-          const cookieHeader: string | undefined = req?.headers?.cookie;
-          if (!cookieHeader) return null;
-          const match = cookieHeader.match(/(?:^|;\s*)accessToken=([^;]+)/);
-          return match ? decodeURIComponent(match[1]) : null;
-        },
+        (req: any) => req?.cookies?.accessToken || null,
         // Fallback: Bearer token (mobile / non-browser clients)
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),

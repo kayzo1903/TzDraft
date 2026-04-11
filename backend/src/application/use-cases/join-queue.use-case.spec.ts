@@ -48,6 +48,40 @@ class FakePrismaService {
       });
       return Promise.resolve(data);
     },
+
+    findFirst: async ({ where }: { where: any }): Promise<GameRow | null> => {
+      return (
+        this.gameRows.find((g) => {
+          if (where.status && g.status !== where.status) return false;
+          if (where.gameType?.not && g.gameType === where.gameType.not)
+            return false;
+          const playerOk =
+            g.whitePlayerId === where.OR?.[0]?.whitePlayerId ||
+            g.blackPlayerId === where.OR?.[1]?.blackPlayerId;
+          return playerOk;
+        }) || null
+      );
+    },
+
+    findUnique: async ({ where }: { where: any }): Promise<any> => {
+      const g = this.gameRows.find((row) => row.id === where.id);
+      if (!g) return null;
+      return { ...g, moves: [] }; // Mock moves for noShowCheck
+    },
+
+    update: async ({
+      where,
+      data,
+    }: {
+      where: any;
+      data: any;
+    }): Promise<any> => {
+      const idx = this.gameRows.findIndex((row) => row.id === where.id);
+      if (idx !== -1) {
+        this.gameRows[idx] = { ...this.gameRows[idx], ...data };
+      }
+      return this.gameRows[idx];
+    },
   };
 
   getGames(): GameRow[] {

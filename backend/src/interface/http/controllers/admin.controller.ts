@@ -52,20 +52,21 @@ export class AdminController {
   @Post('analytics/trigger-report')
   async triggerReport(@Body('type') type: 'Daily' | 'Weekly' | 'Monthly') {
     if (!['Daily', 'Weekly', 'Monthly'].includes(type)) {
-      throw new BadRequestException('Invalid report type. Expected Daily, Weekly, or Monthly.');
+      throw new BadRequestException(
+        'Invalid report type. Expected Daily, Weekly, or Monthly.',
+      );
     }
-    
+
     // Trigger the report asynchronously
-    this.reportService.triggerReport(type).catch(err => {
+    this.reportService.triggerReport(type).catch((err) => {
       this.logger.error(`Manual ${type} report trigger failed:`, err);
     });
 
-    return { 
-      success: true, 
-      message: `${type} report generation triggered. The email will be sent to the administrator shortly.` 
+    return {
+      success: true,
+      message: `${type} report generation triggered. The email will be sent to the administrator shortly.`,
     };
   }
-
 
   @Get('stats')
   async getStats() {
@@ -413,5 +414,4 @@ export class AdminController {
 
     return winners;
   }
-
 }

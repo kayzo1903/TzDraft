@@ -77,7 +77,8 @@ export class EligibilityCheckService {
     if (tournament.scope === 'COUNTRY' && tournament.country) {
       checks.push({
         key: 'country',
-        passed: user.country?.toLowerCase() === tournament.country.toLowerCase(),
+        passed:
+          user.country?.toLowerCase() === tournament.country.toLowerCase(),
         required: tournament.country,
         current: user.country,
       });
@@ -87,7 +88,8 @@ export class EligibilityCheckService {
       if (tournament.country) {
         checks.push({
           key: 'country',
-          passed: user.country?.toLowerCase() === tournament.country.toLowerCase(),
+          passed:
+            user.country?.toLowerCase() === tournament.country.toLowerCase(),
           required: tournament.country,
           current: user.country,
         });

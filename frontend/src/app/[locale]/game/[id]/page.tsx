@@ -244,7 +244,7 @@ function OnlineResultCard({
   onCancelRematch,
   onSetupFriend,
 }: {
-  winner: Winner;
+  winner: Winner | null;
   reason?: string;
   myColor: PlayerColor | null;
   moveCount: number;
@@ -259,11 +259,12 @@ function OnlineResultCard({
   onCancelRematch: () => void;
   onSetupFriend: () => void;
 }) {
-  const isAborted = reason === "aborted";
+  const isAborted = winner === null || reason === "aborted" || reason === "no_show" || reason === "abort";
   const isDraw = !isAborted && winner === Winner.DRAW;
   const iWon =
     !isDraw &&
     !isAborted &&
+    winner !== null &&
     myColor !== null &&
     ((winner === Winner.WHITE && myColor === PlayerColor.WHITE) ||
       (winner === Winner.BLACK && myColor === PlayerColor.BLACK));
@@ -272,8 +273,8 @@ function OnlineResultCard({
     ? "aborted"
     : isDraw
       ? "draw"
-      : myColor === null
-        ? "draw"
+      : myColor === null || winner === null
+        ? "aborted"
         : iWon
           ? "win"
           : "loss";

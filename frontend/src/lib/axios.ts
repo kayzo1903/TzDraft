@@ -10,6 +10,8 @@ const axiosInstance = axios.create({
   },
 });
 
+let refreshPromise: Promise<void> | null = null;
+
 function isAuthRoute(url?: string): boolean {
   if (!url) return false;
   return url.includes("/auth/");
@@ -17,6 +19,23 @@ function isAuthRoute(url?: string): boolean {
 
 function isAuthPage(pathname: string): boolean {
   return /^\/(?:sw|en)\/auth(?:\/|$)/.test(pathname);
+}
+
+export async function refreshAccessToken(): Promise<void> {
+  if (refreshPromise) return refreshPromise;
+
+  // Add a tiny 50ms settle delay to consolidate rapid-fire 401s from multiple 
+  // concurrent requests (or tabs) into a single backend call.
+  refreshPromise = new Promise((resolve) => setTimeout(resolve, 50)).then(() =>
+    axiosInstance
+      .post("/auth/refresh", {})
+      .then(() => undefined)
+      .finally(() => {
+        refreshPromise = null;
+      }),
+  );
+
+  return refreshPromise;
 }
 
 // Response interceptor — handle token refresh transparently
@@ -37,9 +56,7 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // refreshToken cookie is sent automatically via withCredentials.
-        // The server rotates both tokens and sets fresh httpOnly cookies.
-        await axiosInstance.post("/auth/refresh", {});
+        await refreshAccessToken();
 
         // Retry the original request — the new accessToken cookie is now set
         return axiosInstance(originalRequest);

@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { refreshAccessToken } from "@/lib/axios";
 
 class SocketService {
   private socket: Socket | null = null;
@@ -19,6 +20,21 @@ class SocketService {
 
     this.socket.on("disconnect", () => {
       console.log("Socket disconnected");
+    });
+
+    this.socket.on("connect_error", async (error) => {
+      console.error("Socket connection error:", error.message);
+      
+      // If the handshake was rejected due to an expired token,
+      // trigger the silent refresh and retry the connection.
+      if (error.message === "Unauthorized") {
+        try {
+          await refreshAccessToken();
+          this.socket?.connect(); // Retry with updated cookie
+        } catch (refreshError) {
+          console.error("Socket re-auth failed:", refreshError);
+        }
+      }
     });
 
     return this.socket;

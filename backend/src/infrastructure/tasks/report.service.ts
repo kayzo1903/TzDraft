@@ -19,9 +19,13 @@ export class ReportService {
    * Fetch data, render template, and dispatch email.
    * Exposed publicly to allow manual triggers from AdminController.
    */
-  async triggerReport(reportType: 'Daily' | 'Weekly' | 'Monthly'): Promise<void> {
+  async triggerReport(
+    reportType: 'Daily' | 'Weekly' | 'Monthly',
+  ): Promise<void> {
     try {
-      this.logger.log(`Starting ${reportType.toLowerCase()} report generation...`);
+      this.logger.log(
+        `Starting ${reportType.toLowerCase()} report generation...`,
+      );
 
       // Get analytics data - Note: This currently fetches raw data,
       // the template handles pivoting based on window type.
@@ -35,7 +39,7 @@ export class ReportService {
           overview: analytics.overview,
           liveBreakdown: analytics.liveBreakdown,
           windows: analytics.windows as any,
-        })
+        }),
       );
 
       // Send email using existing EmailService
@@ -48,13 +52,18 @@ export class ReportService {
 
       await this.emailService.sendAnalyticsReport(html, reportDate, reportType);
 
-      this.logger.log(`${reportType} report email sent successfully to kay@zetutech.co.tz`);
+      this.logger.log(
+        `${reportType} report email sent successfully to kay@zetutech.co.tz`,
+      );
     } catch (error) {
-      this.logger.error(`Error generating/sending ${reportType.toLowerCase()} report:`, error);
+      this.logger.error(
+        `Error generating/sending ${reportType.toLowerCase()} report:`,
+        error,
+      );
       Sentry.captureException(error, {
-        tags: { 
+        tags: {
           task: 'report-generation',
-          reportType 
+          reportType,
         },
       });
     }
@@ -77,12 +86,14 @@ export class ReportService {
   @Cron('0 6 * * 1', { timeZone: 'Africa/Dar_es_Salaam' })
   async sendWeeklyAndMonthlyReports(): Promise<void> {
     const today = new Date();
-    
+
     // It's the first Monday of the month if the date is <= 7
     const isFirstMonday = today.getDate() <= 7;
 
     if (isFirstMonday) {
-      this.logger.log('Detected First Monday of the month. Triggering Monthly Report.');
+      this.logger.log(
+        'Detected First Monday of the month. Triggering Monthly Report.',
+      );
       await this.triggerReport('Monthly');
     } else {
       this.logger.log('Detected regular Monday. Triggering Weekly Report.');
