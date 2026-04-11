@@ -171,6 +171,9 @@ export function buildPageMetadata({
       description,
       images: [resolvedOgImage],
     },
+    icons: {
+      icon: "/logo/tzdraft-logo-solid.png",
+    },
     other,
   };
 }

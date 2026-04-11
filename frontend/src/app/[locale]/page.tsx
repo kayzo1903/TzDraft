@@ -122,7 +122,9 @@ export async function generateMetadata({
       description: m.description,
       images: [new URL("/logo/tzdraft-logo-solid.png", siteUrl).toString()],
     },
-
+    icons: {
+      icon: "/logo/tzdraft-logo-solid.png",
+    },
     other: {
       "revisit-after": "1 day",
       language: locale === "sw" ? "Swahili" : "English",
