@@ -130,7 +130,7 @@ export default async function ArticlePage({
     description: locale === "sw" ? article.description?.sw : article.description?.en,
     datePublished: article.publishedAt,
     inLanguage: locale,
-    image: article.coverImageUrl ?? `${siteUrl}logo/logo.png`,
+    image: article.coverImageUrl ?? `${siteUrl}logo/tzdraft-logo-solid.png`,
     url: new URL(`/${locale}/learn/${slug}`, siteUrl).toString(),
     publisher: {
       "@type": "Organization",
