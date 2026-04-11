@@ -136,7 +136,7 @@ export const Navbar: React.FC = () => {
                         <Link href="/" className="flex items-center gap-2">
                             <div className="relative w-9 h-9">
                                 <Image
-                                    src="/logo/logo.png"
+                                    src="/logo/tzdraft-logo-transparent.png"
                                     alt="TzDraft"
                                     fill
                                     sizes="36px"
@@ -386,7 +386,7 @@ export const Navbar: React.FC = () => {
                             <Link href="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
                                 <div className="relative w-9 h-9">
                                     <Image
-                                        src="/logo/logo.png"
+                                        src="/logo/tzdraft-logo-transparent.png"
                                         alt="TzDraft"
                                         fill
                                         sizes="36px"

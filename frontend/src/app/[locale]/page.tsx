@@ -108,7 +108,7 @@ export async function generateMetadata({
       type: "website",
       images: [
         {
-          url: new URL("/logo/logo.png", siteUrl).toString(),
+          url: new URL("/logo/tzdraft-logo-solid.png", siteUrl).toString(),
           width: 1200,
           height: 630,
           alt: m.ogAlt,
@@ -120,7 +120,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: m.title,
       description: m.description,
-      images: [new URL("/logo/logo.png", siteUrl).toString()],
+      images: [new URL("/logo/tzdraft-logo-solid.png", siteUrl).toString()],
     },
 
     other: {
@@ -232,7 +232,7 @@ export default async function Home({
     "@type": "Organization",
     "name": "TzDraft",
     "url": siteUrl.toString(),
-    "logo": new URL("/logo/logo.png", siteUrl).toString()
+    "logo": new URL("/logo/tzdraft-logo-solid.png", siteUrl).toString()
   };
 
   return (
