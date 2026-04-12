@@ -58,6 +58,7 @@ export interface LocalGameState {
   endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
   mustContinueFrom: number | null;
   undoUsed: boolean;
+  viewingMoveIndex: number;
 }
 
 const STORAGE_KEY = "tzdraft:local-game";
@@ -389,6 +390,7 @@ export const useLocalGame = (
   const [mustContinueFrom, setMustContinueFrom] = useState<Position | null>(
     loaded?.mustContinueFrom ?? null,
   );
+  const [viewingMoveIndex, setViewingMoveIndex] = useState<number>(loaded ? loaded.moves.length : 0);
   const [lastMove, setLastMove] = useState<LastMoveState>(null);
   const [capturedGhosts, setCapturedGhosts] = useState<CaptureGhost[]>([]);
   const fenHistoryRef = useRef<string[]>([
@@ -408,6 +410,19 @@ export const useLocalGame = (
   const startedRef = useRef(false);
   const prevResultRef = useRef<Winner | null>(null);
 
+  const [isMuted, setIsMuted] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("tzdraft:muted") === "true";
+  });
+
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      window.localStorage.setItem("tzdraft:muted", String(next));
+      return next;
+    });
+  }, []);
+
   // Re-render once when the WASM engine finishes loading so legalMoves is computed.
   const [engineReady, setEngineReady] = useState(isEngineReady());
   useEffect(() => {
@@ -415,20 +430,43 @@ export const useLocalGame = (
     initEngine("/wasm/mkaguzi_wasm.js").then(() => setEngineReady(true)).catch((e) => console.error("[Mkaguzi] WASM init failed:", e));
   }, [engineReady]);
 
+  const boardAtViewingIndex = useMemo(() => {
+    if (viewingMoveIndex === moves.length) return board;
+
+    let currentBoard = initialBoardRef.current;
+    for (let i = 0; i < viewingMoveIndex; i++) {
+      currentBoard = MkaguziEngine.applyMove(currentBoard, moves[i]);
+    }
+    return currentBoard;
+  }, [board, moves, viewingMoveIndex]);
+
   const pieces = useMemo(
-    () => boardToUiPieces(board, flipForPlayer),
-    [board, flipForPlayer],
+    () => boardToUiPieces(boardAtViewingIndex, flipForPlayer),
+    [boardAtViewingIndex, flipForPlayer],
   );
+
+  const visibleLastMove = useMemo<LastMoveState>(() => {
+    if (viewingMoveIndex === 0) return null;
+    const move = moves[viewingMoveIndex - 1];
+    if (!move) return null;
+    return {
+      from: positionToIndex(move.from, flipForPlayer),
+      to: positionToIndex(move.to, flipForPlayer),
+    };
+  }, [moves, viewingMoveIndex, flipForPlayer]);
+
   const legalMoves = useMemo(() => {
+    if (viewingMoveIndex !== moves.length) return {};
+
     const map: Record<number, number[]> = {};
-    const moves = MkaguziEngine.generateLegalMoves(
+    const movesList = MkaguziEngine.generateLegalMoves(
       board,
       currentPlayer,
       moveCount,
     );
     const filteredMoves = mustContinueFrom
-      ? moves.filter((m) => m.from.equals(mustContinueFrom))
-      : moves;
+      ? movesList.filter((m) => m.from.equals(mustContinueFrom))
+      : movesList;
     for (const move of filteredMoves) {
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
@@ -436,7 +474,7 @@ export const useLocalGame = (
       map[fromIndex].push(toIndex);
     }
     return map;
-  }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom, engineReady]);
+  }, [board, currentPlayer, moveCount, flipForPlayer, mustContinueFrom, engineReady, viewingMoveIndex, moves.length]);
   const forcedPieces = useMemo(() => {
     if (mustContinueFrom) {
       return [positionToIndex(mustContinueFrom, flipForPlayer)];
@@ -532,19 +570,21 @@ export const useLocalGame = (
 
   const applyMove = useCallback(
     (move: Move) => {
-      playMoveSound(
-        {
-          from: move.from,
-          to: move.to,
-          capturedCount: move.capturedSquares.length,
-        },
-        {
-          normal: moveAudioRef.current,
-          long: longMoveAudioRef.current,
-          capture: captureAudioRef.current,
-          multiCapture: multiCaptureAudioRef.current,
-        },
-      );
+      if (!isMuted) {
+        playMoveSound(
+          {
+            from: move.from,
+            to: move.to,
+            capturedCount: move.capturedSquares.length,
+          },
+          {
+            normal: moveAudioRef.current,
+            long: longMoveAudioRef.current,
+            capture: captureAudioRef.current,
+            multiCapture: multiCaptureAudioRef.current,
+          },
+        );
+      }
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
       setLastMove({ from: fromIndex, to: toIndex });
@@ -582,15 +622,19 @@ export const useLocalGame = (
         captureCleanupTimeoutsRef.current.push(cleanupTimeout);
       }
 
-      const nextBoard = MkaguziEngine.applyMove(board, move);
-      const nextPlayer = getOpponent(currentPlayer);
+      const nextBoard = MkaguziEngine.applyMove(boardAtViewingIndex, move);
+      const nextPlayer = getOpponent(move.player);
 
       // Track FEN history for Mkaguzi game-level repetition detection
       fenHistoryRef.current.push(boardToFen(nextBoard, nextPlayer));
 
       setBoard(nextBoard);
-      setMoves((prev) => [...prev, move]);
-      setMoveCount((prev) => prev + 1);
+      setMoves((prev) => {
+        const next = [...prev.slice(0, viewingMoveIndex), move];
+        setViewingMoveIndex(next.length);
+        return next;
+      });
+      setMoveCount((prev) => viewingMoveIndex + 1);
       // TZD free-choice: a complete capture path is applied atomically; turn
       // always passes to the opponent — never force a "continue capturing" chain.
       setMustContinueFrom(null);
@@ -614,7 +658,7 @@ export const useLocalGame = (
         setResult({ winner: Winner.DRAW, drawReason });
       }
     },
-    [board, currentPlayer, evaluateEndgameCountdown, flipForPlayer],
+    [board, currentPlayer, evaluateEndgameCountdown, flipForPlayer, viewingMoveIndex, isMuted],
   );
 
   const makeMove = useCallback(
@@ -638,9 +682,12 @@ export const useLocalGame = (
         (move) => move.from.equals(from) && move.to.equals(to),
       );
 
-      if (!match) return;
-      if (mustContinueFrom && !match.from.equals(mustContinueFrom)) return;
-      applyMove(match);
+      if (match) {
+        if (viewingMoveIndex !== moves.length) {
+          setUndoUsed(true);
+        }
+        applyMove(match);
+      }
     },
     [
       applyMove,
@@ -651,6 +698,8 @@ export const useLocalGame = (
       result,
       mustContinueFrom,
       flipForPlayer,
+      viewingMoveIndex,
+      moves.length,
     ],
   );
 
@@ -661,6 +710,7 @@ export const useLocalGame = (
     setCurrentPlayer(PlayerColor.WHITE);
     setMoveCount(0);
     setMoves([]);
+    setViewingMoveIndex(0);
     setResult(null);
     setIsAiThinking(false);
     setUndoUsed(false);
@@ -741,6 +791,26 @@ export const useLocalGame = (
     captureCleanupTimeoutsRef.current = [];
   }, [moves, playerColor]);
 
+  const goBack = useCallback(() => {
+    setViewingMoveIndex((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const goForward = useCallback(() => {
+    setViewingMoveIndex((prev) => Math.min(moves.length, prev + 1));
+  }, [moves.length]);
+
+  const goToStart = useCallback(() => {
+    setViewingMoveIndex(0);
+  }, []);
+
+  const goToEnd = useCallback(() => {
+    setViewingMoveIndex(moves.length);
+  }, [moves.length]);
+
+  const goToMove = useCallback((index: number) => {
+    setViewingMoveIndex(Math.min(Math.max(0, index), moves.length));
+  }, [moves.length]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const moveAudio = new Audio("/sfx/move-tap.wav");
@@ -779,8 +849,10 @@ export const useLocalGame = (
     victoryAudioRef.current = victoryAudio;
 
     if (!startedRef.current && !loaded) {
-      startAudio.currentTime = 0;
-      startAudio.play().catch(() => {});
+      if (!isMuted && startAudioRef.current) {
+        startAudioRef.current.currentTime = 0;
+        startAudioRef.current.play().catch(() => {});
+      }
       startedRef.current = true;
     }
     return () => {
@@ -802,11 +874,11 @@ export const useLocalGame = (
     const winner = result?.winner ?? null;
     if (!winner || winner === prevResultRef.current) return;
     prevResultRef.current = winner;
-    if (victoryAudioRef.current) {
+    if (!isMuted && victoryAudioRef.current) {
       victoryAudioRef.current.currentTime = 0;
       victoryAudioRef.current.play().catch(() => {});
     }
-  }, [result]);
+  }, [result, isMuted]);
 
   useEffect(() => {
     if (!result) return;
@@ -819,10 +891,11 @@ export const useLocalGame = (
   }, [aiLevel, playerColor, result, shouldPersistGuestProgress, undoUsed]);
 
   const playWarning = useCallback(() => {
-    if (!warningAudioRef.current) return;
-    warningAudioRef.current.currentTime = 0;
-    warningAudioRef.current.play().catch(() => {});
-  }, []);
+    if (!isMuted && warningAudioRef.current) {
+      warningAudioRef.current.currentTime = 0;
+      warningAudioRef.current.play().catch(() => {});
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     if (aiTimeoutRef.current !== null) {
@@ -1076,19 +1149,27 @@ export const useLocalGame = (
       mustContinueFrom: mustContinueFrom
         ? positionToIndex(mustContinueFrom, flipForPlayer)
         : null,
-      undoUsed,
-    } as LocalGameState,
-    pieces,
-    lastMove,
-    capturedGhosts,
-    legalMoves,
-    forcedPieces,
-    flipBoard: flipForPlayer,
-    engineReady,
-    playWarning,
-    undo,
-    resign,
-    makeMove,
-    reset,
+        undoUsed,
+        viewingMoveIndex,
+      } as LocalGameState,
+      pieces,
+      lastMove: visibleLastMove,
+      capturedGhosts,
+      legalMoves,
+      forcedPieces,
+      flipBoard: flipForPlayer,
+      engineReady,
+      playWarning,
+      undo,
+      resign,
+      makeMove,
+      reset,
+      goBack,
+      goForward,
+      goToStart,
+      goToEnd,
+      goToMove,
+      isMuted,
+      toggleMute,
+    };
   };
-};

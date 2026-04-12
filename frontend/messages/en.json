@@ -464,16 +464,20 @@
     "winnerInline": "Winner: {winner}",
     "actions": {
       "undo": "Undo",
-      "resign": "Resign",
-      "reset": "Reset Game"
+      "resign": "End a Game",
+      "reset": "Reset Game",
+      "home": "Home",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "settings": "Options"
     },
     "progression": {
       "disabled": "Undo used — this game will not unlock the next bot."
     },
     "resign": {
-      "confirmTitle": "Confirm Resign",
-      "confirmQuestion": "Are you sure you want to resign?",
-      "confirmCta": "Yes, Resign",
+      "confirmTitle": "Confirm End a Game",
+      "confirmQuestion": "Are you sure you want to end the game?",
+      "confirmCta": "Yes, End Game",
       "cancel": "Cancel"
     },
     "gameOver": {
