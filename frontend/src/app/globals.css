@@ -224,3 +224,12 @@ body {
 .animate-tier-unlock-pulse {
   animation: tier-unlock-pulse 1.8s ease-in-out infinite;
 }
+
+/* ─── Scrollbar Hide Utility ────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}

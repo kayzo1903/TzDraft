@@ -465,13 +465,17 @@
     "actions": {
       "undo": "Rudisha",
       "resign": "Jisalimishe",
-      "reset": "Anza Upya"
+      "reset": "Anza Upya",
+      "home": "Nyumbani",
+      "mute": "Zima Sauti",
+      "unmute": "Washa Sauti",
+      "settings": "Mipangilio"
     },
     "progression": {
       "disabled": "Umetumia Rudisha — mchezo huu hautafungua bot inayofuata."
     },
     "resign": {
-      "confirmTitle": "Thibitisha Kujisalimisha",
+      "confirmTitle": "Thibitisha Jisalimishe",
       "confirmQuestion": "Una uhakika unataka kujisalimisha?",
       "confirmCta": "Ndiyo, Jisalimishe",
       "cancel": "Ghairi"
