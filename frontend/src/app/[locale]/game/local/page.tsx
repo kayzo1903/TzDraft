@@ -21,8 +21,17 @@ import {
   RotateCcw,
   Skull,
   Trophy,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Volume2,
+  VolumeX,
+  Undo2,
+  X,
+  Home,
 } from "lucide-react";
 import clsx from "clsx";
+import { GameControls } from "@/components/game/GameControls";
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -156,8 +165,8 @@ interface ResignCardProps {
 
 function ResignCard({ botName, onConfirm, onCancel, t }: ResignCardProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm animate-result-enter rounded-2xl overflow-hidden border border-neutral-700/80 bg-neutral-900 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onCancel}>
+      <div className="w-full max-w-sm animate-result-enter rounded-2xl overflow-hidden border border-neutral-700/80 bg-neutral-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Warning stripe */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-800 bg-orange-500/8">
           <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-orange-500/15 border border-orange-500/30">
@@ -184,6 +193,89 @@ function ResignCard({ botName, onConfirm, onCancel, t }: ResignCardProps) {
           </Button>
           <Button variant="secondary" onClick={onCancel} className="w-full">
             {t("resign.cancel")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface OptionsCardProps {
+  onHome: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
+  onClose: () => void;
+  t: ReturnType<typeof useTranslations<"gameArena">>;
+}
+
+function OptionsCard({ onHome, isMuted, onToggleMute, onClose, t }: OptionsCardProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-sm animate-result-enter rounded-2xl overflow-hidden border border-neutral-700/80 bg-neutral-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-neutral-800 border border-neutral-700">
+              <Settings className="w-4 h-4 text-neutral-400" />
+            </div>
+            <span className="font-bold text-neutral-100">{t("actions.settings")}</span>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-neutral-800 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-neutral-500" />
+          </button>
+        </div>
+
+        <div className="p-5 flex flex-col gap-3">
+          {/* Home Button */}
+          <button
+            onClick={onHome}
+            className="flex items-center justify-between w-full p-4 rounded-xl bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-700/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-500/10 border border-amber-500/20 group-hover:border-amber-500/40">
+                <Home className="w-5 h-5 text-amber-500" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-neutral-200">{t("actions.home")}</div>
+                <div className="text-[10px] text-neutral-500">Go to main lobby</div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-neutral-600" />
+          </button>
+
+          {/* Mute Toggle */}
+          <button
+            onClick={onToggleMute}
+            className="flex items-center justify-between w-full p-4 rounded-xl bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-700/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className={clsx(
+                "w-10 h-10 rounded-xl flex items-center justify-center border transition-all",
+                isMuted 
+                  ? "bg-rose-500/10 border-rose-500/20 group-hover:border-rose-500/40" 
+                  : "bg-emerald-500/10 border-emerald-500/20 group-hover:border-emerald-500/40"
+              )}>
+                {isMuted ? <VolumeX className="w-5 h-5 text-rose-500" /> : <Volume2 className="w-5 h-5 text-emerald-500" />}
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-neutral-200">{isMuted ? t("actions.unmute") : t("actions.mute")}</div>
+                <div className="text-[10px] text-neutral-500">Game sounds and alerts</div>
+              </div>
+            </div>
+            <div className={clsx(
+              "w-8 h-4 rounded-full relative transition-all",
+              isMuted ? "bg-neutral-700" : "bg-emerald-600"
+            )}>
+              <div className={clsx(
+                "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all shadow-sm",
+                isMuted ? "left-0.5" : "left-4.5"
+              )} />
+            </div>
+          </button>
+        </div>
+
+        <div className="px-5 pb-5 mt-2">
+          <Button variant="secondary" onClick={onClose} className="w-full">
+            Done
           </Button>
         </div>
       </div>
@@ -462,9 +554,14 @@ export default function LocalGamePage() {
   const [sessionReported, setSessionReported] = useState(false);
   const [gameRunKey, setGameRunKey] = useState(0);
 
-  const { state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning, undo, resign, makeMove, reset } =
-    useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
+  const { 
+    state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning, 
+    undo, resign, makeMove, reset, 
+    goBack, goForward, goToStart, goToEnd, goToMove,
+    isMuted, toggleMute
+  } = useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
   const [showResign, setShowResign] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -742,6 +839,19 @@ export default function LocalGamePage() {
                   })}
             </div>
           )}
+
+          {/* Game Navigation Strip */}
+          <div className="mt-4">
+            <GameControls
+              moves={state.moves}
+              viewingMoveIndex={state.viewingMoveIndex}
+              canGoBack={state.viewingMoveIndex > 0}
+              canGoForward={state.viewingMoveIndex < state.moves.length}
+              onBack={goBack}
+              onForward={goForward}
+              onMoveClick={goToMove}
+            />
+          </div>
         </div>
 
         {/* Desktop right sidebar */}
@@ -765,20 +875,65 @@ export default function LocalGamePage() {
         <div className="text-sm text-neutral-400">{t("progression.disabled")}</div>
       )}
 
-      {/* Action buttons */}
-      <div className="w-full max-w-[650px] sticky bottom-0 z-20 -mx-3 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-[var(--background)]/90 backdrop-blur border-t border-neutral-800 sm:static sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0 sm:bg-transparent sm:backdrop-blur-none sm:border-0">
-        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-center sm:gap-4">
-          <Button variant="secondary" size="sm" className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base" onClick={undo}>
-            {t("actions.undo")}
-          </Button>
-          <Button variant="secondary" size="sm" className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base" onClick={() => setShowResign(true)}>
-            {t("actions.resign")}
-          </Button>
-          <Button variant="secondary" size="sm" className="w-full py-2 sm:w-auto sm:px-6 sm:py-3 sm:text-base" onClick={handleResetGame}>
-            {t("actions.reset")}
-          </Button>
+      {/* Bottom Action Bar (Chess.com Style) */}
+      <div className="w-full max-w-[650px] sticky bottom-0 z-20 -mx-3 px-1 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] bg-transparent sm:static sm:mx-0 sm:px-0 sm:pt-4 sm:pb-0 sm:border-0">
+        <div className="flex items-center justify-around w-full">
+          {/* Options / Settings */}
+          <button
+            onClick={() => setShowOptions(true)}
+            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
+          >
+            <Settings className="w-6 h-6 text-neutral-500 group-hover:text-neutral-300" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
+              {t("actions.settings")}
+            </span>
+          </button>
+
+          {/* End a Game (Resign) */}
+          <button
+            onClick={() => setShowResign(true)}
+            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
+          >
+            <Skull className="w-6 h-6 text-neutral-500 group-hover:text-rose-400" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-rose-400">
+              {t("actions.resign")}
+            </span>
+          </button>
+
+          {/* New Game (Reset) */}
+          <button
+            onClick={handleResetGame}
+            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
+          >
+            <RotateCcw className="w-6 h-6 text-neutral-500 group-hover:text-emerald-400" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-emerald-400">
+              {t("actions.reset")}
+            </span>
+          </button>
+
+          {/* Undo */}
+          <button
+            onClick={undo}
+            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
+          >
+            <Undo2 className="w-6 h-6 text-neutral-500 group-hover:text-amber-400" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-amber-400">
+              {t("actions.undo")}
+            </span>
+          </button>
         </div>
       </div>
+
+      {/* Options Overlay */}
+      {showOptions && (
+        <OptionsCard
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+          onHome={() => router.push("/")}
+          onClose={() => setShowOptions(false)}
+          t={t}
+        />
+      )}
 
       {/* Resign confirmation */}
       {showResign && (
