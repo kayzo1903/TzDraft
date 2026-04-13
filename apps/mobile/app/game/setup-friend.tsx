@@ -29,8 +29,9 @@ import {
   Copy
 } from "lucide-react-native";
 import { useAuthStore } from "../../src/auth/auth-store";
+import { colors } from "../../src/theme/colors";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const TIME_OPTIONS = [0, 3, 5, 10, 30] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];
@@ -78,7 +79,7 @@ export default function SetupFriendScreen() {
             ]}>
               {color === "WHITE" && <View style={styles.whiteIcon} />}
               {color === "BLACK" && <View style={styles.blackIcon} />}
-              {color === "RANDOM" && <Shuffle size={18} color={selectedColor === color ? "#fff" : "#737373"} />}
+              {color === "RANDOM" && <Shuffle size={18} color={selectedColor === color ? colors.foreground : colors.textSubtle} />}
             </View>
             <Text style={[
               styles.colorLabel,
@@ -102,7 +103,7 @@ export default function SetupFriendScreen() {
       >
         <View style={styles.timeSelectorLeft}>
           <View style={styles.timeIconContainer}>
-            <Clock3 size={20} color="#f59e0b" />
+            <Clock3 size={20} color={colors.primary} />
           </View>
           <Text style={styles.timeValue}>{getTimeLabel(selectedTime)}</Text>
         </View>
@@ -168,8 +169,8 @@ export default function SetupFriendScreen() {
     <View style={styles.tabContent}>
       {/* Banner */}
       <View style={styles.bannerCard}>
-        <View style={[styles.bannerIconContainer, { backgroundColor: "rgba(249, 115, 22, 0.1)" }]}>
-          <Monitor size={24} color="#f59e0b" />
+        <View style={[styles.bannerIconContainer, { backgroundColor: colors.primaryAlpha10 }]}>
+          <Monitor size={24} color={colors.primary} />
         </View>
         <View style={styles.bannerText}>
           <Text style={styles.bannerTitle}>{t("setupFriend.local.bannerTitle", "Pass-and-play")}</Text>
@@ -205,7 +206,7 @@ export default function SetupFriendScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -215,7 +216,7 @@ export default function SetupFriendScreen() {
           {/* Hero Section */}
           <View style={styles.hero}>
             <View style={styles.badge}>
-              <Users size={14} color="#f59e0b" />
+              <Users size={14} color={colors.primary} />
               <Text style={styles.badgeText}>{t("setupFriend.subtitle", "Challenge a friend locally or online")}</Text>
             </View>
             <Text style={styles.heroTitle}>{t("setupFriend.title", "Play with a Friend")}</Text>
@@ -227,7 +228,7 @@ export default function SetupFriendScreen() {
               style={[styles.tab, activeTab === "online" && styles.tabActive]}
               onPress={() => setActiveTab("online")}
             >
-              <Globe size={18} color={activeTab === "online" ? "#fff" : "#737373"} />
+              <Globe size={18} color={activeTab === "online" ? colors.foreground : colors.textSubtle} />
               <Text style={[styles.tabLabel, activeTab === "online" && styles.tabLabelActive]}>
                 {t("setupFriend.tabs.online", "Online")}
               </Text>
@@ -236,7 +237,7 @@ export default function SetupFriendScreen() {
               style={[styles.tab, activeTab === "local" && styles.tabActive]}
               onPress={() => setActiveTab("local")}
             >
-              <Smartphone size={18} color={activeTab === "local" ? "#fff" : "#737373"} />
+              <Smartphone size={18} color={activeTab === "local" ? colors.foreground : colors.textSubtle} />
               <Text style={[styles.tabLabel, activeTab === "local" && styles.tabLabelActive]}>
                 {t("setupFriend.tabs.local", "Local")}
               </Text>
@@ -253,7 +254,7 @@ export default function SetupFriendScreen() {
         style={styles.backButton}
         onPress={() => router.back()}
       >
-        <ArrowLeft color="#fff" size={24} />
+        <ArrowLeft color={colors.foreground} size={24} />
       </TouchableOpacity>
 
       {/* Time Selection Bottom Sheet Mock */}
@@ -285,7 +286,7 @@ export default function SetupFriendScreen() {
                     styles.timeOptionIcon,
                     selectedTime === time && styles.timeOptionIconActive
                   ]}>
-                    <Clock3 size={20} color={selectedTime === time ? "#f59e0b" : "#737373"} />
+                    <Clock3 size={20} color={selectedTime === time ? colors.primary : colors.textSubtle} />
                   </View>
                   <Text style={[
                     styles.timeOptionLabel,
@@ -293,7 +294,7 @@ export default function SetupFriendScreen() {
                   ]}>
                     {getTimeLabel(time)}
                   </Text>
-                  {selectedTime === time && <Check size={20} color="#f59e0b" />}
+                  {selectedTime === time && <Check size={20} color={colors.primary} />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -307,7 +308,7 @@ export default function SetupFriendScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -323,38 +324,38 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    borderColor: colors.primaryAlpha15,
     marginBottom: 16,
     gap: 6,
   },
   badgeText: {
-    color: "#d4d4d4",
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: "bold",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   heroTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 32,
     fontWeight: "900",
     textAlign: "center",
   },
   backButton: {
     position: "absolute",
-    top: 60,
+    top: 20,
     left: 20,
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
@@ -362,11 +363,11 @@ const styles = StyleSheet.create({
   tabSwitcher: {
     flexDirection: "row",
     marginHorizontal: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surface,
     padding: 4,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: colors.border,
     marginBottom: 24,
   },
   tab: {
@@ -379,15 +380,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tabActive: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
   },
   tabLabel: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     fontWeight: "bold",
   },
   tabLabelActive: {
-    color: "#fff",
+    color: colors.foreground,
   },
   tabContent: {
     paddingHorizontal: 24,
@@ -395,11 +396,11 @@ const styles = StyleSheet.create({
   },
   bannerCard: {
     flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
     alignItems: "center",
     gap: 16,
   },
@@ -411,18 +412,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   bannerText: {
     flex: 1,
   },
   bannerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "900",
   },
   bannerDesc: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 4,
     lineHeight: 18,
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -443,18 +444,18 @@ const styles = StyleSheet.create({
   },
   colorCard: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
     position: "relative",
     overflow: "hidden",
   },
   colorCardSelected: {
-    backgroundColor: "rgba(245, 158, 11, 0.08)",
-    borderColor: "rgba(245, 158, 11, 0.4)",
+    backgroundColor: colors.primaryAlpha05,
+    borderColor: colors.primaryAlpha30,
   },
   colorIconContainer: {
     width: 40,
@@ -466,36 +467,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   colorIconContainerInactive: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.borderStrong,
   },
   colorIconContainerActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.borderStrong,
   },
   whiteIcon: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#fff",
+    backgroundColor: colors.pieceWhite,
     borderWidth: 1,
-    borderColor: "#e5e5e5",
+    borderColor: colors.textSecondary,
   },
   blackIcon: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#171717",
+    backgroundColor: colors.pieceBlack,
     borderWidth: 1,
-    borderColor: "#404040",
+    borderColor: colors.surfaceElevated,
   },
   colorLabel: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "900",
   },
   colorLabelActive: {
-    color: "#fff",
+    color: colors.foreground,
   },
   activeIndicator: {
     position: "absolute",
@@ -503,7 +504,7 @@ const styles = StyleSheet.create({
     left: "25%",
     right: "25%",
     height: 3,
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
   },
@@ -511,11 +512,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   timeSelectorLeft: {
     flexDirection: "row",
@@ -526,12 +527,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     alignItems: "center",
     justifyContent: "center",
   },
   timeValue: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -539,22 +540,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   toggleText: {
     flex: 1,
   },
   toggleTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 15,
     fontWeight: "900",
   },
   toggleDesc: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     marginTop: 2,
   },
@@ -562,18 +563,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "#262626",
+    backgroundColor: colors.surfaceElevated,
     padding: 2,
   },
   switchOn: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
   },
   switchHandle: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
+    backgroundColor: colors.foreground,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -587,33 +588,33 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 20,
     alignItems: "center",
-    shadowColor: "#f59e0b",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 10,
   },
   primaryButtonText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1,
   },
   secondaryButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surface,
     paddingVertical: 16,
     borderRadius: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: colors.border,
   },
   secondaryButtonText: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -629,10 +630,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.border,
   },
   dividerText: {
-    color: "#404040",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -640,13 +641,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   codeInput: {
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: colors.border,
     borderRadius: 20,
     paddingVertical: 18,
     paddingHorizontal: 20,
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 24,
     fontWeight: "900",
     textAlign: "center",
@@ -662,19 +663,19 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: colors.overlay,
   },
   bottomSheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    borderTopColor: colors.border,
   },
   sheetHeader: {
     alignItems: "center",
@@ -684,11 +685,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: colors.surfaceElevated,
     marginBottom: 16,
   },
   sheetTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -702,29 +703,29 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     gap: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
   },
   timeOptionSelected: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
   },
   timeOptionIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
   },
   timeOptionIconActive: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
   },
   timeOptionLabel: {
     flex: 1,
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 16,
     fontWeight: "bold",
   },
   timeOptionLabelActive: {
-    color: "#fff",
+    color: colors.foreground,
   },
 });

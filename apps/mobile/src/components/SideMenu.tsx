@@ -14,12 +14,14 @@ import {
 import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
+import { authClient } from "../lib/auth-client";
 import { useRouter } from "expo-router";
+import { colors } from "../theme/colors";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import * as WebBrowser from "expo-web-browser";
 import { SUPPORT_URLS } from "../lib/urls";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 interface SideMenuProps {
   isVisible: boolean;
@@ -28,14 +30,14 @@ interface SideMenuProps {
 
 export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
   const { t } = useTranslation();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
   
   const openWebPage = async (url: string) => {
     try {
       await WebBrowser.openBrowserAsync(url, {
         presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-        toolbarColor: "#030307",
+        toolbarColor: colors.background,
       });
       onClose();
     } catch (error) {
@@ -80,8 +82,8 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
     }
   }, [isVisible]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await authClient.logout();
     onClose();
   };
 
@@ -92,7 +94,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
 
   const NavItem = ({ icon: Icon, label, onPress }: any) => (
     <TouchableOpacity style={styles.navItem} onPress={onPress}>
-      <Icon color="#9ca3af" size={20} />
+      <Icon color={colors.textMuted} size={20} />
       <Text style={styles.navText}>{label}</Text>
     </TouchableOpacity>
   );
@@ -125,7 +127,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{t("nav.home", "Menu")}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X color="#f59e0b" size={24} />
+              <X color={colors.primary} size={24} />
             </TouchableOpacity>
           </View>
 
@@ -138,7 +140,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.avatarPlaceholder}>
-                    <User color="#f59e0b" size={32} />
+                    <User color={colors.primary} size={32} />
                   </View>
                   <View>
                     <Text style={styles.username}>{user?.username || user?.displayName || "User"}</Text>
@@ -157,7 +159,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                     style={[styles.button, styles.signupButton]}
                     onPress={() => navigateTo("/(auth)/signup")}
                   >
-                    <Text style={[styles.buttonText, { color: "#f59e0b" }]}>
+                    <Text style={[styles.buttonText, { color: colors.primary }]}>
                       {t("nav.signup", "Sign Up")}
                     </Text>
                   </TouchableOpacity>
@@ -222,7 +224,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
               
               <View style={styles.languageSection}>
                 <View style={styles.languageLabelRow}>
-                  <Languages color="#9ca3af" size={20} />
+                  <Languages color={colors.textMuted} size={20} />
                   <Text style={styles.navText}>{t("nav.language", "Language")}</Text>
                 </View>
                 <LanguageSwitcher />
@@ -232,7 +234,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
 
           {isAuthenticated && (
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <LogOut color="#ef4444" size={20} />
+              <LogOut color={colors.danger} size={20} />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
           )}
@@ -249,14 +251,14 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: colors.overlay,
   },
   menuContainer: {
     width: width * 0.75,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: colors.background,
     height: "100%",
     borderLeftWidth: 1,
-    borderLeftColor: "#1a1a1a",
+    borderLeftColor: colors.border,
   },
   header: {
     flexDirection: "row",
@@ -264,10 +266,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#1a1a1a",
+    borderBottomColor: colors.border,
   },
   headerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -280,7 +282,7 @@ const styles = StyleSheet.create({
   userSection: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#1a1a1a",
+    borderBottomColor: colors.border,
   },
   profileInfo: {
     flexDirection: "row",
@@ -291,19 +293,19 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: colors.borderStrong,
   },
   username: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "bold",
   },
   email: {
-    color: "#9ca3af",
+    color: colors.textMuted,
     fontSize: 12,
   },
   authButtons: {
@@ -317,15 +319,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loginButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
   },
   signupButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#f59e0b",
+    borderColor: colors.primary,
   },
   buttonText: {
-    color: "#fff",
+    color: colors.foreground,
     fontWeight: "bold",
   },
   navSection: {
@@ -338,12 +340,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   navText: {
-    color: "#d1d5db",
+    color: colors.textSecondary,
     fontSize: 16,
   },
   divider: {
     height: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: colors.border,
     marginVertical: 10,
     marginHorizontal: 15,
   },
@@ -354,7 +356,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "#1a1a1a",
+    borderTopColor: colors.border,
   },
   languageLabelRow: {
     flexDirection: "row",
@@ -367,10 +369,10 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: "#1a1a1a",
+    borderTopColor: colors.border,
   },
   logoutText: {
-    color: "#ef4444",
+    color: colors.danger,
     fontSize: 16,
     fontWeight: "bold",
   },

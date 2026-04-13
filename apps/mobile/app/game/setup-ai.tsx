@@ -6,11 +6,11 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Image, 
-  SafeAreaView, 
   Dimensions,
   Modal,
   Platform
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { 
@@ -32,8 +32,9 @@ import {
 } from "lucide-react-native";
 import { BOTS, TIERS, BOT_IMAGES, getTierForLevel } from "../../src/lib/game/bots";
 import { useAuthStore } from "../../src/auth/auth-store";
+import { colors } from "../../src/theme/colors";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const TIME_OPTIONS = [0, 3, 5, 10, 30] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];
@@ -91,7 +92,7 @@ export default function SetupAiScreen() {
         key={bot.level}
         style={[
           styles.botCard,
-          isSelected && { borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.05)" },
+          isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryAlpha05 },
           isLocked && styles.lockedCard
         ]}
         onPress={() => !isLocked && setSelectedBot(bot)}
@@ -104,7 +105,7 @@ export default function SetupAiScreen() {
           />
           {isLocked && (
             <View style={styles.lockOverlay}>
-              <Lock color="#737373" size={20} />
+              <Lock color={colors.textSubtle} size={20} />
             </View>
           )}
           {isSelected && (
@@ -122,13 +123,13 @@ export default function SetupAiScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <TouchableOpacity 
         style={styles.floatingBackButton} 
         onPress={() => router.back()}
         activeOpacity={0.8}
       >
-        <ArrowLeft color="#fff" size={24} />
+        <ArrowLeft color={colors.foreground} size={24} />
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -165,9 +166,9 @@ export default function SetupAiScreen() {
             onPress={() => setTimeMenuOpen(true)}
             activeOpacity={0.8}
           >
-            <Clock color="#a3a3a3" size={20} />
+            <Clock color={colors.textMuted} size={20} />
             <Text style={styles.controlLabel}>{getTimeLabel(selectedTime)}</Text>
-            <ChevronDown color="#525252" size={16} />
+            <ChevronDown color={colors.textDisabled} size={16} />
           </TouchableOpacity>
 
           {/* Color Selector */}
@@ -183,7 +184,7 @@ export default function SetupAiScreen() {
               style={[styles.colorIcon, selectedColor === "RANDOM" && styles.activeColor]}
               onPress={() => setSelectedColor("RANDOM")}
             >
-              <Shuffle color={selectedColor === "RANDOM" ? "#f59e0b" : "#737373"} size={20} />
+              <Shuffle color={selectedColor === "RANDOM" ? colors.primary : colors.textSubtle} size={20} />
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -232,7 +233,7 @@ export default function SetupAiScreen() {
                      setTimeMenuOpen(false);
                    }}
                  >
-                   <Clock color={selectedTime === time ? "#f59e0b" : "#a3a3a3"} size={24} />
+                   <Clock color={selectedTime === time ? colors.primary : colors.textMuted} size={24} />
                    <Text style={[styles.timeOptionText, selectedTime === time && styles.activeTimeOptionText]}>
                      {getTimeLabel(time)}
                    </Text>
@@ -249,7 +250,7 @@ export default function SetupAiScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   floatingBackButton: {
     position: "absolute",
@@ -258,12 +259,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(17, 17, 17, 0.8)",
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 100,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   scrollContent: {
     padding: 16,
@@ -275,9 +276,9 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 24,
     overflow: "hidden",
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   heroAvatar: {
     width: "100%",
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   heroTierLabel: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 12,
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -300,12 +301,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   heroBotName: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 28,
     fontWeight: "900",
   },
   heroDescription: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 4,
   },
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   tierRange: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 10,
     fontWeight: "900",
   },
@@ -341,11 +342,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   botCard: {
-    width: (width - 32 - 20) / 3, // 3 columns
-    backgroundColor: "#111",
+    width: (width - 32 - 20) / 3,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     padding: 8,
     alignItems: "center",
   },
@@ -357,7 +358,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#0a0a0a",
+    backgroundColor: colors.background,
     marginBottom: 8,
     position: "relative",
   },
@@ -378,22 +379,22 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#111",
+    borderColor: colors.surface,
   },
   botInfo: {
     alignItems: "center",
   },
   botName: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 13,
     fontWeight: "bold",
   },
   botElo: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 11,
     fontWeight: "900",
     marginTop: 2,
@@ -403,12 +404,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(3, 3, 7, 0.95)",
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: Platform.OS === "ios" ? 34 : 16,
     borderTopWidth: 1,
-    borderTopColor: "#1a1a1a",
+    borderTopColor: colors.border,
   },
   controlsRow: {
     flexDirection: "row",
@@ -420,28 +421,28 @@ const styles = StyleSheet.create({
   timeButton: {
     flex: 1,
     height: 48,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     gap: 8,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   controlLabel: {
     flex: 1,
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 14,
     fontWeight: "bold",
   },
   colorSelector: {
     flexDirection: "row",
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 4,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   colorIcon: {
     width: 40,
@@ -451,7 +452,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeColor: {
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    backgroundColor: colors.primaryAlpha15,
   },
   colorCircle: {
     width: 20,
@@ -460,18 +461,18 @@ const styles = StyleSheet.create({
   },
   startButton: {
     height: 56,
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#f59e0b",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   startButtonText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 18,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -479,28 +480,28 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: colors.overlay,
     justifyContent: "flex-end",
   },
   drawUpContent: {
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 24,
     minHeight: 300,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   drawUpHandle: {
     width: 40,
     height: 4,
-    backgroundColor: "#333",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 20,
   },
   drawUpTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
@@ -515,24 +516,24 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: "45%",
     height: 100,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: colors.background,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   activeTimeOption: {
-    borderColor: "#f59e0b",
-    backgroundColor: "rgba(245, 158, 11, 0.05)",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryAlpha05,
   },
   timeOptionText: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 16,
     fontWeight: "bold",
   },
   activeTimeOptionText: {
-    color: "#fff",
+    color: colors.foreground,
   },
 });

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Animated, Easing } from "react-native";
+import { View, StyleSheet, Animated, Easing } from "react-native";
+import { colors } from "../../theme/colors";
 
 export const LoadingScreen: React.FC = () => {
-  // Animation values
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const dot1Anim = useRef(new Animated.Value(0)).current;
@@ -10,7 +10,6 @@ export const LoadingScreen: React.FC = () => {
   const dot3Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Pulse animation (Glow)
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -28,7 +27,6 @@ export const LoadingScreen: React.FC = () => {
       ])
     ).start();
 
-    // Bounce animation (Checker)
     Animated.loop(
       Animated.sequence([
         Animated.timing(bounceAnim, {
@@ -46,7 +44,6 @@ export const LoadingScreen: React.FC = () => {
       ])
     ).start();
 
-    // Dots animation
     const createDotAnim = (anim: Animated.Value, delay: number) => {
       return Animated.loop(
         Animated.sequence([
@@ -75,56 +72,22 @@ export const LoadingScreen: React.FC = () => {
     ]).start();
   }, []);
 
-  const bounceTranslateY = bounceAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -20],
-  });
-
-  const dot1TranslateY = dot1Anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -6],
-  });
-  const dot2TranslateY = dot2Anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -6],
-  });
-  const dot3TranslateY = dot3Anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -6],
-  });
-
-  const pulseScale = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.2],
-  });
-
-  const pulseOpacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.1, 0.3],
-  });
+  const bounceTranslateY = bounceAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
+  const dot1TranslateY = dot1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+  const dot2TranslateY = dot2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+  const dot3TranslateY = dot3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+  const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] });
+  const pulseOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.3] });
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Animated Glow */}
         <Animated.View
-          style={[
-            styles.glow,
-            {
-              opacity: pulseOpacity,
-              transform: [{ scale: pulseScale }],
-            },
-          ]}
+          style={[styles.glow, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]}
         />
 
-        {/* Animated Checker Piece */}
         <Animated.View
-          style={[
-            styles.checkerContainer,
-            {
-              transform: [{ translateY: bounceTranslateY }],
-            },
-          ]}
+          style={[styles.checkerContainer, { transform: [{ translateY: bounceTranslateY }] }]}
         >
           <View style={styles.checker}>
             <View style={styles.checkerInner} />
@@ -132,27 +95,11 @@ export const LoadingScreen: React.FC = () => {
           </View>
         </Animated.View>
 
-        {/* Dots */}
         <View style={styles.textSection}>
           <View style={styles.dotsRow}>
-            <Animated.View
-              style={[
-                styles.dot,
-                { transform: [{ translateY: dot1TranslateY }] },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.dot,
-                { transform: [{ translateY: dot2TranslateY }] },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.dot,
-                { transform: [{ translateY: dot3TranslateY }] },
-              ]}
-            />
+            <Animated.View style={[styles.dot, { transform: [{ translateY: dot1TranslateY }] }]} />
+            <Animated.View style={[styles.dot, { transform: [{ translateY: dot2TranslateY }] }]} />
+            <Animated.View style={[styles.dot, { transform: [{ translateY: dot3TranslateY }] }]} />
           </View>
         </View>
       </View>
@@ -163,7 +110,7 @@ export const LoadingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#020205",
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -178,11 +125,11 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
   },
   checkerContainer: {
     marginBottom: 40,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 15,
@@ -192,9 +139,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 4,
-    borderColor: "#333",
+    borderColor: colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -212,18 +159,11 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: "#444",
+    borderColor: colors.borderStrong,
     opacity: 0.5,
   },
   textSection: {
     alignItems: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#ffffff",
-    letterSpacing: -0.5,
-    marginBottom: 12,
   },
   dotsRow: {
     flexDirection: "row",
@@ -233,6 +173,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
   },
 });

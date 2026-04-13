@@ -25,6 +25,7 @@ import {
 } from "lucide-react-native";
 import { historyService, LeaderboardEntry } from "../../src/lib/history-service";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
+import { colors } from "../../src/theme/colors";
 
 const { width } = Dimensions.get("window");
 const PAGE_SIZE = 50;
@@ -95,7 +96,7 @@ export default function LeaderboardScreen() {
 
   const renderPlayerItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const isTop3 = index < 3;
-    const rankColors = ["#f59e0b", "#d4d4d8", "#a8a29e"];
+    const rankColors = [colors.rankGold, colors.rankSilver, colors.rankBronze];
     
     return (
       <View style={styles.playerCard}>
@@ -108,13 +109,13 @@ export default function LeaderboardScreen() {
           </View>
           
           <View style={styles.avatarContainer}>
-             <User size={18} color="#404040" />
+             <User size={18} color={colors.textDisabled} />
           </View>
           
           <View style={styles.playerInfo}>
              <Text style={styles.playerName} numberOfLines={1}>{item.displayName}</Text>
              <View style={styles.extraInfo}>
-                <Globe size={10} color="#525252" />
+                <Globe size={10} color={colors.textDisabled} />
                 <Text style={styles.extraText}>{item.country || "Global"}</Text>
                 <View style={styles.dot} />
                 <Text style={styles.extraText}>{item.gamesPlayed} games</Text>
@@ -124,7 +125,7 @@ export default function LeaderboardScreen() {
 
         <View style={styles.playerCardRight}>
           <View style={styles.ratingBadge}>
-             <TrendingUp size={12} color="#10b981" />
+             <TrendingUp size={12} color={colors.win} />
              <Text style={styles.ratingValue}>{item.rating}</Text>
           </View>
         </View>
@@ -135,15 +136,15 @@ export default function LeaderboardScreen() {
   if (loading && !refreshing && page === 0) return <LoadingScreen />;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft color="#fff" size={24} />
+          <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("home.leaderboard", "Leaderboard")}</Text>
         <TouchableOpacity style={styles.backButton}>
-           <Search size={20} color="#fff" />
+           <Search size={20} color={colors.foreground} />
         </TouchableOpacity>
       </View>
 
@@ -153,7 +154,7 @@ export default function LeaderboardScreen() {
         keyExtractor={item => item.userId}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
@@ -181,7 +182,7 @@ export default function LeaderboardScreen() {
                        fetchLeaderboard(0);
                     }}
                   >
-                    {country.icon && <country.icon size={12} color={selectedCountry === country.id ? "#f59e0b" : "#737373"} style={{ marginRight: 6 }} />}
+                    {country.icon && <country.icon size={12} color={selectedCountry === country.id ? colors.primary : colors.textSubtle} style={{ marginRight: 6 }} />}
                     <Text style={[styles.filterChipText, selectedCountry === country.id && styles.filterChipTextActive]}>
                        {country.name}
                     </Text>
@@ -194,7 +195,7 @@ export default function LeaderboardScreen() {
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator color="#f59e0b" />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : players.length > 0 ? (
             <View style={styles.footerLoader}>
@@ -210,7 +211,7 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -223,14 +224,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -238,12 +239,12 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   listHeaderTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 24,
     fontWeight: "900",
   },
   listHeaderSub: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     marginTop: 4,
     fontWeight: "bold",
@@ -255,13 +256,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     marginBottom: 8,
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   playerCardLeft: {
     flexDirection: "row",
@@ -273,33 +274,33 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
   },
   rankText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 13,
     fontWeight: "900",
   },
   rankTextDark: {
-    color: "#000",
+    color: colors.onPrimary,
   },
   avatarContainer: {
      width: 40,
      height: 40,
      borderRadius: 12,
-     backgroundColor: "rgba(255, 255, 255, 0.03)",
+     backgroundColor: colors.surface,
      alignItems: "center",
      justifyContent: "center",
      borderWidth: 1,
-     borderColor: "rgba(255, 255, 255, 0.05)",
+     borderColor: colors.border,
   },
   playerInfo: {
      flex: 1,
   },
   playerName: {
-     color: "#fff",
+     color: colors.foreground,
      fontSize: 15,
      fontWeight: "bold",
   },
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
      marginTop: 4,
   },
   extraText: {
-     color: "#525252",
+     color: colors.textDisabled,
      fontSize: 11,
      fontWeight: "bold",
   },
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
      width: 3,
      height: 3,
      borderRadius: 1.5,
-     backgroundColor: "#262626",
+     backgroundColor: colors.surfaceElevated,
   },
   playerCardRight: {
      paddingLeft: 12,
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
      borderColor: "rgba(16, 185, 129, 0.2)",
   },
   ratingValue: {
-     color: "#10b981",
+     color: colors.win,
      fontSize: 13,
      fontWeight: "900",
   },
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerText: {
-    color: "#262626",
+    color: colors.surfaceElevated,
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -359,23 +360,23 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    borderColor: "rgba(245, 158, 11, 0.3)",
+    backgroundColor: colors.primaryAlpha10,
+    borderColor: colors.primaryAlpha30,
   },
   filterChipText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "bold",
   },
   filterChipTextActive: {
-    color: "#f59e0b",
+    color: colors.primary,
   },
 });
