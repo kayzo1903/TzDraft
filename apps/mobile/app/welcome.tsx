@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { authClient } from "../src/lib/auth-client";
 import { useAuthStore } from "../src/auth/auth-store";
 import { WelcomeBoard } from "../src/components/WelcomeBoard";
-import { LanguageSwitcher } from "../src/components/LanguageSwitcher";
 
 export default function Welcome() {
   const { t } = useTranslation();
@@ -27,9 +26,6 @@ export default function Welcome() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <View style={styles.topRightControls}>
-        <LanguageSwitcher />
-      </View>
       <View style={styles.container}>
         {/* Top Branding Section */}
         <View style={styles.branding}>
@@ -88,12 +84,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#030307",
-  },
-  topRightControls: {
-    position: "absolute",
-    top: 50,
-    right: 16,
-    zIndex: 10,
   },
   container: {
     flex: 1,

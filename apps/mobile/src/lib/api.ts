@@ -10,7 +10,7 @@ const localhost = debuggerHost?.split(":")[0];
 
 const API_URL = 
   process.env.EXPO_PUBLIC_API_URL || 
-  (localhost ? `http://${localhost}:3002` : "http://192.168.1.199:3002");
+  (localhost ? `http://${localhost}:3002` : "http://192.168.137.190:3002");
 
 const api = axios.create({
   baseURL: API_URL,
@@ -37,6 +37,12 @@ const processQueue = (error: any, token: string | null = null) => {
 
 api.interceptors.request.use(
   async (config) => {
+    // DEV: Simulate offline mode
+    if (__DEV__ && process.env.EXPO_PUBLIC_SIMULATE_OFFLINE === "true") {
+      console.log("[API] Simulating offline mode (EXPO_PUBLIC_SIMULATE_OFFLINE=true)");
+      throw new Error("Network request failed");
+    }
+
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -47,7 +53,21 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // DEV: Mock 401 for /auth/me to test rehydration resilience
+    if (
+      __DEV__ &&
+      process.env.EXPO_PUBLIC_MOCK_AUTH_ME_401 === "true" &&
+      response.config.url?.includes("/auth/me")
+    ) {
+      console.log("[API] Mocking 401 Unauthorized for /auth/me");
+      return Promise.reject({
+        response: { status: 401, data: { message: "Mocked Unauthorized" } },
+        config: response.config
+      });
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
