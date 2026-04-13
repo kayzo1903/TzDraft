@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { authClient } from "../src/lib/auth-client";
 import { useAuthStore } from "../src/auth/auth-store";
 import { WelcomeBoard } from "../src/components/WelcomeBoard";
+import { colors } from "../src/theme/colors";
 
 export default function Welcome() {
   const { t } = useTranslation();
@@ -15,7 +16,6 @@ export default function Welcome() {
     setIsLoading(true);
     try {
       await authClient.loginAsGuest();
-      // Guard in _layout will trigger and allow access to index
       router.replace("/");
     } catch (error) {
       console.error("[Welcome] Guest play failed:", error);
@@ -27,10 +27,9 @@ export default function Welcome() {
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.container}>
-        {/* Top Branding Section */}
         <View style={styles.branding}>
-          <Image 
-            source={require("../assets/logo.png")} 
+          <Image
+            source={require("../assets/logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -39,33 +38,31 @@ export default function Welcome() {
           </Text>
         </View>
 
-        {/* Feature Highlights or Decorative Element */}
         <View style={styles.displayArea}>
-           <WelcomeBoard size={240} />
+          <WelcomeBoard size={240} />
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.actions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.loginButton}
             onPress={() => router.push("/(auth)/login")}
           >
             <Text style={styles.loginButtonText}>{t("nav.login", "Login to Your Account")}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.guestButton}
             onPress={handleGuestPlay}
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#f59e0b" />
+              <ActivityIndicator color={colors.primary} />
             ) : (
               <Text style={styles.guestButtonText}>{t("nav.play", "Play as a Guest")}</Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.signupLink}
             onPress={() => router.push("/(auth)/signup")}
           >
@@ -83,7 +80,7 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -99,7 +96,7 @@ const styles = StyleSheet.create({
     height: 80,
   },
   tagline: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 16,
     textAlign: "center",
     marginTop: 12,
@@ -116,18 +113,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   loginButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     borderRadius: 16,
     paddingVertical: 18,
     alignItems: "center",
-    shadowColor: "#f59e0b",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   loginButtonText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -139,10 +136,10 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "#262626",
+    borderColor: colors.border,
   },
   guestButtonText: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -151,11 +148,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   signupText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
   },
   signupHighlight: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontWeight: "bold",
   },
 });

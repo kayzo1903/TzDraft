@@ -34,6 +34,7 @@ import {
 import { tournamentService, Tournament, TournamentStatus } from "../../../src/lib/tournament-service";
 import { LoadingScreen } from "../../../src/components/ui/LoadingScreen";
 import { useAuthStore } from "../../../src/auth/auth-store";
+import { colors } from "../../../src/theme/colors";
 
 const { width } = Dimensions.get("window");
 
@@ -117,7 +118,7 @@ export default function TournamentDetailScreen() {
         <Text style={styles.sectionTitle}>{t("support.quickHelp.gameplayTitle", "Event Overview")}</Text>
         <View style={styles.overviewGrid}>
           <View style={styles.overviewItem}>
-            <Trophy size={16} color="#f59e0b" />
+            <Trophy size={16} color={colors.primary} />
             <View>
               <Text style={styles.overviewLabel}>Format</Text>
               <Text style={styles.overviewValue}>{tournament.format.replace(/_/g, " ")}</Text>
@@ -154,7 +155,7 @@ export default function TournamentDetailScreen() {
           {tournament.prizes.map((prize: any, idx: number) => (
             <View key={idx} style={styles.prizeItem}>
               <View style={[styles.prizeBadge, idx === 0 && styles.goldBadge]}>
-                <Award size={16} color={idx === 0 ? "#000" : "#f59e0b"} />
+                <Award size={16} color={idx === 0 ? colors.onPrimary : colors.primary} />
               </View>
               <View style={styles.prizeContent}>
                 <Text style={styles.prizePlacement}>{prize.placement === 1 ? "1st Place" : prize.placement === 2 ? "2nd Place" : `${prize.placement}th Place`}</Text>
@@ -200,7 +201,7 @@ export default function TournamentDetailScreen() {
     <View style={styles.tabContent}>
       {rounds.length === 0 ? (
         <View style={styles.emptyResults}>
-          <Swords size={48} color="#262626" />
+          <Swords size={48} color={colors.surfaceElevated} />
           <Text style={styles.emptyResultsTitle}>No Bracket Yet</Text>
           <Text style={styles.emptyResultsText}>The tournament matches will appear here once the event starts.</Text>
         </View>
@@ -251,38 +252,38 @@ export default function TournamentDetailScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft color="#fff" size={24} />
+          <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle} numberOfLines={1}>{tournament.name}</Text>
           <View style={styles.headerStatus}>
-            <View style={[styles.statusDot, { backgroundColor: tournament.status === "ACTIVE" ? "#38bdf8" : "#f59e0b" }]} />
+            <View style={[styles.statusDot, { backgroundColor: tournament.status === "ACTIVE" ? "#38bdf8" : colors.primary }]} />
             <Text style={styles.statusLabelText}>{getStatusLabel(tournament.status)}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.backButton}>
-          <Share2 color="#fff" size={20} />
+          <Share2 color={colors.foreground} size={20} />
         </TouchableOpacity>
       </View>
 
       <ScrollView 
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Banner Area */}
         <View style={styles.heroBanner}>
           <View style={styles.bannerRow}>
              <View style={styles.bannerMeta}>
-                <CalendarDays size={16} color="#f59e0b" />
+                <CalendarDays size={16} color={colors.primary} />
                 <Text style={styles.bannerMetaText}>{formatDate(tournament.scheduledStartAt)}</Text>
              </View>
              {isRegistered && (
                <View style={styles.joinedBadge}>
-                 <ShieldCheck size={14} color="#10b981" />
+                 <ShieldCheck size={14} color={colors.win} />
                  <Text style={styles.joinedText}>JOINED</Text>
                </View>
              )}
@@ -315,7 +316,7 @@ export default function TournamentDetailScreen() {
         {tournament.status === "REGISTRATION" ? (
           isRegistered ? (
             <View style={styles.registeredButton}>
-               <CheckCircle2 size={20} color="#10b981" />
+               <CheckCircle2 size={20} color={colors.win} />
                <Text style={styles.registeredButtonText}>YOU ARE REGISTERED</Text>
             </View>
           ) : (
@@ -325,7 +326,7 @@ export default function TournamentDetailScreen() {
           )
         ) : (
           <View style={styles.closedButton}>
-             <AlertTriangle size={20} color="#737373" />
+             <AlertTriangle size={20} color={colors.textSubtle} />
              <Text style={styles.closedButtonText}>REGISTRATION CLOSED</Text>
           </View>
         )}
@@ -337,7 +338,7 @@ export default function TournamentDetailScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -346,15 +347,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: colors.border,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statusLabelText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 11,
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -388,9 +389,9 @@ const styles = StyleSheet.create({
   },
   heroBanner: {
     padding: 20,
-    backgroundColor: "rgba(245, 158, 11, 0.02)",
+    backgroundColor: colors.primaryAlpha05,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: colors.border,
   },
   bannerRow: {
     flexDirection: "row",
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bannerMetaText: {
-    color: "#d4d4d4",
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -419,13 +420,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   joinedText: {
-    color: "#10b981",
+    color: colors.win,
     fontSize: 10,
     fontWeight: "900",
   },
   tabSwitcher: {
     flexDirection: "row",
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
     paddingTop: 16,
     paddingHorizontal: 20,
     gap: 12,
@@ -437,30 +438,30 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: "#f59e0b",
+    borderBottomColor: colors.primary,
   },
   tabLabel: {
-    color: "#404040",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1,
   },
   tabLabelActive: {
-    color: "#f59e0b",
+    color: colors.primary,
   },
   tabContent: {
     padding: 20,
     gap: 20,
   },
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   sectionTitle: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 10,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -468,13 +469,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoText: {
-    color: "#d4d4d4",
+    color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 24,
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.border,
     marginVertical: 16,
   },
   overviewGrid: {
@@ -489,13 +490,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   overviewLabel: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 10,
     fontWeight: "bold",
     textTransform: "uppercase",
   },
   overviewValue: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 14,
     fontWeight: "bold",
     marginTop: 2,
@@ -510,25 +511,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.1)",
+    borderColor: colors.primaryAlpha10,
   },
   goldBadge: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
   },
   prizeContent: {
     flex: 1,
   },
   prizePlacement: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "bold",
   },
   prizeAmount: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -539,7 +540,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   limitText: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -550,7 +551,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surfaceElevated,
     padding: 12,
     borderRadius: 16,
   },
@@ -563,33 +564,33 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   seedText: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 12,
     fontWeight: "900",
   },
   participantName: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 14,
     fontWeight: "bold",
   },
   youBadge: {
-    backgroundColor: "#10b981",
+    backgroundColor: colors.win,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   youText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 8,
     fontWeight: "900",
   },
   participantElo: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "900",
   },
@@ -600,12 +601,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   emptyResultsTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
   emptyResultsText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
@@ -621,12 +622,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   roundTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 20,
     fontWeight: "900",
   },
   roundChip: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -635,7 +636,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16, 185, 129, 0.1)",
   },
   roundChipText: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 10,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -644,11 +645,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   matchCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   playerRow: {
     flexDirection: "row",
@@ -657,24 +658,24 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   playerName: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 15,
     fontWeight: "bold",
   },
   winnerName: {
-    color: "#fff",
+    color: colors.foreground,
   },
   score: {
-    color: "#404040",
+    color: colors.textDisabled,
     fontSize: 16,
     fontWeight: "900",
   },
   winnerScore: {
-    color: "#f59e0b",
+    color: colors.primary,
   },
   matchDivider: {
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.border,
     marginVertical: 4,
   },
   footer: {
@@ -682,21 +683,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    borderTopColor: colors.border,
   },
   primaryButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     height: 56,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   primaryButtonText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: "900",
     letterSpacing: 1,
@@ -713,7 +714,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(16, 185, 129, 0.2)",
   },
   registeredButtonText: {
-    color: "#10b981",
+    color: colors.win,
     fontSize: 14,
     fontWeight: "900",
     letterSpacing: 1,
@@ -722,13 +723,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     height: 56,
     borderRadius: 16,
     gap: 12,
   },
   closedButtonText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     fontWeight: "bold",
   }

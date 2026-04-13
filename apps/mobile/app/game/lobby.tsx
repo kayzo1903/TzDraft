@@ -1,30 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView, 
-  Dimensions, 
-  Animated, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
   Easing,
   Platform,
   ActivityIndicator
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { 
-  ArrowLeft, 
-  Users, 
-  Zap, 
-  Clock, 
-  Shield, 
+import {
+  ArrowLeft,
+  Users,
+  Zap,
+  Clock,
+  Shield,
   Search,
   X,
   Trophy
 } from "lucide-react-native";
+import { colors } from "../../src/theme/colors";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export default function OnlineLobby() {
   const { t } = useTranslation();
@@ -95,13 +96,13 @@ export default function OnlineLobby() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={() => router.back()}
         >
-          <ArrowLeft color="#fff" size={24} />
+          <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("lobby.title", "Online Match")}</Text>
         <View style={{ width: 44 }} />
@@ -112,12 +113,12 @@ export default function OnlineLobby() {
           <View style={styles.setupSection}>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Users color="#f59e0b" size={20} />
+                <Users color={colors.primary} size={20} />
                 <Text style={styles.statValue}>1,248</Text>
                 <Text style={styles.statLabel}>{t("lobby.online", "Online")}</Text>
               </View>
               <View style={styles.statCard}>
-                <Trophy color="#f59e0b" size={20} />
+                <Trophy color={colors.primary} size={20} />
                 <Text style={styles.statValue}>150</Text>
                 <Text style={styles.statLabel}>{t("lobby.active", "Active Games")}</Text>
               </View>
@@ -127,17 +128,17 @@ export default function OnlineLobby() {
               <Text style={styles.sectionTitle}>{t("lobby.selectMode", "Select Time Control")}</Text>
               <View style={styles.grid}>
                 <TouchableOpacity style={styles.modeCard}>
-                  <Zap color="#f59e0b" size={24} />
+                  <Zap color={colors.primary} size={24} />
                   <Text style={styles.modeTitle}>Blitz</Text>
                   <Text style={styles.modeDesc}>3 + 2</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.modeCard, styles.activeModeCard]}>
-                  <Clock color="#f59e0b" size={24} />
+                  <Clock color={colors.primary} size={24} />
                   <Text style={styles.modeTitle}>Rapid</Text>
                   <Text style={styles.modeDesc}>10 + 5</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.modeCard}>
-                  <Shield color="#f59e0b" size={24} />
+                  <Shield color={colors.primary} size={24} />
                   <Text style={styles.modeTitle}>Classic</Text>
                   <Text style={styles.modeDesc}>30 + 0</Text>
                 </TouchableOpacity>
@@ -149,14 +150,14 @@ export default function OnlineLobby() {
               onPress={handleStartSearch}
             >
               <Text style={styles.mainActionText}>{t("lobby.findOpponent", "Find Opponent")}</Text>
-              <Search color="#000" size={20} strokeWidth={3} />
+              <Search color={colors.onPrimary} size={20} strokeWidth={3} />
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.searchSection}>
             <Animated.View style={[styles.searchRing, { transform: [{ scale: pulseAnim }] }]}>
               <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <Search color="#f59e0b" size={60} strokeWidth={1} />
+                <Search color={colors.primary} size={60} strokeWidth={1} />
               </Animated.View>
             </Animated.View>
             
@@ -165,14 +166,14 @@ export default function OnlineLobby() {
             
             <View style={styles.searchDetails}>
               <Text style={styles.detailText}>{t("lobby.ratingRange", "Rating Range: 1100 - 1300")}</Text>
-              <ActivityIndicator color="#f59e0b" style={{ marginTop: 20 }} />
+              <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
             </View>
 
             <TouchableOpacity 
               style={styles.cancelBtn}
               onPress={handleCancelSearch}
             >
-              <X color="#ef4444" size={20} />
+              <X color={colors.danger} size={20} />
               <Text style={styles.cancelBtnText}>{t("common.cancel", "Cancel")}</Text>
             </TouchableOpacity>
           </View>
@@ -185,7 +186,7 @@ export default function OnlineLobby() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -198,14 +199,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   headerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -223,21 +224,21 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   statValue: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 20,
     fontWeight: "900",
     marginTop: 8,
   },
   statLabel: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     marginTop: 2,
   },
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   sectionTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 1,
@@ -257,30 +258,30 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     gap: 8,
   },
   activeModeCard: {
-    borderColor: "#f59e0b",
-    backgroundColor: "rgba(245, 158, 11, 0.05)",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryAlpha05,
   },
   modeTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 14,
     fontWeight: "bold",
   },
   modeDesc: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 12,
     fontWeight: "bold",
   },
   mainActionBtn: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     height: 64,
     borderRadius: 20,
     flexDirection: "row",
@@ -288,14 +289,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
     marginTop: 10,
-    shadowColor: "#f59e0b",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   mainActionText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 18,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -309,20 +310,20 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(245, 158, 11, 0.05)",
+    backgroundColor: colors.primaryAlpha05,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.1)",
+    borderColor: colors.primaryAlpha10,
   },
   searchingTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
   },
   searchTimer: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 48,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   detailText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
   },
   cancelBtn: {
@@ -341,11 +342,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#ef444433",
+    borderColor: colors.dangerAlpha20,
     marginTop: 20,
   },
   cancelBtnText: {
-    color: "#ef4444",
+    color: colors.danger,
     fontSize: 16,
     fontWeight: "bold",
   },

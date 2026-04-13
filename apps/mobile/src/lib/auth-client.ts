@@ -109,14 +109,38 @@ class AuthClient {
     }
   }
 
-  async logout() {
+  async updateProfile(details: any) {
     try {
-      const refreshToken = await SecureStore.getItemAsync("refreshToken");
-      await api.post("/auth/logout", { refreshToken });
+      const response = await api.patch("/auth/profile", details);
+      if (response.data.success) {
+        useAuthStore.getState().setUser(response.data.data);
+      }
+      return response.data;
+    } catch (error) {
+      console.error("[AuthClient] Profile update failed:", error);
+      throw error;
+    }
+  }
+
+  async logout() {
+    const store = useAuthStore.getState();
+    const refreshToken = await SecureStore.getItemAsync("refreshToken");
+
+    // Clear the in-memory token BEFORE the API call.
+    // If the access token is already expired, the request interceptor would attach
+    // it as an Authorization header, the server returns 401, and the refresh token
+    // is never invalidated server-side — leaking the session until natural expiry.
+    // With token = null, the interceptor attaches nothing, so the server evaluates
+    // the request by the refresh token in the body alone, as intended.
+    store.logout();
+
+    try {
+      if (refreshToken) {
+        await api.post("/auth/logout", { refreshToken });
+      }
     } catch (error) {
       console.error("[AuthClient] Logout failed on server:", error);
     } finally {
-      useAuthStore.getState().logout();
       await SecureStore.deleteItemAsync("refreshToken");
     }
   }

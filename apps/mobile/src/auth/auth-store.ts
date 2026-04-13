@@ -13,6 +13,7 @@ export type AuthStatus = "loading" | "unauthenticated" | "guest" | "authenticate
 
 interface User {
   id: string;
+  phoneNumber?: string;
   email?: string;
   username?: string;
   displayName?: string;
@@ -44,13 +45,17 @@ export const useAuthStore = create<AuthState>()(
       hasHydrated: false,
       setUser: (user) => set((state) => {
         let status: AuthStatus = "unauthenticated";
+
         if (user) {
           status = user.accountType === "GUEST" ? "guest" : "authenticated";
         }
-        return { 
-          user, 
+
+        const normalizedUser = user ? { ...user, rating: user.rating ?? 1200 } : null;
+
+        return {
+          user: normalizedUser,
           isAuthenticated: !!user,
-          status: state.status === "transitioning" ? "transitioning" : status 
+          status: state.status === "transitioning" ? "transitioning" : status
         };
       }),
       setToken: (token) => set({ token }),

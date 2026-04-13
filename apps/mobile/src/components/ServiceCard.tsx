@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { ArrowRight } from "lucide-react-native";
+import { colors } from "../theme/colors";
 
 interface ServiceCardProps {
   title: string;
@@ -18,9 +19,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   isLocked,
 }) => {
   return (
-    <TouchableOpacity 
-      style={styles.card} 
-      onPress={onPress} 
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.content}>
@@ -33,7 +34,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         </View>
       </View>
       <View style={styles.actionContainer}>
-        <ArrowRight size={20} color={isLocked ? "#525252" : "#f59e0b"} />
+        <ArrowRight size={20} color={isLocked ? colors.textDisabled : colors.primary} />
       </View>
     </TouchableOpacity>
   );
@@ -41,10 +42,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -63,13 +64,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 4,
   },
   subtitle: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 13,
   },
   actionContainer: {

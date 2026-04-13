@@ -1,5 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import { colors } from "../theme/colors";
 
 interface WelcomeBoardProps {
   size?: number;
@@ -7,11 +8,6 @@ interface WelcomeBoardProps {
 
 export const WelcomeBoard: React.FC<WelcomeBoardProps> = ({ size = 280 }) => {
   const squareSize = size / 8;
-  
-  const boardColors = {
-    light: "#fdba74",
-    dark: "#9a3412",
-  };
 
   const isDarkSquare = (row: number, col: number) => (row + col) % 2 !== 0;
 
@@ -20,10 +16,9 @@ export const WelcomeBoard: React.FC<WelcomeBoardProps> = ({ size = 280 }) => {
     if (!isDark) return null;
 
     if (row < 3) {
-      // Black pieces - Using layered Views for depth
       return (
         <View style={styles.pieceContainer}>
-          <View style={[styles.piece, { backgroundColor: "#141210" }]}>
+          <View style={[styles.piece, { backgroundColor: colors.pieceBlack }]}>
             <View style={styles.specularDot} />
             <View style={[styles.pieceRing, { borderColor: "rgba(255,255,255,0.06)" }]} />
           </View>
@@ -32,10 +27,9 @@ export const WelcomeBoard: React.FC<WelcomeBoardProps> = ({ size = 280 }) => {
     }
 
     if (row > 4) {
-      // White pieces - Using layered Views for depth
       return (
         <View style={styles.pieceContainer}>
-          <View style={[styles.piece, { backgroundColor: "#ffffff" }]}>
+          <View style={[styles.piece, { backgroundColor: colors.pieceWhite }]}>
             <View style={[styles.specularDot, { backgroundColor: "rgba(255,255,255,0.9)" }]} />
             <View style={[styles.pieceRing, { borderColor: "rgba(0,0,0,0.1)" }]} />
           </View>
@@ -56,7 +50,7 @@ export const WelcomeBoard: React.FC<WelcomeBoardProps> = ({ size = 280 }) => {
           {
             width: squareSize,
             height: squareSize,
-            backgroundColor: isDark ? boardColors.dark : boardColors.light,
+            backgroundColor: isDark ? colors.boardDark : colors.boardLight,
           },
         ]}
       >
@@ -80,10 +74,10 @@ export const WelcomeBoard: React.FC<WelcomeBoardProps> = ({ size = 280 }) => {
 
 const styles = StyleSheet.create({
   boardWrapper: {
-    backgroundColor: "#1e1b18",
+    backgroundColor: colors.background,
     padding: 8,
     borderRadius: 12,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
@@ -109,7 +103,7 @@ const styles = StyleSheet.create({
   pieceContainer: {
     width: "82%",
     height: "82%",
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 4,

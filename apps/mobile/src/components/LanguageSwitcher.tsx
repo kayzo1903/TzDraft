@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../i18n";
+import { colors } from "../theme/colors";
 
 export const LanguageSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
@@ -13,8 +14,8 @@ export const LanguageSwitcher: React.FC = () => {
   };
 
   return (
-    <TouchableOpacity 
-      onPress={toggleLanguage} 
+    <TouchableOpacity
+      onPress={toggleLanguage}
       style={styles.container}
       activeOpacity={0.7}
     >
@@ -33,26 +34,26 @@ const styles = StyleSheet.create({
   },
   pill: {
     flexDirection: "row",
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#262626",
+    borderColor: colors.border,
     alignItems: "center",
     gap: 6,
   },
   text: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "900",
   },
   activeText: {
-    color: "#f59e0b",
+    color: colors.primary,
   },
   divider: {
     width: 1,
     height: 10,
-    backgroundColor: "#262626",
+    backgroundColor: colors.border,
   },
 });

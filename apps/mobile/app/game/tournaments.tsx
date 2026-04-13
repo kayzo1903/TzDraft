@@ -26,6 +26,7 @@ import {
 } from "lucide-react-native";
 import { tournamentService, Tournament, TournamentStatus } from "../../src/lib/tournament-service";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
+import { colors } from "../../src/theme/colors";
 
 const { width } = Dimensions.get("window");
 
@@ -79,14 +80,14 @@ export default function TournamentsScreen() {
   };
 
   const getStatusColor = (status: TournamentStatus) => {
-    const colors: Record<string, string> = {
+    const statusColors: Record<string, string> = {
       REGISTRATION: "#10b981", // Emerald
-      ACTIVE: "#38bdf8",     // Sky
-      COMPLETED: "#737373",   // Neutral
-      CANCELLED: "#ef4444",   // Rose
-      DRAFT: "#f59e0b",       // Amber
+      ACTIVE: "#38bdf8",       // Sky
+      COMPLETED: colors.textSubtle,
+      CANCELLED: colors.danger,
+      DRAFT: colors.primary,
     };
-    return colors[status] || "#737373";
+    return statusColors[status] || colors.textSubtle;
   };
 
   // Sections
@@ -113,7 +114,7 @@ export default function TournamentsScreen() {
             <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{getStatusLabel(item.status)}</Text>
           </View>
         </View>
-        <ChevronRight size={20} color="#404040" />
+        <ChevronRight size={20} color={colors.textDisabled} />
       </View>
 
       <Text style={styles.description} numberOfLines={2}>
@@ -130,18 +131,18 @@ export default function TournamentsScreen() {
             <Text style={styles.metaText}>{item.maxPlayers} players</Text>
          </View>
          <View style={styles.metaBadge}>
-            <Award size={14} color="#f59e0b" />
-            <Text style={[styles.metaText, { color: "#f59e0b" }]}>{item.style}</Text>
+            <Award size={14} color={colors.primary} />
+            <Text style={[styles.metaText, { color: colors.primary }]}>{item.style}</Text>
          </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft color="#fff" size={24} />
+          <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("home.tournaments", "Tournaments")}</Text>
         <View style={{ width: 44 }} />
@@ -150,7 +151,7 @@ export default function TournamentsScreen() {
       <ScrollView 
         style={styles.container}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         {/* Quick Stats */}
@@ -174,7 +175,7 @@ export default function TournamentsScreen() {
         {featured && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <BarChart3 size={16} color="#f59e0b" />
+              <BarChart3 size={16} color={colors.primary} />
               <Text style={styles.sectionTitle}>Featured Tournament</Text>
             </View>
             {renderTournamentCard(featured, true)}
@@ -216,7 +217,7 @@ export default function TournamentsScreen() {
 
         {tournaments.length === 0 && (
           <View style={styles.emptyState}>
-             <Trophy size={48} color="#262626" />
+             <Trophy size={48} color={colors.surfaceElevated} />
              <Text style={styles.emptyTitle}>Looking for competitions?</Text>
              <Text style={styles.emptySubtitle}>There are no tournaments available right now. Check back soon for the next wave of Drafti battles!</Text>
           </View>
@@ -229,7 +230,7 @@ export default function TournamentsScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -242,14 +243,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -263,11 +264,11 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
     alignItems: "center",
   },
   statIcon: {
@@ -279,12 +280,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statCount: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 24,
     fontWeight: "900",
   },
   statLabel: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 10,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -303,23 +304,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionTitle: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1,
   },
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
     padding: 16,
     gap: 12,
   },
   featuredCard: {
-    backgroundColor: "rgba(245, 158, 11, 0.03)",
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    backgroundColor: colors.primaryAlpha05,
+    borderColor: colors.primaryAlpha15,
   },
   cardHeader: {
     flexDirection: "row",
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardName: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   description: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -360,13 +361,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   metaText: {
-    color: "#d4d4d4",
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: "500",
   },
@@ -378,13 +379,13 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   emptyTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
   },
   emptySubtitle: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,

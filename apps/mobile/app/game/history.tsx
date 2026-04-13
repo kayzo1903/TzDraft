@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Dimensions,
   ScrollView,
+  Platform,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -28,6 +30,7 @@ import {
 } from "lucide-react-native";
 import { historyService, GameHistoryItem, PlayerStats, HistoryFilters } from "../../src/lib/history-service";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
+import { colors } from "../../src/theme/colors";
 
 const { width } = Dimensions.get("window");
 
@@ -124,9 +127,9 @@ export default function GameHistoryScreen() {
 
   const renderResultBadge = (result: "WIN" | "LOSS" | "DRAW") => {
     const configs = {
-      WIN: { icon: Trophy, color: "#10b981", label: "WON" },
-      LOSS: { icon: XIcon, color: "#ef4444", label: "LOST" },
-      DRAW: { icon: Minus, color: "#737373", label: "DRAW" }
+      WIN: { icon: Trophy, color: colors.win, label: "WON" },
+      LOSS: { icon: XIcon, color: colors.danger, label: "LOST" },
+      DRAW: { icon: Minus, color: colors.textSubtle, label: "DRAW" }
     };
     const config = configs[result];
     return (
@@ -138,9 +141,9 @@ export default function GameHistoryScreen() {
   };
 
   const renderStatCard = (label: string, value: string | number, color = "#fff") => (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.statMiniBox}>
+      <Text style={styles.statMiniValue}>{value}</Text>
+      <Text style={styles.statMiniLabel}>{label}</Text>
     </View>
   );
 
@@ -150,8 +153,8 @@ export default function GameHistoryScreen() {
       onPress={() => console.log("Replay", item.id)}
     >
       <View style={styles.gameCardLeft}>
-        <View style={[styles.resultIndicator, { 
-          backgroundColor: item.result === "WIN" ? "#10b981" : item.result === "LOSS" ? "#ef4444" : "#737373" 
+        <View style={[styles.resultIndicator, {
+          backgroundColor: item.result === "WIN" ? colors.win : item.result === "LOSS" ? colors.danger : colors.textSubtle
         }]} />
         <View style={styles.gameInfo}>
           <View style={styles.opponentRow}>
@@ -162,7 +165,7 @@ export default function GameHistoryScreen() {
           </View>
           <View style={styles.metaRow}>
             <View style={styles.modeBadge}>
-              {item.gameType === "AI" ? <Cpu size={10} color="#737373" /> : <Target size={10} color="#737373" />}
+              {item.gameType === "AI" ? <Cpu size={10} color={colors.textSubtle} /> : <Target size={10} color={colors.textSubtle} />}
               <Text style={styles.modeText}>{item.gameType}</Text>
             </View>
             <View style={styles.dot} />
@@ -175,7 +178,7 @@ export default function GameHistoryScreen() {
       
       <View style={styles.gameCardRight}>
          {renderResultBadge(item.result)}
-         <ChevronRight size={16} color="#404040" />
+         <ChevronRight size={16} color={colors.textDisabled} />
       </View>
     </TouchableOpacity>
   );
@@ -183,15 +186,15 @@ export default function GameHistoryScreen() {
   if (loading && !refreshing && page === 0) return <LoadingScreen />;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft color="#fff" size={24} />
+          <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("home.history", "Game History")}</Text>
         <TouchableOpacity style={styles.backButton}>
-           <Filter size={20} color="#fff" />
+           <Filter size={20} color={colors.foreground} />
         </TouchableOpacity>
       </View>
 
@@ -201,7 +204,7 @@ export default function GameHistoryScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
@@ -220,15 +223,15 @@ export default function GameHistoryScreen() {
                        <Text style={styles.statMiniLabel}>TOTAL</Text>
                     </View>
                     <View style={styles.statMiniBox}>
-                       <Text style={[styles.statMiniValue, { color: "#10b981" }]}>{stats?.wins || 0}</Text>
+                       <Text style={[styles.statMiniValue, { color: colors.win }]}>{stats?.wins || 0}</Text>
                        <Text style={styles.statMiniLabel}>WINS</Text>
                     </View>
                     <View style={styles.statMiniBox}>
-                       <Text style={[styles.statMiniValue, { color: "#ef4444" }]}>{stats?.losses || 0}</Text>
+                       <Text style={[styles.statMiniValue, { color: colors.danger }]}>{stats?.losses || 0}</Text>
                        <Text style={styles.statMiniLabel}>LOSSES</Text>
                     </View>
                     <View style={styles.statMiniBox}>
-                       <Text style={[styles.statMiniValue, { color: "#737373" }]}>{stats?.draws || 0}</Text>
+                       <Text style={[styles.statMiniValue, { color: colors.textSubtle }]}>{stats?.draws || 0}</Text>
                        <Text style={styles.statMiniLabel}>DRAWS</Text>
                     </View>
                  </View>
@@ -273,7 +276,7 @@ export default function GameHistoryScreen() {
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator color="#f59e0b" />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : games.length > 0 ? (
             <View style={styles.footerLoader}>
@@ -282,13 +285,13 @@ export default function GameHistoryScreen() {
           ) : null
         }
         ListEmptyComponent={
-          !loading && (
+          !loading ? (
             <View style={styles.emptyState}>
-              <Swords size={48} color="#262626" />
+              <Swords size={48} color={colors.surfaceElevated} />
               <Text style={styles.emptyTitle}>No games found</Text>
               <Text style={styles.emptySubtitle}>Start your first match to see your history here!</Text>
             </View>
-          )
+          ) : null
         }
       />
     </SafeAreaView>
@@ -298,7 +301,7 @@ export default function GameHistoryScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -311,14 +314,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -327,11 +330,11 @@ const styles = StyleSheet.create({
   },
   mainStats: {
     flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
     gap: 20,
   },
   winRateBox: {
@@ -339,15 +342,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingRight: 20,
     borderRightWidth: 1,
-    borderRightColor: "rgba(255, 255, 255, 0.05)",
+    borderRightColor: colors.border,
   },
   winRateValue: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 28,
     fontWeight: "900",
   },
   winRateLabel: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 10,
     fontWeight: "bold",
     marginTop: 4,
@@ -362,12 +365,12 @@ const styles = StyleSheet.create({
     width: "45%",
   },
   statMiniValue: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "900",
   },
   statMiniLabel: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 9,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -382,29 +385,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   filterChip: {
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
-    borderColor: "rgba(245, 158, 11, 0.3)",
+    backgroundColor: colors.primaryAlpha10,
+    borderColor: colors.primaryAlpha30,
   },
   filterChipText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "bold",
   },
   filterChipTextActive: {
-    color: "#f59e0b",
+    color: colors.primary,
   },
   filterSeparator: {
     width: 1,
     height: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colors.borderStrong,
     marginHorizontal: 8,
   },
   listHeader: {
@@ -415,14 +418,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   listTitle: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1.5,
   },
   listCount: {
-    color: "#404040",
+    color: colors.textDisabled,
     fontSize: 11,
     fontWeight: "bold",
   },
@@ -433,13 +436,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     marginBottom: 10,
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: colors.border,
   },
   gameCardLeft: {
     flexDirection: "row",
@@ -462,12 +465,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   opponentName: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 16,
     fontWeight: "bold",
   },
   opponentElo: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -480,13 +483,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: colors.background,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   modeText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 10,
     fontWeight: "900",
   },
@@ -494,10 +497,10 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#262626",
+    backgroundColor: colors.surfaceElevated,
   },
   metaText: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 11,
     fontWeight: "bold",
   },
@@ -524,7 +527,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerText: {
-    color: "#262626",
+    color: colors.surfaceElevated,
     fontSize: 12,
     fontWeight: "bold",
   },
@@ -536,12 +539,12 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   emptyTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
   },
   emptySubtitle: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,

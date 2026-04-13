@@ -1,5 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import { colors } from "../theme/colors";
 
 interface MiniBoardProps {
   size?: number;
@@ -7,12 +8,6 @@ interface MiniBoardProps {
 
 export const MiniBoard: React.FC<MiniBoardProps> = ({ size = 60 }) => {
   const squareSize = size / 4;
-  
-  // Board colors from web: light=#fdba74, dark=#9a3412
-  const colors = {
-    light: "#fdba74",
-    dark: "#9a3412"
-  };
 
   const renderSquare = (row: number, col: number) => {
     const isDark = (row + col) % 2 !== 0;
@@ -24,7 +19,7 @@ export const MiniBoard: React.FC<MiniBoardProps> = ({ size = 60 }) => {
           {
             width: squareSize,
             height: squareSize,
-            backgroundColor: isDark ? colors.dark : colors.light,
+            backgroundColor: isDark ? colors.boardDark : colors.boardLight,
           },
         ]}
       />

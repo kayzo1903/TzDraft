@@ -7,10 +7,11 @@ import * as SplashScreen from "expo-splash-screen";
 import { useAuthInitializer } from "../src/hooks/useAuthInitializer";
 import { Header } from "../src/components/Header";
 import { SideMenu } from "../src/components/SideMenu";
-import { View, StyleSheet, ActivityIndicator } from "react-native";
-import { useSegments, useRouter, usePathname } from "expo-router";
+import { View, StyleSheet } from "react-native";
+import { useSegments, useRouter, usePathname, useRootNavigationState } from "expo-router";
 import { useAuthStore } from "../src/auth/auth-store";
 import { LoadingScreen } from "../src/components/ui/LoadingScreen";
+import { colors } from "../src/theme/colors";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -25,25 +26,23 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
-  const { status, user } = useAuthStore();
+  const rootNavState = useRootNavigationState();
+  const { status } = useAuthStore();
 
-  const [isMounted, setIsMounted] = useState(false);
   const isRedirecting = React.useRef(false);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hasHydrated || !loaded || !isMounted) return;
+    // rootNavState.key is undefined until the navigation container is fully mounted.
+    // Navigating before that throws "Attempted to navigate before mounting the Root Layout".
+    if (!hasHydrated || !loaded || !rootNavState?.key) return;
 
     const rootPath = segments[0] || "";
     const inAuthGroup = rootPath === "(auth)";
     const inWelcome = rootPath === "welcome";
+    const hasSession = status === "authenticated" || status === "guest";
 
     console.log(`[Root Guard] Status: ${status}, Path: "${rootPath}"`);
 
-    // Logic Lock: Prevent recursive loops
     if (isRedirecting.current) return;
 
     const performRedirect = (to: string, reason: string) => {
@@ -52,26 +51,22 @@ export default function RootLayout() {
 
       console.log(`[Root Guard] Gating: ${reason} -> Redirecting to ${to}`);
       isRedirecting.current = true;
-      
-      // Since we have a Loading Gate, we can be more immediate with navigation
       router.replace(to as any);
       setTimeout(() => { isRedirecting.current = false; }, 500);
     };
 
-    if (status === "unauthenticated") {
-      if (!inWelcome && !inAuthGroup) {
-        performRedirect("/welcome", "unauthenticated session");
-      }
-    } else if (status === "authenticated") {
+    if (hasSession) {
+      // Users with an active session skip the welcome page and go directly to home
       if (inWelcome || inAuthGroup) {
-        performRedirect("/", "authenticated user on auth/welcome screen");
+        performRedirect("/", "session active — bypass welcome/auth screens");
       }
-    } else if (status === "guest") {
-      if (inWelcome) {
-        performRedirect("/", "guest on welcome screen");
+    } else if (status === "unauthenticated") {
+      // No session: welcome page is the only valid entry point outside of auth
+      if (!inWelcome && !inAuthGroup) {
+        performRedirect("/welcome", "no session — show welcome");
       }
     }
-  }, [status, hasHydrated, loaded, isMounted, JSON.stringify(segments)]);
+  }, [status, hasHydrated, loaded, rootNavState?.key, segments[0]]);
 
   useEffect(() => {
     if ((loaded || error) && hasHydrated) {
@@ -79,14 +74,12 @@ export default function RootLayout() {
     }
   }, [loaded, error, hasHydrated]);
 
-  if ((!loaded && !error) || !hasHydrated || status === "loading" || status === "transitioning") {
-    // This is the "Loading Gate"
-    return <LoadingScreen />;
-  }
-
+  const isLoading = (!loaded && !error) || !hasHydrated || status === "loading" || status === "transitioning";
   const rootSegment = segments[0] || "";
   const showHeader = (status === "authenticated" || status === "guest") && rootSegment !== "welcome" && rootSegment !== "(auth)";
 
+  // Always render the Stack so Expo Router's navigator is mounted from the first render.
+  // The LoadingScreen sits as an absolute overlay on top until auth is resolved.
   return (
     <I18nextProvider i18n={i18n}>
       <View style={styles.container}>
@@ -94,7 +87,7 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: "#0a0a0a" },
+            contentStyle: { backgroundColor: colors.background },
           }}
         >
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
@@ -102,10 +95,15 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ title: "Profile" }} />
         </Stack>
-        <SideMenu 
-          isVisible={isMenuVisible} 
-          onClose={() => setIsMenuVisible(false)} 
+        <SideMenu
+          isVisible={isMenuVisible}
+          onClose={() => setIsMenuVisible(false)}
         />
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <LoadingScreen />
+          </View>
+        )}
       </View>
     </I18nextProvider>
   );
@@ -114,11 +112,10 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: colors.background,
   },
-  gate: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#020205",
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999,
   },
 });
