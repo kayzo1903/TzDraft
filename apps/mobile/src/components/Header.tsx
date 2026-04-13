@@ -1,9 +1,9 @@
 import { View, StyleSheet, TouchableOpacity, Image, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User, Menu } from "lucide-react-native";
+import { User, Menu, Bell } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
-import { LanguageSwitcher } from "./LanguageSwitcher";
 
 interface HeaderProps {
   onMenuPress: () => void;
@@ -11,6 +11,7 @@ interface HeaderProps {
 
 
 export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
   const isGuest = user?.accountType === "GUEST";
@@ -33,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
               onPress={() => router.push("/(auth)/login")} 
               style={styles.textButton}
             >
-              <Text style={styles.textButtonLabel}>Login</Text>
+              <Text style={styles.textButtonLabel}>{t("nav.login", "Login")}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={handleAccountPress} style={styles.accountButton}>
@@ -53,15 +54,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
 
         {/* Right Actions */}
         <View style={styles.rightActions}>
-          <LanguageSwitcher />
-          {isGuest && (
-            <TouchableOpacity 
-              onPress={() => router.push("/(auth)/signup")} 
-              style={[styles.textButton, styles.signupButton]}
-            >
-              <Text style={[styles.textButtonLabel, { color: "#000" }]}>Join</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.notificationButton}>
+            <Bell color="#f59e0b" size={24} />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
             <Menu color="#f59e0b" size={28} />
           </TouchableOpacity>
@@ -141,6 +137,28 @@ const styles = StyleSheet.create({
   signupButton: {
     backgroundColor: "#f59e0b",
     borderColor: "#f59e0b",
+  },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#111",
+    borderWidth: 1,
+    borderColor: "#1a1a1a",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444", // Red badge
+    borderWidth: 1,
+    borderColor: "#111",
   },
   textButtonLabel: {
     color: "#fff",

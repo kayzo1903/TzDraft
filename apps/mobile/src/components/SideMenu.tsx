@@ -11,11 +11,13 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages } from "lucide-react-native";
+import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
 import { useRouter } from "expo-router";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import * as WebBrowser from "expo-web-browser";
+import { SUPPORT_URLS } from "../lib/urls";
 
 const { width, height } = Dimensions.get("window");
 
@@ -28,6 +30,18 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
   const { t } = useTranslation();
   const { user, isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
+  
+  const openWebPage = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+        toolbarColor: "#030307",
+      });
+      onClose();
+    } catch (error) {
+      console.error("Failed to open browser:", error);
+    }
+  };
 
   const [shouldRender, setShouldRender] = useState(isVisible);
   const slideAnim = useRef(new Animated.Value(width)).current;
@@ -117,8 +131,12 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
 
           <ScrollView style={styles.content}>
             <View style={styles.userSection}>
-              {isAuthenticated ? (
-                <View style={styles.profileInfo}>
+              {isAuthenticated && user?.accountType !== "GUEST" ? (
+                <TouchableOpacity 
+                  style={styles.profileInfo}
+                  onPress={() => navigateTo("/profile")}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.avatarPlaceholder}>
                     <User color="#f59e0b" size={32} />
                   </View>
@@ -126,7 +144,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                     <Text style={styles.username}>{user?.username || user?.displayName || "User"}</Text>
                     <Text style={styles.email}>{user?.email}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ) : (
                 <View style={styles.authButtons}>
                   <TouchableOpacity
@@ -155,13 +173,23 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
               />
               <NavItem
                 icon={Play}
-                label={t("nav.play", "Play")}
-                onPress={() => navigateTo("/play")}
+                label={t("nav.play", "Play Online")}
+                onPress={() => navigateTo("/game/lobby")}
+              />
+              <NavItem
+                icon={History}
+                label={t("nav.history", "Game History")}
+                onPress={() => navigateTo("/game/history")}
+              />
+              <NavItem
+                icon={Medal}
+                label={t("nav.leaderboard", "Leaderboard")}
+                onPress={() => navigateTo("/game/leaderboard")}
               />
               <NavItem
                 icon={Trophy}
-                label={t("nav.leaderboard", "Leaderboard")}
-                onPress={() => navigateTo("/leaderboard")}
+                label={t("nav.tournaments", "Tournaments")}
+                onPress={() => navigateTo("/game/tournaments")}
               />
               <NavItem
                 icon={Users}
@@ -172,6 +200,24 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                 icon={HelpCircle}
                 label={t("nav.support", "Support")}
                 onPress={() => navigateTo("/support")}
+              />
+
+              <View style={styles.divider} />
+
+              <NavItem
+                icon={FileText}
+                label={t("nav.rules", "Game Rules")}
+                onPress={() => openWebPage(SUPPORT_URLS.rules)}
+              />
+              <NavItem
+                icon={ShieldCheck}
+                label={t("nav.privacy", "Privacy Policy")}
+                onPress={() => openWebPage(SUPPORT_URLS.privacy)}
+              />
+              <NavItem
+                icon={ExternalLink}
+                label={t("nav.website", "Visit Website")}
+                onPress={() => openWebPage(SUPPORT_URLS.website)}
               />
               
               <View style={styles.languageSection}>
@@ -294,6 +340,12 @@ const styles = StyleSheet.create({
   navText: {
     color: "#d1d5db",
     fontSize: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#1a1a1a",
+    marginVertical: 10,
+    marginHorizontal: 15,
   },
   languageSection: {
     flexDirection: "row",

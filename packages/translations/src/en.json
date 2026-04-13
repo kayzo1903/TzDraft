@@ -7,9 +7,13 @@
     "support": "Support",
     "login": "Log In",
     "signup": "Sign Up",
+    "join": "Join",
     "language": "Language",
     "en": "English",
-    "sw": "Swahili"
+    "sw": "Swahili",
+    "rules": "Game Rules",
+    "privacy": "Privacy Policy",
+    "website": "Official Website"
   },
   "home": {
     "tagline": "Experience the finest draft platform",
@@ -226,11 +230,19 @@
       "good": "Good",
       "strong": "Strong",
       "veryStrong": "Very Strong"
+    },
+    "guestPopup": {
+      "title": "Join the Community!",
+      "subtitle": "You are currently playing as a guest. Register now to save your ratings, track your history, and join tournaments!",
+      "primaryAction": "Create Free Account",
+      "secondaryAction": "Continue as Guest"
     }
   },
   "support": {
     "title": "Support Center",
     "subtitle": "Have a question or run into a bug? We're here to help you get back to the game.",
+    "heroTitle": "How can we help?",
+    "heroSubtitle": "Access our documentation, rules, and support team directly.",
     "eyebrow": "Help for accounts, gameplay and fair play",
     "stats": {
       "response": "Typical response",
@@ -252,7 +264,16 @@
     },
     "faq": "Frequently Asked Questions",
     "contact": "Contact Us",
+    "legal": "Legal & Rules",
+    "rules": "Game Rules",
+    "privacy": "Privacy & Terms",
+    "website": "Visit Official Website",
     "contactSubtitle": "Send a clear message and include the game ID, invite code, or tournament name when relevant.",
+    "emailUs": "Email Support Team",
+    "faqsTitle": "Frequently Asked Questions",
+    "faqsDesc": "Common gameplay and account questions.",
+    "rulesDesc": "Official TZD draughts and tournament rules.",
+    "privacyDesc": "Data protection and platform guidelines.",
     "contactMethods": {
       "title": "Other ways to reach us",
       "email": "Email support",

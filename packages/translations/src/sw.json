@@ -7,9 +7,13 @@
     "support": "Msaada",
     "login": "Ingia",
     "signup": "Jisajili",
+    "join": "Jiunge",
     "language": "Lugha",
     "en": "Kiingereza",
-    "sw": "Kiswahili"
+    "sw": "Kiswahili",
+    "rules": "Sheria za Mchezo",
+    "privacy": "Sera ya Faragha",
+    "website": "Tovuti Rasmi"
   },
   "home": {
     "tagline": "Pata uzoefu wa jukwaa bora la drafti",
@@ -226,11 +230,19 @@
       "good": "Nzuri",
       "strong": "Imara",
       "veryStrong": "Imara Sana"
+    },
+    "guestPopup": {
+      "title": "Jiunge na Jamii!",
+      "subtitle": "Kwa sasa unacheza kama mgeni. Jisajili sasa ili uhifadhi ukadiriaji wako, fuatilia historia yako, na ujiunge na mashindano!",
+      "primaryAction": "Fungua Akaunti ya Bure",
+      "secondaryAction": "Endelea kama Mgeni"
     }
   },
   "support": {
     "title": "Kituo cha Msaada",
     "subtitle": "Una swali au umepata tatizo? Tuko hapa kukusaidia uendelee na mchezo.",
+    "heroTitle": "Je, tunawezaje kukusaidia?",
+    "heroSubtitle": "Pata nyaraka, sheria, na uwasiliani na timu ya msaada moja kwa moja.",
     "eyebrow": "Msaada wa akaunti, mchezo na usalama wa mashindano",
     "stats": {
       "response": "Muda wa majibu",
@@ -252,7 +264,16 @@
     },
     "faq": "Maswali Yanayoulizwa Mara kwa Mara",
     "contact": "Wasiliana Nasi",
+    "legal": "Sera na Sheria",
+    "rules": "Sheria za Mchezo",
+    "privacy": "Sera na Faragha",
+    "website": "Tembelea Tovuti Rasmi",
     "contactSubtitle": "Tuma maelezo wazi, na jumuisha kitambulisho cha mchezo, msimbo wa mwaliko, au jina la mashindano inapohusika.",
+    "emailUs": "Tuma Barua Pepe kwa Timu ya Msaada",
+    "faqsTitle": "Maswali Yanayoulizwa Mara kwa Mara",
+    "faqsDesc": "Maswali ya kawaida kuhusu mchezo na akaunti.",
+    "rulesDesc": "Viwango rasmi vya mchezo wa drafti na sheria za mashindano.",
+    "privacyDesc": "Ulinzi wa data na miongozo ya jukwaa.",
     "contactMethods": {
       "title": "Njia nyingine za kutufikia",
       "email": "Tuma barua pepe kwa msaada",

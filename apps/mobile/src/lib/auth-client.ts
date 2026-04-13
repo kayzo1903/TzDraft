@@ -8,13 +8,32 @@ class AuthClient {
    * Mirrors the web's AuthInitializer logic - syncs state from storage/backend.
    */
   async init() {
+    const state = useAuthStore.getState();
+    
+    // Optimistically trust local session if it exists
+    if (!state.user) {
+      state.setStatus("unauthenticated");
+      return null;
+    }
+
     try {
-      const user = await api.get("/auth/me");
-      useAuthStore.getState().setUser(user.data);
-      return user.data;
-    } catch (error) {
-      console.log("[AuthClient] Init failed:", error);
-      useAuthStore.getState().setStatus("unauthenticated");
+      console.log("[AuthClient] Syncing session with backend...");
+      const response = await api.get("/auth/me");
+      state.setUser(response.data); // sync/refresh user data
+      return response.data;
+    } catch (error: any) {
+      console.log("[AuthClient] Sync failed:", error.message);
+      
+      // ONLY clear session if server explicitly returns 401 Unauthorized
+      if (error.response?.status === 401) {
+        console.log("[AuthClient] Session invalid (401), clearing session.");
+        state.logout();
+        await SecureStore.deleteItemAsync("refreshToken");
+      } else {
+        // For 500, network errors, timeouts, etc.
+        // We keep the authenticated status and trust the local state
+        console.log("[AuthClient] Transient error, sticking with local session.");
+      }
       return null;
     }
   }

@@ -65,12 +65,14 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => secureStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          state.setHasHydrated(true);
-          // Derive status from rehydrated user
+          state.hasHydrated = true;
+          // Derive status and auth from rehydrated state
           if (state.user) {
-            state.setStatus(state.user.accountType === "GUEST" ? "guest" : "authenticated");
+            state.isAuthenticated = true;
+            state.status = state.user.accountType === "GUEST" ? "guest" : "authenticated";
           } else {
-            state.setStatus("unauthenticated");
+            state.isAuthenticated = false;
+            state.status = "unauthenticated";
           }
         }
       },
