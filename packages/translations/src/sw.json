@@ -7,7 +7,27 @@
     "support": "Msaada",
     "login": "Ingia",
     "signup": "Jisajili",
-    "language": "Lugha"
+    "language": "Lugha",
+    "en": "Kiingereza",
+    "sw": "Kiswahili"
+  },
+  "home": {
+    "tagline": "Pata uzoefu wa jukwaa bora la drafti",
+    "recentResults": "Matokeo ya Hivi Karibuni",
+    "noGames": "Bado huna michezo",
+    "stats": "Takwimu Zako",
+    "tournaments": "Mashindano",
+    "tournamentDesc": "Jiunge na mashindano rasmi ya kishindo",
+    "history": "Historia ya Michezo",
+    "historyDesc": "Kagua na uchambue mechi zako za zamani"
+  },
+  "game": {
+    "playOnline": "Cheza Mtandaoni",
+    "onlineDescription": "Pima ujuzi wako dhidi ya wachezaji ulimwenguni kote",
+    "playAI": "Cheza na AI",
+    "aiDescription": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish",
+    "playFriend": "Cheza na Rafiki",
+    "friendDescription": "Mechi za ana kwa ana au za mtandaoni"
   },
   "hero": {
     "title": "Cheza TzDraft",
@@ -68,6 +88,7 @@
       "forgotPassword": "Umesahau nenosiri?",
       "rememberMe": "Nikumbuke",
       "noAccount": "Huna akaunti?",
+      "newToApp": "Mgeni kwenye TzDraft?",
       "signupLink": "Fungua Akaunti",
       "identifier": "Nambari ya Simu au Jina la Utumiaji",
       "identifierPlaceholder": "07** *** *** au jina la utumiaji",

@@ -7,7 +7,27 @@
     "support": "Support",
     "login": "Log In",
     "signup": "Sign Up",
-    "language": "Language"
+    "language": "Language",
+    "en": "English",
+    "sw": "Swahili"
+  },
+  "home": {
+    "tagline": "Experience the finest draft platform",
+    "recentResults": "Recent Results",
+    "noGames": "No games yet",
+    "stats": "Your Stats",
+    "tournaments": "Tournaments",
+    "tournamentDesc": "Join official prize tournaments",
+    "history": "Game History",
+    "historyDesc": "Review and analyze your past matches"
+  },
+  "game": {
+    "playOnline": "Play Online",
+    "onlineDescription": "Test your skills against players worldwide",
+    "playAI": "Play vs AI",
+    "aiDescription": "Challenge our top-tier neural engine",
+    "playFriend": "Play vs Friend",
+    "friendDescription": "Local or private online matches"
   },
   "hero": {
     "title": "Play TzDraft",
@@ -68,6 +88,7 @@
       "forgotPassword": "Forgot password?",
       "rememberMe": "Remember me",
       "noAccount": "Don't have an account?",
+      "newToApp": "New to TzDraft?",
       "signupLink": "Create Account",
       "identifier": "Phone Number or Username",
       "identifierPlaceholder": "07** *** *** or username",
