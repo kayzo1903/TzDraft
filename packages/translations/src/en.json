@@ -621,6 +621,11 @@
       }
     },
     "account": {
+      "name": "Game Name",
+      "noName": "Set game name",
+      "editName": "Edit Game Name",
+      "editNameDesc": "This name will be visible to other players.",
+      "namePlaceholder": "Enter your game name",
       "username": "Username",
       "phone": "Phone",
       "email": "Email",

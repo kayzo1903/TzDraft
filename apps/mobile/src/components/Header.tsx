@@ -5,6 +5,8 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
 import { colors } from "../theme/colors";
+import { useEffect, useState, useCallback } from "react";
+import api from "../lib/api";
 
 interface HeaderProps {
   onMenuPress: () => void;
@@ -14,8 +16,26 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, status } = useAuthStore();
   const isGuest = user?.accountType === "GUEST";
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (status !== "authenticated") return;
+    try {
+      const res = await api.get<{ count: number }>("/notifications/unread-count");
+      setUnreadCount(res.data.count ?? 0);
+    } catch {
+      // silently fail — badge is non-critical
+    }
+  }, [status]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Poll every 60 seconds to keep badge roughly fresh
+    const interval = setInterval(fetchUnreadCount, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
 
   const handleAccountPress = () => {
     if (isAuthenticated) {
@@ -55,9 +75,23 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
 
         {/* Right Actions */}
         <View style={styles.rightActions}>
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => {
+              setUnreadCount(0); // optimistic clear before fetch on return
+              router.push("/notifications");
+            }}
+          >
             <Bell color={colors.primary} size={24} />
-            <View style={styles.notificationBadge} />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                {unreadCount <= 9 ? (
+                  <Text style={styles.badgeText}>{unreadCount}</Text>
+                ) : (
+                  <Text style={styles.badgeText}>9+</Text>
+                )}
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
             <Menu color={colors.primary} size={28} />
@@ -77,8 +111,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   leftActions: {
     flex: 1,
@@ -152,14 +184,23 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: "absolute",
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 6,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: colors.danger,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "800",
+    lineHeight: 13,
   },
   textButtonLabel: {
     color: colors.foreground,

@@ -207,19 +207,27 @@ export default function SetupFriendScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
-      <KeyboardAvoidingView 
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ArrowLeft color={colors.foreground} size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t("setupFriend.title", "Play with a Friend")}</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
         <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-          
+
           {/* Hero Section */}
           <View style={styles.hero}>
             <View style={styles.badge}>
               <Users size={14} color={colors.primary} />
               <Text style={styles.badgeText}>{t("setupFriend.subtitle", "Challenge a friend locally or online")}</Text>
             </View>
-            <Text style={styles.heroTitle}>{t("setupFriend.title", "Play with a Friend")}</Text>
           </View>
 
           {/* Tab Switcher */}
@@ -248,14 +256,6 @@ export default function SetupFriendScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Floating Back Button */}
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={() => router.back()}
-      >
-        <ArrowLeft color={colors.foreground} size={24} />
-      </TouchableOpacity>
 
       {/* Time Selection Bottom Sheet Mock */}
       {timeMenuOpen && (
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     padding: 24,
-    paddingTop: 40,
+    paddingTop: 16,
     alignItems: "center",
   },
   badge: {
@@ -346,13 +346,22 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textAlign: "center",
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    height: 60,
+  },
+  headerTitle: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
   backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
