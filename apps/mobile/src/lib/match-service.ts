@@ -1,5 +1,4 @@
 import api from "./api";
-import { PlayerColor } from "../shared/constants/game.constants";
 
 export interface CreateInviteResponse {
   gameId: string;

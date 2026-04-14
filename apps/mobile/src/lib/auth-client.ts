@@ -1,6 +1,7 @@
-import api from "./api";
+import api, { API_URL } from "./api";
 import { useAuthStore } from "../auth/auth-store";
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 
 class AuthClient {
   /**
@@ -103,6 +104,55 @@ class AuthClient {
 
       useAuthStore.getState().setStatus("guest");
       return response.data;
+    } catch (error) {
+      useAuthStore.getState().setStatus("unauthenticated");
+      throw error;
+    }
+  }
+
+  async loginWithGoogle() {
+    useAuthStore.getState().setStatus("transitioning");
+
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${API_URL}/auth/google/mobile`,
+        "tzdraft-mobile://auth/callback",
+      );
+
+      if (result.type !== "success") {
+        // User cancelled or browser closed without completing auth.
+        useAuthStore.getState().setStatus("unauthenticated");
+        return null;
+      }
+
+      // Parse tokens from the deep-link URL.
+      const url = new URL(result.url);
+      const error = url.searchParams.get("error");
+      if (error) {
+        useAuthStore.getState().setStatus("unauthenticated");
+        throw new Error(`Google sign-in failed: ${error}`);
+      }
+
+      const accessToken = url.searchParams.get("accessToken");
+      const refreshToken = url.searchParams.get("refreshToken");
+      if (!accessToken) {
+        useAuthStore.getState().setStatus("unauthenticated");
+        throw new Error("Google sign-in did not return a token.");
+      }
+
+      // Fetch user profile with the new token.
+      const profileRes = await api.get("/auth/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const user = profileRes.data;
+
+      useAuthStore.getState().setToken(accessToken);
+      useAuthStore.getState().setUser(user);
+      if (refreshToken) {
+        await SecureStore.setItemAsync("refreshToken", refreshToken);
+      }
+      useAuthStore.getState().setStatus("authenticated");
+      return { accessToken, user };
     } catch (error) {
       useAuthStore.getState().setStatus("unauthenticated");
       throw error;

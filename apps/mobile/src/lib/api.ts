@@ -8,9 +8,13 @@ import Constants from "expo-constants";
 const debuggerHost = Constants.expoConfig?.hostUri;
 const localhost = debuggerHost?.split(":")[0];
 
-const API_URL = 
-  process.env.EXPO_PUBLIC_API_URL || 
-  (localhost ? `http://${localhost}:3002` : "http://192.168.137.190:3002");
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (localhost ? `http://${localhost}:3002` : "http://192.168.1.199:3002");
+
+console.log(`[API] Base URL: ${API_URL} (hostUri=${debuggerHost ?? "undefined"})`);
+
+export { API_URL };;
 
 const api = axios.create({
   baseURL: API_URL,

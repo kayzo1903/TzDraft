@@ -621,6 +621,11 @@
       }
     },
     "account": {
+      "name": "Jina la uchezaji",
+      "noName": "Weka jina la uchezaji",
+      "editName": "Badili jina la uchezaji",
+      "editNameDesc": "Jina hili litaonekana kwa wachezaji wengine.",
+      "namePlaceholder": "Ingiza jina lako la uchezaji",
       "username": "Jina la mtumiaji",
       "phone": "Simu",
       "email": "Barua pepe",

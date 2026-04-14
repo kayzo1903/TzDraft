@@ -29,6 +29,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load remembered identifier on mount
@@ -46,6 +47,22 @@ export default function LoginScreen() {
     };
     loadSavedIdentifier();
   }, []);
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await authClient.loginWithGoogle();
+      // Navigation handled by the root guard on status change.
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (!msg.includes("cancelled") && !msg.includes("dismissed")) {
+        setError(t("auth.errors.google_failed", "Google sign-in failed. Please try again."));
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!identifier || !password) {
@@ -192,9 +209,19 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              <TouchableOpacity style={styles.googleBtn}>
-                <GoogleIcon size={24} />
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              <TouchableOpacity
+                style={[styles.googleBtn, isGoogleLoading && styles.btnDisabled]}
+                onPress={handleGoogleLogin}
+                disabled={isGoogleLoading || isLoading}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={colors.textSecondary} />
+                ) : (
+                  <>
+                    <GoogleIcon size={24} />
+                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 

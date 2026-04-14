@@ -38,7 +38,23 @@ export default function SignupScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleSignup = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await authClient.loginWithGoogle();
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (!msg.includes("cancelled") && !msg.includes("dismissed")) {
+        setError("Google sign-in failed. Please try again.");
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleNextStep = async () => {
     setIsLoading(true);
@@ -241,9 +257,19 @@ export default function SignupScreen() {
                     <View style={styles.dividerLine} />
                   </View>
 
-                  <TouchableOpacity style={styles.googleBtn}>
-                    <GoogleIcon size={24} />
-                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  <TouchableOpacity
+                    style={[styles.googleBtn, isGoogleLoading && { opacity: 0.7 }]}
+                    onPress={handleGoogleSignup}
+                    disabled={isGoogleLoading || isLoading}
+                  >
+                    {isGoogleLoading ? (
+                      <ActivityIndicator color={colors.textSecondary} />
+                    ) : (
+                      <>
+                        <GoogleIcon size={24} />
+                        <Text style={styles.googleBtnText}>Continue with Google</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </>
               )}
