@@ -62,10 +62,16 @@ export default function RootLayout() {
       }, 0);
     };
 
-    if (hasSession) {
-      // Users with an active session skip the welcome page and go directly to home
+    if (status === "authenticated") {
+      // Fully authenticated users skip welcome and auth screens entirely.
       if (inWelcome || inAuthGroup) {
-        performRedirect("/", "session active — bypass welcome/auth screens");
+        performRedirect("/", "authenticated — bypass welcome/auth screens");
+      }
+    } else if (status === "guest") {
+      // Guests can access auth screens (login/signup to upgrade their account)
+      // but must not land on the welcome page.
+      if (inWelcome) {
+        performRedirect("/", "guest — bypass welcome screen");
       }
     } else if (status === "unauthenticated") {
       // No session: welcome page is the only valid entry point outside of auth
