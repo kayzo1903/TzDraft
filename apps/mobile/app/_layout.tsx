@@ -63,10 +63,13 @@ export default function RootLayout() {
     };
 
     if (status === "authenticated") {
-      // Fully authenticated users skip welcome and auth screens entirely.
+      // Registered users with an active session go straight to home — no welcome page.
       if (inWelcome || inAuthGroup) {
         performRedirect("/", "authenticated — bypass welcome/auth screens");
       }
+    } else if (status === "guest") {
+      // Guest sessions are ephemeral — they always start at the welcome page.
+      // No redirects needed; guests can freely navigate welcome, auth, and app screens.
     } else if (status === "unauthenticated") {
       // No session: welcome page is the only valid entry point outside of auth
       if (!inWelcome && !inAuthGroup) {
