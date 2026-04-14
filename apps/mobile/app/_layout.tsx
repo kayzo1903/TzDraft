@@ -67,12 +67,6 @@ export default function RootLayout() {
       if (inWelcome || inAuthGroup) {
         performRedirect("/", "authenticated — bypass welcome/auth screens");
       }
-    } else if (status === "guest") {
-      // Guests can access auth screens (login/signup to upgrade their account)
-      // but must not land on the welcome page.
-      if (inWelcome) {
-        performRedirect("/", "guest — bypass welcome screen");
-      }
     } else if (status === "unauthenticated") {
       // No session: welcome page is the only valid entry point outside of auth
       if (!inWelcome && !inAuthGroup) {
