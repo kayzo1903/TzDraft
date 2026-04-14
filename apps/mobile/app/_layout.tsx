@@ -51,8 +51,15 @@ export default function RootLayout() {
 
       console.log(`[Root Guard] Gating: ${reason} -> Redirecting to ${to}`);
       isRedirecting.current = true;
-      router.replace(to as any);
-      setTimeout(() => { isRedirecting.current = false; }, 500);
+
+      // setTimeout(0) defers past the current commit phase so React Navigation's
+      // containerRef finishes wiring before router.replace() calls assertIsReady().
+      // rootNavState.key being set ≠ navigationRef.isReady() being true — they
+      // are two different internal signals that don't synchronise in the same tick.
+      setTimeout(() => {
+        router.replace(to as any);
+        setTimeout(() => { isRedirecting.current = false; }, 500);
+      }, 0);
     };
 
     if (hasSession) {
