@@ -68,14 +68,24 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "tzdraft-auth-storage",
       storage: createJSONStorage(() => secureStorage),
+      // Guest sessions are ephemeral — never write them to SecureStore.
+      // Only persist registered/OAuth users so they skip the welcome page on reopen.
+      partialize: (state) => {
+        if (!state.user || state.user.accountType === "GUEST") {
+          return { user: null, token: null };
+        }
+        return { user: state.user, token: state.token };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.hasHydrated = true;
-          // Derive status and auth from rehydrated state
-          if (state.user) {
+          // Guard against stale guest data that may already be in storage.
+          if (state.user && state.user.accountType !== "GUEST") {
             state.isAuthenticated = true;
-            state.status = state.user.accountType === "GUEST" ? "guest" : "authenticated";
+            state.status = "authenticated";
           } else {
+            state.user = null;
+            state.token = null;
             state.isAuthenticated = false;
             state.status = "unauthenticated";
           }
