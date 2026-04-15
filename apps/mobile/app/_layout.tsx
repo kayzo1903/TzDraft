@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { MkaguziProvider } from "../src/lib/game/mkaguzi-mobile";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
@@ -8,7 +9,9 @@ import * as SplashScreen from "expo-splash-screen";
 import { useAuthInitializer } from "../src/hooks/useAuthInitializer";
 import { Header } from "../src/components/Header";
 import { SideMenu } from "../src/components/SideMenu";
+import { preloadBotImages } from "../src/lib/game/bots";
 import { View, StyleSheet } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSegments, useRouter, usePathname, useRootNavigationState } from "expo-router";
 import { useAuthStore } from "../src/auth/auth-store";
 import { LoadingScreen } from "../src/components/ui/LoadingScreen";
@@ -80,6 +83,10 @@ export default function RootLayout() {
   }, [status, hasHydrated, loaded, rootNavState?.key, segments[0]]);
 
   useEffect(() => {
+    preloadBotImages().catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if ((loaded || error) && hasHydrated) {
       SplashScreen.hideAsync();
     }
@@ -94,7 +101,8 @@ export default function RootLayout() {
   return (
     <I18nextProvider i18n={i18n}>
       <MkaguziProvider>
-        <View style={styles.container}>
+        <GestureHandlerRootView style={styles.container}>
+          <StatusBar style="light" />
           {showHeader && <Header onMenuPress={() => setIsMenuVisible(true)} />}
           <Stack
             screenOptions={{
@@ -118,7 +126,7 @@ export default function RootLayout() {
               <LoadingScreen />
             </View>
           )}
-        </View>
+        </GestureHandlerRootView>
       </MkaguziProvider>
     </I18nextProvider>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   View, 
   Text, 
@@ -13,31 +13,57 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { 
-  X, 
+import {
   ArrowLeft,
-  Clock, 
-  Shuffle, 
-  ChevronRight, 
-  Lock, 
-  CheckCircle2, 
-  Trophy,
+  Clock,
+  Shuffle,
+  Lock,
+  CheckCircle2,
   Swords,
   Shield,
   Zap,
   Flame,
   Skull,
   ChevronDown,
-  Circle
 } from "lucide-react-native";
 import { BOTS, TIERS, BOT_IMAGES, getTierForLevel } from "../../src/lib/game/bots";
+import type { TimeControl } from "../../src/hooks/useAiGame";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { colors } from "../../src/theme/colors";
+import { aiChallengeService } from "../../src/services/ai-challenge.service";
+import { getLocalBotProgressSnapshot, getCachedMaxUnlockedLevel } from "../../src/lib/game/bot-progression";
 
 const { width } = Dimensions.get("window");
 
-const TIME_OPTIONS = [0, 3, 5, 10, 30] as const;
-type TimeOption = (typeof TIME_OPTIONS)[number];
+// ─── Time control options ─────────────────────────────────────────────────────
+type TimeControlOption = { tc: TimeControl; label: string; sub: string };
+
+const TOTAL_OPTIONS: TimeControlOption[] = [
+  { tc: { type: "total",    seconds: 180 }, label: "3 min",  sub: "Per player" },
+  { tc: { type: "total",    seconds: 300 }, label: "5 min",  sub: "Per player" },
+];
+
+const PER_MOVE_OPTIONS: TimeControlOption[] = [
+  { tc: { type: "per_move", seconds: 30  }, label: "30s",    sub: "Per move" },
+  { tc: { type: "per_move", seconds: 15  }, label: "15s",    sub: "Per move" },
+  { tc: { type: "per_move", seconds: 5   }, label: "5s",     sub: "Per move" },
+];
+
+const NO_TIME_OPTION: TimeControlOption =
+  { tc: { type: "none" }, label: "No time", sub: "Untimed" };
+
+function tcEqual(a: TimeControl, b: TimeControl): boolean {
+  if (a.type !== b.type) return false;
+  if (a.type === "none") return true;
+  return (a as any).seconds === (b as any).seconds;
+}
+
+function getTimeControlLabel(tc: TimeControl): string {
+  if (tc.type === "none") return "No time";
+  if (tc.type === "total") return tc.seconds === 180 ? "3 min" : "5 min";
+  const s = (tc as { type: "per_move"; seconds: number }).seconds;
+  return `${s}s / move`;
+}
 
 export default function SetupAiScreen() {
   const { t } = useTranslation();
@@ -46,21 +72,39 @@ export default function SetupAiScreen() {
   
   const [selectedBot, setSelectedBot] = useState(BOTS[0]);
   const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
-  const [selectedTime, setSelectedTime] = useState<TimeOption>(0);
+  const [selectedTC, setSelectedTC] = useState<TimeControl>({ type: "none" });
   const [timeMenuOpen, setTimeMenuOpen] = useState(false);
+  // getCachedMaxUnlockedLevel() is synchronous — returns the value from the
+  // last AsyncStorage read (or the last server response) so the screen renders
+  // with the correct unlock state on the first frame, no flash.
+  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState(getCachedMaxUnlockedLevel);
 
-  // For now, assume levels 1-5 are unlocked for guests, more for registered
-  const maxUnlockedLevel = user?.accountType === "REGISTERED" ? 19 : 5;
+  const isRegistered = user?.accountType === "REGISTERED";
+
+  // For registered users: getProgression() returns the in-memory cache on
+  // every open after the first — no network call, no delay.
+  // For guests: AsyncStorage read is fast and also backed by _cachedMax.
+  useEffect(() => {
+    if (isRegistered) {
+      aiChallengeService.getProgression()
+        .then((p) => setMaxUnlockedLevel(p.highestUnlockedAiLevel))
+        .catch(() => {
+          getLocalBotProgressSnapshot()
+            .then((s) => setMaxUnlockedLevel(s.maxUnlockedAiLevel))
+            .catch(() => {});
+        });
+    } else {
+      getLocalBotProgressSnapshot()
+        .then((s) => setMaxUnlockedLevel(s.maxUnlockedAiLevel))
+        .catch(() => {});
+    }
+  }, [isRegistered]);
 
   const handleStartGame = () => {
+    const timeSeconds = selectedTC.type === "none" ? 0 : (selectedTC as any).seconds;
     router.push(
-      `/game/vs-ai?botLevel=${selectedBot.level}&playerColor=${selectedColor}&timeSeconds=${selectedTime * 60}` as any,
+      `/game/vs-ai?botLevel=${selectedBot.level}&playerColor=${selectedColor}&timeControlType=${selectedTC.type}&timeSeconds=${timeSeconds}` as any,
     );
-  };
-
-  const getTimeLabel = (time: number) => {
-    if (time === 0) return t("setupAi.time.noTime", "No time");
-    return t("setupAi.time.minutes", { minutes: time });
   };
 
   const renderTierHeader = (tier: any) => {
@@ -165,7 +209,7 @@ export default function SetupAiScreen() {
             activeOpacity={0.8}
           >
             <Clock color={colors.textMuted} size={20} />
-            <Text style={styles.controlLabel}>{getTimeLabel(selectedTime)}</Text>
+            <Text style={styles.controlLabel}>{getTimeControlLabel(selectedTC)}</Text>
             <ChevronDown color={colors.textDisabled} size={16} />
           </TouchableOpacity>
 
@@ -220,23 +264,55 @@ export default function SetupAiScreen() {
           <View style={styles.drawUpContent}>
             <View style={styles.drawUpHandle} />
             <Text style={styles.drawUpTitle}>{t("setupAi.selectTime", "Match Time")}</Text>
+
+            {/* ── Group: Game Time ── */}
+            <Text style={styles.timeGroupLabel}>GAME TIME</Text>
             <View style={styles.timeGrid}>
-               {TIME_OPTIONS.map((time) => (
-                 <TouchableOpacity 
-                   key={time}
-                   style={[styles.timeOption, selectedTime === time && styles.activeTimeOption]}
-                   onPress={() => {
-                     setSelectedTime(time);
-                     setTimeMenuOpen(false);
-                   }}
-                 >
-                   <Clock color={selectedTime === time ? colors.primary : colors.textMuted} size={24} />
-                   <Text style={[styles.timeOptionText, selectedTime === time && styles.activeTimeOptionText]}>
-                     {getTimeLabel(time)}
-                   </Text>
-                 </TouchableOpacity>
-               ))}
+              {TOTAL_OPTIONS.map((opt) => {
+                const active = tcEqual(selectedTC, opt.tc);
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={[styles.timeOption, active && styles.activeTimeOption]}
+                    onPress={() => { setSelectedTC(opt.tc); setTimeMenuOpen(false); }}
+                  >
+                    <Clock color={active ? colors.primary : colors.textMuted} size={24} />
+                    <Text style={[styles.timeOptionText, active && styles.activeTimeOptionText]}>{opt.label}</Text>
+                    <Text style={styles.timeOptionSub}>{opt.sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+
+            {/* ── Group: Per Move ── */}
+            <Text style={[styles.timeGroupLabel, { marginTop: 20 }]}>PER MOVE</Text>
+            <View style={styles.timeGrid}>
+              {PER_MOVE_OPTIONS.map((opt) => {
+                const active = tcEqual(selectedTC, opt.tc);
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={[styles.timeOption, active && styles.activeTimeOption]}
+                    onPress={() => { setSelectedTC(opt.tc); setTimeMenuOpen(false); }}
+                  >
+                    <Clock color={active ? colors.primary : colors.textMuted} size={24} />
+                    <Text style={[styles.timeOptionText, active && styles.activeTimeOptionText]}>{opt.label}</Text>
+                    <Text style={styles.timeOptionSub}>{opt.sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ── No time ── */}
+            <TouchableOpacity
+              style={[styles.noTimeOption, tcEqual(selectedTC, NO_TIME_OPTION.tc) && styles.activeTimeOption]}
+              onPress={() => { setSelectedTC(NO_TIME_OPTION.tc); setTimeMenuOpen(false); }}
+            >
+              <Text style={[styles.timeOptionText, tcEqual(selectedTC, NO_TIME_OPTION.tc) && styles.activeTimeOptionText]}>
+                No time
+              </Text>
+              <Text style={styles.timeOptionSub}>Untimed</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -532,5 +608,28 @@ const styles = StyleSheet.create({
   },
   activeTimeOptionText: {
     color: colors.foreground,
+  },
+  timeOptionSub: {
+    color: colors.textDisabled,
+    fontSize: 11,
+    fontWeight: "bold",
+    marginTop: 2,
+  },
+  timeGroupLabel: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: "bold",
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  noTimeOption: {
+    marginTop: 16,
+    height: 56,
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 });

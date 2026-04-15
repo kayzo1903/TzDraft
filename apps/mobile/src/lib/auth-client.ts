@@ -2,8 +2,31 @@ import api, { API_URL } from "./api";
 import { useAuthStore } from "../auth/auth-store";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import { aiChallengeService } from "../services/ai-challenge.service";
+import {
+  hasLocalBotProgressToSync,
+  getLocalBotProgressSnapshot,
+  applyServerProgression,
+  clearLocalBotProgress,
+} from "./game/bot-progression";
 
 class AuthClient {
+  /**
+   * If the player won any games locally before registering/logging in,
+   * push that progress to the server so it isn't lost.
+   */
+  private async syncLocalAiProgressIfNeeded(): Promise<void> {
+    try {
+      const hasProgress = await hasLocalBotProgressToSync();
+      if (!hasProgress) return;
+      const { completedLevels, maxUnlockedAiLevel } = await getLocalBotProgressSnapshot();
+      const progression = await aiChallengeService.syncLocalProgress(completedLevels, maxUnlockedAiLevel);
+      await applyServerProgression(progression);
+    } catch {
+      // Non-fatal — local state is still intact for next session
+    }
+  }
+
   /**
    * Initialize the session.
    * Mirrors the web's AuthInitializer logic - syncs state from storage/backend.
@@ -54,6 +77,7 @@ class AuthClient {
       
       // Update status to authenticated
       useAuthStore.getState().setStatus("authenticated");
+      this.syncLocalAiProgressIfNeeded();
       return response.data;
     } catch (error) {
       useAuthStore.getState().setStatus("unauthenticated");
@@ -74,6 +98,7 @@ class AuthClient {
       }
 
       useAuthStore.getState().setStatus("authenticated");
+      this.syncLocalAiProgressIfNeeded();
       return response.data;
     } catch (error) {
       useAuthStore.getState().setStatus("unauthenticated");
@@ -152,6 +177,7 @@ class AuthClient {
         await SecureStore.setItemAsync("refreshToken", refreshToken);
       }
       useAuthStore.getState().setStatus("authenticated");
+      this.syncLocalAiProgressIfNeeded();
       return { accessToken, user };
     } catch (error) {
       useAuthStore.getState().setStatus("unauthenticated");
@@ -192,6 +218,7 @@ class AuthClient {
       console.error("[AuthClient] Logout failed on server:", error);
     } finally {
       await SecureStore.deleteItemAsync("refreshToken");
+      await clearLocalBotProgress();
     }
   }
 }

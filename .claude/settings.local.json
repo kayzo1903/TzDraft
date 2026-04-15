@@ -92,7 +92,17 @@
       "Bash(cmd //c \"cd /d C:\\\\Users\\\\Admin\\\\Desktop\\\\TzDraft\\\\engines\\\\core\\\\build && C:\\\\Windows\\\\System32\\\\cmd.exe /c \"\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\2022\\\\BuildTools\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\"\" mkaguzi_engine.sln /p:Configuration=Release /t:mkaguzi /m /nologo\")",
       "Bash(command -v esbuild)",
       "Bash(npx esbuild:*)",
-      "Bash(node scripts/copy-wasm.mjs)"
+      "Bash(node scripts/copy-wasm.mjs)",
+      "Bash(grep -roh '\"#[0-9a-fA-F]\\\\{3,8\\\\}\"' c:/Users/Admin/Desktop/TzDraft/apps/mobile --include=\"*.tsx\" --include=\"*.ts\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://192.168.1.199:3002/health)",
+      "Bash(curl -s http://192.168.1.199:3002/)",
+      "Bash(curl -s http://localhost:3002/health)",
+      "Bash(netsh advfirewall:*)",
+      "Bash(node -e ':*)",
+      "Bash(curl -s -X POST http://localhost:3002/auth/guest -H \"Content-Type: application/json\")",
+      "Bash(grep -v \"import\\\\|//\")",
+      "Bash(grep \"@nestjs/throttler\" node_modules/.pnpm/*/package.json)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/@nestjs/throttler/package.json'\\).version\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",

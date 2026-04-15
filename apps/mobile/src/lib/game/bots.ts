@@ -1,3 +1,5 @@
+import { Asset } from "expo-asset";
+
 export type BotTier = {
   label: string;
   range: [number, number];
@@ -64,6 +66,15 @@ export const BOTS: BotProfile[] = [
   { level: 18, name: "Tendai", elo: 2200, description: "Danger: 18/19 - apex tactical hunter.", imageKey: "tendai" },
   { level: 19, name: "Nkosi", elo: 2300, description: "Danger: 19/19 - final boss. Rarely misses.", imageKey: "nkosi" },
 ];
+
+/**
+ * Decodes all 19 bot avatar PNGs into native image memory.
+ * Call once during app startup so the setup-ai grid renders instantly
+ * without a decode stall on first open.
+ */
+export function preloadBotImages(): Promise<void> {
+  return Asset.loadAsync(Object.values(BOT_IMAGES)).then(() => {});
+}
 
 export const getBotByLevel = (level: number) => {
   return BOTS.find((bot) => bot.level === level) || BOTS[0];

@@ -1,25 +1,22 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { Vibration } from 'react-native';
 import { Audio } from 'expo-av';
 
 export function useGameAudio() {
   const genericNotifyRef = useRef<Audio.Sound | null>(null);
-  const explosionRef    = useRef<Audio.Sound | null>(null);
-  const moveRef         = useRef<Audio.Sound | null>(null);
-  const capturePoolRef  = useRef<Audio.Sound[]>([]);
+  const moveRef          = useRef<Audio.Sound | null>(null);
+  const capturePoolRef   = useRef<Audio.Sound[]>([]);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadSounds() {
-      // Fix 2: respect iOS silent switch — remove playsInSilentModeIOS
       await Audio.setAudioModeAsync({
         staysActiveInBackground: false,
       }).catch(() => {});
 
-      // Fix 4: load all sounds in parallel so one failure doesn't block others
       const results = await Promise.allSettled([
         Audio.Sound.createAsync(require('../../assets/sounds/GenericNotify.mp3'), { shouldPlay: false, positionMillis: 0 }),
-        Audio.Sound.createAsync(require('../../assets/sounds/Explosion.mp3'),     { shouldPlay: false, positionMillis: 0 }),
         Audio.Sound.createAsync(require('../../assets/sounds/Move.mp3'),          { shouldPlay: false, positionMillis: 0 }),
         // Capture pool — 3 instances for overlapping multi-captures
         Audio.Sound.createAsync(require('../../assets/sounds/Capture.mp3'), { shouldPlay: false, positionMillis: 0 }),
@@ -33,11 +30,9 @@ export function useGameAudio() {
         results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<{ sound: Audio.Sound }>).value.sound : null;
 
       genericNotifyRef.current = get(0);
-      explosionRef.current     = get(1);
-      moveRef.current          = get(2);
-      capturePoolRef.current   = [get(3), get(4), get(5)].filter(Boolean) as Audio.Sound[];
+      moveRef.current          = get(1);
+      capturePoolRef.current   = [get(2), get(3), get(4)].filter(Boolean) as Audio.Sound[];
 
-      // Log any individual failures without breaking the rest
       results.forEach((r, i) => {
         if (r.status === 'rejected') console.warn(`Audio load failed [${i}]:`, r.reason);
       });
@@ -48,7 +43,6 @@ export function useGameAudio() {
     return () => {
       mounted = false;
       genericNotifyRef.current?.unloadAsync();
-      explosionRef.current?.unloadAsync();
       moveRef.current?.unloadAsync();
       capturePoolRef.current.forEach((s) => s.unloadAsync());
     };
@@ -78,14 +72,8 @@ export function useGameAudio() {
   }, []);
 
   const playGameEnd = useCallback((outcome: 'win' | 'loss' | 'draw') => {
-    if (outcome === 'win') {
-      genericNotifyRef.current
-        ?.setStatusAsync({ positionMillis: 0, shouldPlay: true })
-        .catch(() => {});
-    } else if (outcome === 'loss') {
-      explosionRef.current
-        ?.setStatusAsync({ positionMillis: 0, shouldPlay: true, volume: 0.6 })
-        .catch(() => {});
+    if (outcome === 'loss') {
+      Vibration.vibrate(400);
     } else {
       genericNotifyRef.current
         ?.setStatusAsync({ positionMillis: 0, shouldPlay: true })

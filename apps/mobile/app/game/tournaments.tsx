@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   RefreshControl,
   ActivityIndicator,
   ImageBackground,
@@ -27,8 +26,6 @@ import {
 import { tournamentService, Tournament, TournamentStatus } from "../../src/lib/tournament-service";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import { colors } from "../../src/theme/colors";
-
-const { width } = Dimensions.get("window");
 
 export default function TournamentsScreen() {
   const { t, i18n } = useTranslation();

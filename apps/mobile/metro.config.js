@@ -16,4 +16,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
+// 4. Follow pnpm's Windows junctions / symlinks
+config.resolver.unstable_enableSymlinks = true;
+
 module.exports = config;

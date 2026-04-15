@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -21,8 +20,6 @@ import {
   Share2,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
-
-const { width } = Dimensions.get("window");
 
 export default function CommunityHub() {
   const { t } = useTranslation();

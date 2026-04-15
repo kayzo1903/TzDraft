@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { useMkaguzi } from "../lib/game/mkaguzi-mobile";
 import { getBestMove } from "../lib/game/ai-search";
-import { markLevelCompleted } from "../lib/game/bot-progression";
+import { markLevelCompletedLocally } from "../lib/game/bot-progression";
 import type { RawMove, RawGameResult } from "../lib/game/bridge-types";
 
 // ─── Initial FEN (app convention: WHITE at PDN 1-12, BLACK at PDN 21-32) ──────
@@ -30,6 +30,17 @@ function buildNotation(move: RawMove): string {
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export type PlayerColorParam = "WHITE" | "BLACK" | "RANDOM";
 
+/**
+ * Time control configuration.
+ * - "none"     : no timer
+ * - "total"    : human has a fixed pool of seconds (AI has no clock)
+ * - "per_move" : human must move within N seconds per turn (AI has no clock)
+ */
+export type TimeControl =
+  | { type: "none" }
+  | { type: "total";    seconds: number }
+  | { type: "per_move"; seconds: number };
+
 export interface GameResult {
   winner: "WHITE" | "BLACK" | "DRAW" | null;
   reason: string;
@@ -39,6 +50,8 @@ export interface MoveRecord {
   notation: string;
   player: "WHITE" | "BLACK";
   captureCount: number;
+  from: number;
+  to: number;
 }
 
 export interface LastMove {
@@ -61,10 +74,15 @@ export interface AiGameState {
   moveHistory: MoveRecord[];
   result: GameResult | null;
   isAiThinking: boolean;
+  /** Human player's remaining pool seconds (only meaningful when timeControl.type === "total") */
   timeLeft: { WHITE: number; BLACK: number };
+  /** Seconds left on the current move countdown (only meaningful when timeControl.type === "per_move") */
+  moveTimeLeft: number;
   moveCount: number;
   /** Fires when the human taps an invalid square — use this to trigger board shake */
   invalidMoveSignal: number;
+  /** True if undo was used at least once — reported to backend on session complete */
+  undoUsed: boolean;
   /**
    * Whether the board should be rendered flipped (rotated 180°).
    *
@@ -75,6 +93,8 @@ export interface AiGameState {
    *   Both produce the same UX: the human's pieces always appear at the bottom.
    */
   flipBoard: boolean;
+  /** Direct access to the FEN history for history scrubbing in the UI */
+  fenHistory: string[];
 }
 
 export interface AiGameActions {
@@ -88,9 +108,15 @@ export interface AiGameActions {
 export function useAiGame(
   botLevel: number,
   playerColorParam: PlayerColorParam,
-  timeSeconds: number,
+  timeControl: TimeControl,
 ): AiGameState & AiGameActions {
   const bridge = useMkaguzi();
+
+  // ── Derived time-control constants ────────────────────────────────────────
+  const isTotalMode = timeControl.type === "total";
+  const isPerMove   = timeControl.type === "per_move";
+  const totalSeconds = isTotalMode  ? (timeControl as { type: "total";    seconds: number }).seconds : 0;
+  const moveSeconds  = isPerMove    ? (timeControl as { type: "per_move"; seconds: number }).seconds : 0;
 
   // ── Resolve player color once ────────────────────────────────────────────
   const resolvedColor = useRef<PlayerColor>(
@@ -121,10 +147,8 @@ export function useAiGame(
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
   const [invalidMoveSignal, setInvalidMoveSignal] = useState(0);
-  const [timeLeft, setTimeLeft] = useState({
-    WHITE: timeSeconds,
-    BLACK: timeSeconds,
-  });
+  const [timeLeft, setTimeLeft] = useState({ WHITE: totalSeconds, BLACK: totalSeconds });
+  const [moveTimeLeft, setMoveTimeLeft] = useState(moveSeconds);
 
   // ── Draw-rule counters ────────────────────────────────────────────────────
   const fenHistory = useRef<string[]>([INITIAL_FEN]);
@@ -133,8 +157,9 @@ export function useAiGame(
   const endgameCount = useRef(0);
   const aiThinkingRef = useRef(false);
   const resultRef = useRef<GameResult | null>(null);
+  const undoUsedRef = useRef(false);
 
-  // ── Timer ─────────────────────────────────────────────────────────────────
+  // ── Total-time timer (human only — AI has no clock) ───────────────────────
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopTimer = useCallback(() => {
@@ -146,10 +171,12 @@ export function useAiGame(
 
   const startTimer = useCallback(
     (player: PlayerColor) => {
-      if (timeSeconds <= 0) return;
+      if (!isTotalMode) return;
+      if (player !== resolvedColor) return; // AI has no clock
       stopTimer();
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
+          if (resultRef.current) { stopTimer(); return prev; }
           const remaining = prev[player] - 1;
           if (remaining <= 0) {
             stopTimer();
@@ -163,8 +190,38 @@ export function useAiGame(
         });
       }, 1000);
     },
-    [timeSeconds, stopTimer],
+    [isTotalMode, resolvedColor, stopTimer],
   );
+
+  // ── Per-move countdown timer (human only) ────────────────────────────────
+  const moveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopMoveTimer = useCallback(() => {
+    if (moveTimerRef.current != null) {
+      clearInterval(moveTimerRef.current);
+      moveTimerRef.current = null;
+    }
+  }, []);
+
+  const startMoveTimer = useCallback(() => {
+    if (!isPerMove) return;
+    stopMoveTimer();
+    setMoveTimeLeft(moveSeconds); // reset to full budget
+    moveTimerRef.current = setInterval(() => {
+      setMoveTimeLeft((prev) => {
+        if (resultRef.current) { stopMoveTimer(); return prev; }
+        if (prev <= 1) {
+          stopMoveTimer();
+          const winner = resolvedColor === PlayerColor.WHITE ? "BLACK" : "WHITE";
+          const r: GameResult = { winner, reason: "time" };
+          setResult(r);
+          resultRef.current = r;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [isPerMove, moveSeconds, resolvedColor, stopMoveTimer]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const computeCapturables = useCallback((moves: RawMove[]): number[] => {
@@ -222,7 +279,13 @@ export function useAiGame(
       }
       setMoveHistory((prev) => [
         ...prev,
-        { notation: buildNotation(move), player: playerKey, captureCount: move.captures.length },
+        {
+          notation: buildNotation(move),
+          player: playerKey,
+          captureCount: move.captures.length,
+          from: move.from,
+          to: move.to,
+        },
       ]);
 
       const newBoard = BoardState.fromFen(newFen);
@@ -233,6 +296,7 @@ export function useAiGame(
       const gameResult = await checkResult(newFen);
       if (gameResult) {
         stopTimer();
+        stopMoveTimer();
         setFen(newFen);
         setBoard(newBoard);
         setLegalMoves([]);
@@ -248,7 +312,7 @@ export function useAiGame(
           ((gameResult.winner === "WHITE" && resolvedColor === PlayerColor.WHITE) ||
             (gameResult.winner === "BLACK" && resolvedColor === PlayerColor.BLACK))
         ) {
-          markLevelCompleted(botLevel).catch(() => {});
+          markLevelCompletedLocally(botLevel).catch(() => {});
         }
         return;
       }
@@ -262,10 +326,23 @@ export function useAiGame(
       setValidDestinations([]);
       setCapturablePieces(computeCapturables(nextMoves));
       setMoveCount((c) => c + 1);
+
+      // Total timer: only runs on human's turn
       startTimer(nextPlayer);
+
+      // Per-move timer: start on human's turn, stop + reset on AI's turn
+      if (isPerMove) {
+        if (nextPlayer === resolvedColor) {
+          startMoveTimer();
+        } else {
+          stopMoveTimer();
+          setMoveTimeLeft(moveSeconds); // reset display while AI thinks
+        }
+      }
 
       if (nextMoves.length === 0) {
         stopTimer();
+        stopMoveTimer();
         const stalemateWinner = nextPlayer === PlayerColor.WHITE ? "BLACK" : "WHITE";
         const r: GameResult = { winner: stalemateWinner, reason: "stalemate" };
         setResult(r);
@@ -287,7 +364,10 @@ export function useAiGame(
         }
       }
     },
-    [bridge, botLevel, checkResult, computeCapturables, resolvedColor, startTimer, stopTimer],
+    [
+      bridge, botLevel, checkResult, computeCapturables, resolvedColor,
+      startTimer, stopTimer, isPerMove, moveSeconds, startMoveTimer, stopMoveTimer,
+    ],
   );
 
   // ── Init once bridge is ready ─────────────────────────────────────────────
@@ -299,8 +379,13 @@ export function useAiGame(
       if (cancelled) return;
       setLegalMoves(moves);
       setCapturablePieces(computeCapturables(moves));
-      startTimer(PlayerColor.WHITE);
-      if (resolvedColor === PlayerColor.BLACK) {
+
+      if (resolvedColor === PlayerColor.WHITE) {
+        // Human goes first
+        startTimer(PlayerColor.WHITE);
+        if (isPerMove) startMoveTimer();
+      } else {
+        // AI goes first — no timer needed until AI finishes its first move
         aiThinkingRef.current = true;
         setIsAiThinking(true);
         try {
@@ -315,7 +400,7 @@ export function useAiGame(
     return () => { cancelled = true; };
   }, [bridge.isReady, resetCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => stopTimer(), [stopTimer]);
+  useEffect(() => () => { stopTimer(); stopMoveTimer(); }, [stopTimer, stopMoveTimer]);
 
   // ── selectSquare ──────────────────────────────────────────────────────────
   const selectSquare = useCallback(
@@ -361,11 +446,12 @@ export function useAiGame(
   const resign = useCallback(() => {
     if (result) return;
     stopTimer();
+    stopMoveTimer();
     const winner = resolvedColor === PlayerColor.WHITE ? "BLACK" : "WHITE";
     const r: GameResult = { winner, reason: "resign" };
     setResult(r);
     resultRef.current = r;
-  }, [result, resolvedColor, stopTimer]);
+  }, [result, resolvedColor, stopTimer, stopMoveTimer]);
 
   // ── undo ──────────────────────────────────────────────────────────────────
   const undo = useCallback(() => {
@@ -404,6 +490,7 @@ export function useAiGame(
       const prevPlayer = newHistory.length % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
 
       stopTimer();
+      stopMoveTimer();
       setFen(restoredFen);
       setBoard(restoredBoard);
       setCurrentPlayer(prevPlayer);
@@ -413,23 +500,28 @@ export function useAiGame(
       setValidDestinations([]);
       setCapturablePieces([]);
       setCapturedBy(newCapturedBy);
-      setLastMove(null); // from/to not stored in history, clear highlight
+      setLastMove(null);
       setMoveCount((c) => Math.max(0, c - movesToPop));
+
+      undoUsedRef.current = true;
 
       // Async: reload legal moves + restart timer
       bridge.generateMoves(restoredFen).then((moves) => {
         setLegalMoves(moves);
         setCapturablePieces(computeCapturables(moves));
         startTimer(prevPlayer);
+        if (isPerMove && prevPlayer === resolvedColor) startMoveTimer();
+        else if (isPerMove) setMoveTimeLeft(moveSeconds);
       }).catch(() => {});
 
       return newHistory;
     });
-  }, [result, resolvedColor, bridge, computeCapturables, stopTimer, startTimer]);
+  }, [result, resolvedColor, bridge, computeCapturables, stopTimer, stopMoveTimer, startTimer, isPerMove, startMoveTimer, moveSeconds]);
 
   // ── reset ─────────────────────────────────────────────────────────────────
   const reset = useCallback(() => {
     stopTimer();
+    stopMoveTimer();
     setFen(INITIAL_FEN);
     setBoard(BoardState.fromFen(INITIAL_FEN));
     setCurrentPlayer(PlayerColor.WHITE);
@@ -446,14 +538,16 @@ export function useAiGame(
     aiThinkingRef.current = false;
     setMoveCount(0);
     setInvalidMoveSignal(0);
+    undoUsedRef.current = false;
     fenHistory.current = [INITIAL_FEN];
     reversibleMoveCount.current = 0;
     threeKingsCount.current = 0;
     endgameCount.current = 0;
-    setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
+    setTimeLeft({ WHITE: totalSeconds, BLACK: totalSeconds });
+    setMoveTimeLeft(moveSeconds);
     // Increment last — triggers the init effect after all state is wiped
     setResetCount((n) => n + 1);
-  }, [stopTimer, timeSeconds]);
+  }, [stopTimer, stopMoveTimer, totalSeconds, moveSeconds]);
 
   return {
     fen,
@@ -470,20 +564,12 @@ export function useAiGame(
     result,
     isAiThinking,
     timeLeft,
+    moveTimeLeft,
     moveCount,
     invalidMoveSignal,
-    // Board flip — mobile vs web convention:
-    //
-    // Web engine: PDN 1-12 (WHITE) map to rows 0-2 (TOP) via position.toRowCol().
-    //   → flipForPlayer = playerColor === WHITE  (flip to bring WHITE to bottom)
-    //
-    // Mobile GRID (buildGrid): PDN 1 is the bottom-left dark square, so PDN 1-12
-    //   already appear at rows 5-7 (BOTTOM) without any flip.
-    //   → flipBoard = playerColor === BLACK  (flip to bring BLACK to bottom)
-    //
-    // End result is identical behaviour: the human player's pieces are always at
-    // the bottom of the board regardless of which colour they chose.
+    undoUsed: undoUsedRef.current,
     flipBoard: resolvedColor === PlayerColor.BLACK,
+    fenHistory: fenHistory.current,
     selectSquare,
     resign,
     reset,

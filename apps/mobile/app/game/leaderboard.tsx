@@ -7,7 +7,6 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -27,7 +26,6 @@ import { historyService, LeaderboardEntry } from "../../src/lib/history-service"
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import { colors } from "../../src/theme/colors";
 
-const { width } = Dimensions.get("window");
 const PAGE_SIZE = 50;
 
 export default function LeaderboardScreen() {
