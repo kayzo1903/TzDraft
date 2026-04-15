@@ -48,16 +48,14 @@ export default function SetupAiScreen() {
   const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
   const [selectedTime, setSelectedTime] = useState<TimeOption>(0);
   const [timeMenuOpen, setTimeMenuOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   // For now, assume levels 1-5 are unlocked for guests, more for registered
   const maxUnlockedLevel = user?.accountType === "REGISTERED" ? 19 : 5;
 
   const handleStartGame = () => {
-    setLoading(true);
-    // In a real app, this would navigate to the game screen with params
-    console.log("Starting match vs", selectedBot.name, selectedColor, selectedTime);
-    setTimeout(() => setLoading(false), 1000);
+    router.push(
+      `/game/vs-ai?botLevel=${selectedBot.level}&playerColor=${selectedColor}&timeSeconds=${selectedTime * 60}` as any,
+    );
   };
 
   const getTimeLabel = (time: number) => {
@@ -198,12 +196,11 @@ export default function SetupAiScreen() {
 
         {/* Start Button */}
         <TouchableOpacity 
-          style={styles.startButton} 
+          style={styles.startButton}
           onPress={handleStartGame}
-          disabled={loading}
         >
           <Text style={styles.startButtonText}>
-            {loading ? t("setupAi.start.loading", "Starting...") : `${t("setupAi.start.cta", "Start Game")} — ${selectedBot.name}`}
+            {`${t("setupAi.start.cta", "Start Game")} — ${selectedBot.name}`}
           </Text>
         </TouchableOpacity>
       </View>
