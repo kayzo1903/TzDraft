@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
+import { MkaguziProvider } from "../src/lib/game/mkaguzi-mobile";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../src/i18n";
 import { useFonts } from "expo-font";
@@ -92,30 +93,33 @@ export default function RootLayout() {
   // The LoadingScreen sits as an absolute overlay on top until auth is resolved.
   return (
     <I18nextProvider i18n={i18n}>
-      <View style={styles.container}>
-        {showHeader && <Header onMenuPress={() => setIsMenuVisible(true)} />}
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        >
-          <Stack.Screen name="welcome" options={{ headerShown: false }} />
-          <Stack.Screen name="index" options={{ title: "Home" }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="profile" options={{ title: "Profile" }} />
-          <Stack.Screen name="notifications" options={{ headerShown: false }} />
-        </Stack>
-        <SideMenu
-          isVisible={isMenuVisible}
-          onClose={() => setIsMenuVisible(false)}
-        />
-        {isLoading && (
-          <View style={styles.loadingOverlay}>
-            <LoadingScreen />
-          </View>
-        )}
-      </View>
+      <MkaguziProvider>
+        <View style={styles.container}>
+          {showHeader && <Header onMenuPress={() => setIsMenuVisible(true)} />}
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Screen name="welcome" options={{ headerShown: false }} />
+            <Stack.Screen name="index" options={{ title: "Home" }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ title: "Profile" }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
+            <Stack.Screen name="game/vs-ai" options={{ headerShown: false }} />
+          </Stack>
+          <SideMenu
+            isVisible={isMenuVisible}
+            onClose={() => setIsMenuVisible(false)}
+          />
+          {isLoading && (
+            <View style={styles.loadingOverlay}>
+              <LoadingScreen />
+            </View>
+          )}
+        </View>
+      </MkaguziProvider>
     </I18nextProvider>
   );
 }
