@@ -11,7 +11,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink } from "lucide-react-native";
+import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink, BookOpen, BookMarked } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
 import { authClient } from "../lib/auth-client";
@@ -29,7 +29,7 @@ interface SideMenuProps {
 }
 
 export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
   
@@ -203,6 +203,23 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                 label={t("nav.support", "Support")}
                 onPress={() => navigateTo("/support")}
               />
+              <NavItem
+                icon={FileText}
+                label={t("learn.articles", "Articles")}
+                onPress={() => openWebPage(`https://tzdraft.co.tz/${i18n.language}/learn`)}
+              />
+              <NavItem
+                icon={BookOpen}
+                label={t("learn.heading", "Learn")}
+                onPress={() => navigateTo("/learn")}
+              />
+              {isAuthenticated && user?.accountType !== "GUEST" && (
+                <NavItem
+                  icon={BookMarked}
+                  label={t("studies.title", "My Studies")}
+                  onPress={() => navigateTo("/game/studies")}
+                />
+              )}
 
               <View style={styles.divider} />
 

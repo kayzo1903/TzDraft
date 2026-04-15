@@ -20,6 +20,7 @@ import {
   UserPlus,
   Medal,
   Sparkles,
+  BookOpen,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 
@@ -164,6 +165,12 @@ export default function Home() {
             subtitle={t("freePlay.description", "Control both sides, manual board flip")}
             onPress={() => router.push("/game/free-play")}
             icon={<MiniBoard size={54} />}
+          />
+          <ServiceCard
+            title={t("learn.heading", "Learn & Master")}
+            subtitle={t("learn.subheading", "Study tactics, rules, and gamebooks")}
+            onPress={() => router.push("/learn")}
+            icon={<BookOpen size={54} color={colors.primary} />}
           />
         </View>
 

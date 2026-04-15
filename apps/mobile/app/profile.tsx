@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/auth-store";
 import { authClient } from "../src/lib/auth-client";
 import { useRouter } from "expo-router";
-import { User, LogOut, ChevronLeft, Settings, Shield, Bell } from "lucide-react-native";
+import { User, LogOut, ChevronLeft, Settings, Shield, Bell, BookMarked } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { colors } from "../src/theme/colors";
 
@@ -63,7 +63,17 @@ export default function ProfileScreen() {
             <Text style={styles.menuText}>Notifications</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push("/game/studies")}
+          >
+            <View style={styles.menuIconWrapper}>
+              <BookMarked color={colors.textMuted} size={20} />
+            </View>
+            <Text style={styles.menuText}>{t("studies.title", "My Studies")}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.menuItem}
             onPress={() => router.push("/support")}
           >

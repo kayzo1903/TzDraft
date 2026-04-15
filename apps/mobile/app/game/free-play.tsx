@@ -10,6 +10,8 @@ import {
   ScrollView,
   Modal,
   Switch,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -27,6 +29,10 @@ import {
   VolumeX,
   Crown,
   Minus,
+  BookmarkPlus,
+  BookMarked,
+  LogIn,
+  CheckCircle2,
 } from "lucide-react-native";
 import { ActivityIndicator } from "react-native";
 import { BoardState } from "@tzdraft/mkaguzi-engine";
@@ -34,6 +40,8 @@ import { colors } from "../../src/theme/colors";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
 import { useFreeGame } from "../../src/hooks/useFreeGame";
 import { useGameAudio } from "../../src/hooks/useGameAudio";
+import { useAuthStore } from "../../src/auth/auth-store";
+import { studyService } from "../../src/services/study.service";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -71,13 +79,17 @@ function OptionsModal({
   isMuted,
   onToggleMute,
   onHome,
+  onStudies,
   onClose,
+  showStudies,
 }: {
   visible: boolean;
   isMuted: boolean;
   onToggleMute: () => void;
   onHome: () => void;
+  onStudies: () => void;
   onClose: () => void;
+  showStudies: boolean;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -121,6 +133,19 @@ function OptionsModal({
                 </View>
                 <ChevronRight color={colors.textDisabled} size={16} />
               </TouchableOpacity>
+
+              {showStudies && (
+                <TouchableOpacity style={optionsStyles.row} onPress={onStudies}>
+                  <View style={[optionsStyles.rowIcon, { backgroundColor: colors.primaryAlpha10, borderColor: colors.primaryAlpha30 }]}>
+                    <BookMarked color={colors.primary} size={20} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={optionsStyles.rowTitle}>My Studies</Text>
+                    <Text style={optionsStyles.rowSub}>Browse your saved games</Text>
+                  </View>
+                  <ChevronRight color={colors.textDisabled} size={16} />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={optionsStyles.footer}>
@@ -131,6 +156,201 @@ function OptionsModal({
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// --- Save Feedback Modal (success / error) ---
+function SaveFeedbackModal({
+  visible,
+  type,
+  title,
+  message,
+  onClose,
+}: {
+  visible: boolean;
+  type: "success" | "error";
+  title: string;
+  message: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const isSuccess = type === "success";
+  const accent = isSuccess ? colors.primary : colors.danger;
+  const iconBg = isSuccess ? colors.primaryAlpha10 : "rgba(239,68,68,0.10)";
+  const iconBorder = isSuccess ? colors.primaryAlpha30 : "rgba(239,68,68,0.25)";
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={feedbackStyles.card}>
+            {/* Icon */}
+            <View style={[feedbackStyles.iconWrap, { backgroundColor: iconBg, borderColor: iconBorder }]}>
+              {isSuccess
+                ? <CheckCircle2 color={accent} size={36} />
+                : <X color={accent} size={36} />}
+            </View>
+
+            {/* Text */}
+            <Text style={[feedbackStyles.title, { color: accent }]}>{title}</Text>
+            <Text style={feedbackStyles.message}>{message}</Text>
+
+            {/* Action */}
+            <TouchableOpacity
+              style={[feedbackStyles.btn, { backgroundColor: accent }]}
+              onPress={onClose}
+            >
+              <Text style={feedbackStyles.btnText}>{t("common.done", "Done")}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// --- Login Required Modal ---
+function LoginRequiredModal({
+  visible,
+  onClose,
+  onLogin,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onLogin: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={saveStyles.card}>
+            <View style={saveStyles.header}>
+              <View style={[saveStyles.headerIconWrap, { backgroundColor: "rgba(245,158,11,0.12)", borderColor: "rgba(245,158,11,0.25)" }]}>
+                <LogIn color="#f59e0b" size={20} />
+              </View>
+              <Text style={saveStyles.headerTitle}>{t("freePlay.save.loginRequired", "Login Required")}</Text>
+              <TouchableOpacity onPress={onClose} style={saveStyles.closeBtn}>
+                <X color={colors.textMuted} size={18} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={saveStyles.body}>
+              <Text style={saveStyles.loginMsg}>
+                {t("freePlay.save.loginMessage", "You need an account to save studies. Your saved games help us build puzzles and playbooks for the community.")}
+              </Text>
+            </View>
+
+            <View style={saveStyles.footer}>
+              <TouchableOpacity style={saveStyles.cancelBtn} onPress={onClose}>
+                <Text style={saveStyles.cancelBtnText}>{t("common.cancel", "Cancel")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={saveStyles.saveBtn} onPress={onLogin}>
+                <LogIn color="#000" size={16} />
+                <Text style={saveStyles.saveBtnText}>{t("freePlay.save.loginAction", "Log In")}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// --- Save Study Modal ---
+function SaveStudyModal({
+  visible,
+  isSaving,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  isSaving: boolean;
+  onClose: () => void;
+  onSave: (name: string, description: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+
+  // Reset fields each time the modal opens
+  useEffect(() => {
+    if (visible) {
+      setName("");
+      setDescription("");
+    }
+  }, [visible]);
+
+  const canSave = name.trim().length > 0 && !isSaving;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={saveStyles.card}>
+              <View style={saveStyles.header}>
+                <View style={[saveStyles.headerIconWrap, { backgroundColor: colors.primaryAlpha10, borderColor: colors.primaryAlpha30 }]}>
+                  <BookmarkPlus color={colors.primary} size={20} />
+                </View>
+                <Text style={saveStyles.headerTitle}>{t("freePlay.save.title", "Save Study")}</Text>
+                <TouchableOpacity onPress={onClose} style={saveStyles.closeBtn} disabled={isSaving}>
+                  <X color={colors.textMuted} size={18} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={saveStyles.body}>
+                <Text style={saveStyles.fieldLabel}>{t("freePlay.save.nameLabel", "Name")} *</Text>
+                <TextInput
+                  style={saveStyles.input}
+                  placeholder={t("freePlay.save.namePlaceholder", "e.g. King endgame pattern")}
+                  placeholderTextColor={colors.textDisabled}
+                  value={name}
+                  onChangeText={setName}
+                  maxLength={120}
+                  editable={!isSaving}
+                  returnKeyType="next"
+                />
+
+                <Text style={[saveStyles.fieldLabel, { marginTop: 12 }]}>{t("freePlay.save.descLabel", "Description")} ({t("common.optional", "optional")})</Text>
+                <TextInput
+                  style={[saveStyles.input, saveStyles.inputMultiline]}
+                  placeholder={t("freePlay.save.descPlaceholder", "Describe what makes this position interesting…")}
+                  placeholderTextColor={colors.textDisabled}
+                  value={description}
+                  onChangeText={setDescription}
+                  maxLength={500}
+                  multiline
+                  numberOfLines={3}
+                  editable={!isSaving}
+                  textAlignVertical="top"
+                />
+
+                <Text style={saveStyles.helpText}>
+                  {t("freePlay.save.helpText", "Saved studies may be used by the TzDraft team to create puzzles and playbooks.")}
+                </Text>
+              </View>
+
+              <View style={saveStyles.footer}>
+                <TouchableOpacity style={saveStyles.cancelBtn} onPress={onClose} disabled={isSaving}>
+                  <Text style={saveStyles.cancelBtnText}>{t("common.cancel", "Cancel")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[saveStyles.saveBtn, !canSave && saveStyles.saveBtnDisabled]}
+                  onPress={() => onSave(name.trim(), description.trim())}
+                  disabled={!canSave}
+                >
+                  {isSaving
+                    ? <ActivityIndicator size="small" color="#000" />
+                    : <BookmarkPlus color="#000" size={16} />}
+                  <Text style={saveStyles.saveBtnText}>{isSaving ? t("freePlay.save.saving", "Saving…") : t("freePlay.save.saveAction", "Save")}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -219,8 +439,43 @@ export default function FreePlayScreen() {
   const { t } = useTranslation();
   const game = useFreeGame();
   const audio = useGameAudio();
+  const { isAuthenticated, user } = useAuthStore();
+  const isGuest = user?.accountType === "GUEST";
+  const hasSession = isAuthenticated && !isGuest;
 
   const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSavePress = () => {
+    if (!hasSession) {
+      setShowLoginModal(true);
+    } else {
+      setShowSaveModal(true);
+    }
+  };
+
+  const handleSave = async (name: string, description: string) => {
+    setIsSaving(true);
+    try {
+      await studyService.saveStudy({
+        name,
+        description: description || undefined,
+        fenHistory: game.fenHistory,
+        moveHistory: game.moveHistory,
+        moveCount: game.moveCount,
+      });
+      setShowSaveModal(false);
+      setShowSuccessModal(true);
+    } catch (err) {
+      setShowErrorModal(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // History scrolling & scrubbing
   const [viewingMoveIndex, setViewingMoveIndex] = useState<number | null>(null);
@@ -438,9 +693,18 @@ export default function FreePlayScreen() {
 
       {/* --- Action Bar --- */}
       <View style={styles.actionBar}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => setShowOptionsModal(true)}>
-          <Settings color={colors.textDisabled} size={22} />
-          <Text style={styles.actionBtnLabel}>Settings</Text>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={handleSavePress}
+          disabled={game.moveHistory.length === 0}
+        >
+          <BookmarkPlus
+            color={game.moveHistory.length > 0 ? colors.primary : colors.textDisabled}
+            size={22}
+          />
+          <Text style={[styles.actionBtnLabel, game.moveHistory.length > 0 && { color: colors.primary }]}>
+            {t("freePlay.save.saveAction", "Save")}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionBtn} onPress={game.toggleFlip}>
@@ -476,7 +740,42 @@ export default function FreePlayScreen() {
         isMuted={audio.isMuted}
         onToggleMute={audio.toggleMute}
         onHome={() => { setShowOptionsModal(false); router.back(); }}
+        onStudies={() => { setShowOptionsModal(false); router.push("/game/studies"); }}
         onClose={() => setShowOptionsModal(false)}
+        showStudies={hasSession}
+      />
+
+      {/* --- Login Required Modal --- */}
+      <LoginRequiredModal
+        visible={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={() => { setShowLoginModal(false); router.push("/(auth)/login"); }}
+      />
+
+      {/* --- Save Study Modal --- */}
+      <SaveStudyModal
+        visible={showSaveModal}
+        isSaving={isSaving}
+        onClose={() => setShowSaveModal(false)}
+        onSave={handleSave}
+      />
+
+      {/* --- Save Success Modal --- */}
+      <SaveFeedbackModal
+        visible={showSuccessModal}
+        type="success"
+        onClose={() => setShowSuccessModal(false)}
+        title={t("freePlay.save.successTitle", "Study Saved")}
+        message={t("freePlay.save.successMessage", "Your study has been saved. Thank you for contributing!")}
+      />
+
+      {/* --- Save Error Modal --- */}
+      <SaveFeedbackModal
+        visible={showErrorModal}
+        type="error"
+        onClose={() => setShowErrorModal(false)}
+        title={t("common.error", "Error")}
+        message={t("freePlay.save.errorMessage", "Failed to save the study. Please try again.")}
       />
 
       {/* --- Result Modal --- */}
@@ -693,6 +992,135 @@ const optionsStyles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   doneBtnText: { color: colors.foreground, fontSize: 14, fontWeight: "bold" },
+});
+
+// --- Save Feedback Modal Styles ---
+const feedbackStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: Math.min(SCREEN_WIDTH - 64, 320),
+    alignItems: "center",
+    padding: 32,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 72, height: 72, borderRadius: 36,
+    borderWidth: 1.5,
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+    textAlign: "center",
+  },
+  message: {
+    color: colors.textMuted,
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  btn: {
+    width: "100%",
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  btnText: {
+    color: "#000",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+});
+
+// --- Save / Login Modal Styles ---
+const saveStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    overflow: "hidden",
+    width: Math.min(SCREEN_WIDTH - 48, 360),
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerIconWrap: {
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center", justifyContent: "center",
+  },
+  headerTitle: { flex: 1, color: colors.foreground, fontSize: 15, fontWeight: "bold" },
+  closeBtn: { padding: 4 },
+  body: { padding: 18, gap: 4 },
+  fieldLabel: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: colors.foreground,
+    fontSize: 14,
+  },
+  inputMultiline: {
+    minHeight: 72,
+    paddingTop: 10,
+  },
+  helpText: {
+    color: colors.textDisabled,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 12,
+    fontStyle: "italic",
+  },
+  loginMsg: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: "row",
+    gap: 10,
+    padding: 16,
+    paddingTop: 8,
+  },
+  cancelBtn: {
+    flex: 1, height: 46, borderRadius: 12,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1, borderColor: colors.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  cancelBtnText: { color: colors.foreground, fontSize: 14, fontWeight: "bold" },
+  saveBtn: {
+    flex: 1.4, height: 46, borderRadius: 12,
+    backgroundColor: colors.primary,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+  },
+  saveBtnDisabled: { opacity: 0.4 },
+  saveBtnText: { color: "#000", fontSize: 14, fontWeight: "bold" },
 });
 
 // --- Result Modal Styles ---

@@ -14,6 +14,10 @@ import {
   PuzzleController,
   AdminPuzzleController,
 } from './controllers/puzzle.controller';
+import {
+  StudyController,
+  AdminStudyController,
+} from './controllers/study.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
 
@@ -38,6 +42,8 @@ import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.servic
     NotificationController,
     PuzzleController,
     AdminPuzzleController,
+    StudyController,
+    AdminStudyController,
   ],
   providers: [GetAiMoveUseCase, PuzzleMinerService],
 })
