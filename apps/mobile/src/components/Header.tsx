@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
         {/* Left Action */}
         <View style={styles.leftActions}>
@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
         </View>
 
         {/* Center Branding */}
-        <View style={styles.logoContainer}>
+        <View style={styles.logoContainer} pointerEvents="none">
           <Image
             source={require("../../assets/logo.png")}
             style={styles.logo}
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     height: 60,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   leftActions: {
     flex: 1,

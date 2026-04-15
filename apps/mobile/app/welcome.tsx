@@ -11,6 +11,19 @@ export default function Welcome() {
   const { t } = useTranslation();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { status, hasHydrated } = useAuthStore();
+
+  // If the user already has an active session (e.g. restored nav state from
+  // a previous Expo Go session, or they navigated here by mistake), send them
+  // straight to home.  We defer via setTimeout(0) so the navigation container
+  // finishes mounting before router.replace is called — same pattern as the
+  // root layout guard.
+  React.useEffect(() => {
+    if (!hasHydrated) return;
+    if (status === "authenticated" || status === "guest") {
+      setTimeout(() => router.replace("/"), 0);
+    }
+  }, [status, hasHydrated]);
 
   const handleGuestPlay = async () => {
     setIsLoading(true);

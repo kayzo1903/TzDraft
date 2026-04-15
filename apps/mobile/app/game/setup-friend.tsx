@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -30,8 +29,6 @@ import {
 } from "lucide-react-native";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { colors } from "../../src/theme/colors";
-
-const { width } = Dimensions.get("window");
 
 const TIME_OPTIONS = [0, 3, 5, 10, 30] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];

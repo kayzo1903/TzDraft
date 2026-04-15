@@ -7,7 +7,6 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
   ScrollView,
   Platform,
   Linking,
@@ -15,24 +14,24 @@ import {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { 
-  ArrowLeft, 
-  Trophy, 
-  Minus, 
-  X as XIcon, 
-  Clock3, 
-  BarChart3, 
+import {
+  ArrowLeft,
+  Trophy,
+  Minus,
+  X as XIcon,
+  Clock3,
+  BarChart3,
   ChevronRight,
   Filter,
   Cpu,
   Target,
-  Swords
+  Swords,
+  WifiOff,
+  RefreshCw
 } from "lucide-react-native";
 import { historyService, GameHistoryItem, PlayerStats, HistoryFilters } from "../../src/lib/history-service";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import { colors } from "../../src/theme/colors";
-
-const { width } = Dimensions.get("window");
 
 const PAGE_SIZE = 20;
 
@@ -46,6 +45,7 @@ export default function GameHistoryScreen() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [networkError, setNetworkError] = useState(false);
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [games, setGames] = useState<GameHistoryItem[]>([]);
   const [totalGames, setTotalGames] = useState(0);
@@ -57,7 +57,7 @@ export default function GameHistoryScreen() {
       const data = await historyService.getStats();
       setStats(data);
     } catch (error) {
-      console.error("[History] Stats failed:", error);
+      console.warn("[History] Stats failed:", error);
     } finally {
       setStatsLoading(false);
     }
@@ -66,6 +66,7 @@ export default function GameHistoryScreen() {
   const fetchGames = useCallback(async (pageNum = 0, currentFilters = filters) => {
     try {
       const { items, total } = await historyService.getHistory(pageNum * PAGE_SIZE, PAGE_SIZE, currentFilters);
+      setNetworkError(false);
       if (pageNum === 0) {
         setGames(items);
       } else {
@@ -73,7 +74,8 @@ export default function GameHistoryScreen() {
       }
       setTotalGames(total);
     } catch (error) {
-      console.error("[History] Games failed:", error);
+      console.warn("[History] Games failed:", error);
+      if (pageNum === 0) setNetworkError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -88,6 +90,7 @@ export default function GameHistoryScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
+    setNetworkError(false);
     setPage(0);
     fetchStats();
     fetchGames(0);
@@ -286,11 +289,23 @@ export default function GameHistoryScreen() {
         }
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.emptyState}>
-              <Swords size={48} color={colors.surfaceElevated} />
-              <Text style={styles.emptyTitle}>No games found</Text>
-              <Text style={styles.emptySubtitle}>Start your first match to see your history here!</Text>
-            </View>
+            networkError ? (
+              <View style={styles.emptyState}>
+                <WifiOff size={48} color={colors.surfaceElevated} />
+                <Text style={styles.emptyTitle}>Unable to connect</Text>
+                <Text style={styles.emptySubtitle}>Check your connection and try again.</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+                  <RefreshCw size={16} color={colors.primary} />
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Swords size={48} color={colors.surfaceElevated} />
+                <Text style={styles.emptyTitle}>No games found</Text>
+                <Text style={styles.emptySubtitle}>Start your first match to see your history here!</Text>
+              </View>
+            )
           ) : null
         }
       />
@@ -548,5 +563,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
-  }
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: colors.primaryAlpha10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+  },
+  retryText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
 });

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Animated,
   Easing,
   Platform,
@@ -24,8 +23,6 @@ import {
   Trophy
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
-
-const { width } = Dimensions.get("window");
 
 export default function OnlineLobby() {
   const { t } = useTranslation();
