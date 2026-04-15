@@ -26,12 +26,25 @@
     "historyDesc": "Review and analyze your past matches"
   },
   "game": {
-    "playOnline": "Play Online",
+    "playOnline": "Play Online 🌐",
     "onlineDescription": "Test your skills against players worldwide",
     "playAI": "Play vs AI",
     "aiDescription": "Challenge our top-tier neural engine",
     "playFriend": "Play vs Friend",
     "friendDescription": "Local or private online matches"
+  },
+  "freePlay": {
+    "title": "Free Play",
+    "description": "Control both sides, manual board flip",
+    "action": "Play Now",
+    "result": {
+      "whiteWins": "White Wins",
+      "blackWins": "Black Wins",
+      "draw": "Draw",
+      "noMovesForBlack": "White has no moves for Black",
+      "noMovesForWhite": "Black has no moves for White",
+      "drawEnded": "The game ended in a draw"
+    }
   },
   "hero": {
     "title": "Play TzDraft",
@@ -506,6 +519,7 @@
     "winnerInline": "Winner: {winner}",
     "actions": {
       "undo": "Undo",
+      "flip": "Flip Board",
       "resign": "End a Game",
       "reset": "Reset Game",
       "home": "Home",
