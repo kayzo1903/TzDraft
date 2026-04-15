@@ -143,7 +143,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                     <User color={colors.primary} size={32} />
                   </View>
                   <View>
-                    <Text style={styles.username}>{user?.username || user?.displayName || "User"}</Text>
+                    <Text style={styles.username}>{user?.displayName || user?.username || "User"}</Text>
                     <Text style={styles.email}>{user?.email}</Text>
                   </View>
                 </TouchableOpacity>
