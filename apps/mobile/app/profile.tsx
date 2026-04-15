@@ -53,14 +53,20 @@ export default function ProfileScreen() {
             <Text style={styles.menuText}>Account Settings</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push("/notifications")}
+          >
             <View style={styles.menuIconWrapper}>
               <Bell color={colors.textMuted} size={20} />
             </View>
             <Text style={styles.menuText}>Notifications</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push("/support")}
+          >
             <View style={styles.menuIconWrapper}>
               <Shield color={colors.textMuted} size={20} />
             </View>

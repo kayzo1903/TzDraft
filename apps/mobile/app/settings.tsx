@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Alert, Linking } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/auth-store";
 import { authClient } from "../src/lib/auth-client";
@@ -20,6 +21,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../src/i18n";
 import { colors } from "../src/theme/colors";
+import { SUPPORT_URLS } from "../src/lib/urls";
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
@@ -28,6 +30,18 @@ export default function SettingsScreen() {
   const [isNameModalVisible, setIsNameModalVisible] = React.useState(false);
   const [newName, setNewName] = React.useState(user?.displayName || "");
   const [isUpdating, setIsUpdating] = React.useState(false);
+
+  const openWebPage = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+        toolbarColor: colors.background,
+      });
+    } catch (error) {
+      console.error("Failed to open browser:", error);
+      Linking.openURL(url);
+    }
+  };
 
   React.useEffect(() => {
     if (user?.displayName) {
@@ -175,12 +189,12 @@ export default function SettingsScreen() {
           <SettingItem
             icon={FileText}
             label={t("settings.legal.policy", "Privacy Policy")}
-            onPress={() => {}}
+            onPress={() => openWebPage(SUPPORT_URLS.privacy)}
           />
           <SettingItem
             icon={HelpCircle}
             label={t("settings.legal.rules", "Game Rules")}
-            onPress={() => {}}
+            onPress={() => openWebPage(SUPPORT_URLS.rules)}
           />
         </Section>
 
