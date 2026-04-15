@@ -13,7 +13,8 @@
     "sw": "Swahili",
     "rules": "Game Rules",
     "privacy": "Privacy Policy",
-    "website": "Official Website"
+    "website": "Official Website",
+    "learn": "Learn Playbook"
   },
   "home": {
     "tagline": "Experience the finest draft platform",
@@ -44,7 +45,50 @@
       "noMovesForBlack": "White has no moves for Black",
       "noMovesForWhite": "Black has no moves for White",
       "drawEnded": "The game ended in a draw"
+    },
+    "save": {
+      "saveAction": "Save",
+      "title": "Save Study",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. King endgame pattern",
+      "descLabel": "Description",
+      "descPlaceholder": "Describe what makes this position interesting…",
+      "helpText": "Saved studies may be used by the TzDraft team to create puzzles and playbooks.",
+      "saving": "Saving…",
+      "loginRequired": "Login Required",
+      "loginMessage": "You need an account to save studies. Your saved games help us build puzzles and playbooks for the community.",
+      "loginAction": "Log In",
+      "successTitle": "Study Saved",
+      "successMessage": "Your study has been saved. Thank you for contributing!",
+      "errorMessage": "Failed to save the study. Please try again."
     }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "optional": "optional",
+    "error": "Error",
+    "done": "Done",
+    "back": "Back",
+    "retry": "Retry"
+  },
+  "studies": {
+    "title": "My Studies",
+    "homeSubtitle": "Browse and replay your saved Free Play studies",
+    "badge": "FREE PLAY",
+    "replayBadge": "STUDY REPLAY",
+    "moves": "moves",
+    "move": "Move",
+    "loadError": "Failed to load studies. Please try again.",
+    "emptyTitle": "No Studies Yet",
+    "emptySubtitle": "Play a Free Play game and tap Save to record interesting positions.",
+    "goPlay": "Open Free Play",
+    "startPosition": "Start position",
+    "start": "Start",
+    "end": "End",
+    "prev": "Prev",
+    "next": "Next",
+    "noDescription": "No description provided.",
+    "loading": "Loading your studies…"
   },
   "hero": {
     "title": "Play TzDraft",
@@ -90,6 +134,15 @@
         "desc": "Review your games move by move with engine assistance."
       }
     }
+  },
+  "learn": {
+    "heading": "Learn Playbook",
+    "subheading": "Study tactics, rules, and gamebooks to improve your game.",
+    "articles": "Articles",
+    "tactics": "Tactics Playbook",
+    "gamebooks": "Gamebook (kopi)",
+    "onProgress": "In Progress",
+    "more": "View All"
   },
   "auth": {
     "login": {

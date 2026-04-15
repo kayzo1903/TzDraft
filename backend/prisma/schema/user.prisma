@@ -48,7 +48,7 @@ model User {
     matchmakingSearches    MatchmakingSearch[]
     notifications          Notification[]         @relation("UserNotifications")
     puzzleAttempts         PuzzleAttempt[]
-
+    savedStudies           SavedStudy[]
 
     @@index([country])
     @@index([country, region])

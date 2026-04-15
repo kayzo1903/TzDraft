@@ -1,0 +1,28 @@
+// ============================================
+// STUDY DOMAIN — User-saved Free Play sessions
+// Company uses PENDING studies to create puzzles and playbooks.
+// ============================================
+
+model SavedStudy {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  /// Full FEN history — one entry per position (including the starting FEN).
+  fenHistory  Json     @map("fen_history")
+  /// Move records: [{from, to, notation, player, captureCount}, …]
+  moveHistory Json     @map("move_history")
+  moveCount   Int      @map("move_count")
+
+  /// PENDING → company review; REVIEWED → processed into puzzle/playbook
+  status      String   @default("PENDING")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("saved_studies")
+}
