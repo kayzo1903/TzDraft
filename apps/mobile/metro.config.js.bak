@@ -1,0 +1,11 @@
+const { getDefaultConfig } = require("expo/metro-config");
+const { withNativeWind } = require("nativewind/metro");
+const path = require("path");
+const { pathToFileURL } = require("url");
+
+const config = getDefaultConfig(__dirname);
+
+// Windows ESM path formatting fix for NativeWind v4 internal dynamic imports
+const globalCssPath = pathToFileURL(path.join(__dirname, "global.css")).href;
+
+module.exports = withNativeWind(config, { input: globalCssPath });
