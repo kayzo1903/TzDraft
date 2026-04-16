@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const SANITY_PROJECT_ID = "wvztgicc";
-const SANITY_DATASET = "production";
+const SANITY_PROJECT_ID = process.env.EXPO_PUBLIC_SANITY_PROJECT_ID || "wvztgicc";
+const SANITY_DATASET = process.env.EXPO_PUBLIC_SANITY_DATASET || "production";
 const SANITY_API_VERSION = "2026-03-18";
 
 const BASE_URL = `https://${SANITY_PROJECT_ID}.api.sanity.io/v${SANITY_PROJECT_ID === "wvztgicc" ? "2021-10-21" : SANITY_API_VERSION}/data/query/${SANITY_DATASET}`;
