@@ -19,6 +19,8 @@ import {
   ArrowRight,
   UserPlus,
   Medal,
+  Sparkles,
+  BookOpen,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 
@@ -150,13 +152,25 @@ export default function Home() {
             title={t("game.playAI", "Play vs AI")}
             subtitle={t("game.aiDescription", "Challenge our top-tier neural engine")}
             onPress={() => router.push("/game/setup-ai")}
-            icon={<Cpu size={32} color={colors.primary} />}
+            icon={<Cpu size={54} color={colors.primary} />}
           />
           <ServiceCard
             title={t("game.playFriend", "Play vs Friend")}
             subtitle={t("game.friendDescription", "Local or private online matches")}
             onPress={() => router.push("/game/setup-friend")}
-            icon={<Users size={32} color={colors.primary} />}
+            icon={<Users size={54} color={colors.primary} />}
+          />
+          <ServiceCard
+            title={t("freePlay.title", "Free Play")}
+            subtitle={t("freePlay.description", "Control both sides, manual board flip")}
+            onPress={() => router.push("/game/free-play")}
+            icon={<MiniBoard size={54} />}
+          />
+          <ServiceCard
+            title={t("learn.heading", "Learn & Master")}
+            subtitle={t("learn.subheading", "Study tactics, rules, and gamebooks")}
+            onPress={() => router.push("/learn")}
+            icon={<BookOpen size={54} color={colors.primary} />}
           />
         </View>
 
@@ -172,7 +186,7 @@ export default function Home() {
             title={t("home.tournaments", "Tournaments")}
             subtitle={t("home.tournamentDesc", "Join official prize tournaments")}
             onPress={() => router.push("/game/tournaments")}
-            icon={<Trophy size={32} color={colors.primary} />}
+            icon={<Trophy size={54} color={colors.primary} />}
           />
 
           {!isGuest && (
@@ -216,7 +230,7 @@ export default function Home() {
                 title={t("home.history", "Game History")}
                 subtitle={t("home.historyDesc", "Review and analyze your past matches")}
                 onPress={() => router.push("/game/history")}
-                icon={<History size={32} color={colors.primary} />}
+                icon={<History size={54} color={colors.primary} />}
               />
             </>
           )}
@@ -225,7 +239,7 @@ export default function Home() {
             title={t("home.leaderboard", "Leaderboard")}
             subtitle={t("home.leaderboardDesc", "View global rankings and top players")}
             onPress={() => router.push("/game/leaderboard")}
-            icon={<Medal size={32} color={colors.primary} />}
+            icon={<Medal size={54} color={colors.primary} />}
           />
         </View>
 

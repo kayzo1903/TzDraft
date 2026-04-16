@@ -13,7 +13,8 @@
     "sw": "Kiswahili",
     "rules": "Sheria za Mchezo",
     "privacy": "Sera ya Faragha",
-    "website": "Tovuti Rasmi"
+    "website": "Tovuti Rasmi",
+    "learn": "Jifunze Kopi"
   },
   "home": {
     "tagline": "Pata uzoefu wa jukwaa bora la drafti",
@@ -26,12 +27,68 @@
     "historyDesc": "Kagua na uchambue mechi zako za zamani"
   },
   "game": {
-    "playOnline": "Cheza Mtandaoni",
+    "playOnline": "Cheza Mtandaoni 🌐",
     "onlineDescription": "Pima ujuzi wako dhidi ya wachezaji ulimwenguni kote",
     "playAI": "Cheza na AI",
     "aiDescription": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish",
     "playFriend": "Cheza na Rafiki",
     "friendDescription": "Mechi za ana kwa ana au za mtandaoni"
+  },
+  "freePlay": {
+    "title": "Mazoezi Huria",
+    "description": "Cheza pande zote, geuza ubao mwenyewe",
+    "action": "Anza Sasa",
+    "result": {
+      "whiteWins": "Meupe Washinda",
+      "blackWins": "Weusi Washinda",
+      "draw": "Sare",
+      "noMovesForBlack": "Meupe hawezi kusonga kwa Weusi",
+      "noMovesForWhite": "Weusi hawezi kusonga kwa Meupe",
+      "drawEnded": "Mchezo uliishia sare"
+    },
+    "save": {
+      "saveAction": "Hifadhi",
+      "title": "Hifadhi Mchezo",
+      "nameLabel": "Jina",
+      "namePlaceholder": "mfano: Mkakati wa mwisho wa mchezo",
+      "descLabel": "Maelezo",
+      "descPlaceholder": "Eleza kinachofanya nafasi hii kuwa ya kuvutia…",
+      "helpText": "Michezo iliyohifadhiwa inaweza kutumika na timu ya TzDraft kuunda mafumbo na vitabu vya michezo.",
+      "saving": "Inahifadhi…",
+      "loginRequired": "Ingia Kwanza",
+      "loginMessage": "Unahitaji akaunti ili kuhifadhi michezo yako ya mazoezi. Michezo yako inasaidia timu kuunda mafumbo na vitabu vya michezo.",
+      "loginAction": "Ingia",
+      "successTitle": "Mchezo Umehifadhiwa",
+      "successMessage": "Mchezo wako umehifadhiwa. Asante kwa mchango wako!",
+      "errorMessage": "Imeshindwa kuhifadhi mchezo. Tafadhali jaribu tena."
+    }
+  },
+  "common": {
+    "cancel": "Ghairi",
+    "optional": "si lazima",
+    "error": "Hitilafu",
+    "done": "Imekamilika",
+    "back": "Rudi",
+    "retry": "Jaribu Tena"
+  },
+  "studies": {
+    "title": "Michezo Yangu",
+    "homeSubtitle": "Tazama na rudia michezo yako ya mazoezi iliyohifadhiwa",
+    "badge": "MAZOEZI HURIA",
+    "replayBadge": "KURUDIA MCHEZO",
+    "moves": "hatua",
+    "move": "Hatua",
+    "loadError": "Imeshindwa kupakia michezo. Tafadhali jaribu tena.",
+    "emptyTitle": "Hakuna Michezo Bado",
+    "emptySubtitle": "Cheza mchezo wa Mazoezi Huria na bonyeza Hifadhi kurekodi nafasi za kuvutia.",
+    "goPlay": "Fungua Mazoezi Huria",
+    "startPosition": "Nafasi ya mwanzo",
+    "start": "Mwanzo",
+    "end": "Mwisho",
+    "prev": "Nyuma",
+    "next": "Mbele",
+    "noDescription": "Hakuna maelezo yaliyotolewa.",
+    "loading": "Inapakia michezo yako…"
   },
   "hero": {
     "title": "Cheza TzDraft",
@@ -77,6 +134,15 @@
         "desc": "Kagua michezo yako hatua kwa hatua kwa msaada wa injini."
       }
     }
+  },
+  "learn": {
+    "heading": "Jifunze Kopi",
+    "subheading": "Soma mbinu, sheria, na gamebook ili kuboresha mchezo wako.",
+    "articles": "Makala",
+    "tactics": "Mbinu za Playbook",
+    "gamebooks": "Gamebook (kopi)",
+    "onProgress": "Inaandaliwa",
+    "more": "Angalia Zote"
   },
   "auth": {
     "login": {
@@ -506,6 +572,7 @@
     "winnerInline": "Mshindi: {winner}",
     "actions": {
       "undo": "Rudisha",
+      "flip": "Geuza Ubao",
       "resign": "Jisalimishe",
       "reset": "Anza Upya",
       "home": "Nyumbani",
