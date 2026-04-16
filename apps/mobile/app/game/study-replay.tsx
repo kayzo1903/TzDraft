@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -58,13 +59,7 @@ export default function StudyReplayScreen() {
   }, [posIndex]);
 
   if (isLoading) {
-    return (
-      <SafeAreaView style={styles.root}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingScreen />;
   }
 
   if (error || !study) {

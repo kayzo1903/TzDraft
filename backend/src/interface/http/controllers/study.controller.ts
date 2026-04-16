@@ -1,9 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -11,7 +15,7 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../../auth/guards/admin.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { SaveStudyDto } from '../dtos/study.dto';
+import { SaveStudyDto, UpdateStudyDto } from '../dtos/study.dto';
 
 /**
  * Player-facing: /studies
@@ -93,6 +97,57 @@ export class StudyController {
     }
 
     return { data: study };
+  }
+
+  /** Rename / update description. Only the owner may edit. */
+  @Patch(':id')
+  async updateStudy(
+    @Param('id') id: string,
+    @Body() dto: UpdateStudyDto,
+    @CurrentUser() user: any,
+  ) {
+    const existing = await this.prisma.savedStudy.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!existing || existing.userId !== user.id) {
+      throw new NotFoundException('Study not found');
+    }
+
+    const updated = await this.prisma.savedStudy.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.description !== undefined && { description: dto.description }),
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        moveCount: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    return { data: updated };
+  }
+
+  /** Delete a study. Only the owner may delete. */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteStudy(@Param('id') id: string, @CurrentUser() user: any) {
+    const existing = await this.prisma.savedStudy.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!existing || existing.userId !== user.id) {
+      throw new NotFoundException('Study not found');
+    }
+
+    await this.prisma.savedStudy.delete({ where: { id } });
   }
 }
 
