@@ -8,6 +8,19 @@ import {
   Min,
 } from 'class-validator';
 
+export class UpdateStudyDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+}
+
 export class SaveStudyDto {
   @IsString()
   @IsNotEmpty()

@@ -33,10 +33,15 @@ class AuthClient {
    */
   async init() {
     const state = useAuthStore.getState();
-    
+
     // Optimistically trust local session if it exists
     if (!state.user) {
       state.setStatus("unauthenticated");
+      return null;
+    }
+
+    // Local-only guest — no token, nothing to sync with the backend
+    if (!state.token) {
       return null;
     }
 
@@ -114,25 +119,21 @@ class AuthClient {
     return api.post("/auth/verify-otp", { phoneNumber, code, purpose });
   }
   
-  async loginAsGuest() {
-    useAuthStore.getState().setStatus("transitioning");
-    try {
-      const response = await api.post("/auth/guest");
-      const { accessToken, refreshToken, user } = response.data;
-
-      // Save tokens and user
-      useAuthStore.getState().setToken(accessToken);
-      useAuthStore.getState().setUser(user);
-      if (refreshToken) {
-        await SecureStore.setItemAsync("refreshToken", refreshToken);
-      }
-
-      useAuthStore.getState().setStatus("guest");
-      return response.data;
-    } catch (error) {
-      useAuthStore.getState().setStatus("unauthenticated");
-      throw error;
-    }
+  /**
+   * Enter guest mode entirely locally — no network call, no DB row.
+   * The guest identity lives only in memory for this session; it is never
+   * persisted to SecureStore (enforced by the store's partialize) so the
+   * next app open starts from unauthenticated again.
+   */
+  loginAsLocalGuest() {
+    const store = useAuthStore.getState();
+    store.setUser({
+      id: `guest-${Date.now()}`,
+      displayName: "Guest",
+      accountType: "GUEST",
+    });
+    // token stays null — axios interceptor attaches no Authorization header
+    store.setStatus("guest");
   }
 
   async loginWithGoogle() {
@@ -209,6 +210,10 @@ class AuthClient {
     // With token = null, the interceptor attaches nothing, so the server evaluates
     // the request by the refresh token in the body alone, as intended.
     store.logout();
+
+    // Clear all in-memory caches that are user-specific so the next session
+    // (same or different user) starts completely fresh.
+    aiChallengeService.clearCache();
 
     try {
       if (refreshToken) {

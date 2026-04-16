@@ -7,7 +7,11 @@ const PIECE_BG = "#262522";
 const PIECE_BORDER = "#3d3d3d";
 const RING_BORDER = "#555555";
 
-export const LoadingScreen: React.FC = () => {
+interface LoadingScreenProps {
+  message?: string;
+}
+
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ message }) => {
   // Checker bounce
   const bounceAnim = useRef(new Animated.Value(0)).current;
   // Glow pulse
@@ -133,7 +137,7 @@ export const LoadingScreen: React.FC = () => {
         <View style={styles.textBlock}>
           {/* "TzDraft" pulsing title */}
           <Animated.Text style={[styles.title, { opacity: titleAnim }]}>
-            TzDraft
+            {message || "TzDraft"}
           </Animated.Text>
 
           {/* 3 staggered orange dots */}

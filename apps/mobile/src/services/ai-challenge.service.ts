@@ -52,6 +52,12 @@ class AiChallengeService {
     return progression;
   }
 
+  /** Reset the in-memory cache. Must be called on logout so the next user
+   *  gets a fresh fetch rather than inheriting the previous session's data. */
+  clearCache(): void {
+    this._progression = null;
+  }
+
   async syncLocalProgress(
     completedLevels: number[],
     maxUnlockedAiLevel: number,
