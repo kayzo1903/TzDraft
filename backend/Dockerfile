@@ -1,7 +1,8 @@
 # Stage 0: Mkaguzi Linux build
 FROM ubuntu:24.04 AS mkaguzi-builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends cmake g++ make && \
+RUN for i in 1 2 3; do apt-get update --fix-missing && break || sleep 10; done && \
+    apt-get install -y --no-install-recommends cmake g++ make && \
     rm -rf /var/lib/apt/lists/*
 
 COPY engines/core/ /mkaguzi/
