@@ -2,12 +2,15 @@ const { createClient } = require("@sanity/client");
 const fs = require("fs");
 const path = require("path");
 
+// Load environment variables from .env.local
+require("dotenv").config({ path: path.resolve(__dirname, "../.env.local") });
+
 const client = createClient({
-  projectId: "wvztgicc",
-  dataset: "production",
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || "wvztgicc",
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || "production",
   useCdn: false,
   apiVersion: "2026-03-18",
-  token: "sktoZnelQRPE1MF894TKclO6l0UHjr6XjrtfgoH5Jr0jUAh28i5ivTC22xOCGMYAbWmj3t9l2Hl4swzObz2TQcvDk0CcxJKNQaSxJCVWTkv3oW2KmlwNxmrtPUM8PUieNZhxdQ6MC6b1NOY4VFdvtwwDrZHQe6vMYWq0THeAmSS5D91V1qbX"
+  token: process.env.SANITY_WRITE_TOKEN
 });
 
 async function getCategories() {
