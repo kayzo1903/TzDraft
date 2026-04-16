@@ -49,6 +49,37 @@ export interface LeaderboardFilters {
   region?: string;
 }
 
+export interface ReplayMove {
+  id: string;
+  moveNumber: number;
+  player: "WHITE" | "BLACK";
+  fromSquare: number;
+  toSquare: number;
+  capturedSquares: number[];
+  isPromotion: boolean;
+  notation: string;
+  createdAt: string;
+}
+
+export interface GameReplayData {
+  game: {
+    id: string;
+    status: string;
+    winner: string | null;
+    endReason: string | null;
+    whitePlayerId: string;
+    blackPlayerId: string | null;
+    gameType: string;
+    createdAt: string;
+    endedAt: string | null;
+  };
+  players: {
+    white: { id: string; displayName: string } | null;
+    black: { id: string; displayName: string } | null;
+  };
+  moves: ReplayMove[];
+}
+
 // ── Service ────────────────────────────────────────────────────
 
 export const historyService = {
@@ -70,6 +101,11 @@ export const historyService = {
 
   async getStats(): Promise<PlayerStats> {
     const res = await api.get("/games/stats");
+    return res.data.data;
+  },
+
+  async getReplay(gameId: string): Promise<GameReplayData> {
+    const res = await api.get(`/games/${gameId}/replay`);
     return res.data.data;
   },
 
