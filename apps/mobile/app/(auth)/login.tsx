@@ -18,6 +18,7 @@ import { ChevronLeft, Mail, Lock, Eye, EyeOff, Check } from "lucide-react-native
 import * as SecureStore from "expo-secure-store";
 import { authClient } from "../../src/lib/auth-client";
 import { GoogleIcon } from "../../src/components/icons/GoogleIcon";
+import { colors } from "../../src/theme/colors";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load remembered identifier on mount
@@ -45,6 +47,22 @@ export default function LoginScreen() {
     };
     loadSavedIdentifier();
   }, []);
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await authClient.loginWithGoogle();
+      // Navigation handled by the root guard on status change.
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (!msg.includes("cancelled") && !msg.includes("dismissed")) {
+        setError(t("auth.errors.google_failed", "Google sign-in failed. Please try again."));
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!identifier || !password) {
@@ -92,7 +110,7 @@ export default function LoginScreen() {
               onPress={() => router.back()}
               style={styles.backButton}
             >
-              <ChevronLeft size={24} color="#a3a3a3" />
+              <ChevronLeft size={24} color={colors.textMuted} />
             </TouchableOpacity>
 
             <View style={styles.welcomeSection}>
@@ -117,7 +135,7 @@ export default function LoginScreen() {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <View style={styles.inputIcon}>
-                  <Mail size={20} color="#525252" />
+                  <Mail size={20} color={colors.textDisabled} />
                 </View>
                 <TextInput
                   placeholder={t("auth.login.identifierPlaceholder", "Email or Username")}
@@ -131,7 +149,7 @@ export default function LoginScreen() {
 
               <View style={styles.inputContainer}>
                 <View style={styles.inputIcon}>
-                  <Lock size={20} color="#525252" />
+                  <Lock size={20} color={colors.textDisabled} />
                 </View>
                 <TextInput
                   placeholder={t("fields.password", "Password")}
@@ -146,9 +164,9 @@ export default function LoginScreen() {
                   style={styles.eyeIcon}
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color="#525252" />
+                    <EyeOff size={20} color={colors.textDisabled} />
                   ) : (
-                    <Eye size={20} color="#525252" />
+                    <Eye size={20} color={colors.textDisabled} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -191,9 +209,19 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              <TouchableOpacity style={styles.googleBtn}>
-                <GoogleIcon size={24} />
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              <TouchableOpacity
+                style={[styles.googleBtn, isGoogleLoading && styles.btnDisabled]}
+                onPress={handleGoogleLogin}
+                disabled={isGoogleLoading || isLoading}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={colors.textSecondary} />
+                ) : (
+                  <>
+                    <GoogleIcon size={24} />
+                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -219,7 +247,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#020205",
+    backgroundColor: colors.background,
   },
   glowTop: {
     position: "absolute",
@@ -227,7 +255,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 300,
-    backgroundColor: "rgba(249, 115, 22, 0.15)",
+    backgroundColor: colors.primaryAlpha15,
     borderRadius: 150,
     transform: [{ scaleX: 2 }],
   },
@@ -245,7 +273,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 22,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     marginBottom: 32,
   },
   welcomeSection: {
@@ -253,7 +281,7 @@ const styles = StyleSheet.create({
   },
   stationLabel: {
     fontSize: 10,
-    color: "#737373",
+    color: colors.textSubtle,
     textTransform: "uppercase",
     letterSpacing: 4,
     marginBottom: 8,
@@ -261,12 +289,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: "900",
-    color: "#ffffff",
+    color: colors.foreground,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: "#a3a3a3",
+    color: colors.textMuted,
     lineHeight: 22,
   },
   errorContainer: {
@@ -278,7 +306,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorText: {
-    color: "#f87171",
+    color: colors.danger,
     fontSize: 14,
     textAlign: "center",
   },
@@ -289,9 +317,9 @@ const styles = StyleSheet.create({
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     borderRadius: 16,
     height: 60,
   },
@@ -302,7 +330,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: "#ffffff",
+    color: colors.foreground,
     fontSize: 16,
   },
   eyeIcon: {
@@ -326,30 +354,30 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#404040",
-    backgroundColor: "#111",
+    borderColor: colors.textDisabled,
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   checkboxChecked: {
-    backgroundColor: "#d97706",
-    borderColor: "#d97706",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   rememberMeText: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 13,
   },
   forgotPass: {
     alignSelf: "flex-end",
   },
   forgotPassText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 2,
   },
   loginBtn: {
-    backgroundColor: "#d97706",
+    backgroundColor: colors.primary,
     borderRadius: 16,
     height: 60,
     alignItems: "center",
@@ -360,7 +388,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loginBtnText: {
-    color: "#ffffff",
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -374,10 +402,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: colors.border,
   },
   dividerText: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 10,
     textTransform: "uppercase",
     letterSpacing: 4,
@@ -386,8 +414,8 @@ const styles = StyleSheet.create({
   googleBtn: {
     flexDirection: "row",
     borderWidth: 1,
-    borderColor: "#262626",
-    backgroundColor: "#111",
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     height: 60,
     alignItems: "center",
@@ -395,7 +423,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   googleBtnText: {
-    color: "#d4d4d4",
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -407,11 +435,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   footerText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
   },
   signupLink: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 14,
     fontWeight: "bold",
   },

@@ -24,6 +24,7 @@ import {
 } from "lucide-react-native";
 import { authClient } from "../../src/lib/auth-client";
 import { GoogleIcon } from "../../src/components/icons/GoogleIcon";
+import { colors } from "../../src/theme/colors";
 
 type Step = "phone" | "otp" | "details";
 
@@ -37,7 +38,23 @@ export default function SignupScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGoogleSignup = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    try {
+      await authClient.loginWithGoogle();
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (!msg.includes("cancelled") && !msg.includes("dismissed")) {
+        setError("Google sign-in failed. Please try again.");
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleNextStep = async () => {
     setIsLoading(true);
@@ -133,13 +150,13 @@ export default function SignupScreen() {
                 onPress={() => step === "phone" ? router.back() : setStep(step === "otp" ? "phone" : "otp")}
                 style={styles.backButton}
               >
-                <ChevronLeft size={24} color="#a3a3a3" />
+                <ChevronLeft size={24} color={colors.textMuted} />
               </TouchableOpacity>
               
               <View style={styles.stepIcon}>
-                {step === "phone" && <Smartphone size={24} color="#f59e0b" />}
-                {step === "otp" && <Lock size={24} color="#f59e0b" />}
-                {step === "details" && <UserCircle size={24} color="#f59e0b" />}
+                {step === "phone" && <Smartphone size={24} color={colors.primary} />}
+                {step === "otp" && <Lock size={24} color={colors.primary} />}
+                {step === "details" && <UserCircle size={24} color={colors.primary} />}
               </View>
             </View>
 
@@ -240,9 +257,19 @@ export default function SignupScreen() {
                     <View style={styles.dividerLine} />
                   </View>
 
-                  <TouchableOpacity style={styles.googleBtn}>
-                    <GoogleIcon size={24} />
-                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  <TouchableOpacity
+                    style={[styles.googleBtn, isGoogleLoading && { opacity: 0.7 }]}
+                    onPress={handleGoogleSignup}
+                    disabled={isGoogleLoading || isLoading}
+                  >
+                    {isGoogleLoading ? (
+                      <ActivityIndicator color={colors.textSecondary} />
+                    ) : (
+                      <>
+                        <GoogleIcon size={24} />
+                        <Text style={styles.googleBtnText}>Continue with Google</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </>
               )}
@@ -270,7 +297,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   glowTop: {
     position: "absolute",
@@ -278,7 +305,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 250,
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     borderRadius: 125,
     transform: [{ scaleX: 2.5 }],
   },
@@ -302,7 +329,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 22,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
   },
   stepIcon: {
     height: 60,
@@ -310,9 +337,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 30,
-    backgroundColor: "rgba(245, 158, 11, 0.05)",
+    backgroundColor: colors.primaryAlpha05,
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    borderColor: colors.primaryAlpha15,
   },
   indicatorContainer: {
     flexDirection: "row",
@@ -322,12 +349,12 @@ const styles = StyleSheet.create({
   },
   indicatorLabel: {
     fontSize: 10,
-    color: "#737373",
+    color: colors.textSubtle,
     textTransform: "uppercase",
     letterSpacing: 4,
   },
   stepBadge: {
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -335,7 +362,7 @@ const styles = StyleSheet.create({
   stepText: {
     fontSize: 10,
     fontWeight: "bold",
-    color: "#f59e0b",
+    color: colors.primary,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
@@ -345,12 +372,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "900",
-    color: "#ffffff",
+    color: colors.foreground,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: "#a3a3a3",
+    color: colors.textMuted,
     lineHeight: 22,
   },
   errorContainer: {
@@ -362,7 +389,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   errorText: {
-    color: "#f87171",
+    color: colors.danger,
     fontSize: 14,
     textAlign: "center",
   },
@@ -370,16 +397,16 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   inputCard: {
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     height: 64,
     justifyContent: "center",
   },
   phoneInput: {
-    color: "#ffffff",
+    color: colors.foreground,
     fontSize: 20,
     fontWeight: "600",
   },
@@ -391,21 +418,21 @@ const styles = StyleSheet.create({
   otpBox: {
     width: 48,
     height: 60,
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   otpBoxFilled: {
-    borderColor: "#f59e0b",
-    backgroundColor: "rgba(245, 158, 11, 0.05)",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryAlpha05,
   },
   otpChar: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: colors.foreground,
   },
   hiddenInput: {
     position: "absolute",
@@ -417,20 +444,20 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   inputContainer: {
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     height: 60,
     justifyContent: "center",
   },
   input: {
-    color: "#ffffff",
+    color: colors.foreground,
     fontSize: 16,
   },
   actionBtn: {
-    backgroundColor: "#d97706",
+    backgroundColor: colors.primary,
     borderRadius: 16,
     height: 60,
     alignItems: "center",
@@ -446,7 +473,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionBtnText: {
-    color: "#ffffff",
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -460,11 +487,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   footerText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
   },
   loginLink: {
-    color: "#f59e0b",
+    color: colors.primary,
     fontSize: 14,
     fontWeight: "bold",
   },
@@ -476,10 +503,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: colors.border,
   },
   dividerText: {
-    color: "#525252",
+    color: colors.textDisabled,
     fontSize: 10,
     textTransform: "uppercase",
     letterSpacing: 4,
@@ -488,8 +515,8 @@ const styles = StyleSheet.create({
   googleBtn: {
     flexDirection: "row",
     borderWidth: 1,
-    borderColor: "#262626",
-    backgroundColor: "#111",
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     height: 60,
     alignItems: "center",
@@ -497,7 +524,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   googleBtnText: {
-    color: "#d4d4d4",
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: "600",
   },

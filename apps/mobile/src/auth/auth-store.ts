@@ -13,6 +13,7 @@ export type AuthStatus = "loading" | "unauthenticated" | "guest" | "authenticate
 
 interface User {
   id: string;
+  phoneNumber?: string;
   email?: string;
   username?: string;
   displayName?: string;
@@ -44,13 +45,17 @@ export const useAuthStore = create<AuthState>()(
       hasHydrated: false,
       setUser: (user) => set((state) => {
         let status: AuthStatus = "unauthenticated";
+
         if (user) {
           status = user.accountType === "GUEST" ? "guest" : "authenticated";
         }
-        return { 
-          user, 
+
+        const normalizedUser = user ? { ...user, rating: user.rating ?? 1200 } : null;
+
+        return {
+          user: normalizedUser,
           isAuthenticated: !!user,
-          status: state.status === "transitioning" ? "transitioning" : status 
+          status: state.status === "transitioning" ? "transitioning" : status
         };
       }),
       setToken: (token) => set({ token }),
@@ -63,14 +68,26 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "tzdraft-auth-storage",
       storage: createJSONStorage(() => secureStorage),
+      // Guest sessions are ephemeral — never write them to SecureStore.
+      // Only persist registered/OAuth users so they skip the welcome page on reopen.
+      partialize: (state) => {
+        if (!state.user || state.user.accountType === "GUEST") {
+          return { user: null, token: null };
+        }
+        return { user: state.user, token: state.token };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
-          state.setHasHydrated(true);
-          // Derive status from rehydrated user
-          if (state.user) {
-            state.setStatus(state.user.accountType === "GUEST" ? "guest" : "authenticated");
+          state.hasHydrated = true;
+          // Guard against stale guest data that may already be in storage.
+          if (state.user && state.user.accountType !== "GUEST") {
+            state.isAuthenticated = true;
+            state.status = "authenticated";
           } else {
-            state.setStatus("unauthenticated");
+            state.user = null;
+            state.token = null;
+            state.isAuthenticated = false;
+            state.status = "unauthenticated";
           }
         }
       },

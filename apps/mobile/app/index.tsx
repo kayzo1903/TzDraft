@@ -1,25 +1,28 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, ScrollView, SafeAreaView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, ScrollView, Dimensions, Modal } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../src/auth/auth-store";
-import { authClient } from "../src/lib/auth-client";
 import api from "../src/lib/api";
 import { MiniBoard } from "../src/components/MiniBoard";
 import { ServiceCard } from "../src/components/ServiceCard";
-import { 
-  Trophy, 
-  History, 
-  Zap, 
-  Timer, 
-  Clock, 
-  Layers, 
-  Users, 
+import {
+  Trophy,
+  History,
+  Zap,
+  Timer,
+  Clock,
+  Layers,
+  Users,
   Cpu,
   ArrowRight,
-  UserPlus
+  UserPlus,
+  Medal,
 } from "lucide-react-native";
-import { Modal } from "react-native";
+import { colors } from "../src/theme/colors";
+
+const { width } = Dimensions.get("window");
 
 interface GuestModalProps {
   visible: boolean;
@@ -27,63 +30,69 @@ interface GuestModalProps {
   onSignup: () => void;
 }
 
-const GuestRegistrationModal = ({ visible, onClose, onSignup }: GuestModalProps) => (
-  <Modal
-    visible={visible}
-    transparent={true}
-    animationType="fade"
-    onRequestClose={onClose}
-  >
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <View style={styles.modalIconContainer}>
-          <UserPlus size={40} color="#f59e0b" />
+const GuestRegistrationModal = ({ visible, onClose, onSignup }: GuestModalProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalIconContainer}>
+            <UserPlus size={40} color={colors.primary} />
+          </View>
+          <Text style={styles.modalTitle}>
+            {t("auth.guestPopup.title", "Join the Community!")}
+          </Text>
+          <Text style={styles.modalText}>
+            {t("auth.guestPopup.subtitle", "You are currently playing as a guest. Register now to save your ratings, track your history, and join tournaments!")}
+          </Text>
+          <TouchableOpacity
+            style={styles.modalPrimaryButton}
+            onPress={onSignup}
+          >
+            <Text style={styles.modalPrimaryButtonText}>
+              {t("auth.guestPopup.primaryAction", "Create Free Account")}
+            </Text>
+            <ArrowRight size={18} color={colors.onPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalSecondaryButton}
+            onPress={onClose}
+          >
+            <Text style={styles.modalSecondaryButtonText}>
+              {t("auth.guestPopup.secondaryAction", "Continue as Guest")}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.modalTitle}>Join the Community!</Text>
-        <Text style={styles.modalText}>
-          You are currently playing as a guest. Register now to save your ratings, track your history, and join tournaments!
-        </Text>
-        <TouchableOpacity 
-          style={styles.modalPrimaryButton}
-          onPress={onSignup}
-        >
-          <Text style={styles.modalPrimaryButtonText}>Create Free Account</Text>
-          <ArrowRight size={18} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.modalSecondaryButton}
-          onPress={onClose}
-        >
-          <Text style={styles.modalSecondaryButtonText}>Continue as Guest</Text>
-        </TouchableOpacity>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
-interface StatsGridProps {
-  user: any;
-}
-
-const StatsGrid = ({ user }: StatsGridProps) => (
+const StatsGrid = ({ user }: { user: any }) => (
   <View style={styles.statsGrid}>
     <View style={styles.statItem}>
-      <Zap size={20} color="#f59e0b" style={styles.statIcon} />
+      <Zap size={20} color={colors.primary} style={styles.statIcon} />
       <Text style={styles.statLabel}>Blitz</Text>
-      <Text style={styles.statValue}>{typeof user?.rating === 'object' ? user.rating.rating : (user?.rating || 1200)}</Text>
+      <Text style={styles.statValue}>{user?.rating || 1200}</Text>
     </View>
     <View style={styles.statItem}>
-      <Timer size={20} color="#f59e0b" style={styles.statIcon} />
+      <Timer size={20} color={colors.primary} style={styles.statIcon} />
       <Text style={styles.statLabel}>Rapid</Text>
       <Text style={styles.statValue}>-</Text>
     </View>
     <View style={styles.statItem}>
-      <Clock size={20} color="#f59e0b" style={styles.statIcon} />
+      <Clock size={20} color={colors.primary} style={styles.statIcon} />
       <Text style={styles.statLabel}>Classic</Text>
       <Text style={styles.statValue}>-</Text>
     </View>
     <View style={styles.statItem}>
-      <Layers size={20} color="#f59e0b" style={styles.statIcon} />
+      <Layers size={20} color={colors.primary} style={styles.statIcon} />
       <Text style={styles.statLabel}>All</Text>
       <Text style={styles.statValue}>0</Text>
     </View>
@@ -122,16 +131,14 @@ export default function Home() {
     if (!isAuthenticated) {
       router.push("/welcome");
     } else {
-      // Future: Navigate to online lobby
-      console.log("Navigating to Online Lobby");
+      router.push("/game/lobby");
     }
   };
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Main Services Listing */}
         <View style={styles.section}>
           <ServiceCard
             title={t("game.playOnline", "Play Online")}
@@ -142,18 +149,17 @@ export default function Home() {
           <ServiceCard
             title={t("game.playAI", "Play vs AI")}
             subtitle={t("game.aiDescription", "Challenge our top-tier neural engine")}
-            onPress={() => console.log("AI")}
-            icon={<Cpu size={32} color="#f59e0b" />}
+            onPress={() => router.push("/game/setup-ai")}
+            icon={<Cpu size={32} color={colors.primary} />}
           />
           <ServiceCard
             title={t("game.playFriend", "Play vs Friend")}
             subtitle={t("game.friendDescription", "Local or private online matches")}
-            onPress={() => console.log("Friend")}
-            icon={<Users size={32} color="#f59e0b" />}
+            onPress={() => router.push("/game/setup-friend")}
+            icon={<Users size={32} color={colors.primary} />}
           />
         </View>
 
-        {/* Stats Section - Register Users Only */}
         {!isGuest && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t("home.stats", "Your Stats")}</Text>
@@ -161,16 +167,14 @@ export default function Home() {
           </View>
         )}
 
-        {/* Other Sections */}
         <View style={styles.section}>
           <ServiceCard
             title={t("home.tournaments", "Tournaments")}
             subtitle={t("home.tournamentDesc", "Join official prize tournaments")}
-            onPress={() => console.log("Tournaments")}
-            icon={<Trophy size={32} color="#f59e0b" />}
+            onPress={() => router.push("/game/tournaments")}
+            icon={<Trophy size={32} color={colors.primary} />}
           />
-          
-          {/* Game History - Register Users Only */}
+
           {!isGuest && (
             <>
               <View style={styles.recentResultsRow}>
@@ -178,25 +182,25 @@ export default function Home() {
                   {t("home.recentResults", "Recent Results")}
                 </Text>
                 {isLoadingRecent ? (
-                  <ActivityIndicator size="small" color="#525252" />
+                  <ActivityIndicator size="small" color={colors.textDisabled} />
                 ) : (
                   <View style={styles.badgeContainer}>
                     {recentGames.length > 0 ? (
                       recentGames.map((game) => (
-                        <View 
-                          key={game.id} 
+                        <View
+                          key={game.id}
                           style={[
                             styles.resultBadge,
                             game.result === "WIN" && styles.winBadge,
                             game.result === "DRAW" && styles.drawBadge,
-                            game.result === "LOSS" && styles.lossBadge
+                            game.result === "LOSS" && styles.lossBadge,
                           ]}
                         >
                           <Text style={[
                             styles.resultText,
                             game.result === "WIN" && styles.winText,
                             game.result === "LOSS" && styles.lossText,
-                            game.result === "DRAW" && styles.drawResultText
+                            game.result === "DRAW" && styles.drawResultText,
                           ]}>
                             {game.result === "WIN" ? "W" : game.result === "DRAW" ? "D" : "L"}
                           </Text>
@@ -211,15 +215,22 @@ export default function Home() {
               <ServiceCard
                 title={t("home.history", "Game History")}
                 subtitle={t("home.historyDesc", "Review and analyze your past matches")}
-                onPress={() => console.log("History")}
-                icon={<History size={32} color="#f59e0b" />}
+                onPress={() => router.push("/game/history")}
+                icon={<History size={32} color={colors.primary} />}
               />
             </>
           )}
+
+          <ServiceCard
+            title={t("home.leaderboard", "Leaderboard")}
+            subtitle={t("home.leaderboardDesc", "View global rankings and top players")}
+            onPress={() => router.push("/game/leaderboard")}
+            icon={<Medal size={32} color={colors.primary} />}
+          />
         </View>
 
-        <GuestRegistrationModal 
-          visible={showGuestPopup} 
+        <GuestRegistrationModal
+          visible={showGuestPopup}
           onClose={() => setShowGuestPopup(false)}
           onSignup={() => {
             setShowGuestPopup(false);
@@ -235,17 +246,17 @@ export default function Home() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#030307",
+    backgroundColor: colors.background,
   },
   scrollContent: {
     padding: 16,
-    paddingTop: 12,
+    paddingTop: 4,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 20,
     fontWeight: "900",
     marginBottom: 16,
@@ -261,25 +272,25 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     minWidth: "45%",
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
     alignItems: "center",
   },
   statIcon: {
     marginBottom: 8,
   },
   statLabel: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "bold",
     textTransform: "uppercase",
     letterSpacing: 1,
   },
   statValue: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 24,
     fontWeight: "900",
     marginTop: 4,
@@ -287,6 +298,104 @@ const styles = StyleSheet.create({
   footerSpacer: {
     height: 40,
   },
+  // Leaderboard section (unused but retained for future use)
+  leaderboardSection: {
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionTitleSmall: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  viewAllText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  leaderboardCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: 24,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
+  },
+  leaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  leaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  rankBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankGold: { backgroundColor: colors.rankGold },
+  rankSilver: { backgroundColor: colors.rankSilver },
+  rankBronze: { backgroundColor: colors.rankBronze },
+  rankText: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  rankTextDark: {
+    color: colors.onPrimary,
+  },
+  leaderName: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: "bold",
+    maxWidth: width * 0.4,
+  },
+  leaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  ratingText: {
+    color: colors.win,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  loaderContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  emptyText: {
+    color: colors.textDisabled,
+    fontSize: 12,
+    textAlign: "center",
+    padding: 20,
+  },
+  // Guest modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.85)",
@@ -294,38 +403,38 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderRadius: 32,
     padding: 32,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   modalIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(245, 158, 11, 0.1)",
+    backgroundColor: colors.primaryAlpha10,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
   },
   modalTitle: {
-    color: "#fff",
+    color: colors.foreground,
     fontSize: 22,
     fontWeight: "900",
     textAlign: "center",
     marginBottom: 12,
   },
   modalText: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 28,
   },
   modalPrimaryButton: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: colors.primary,
     width: "100%",
     borderRadius: 16,
     paddingVertical: 16,
@@ -336,7 +445,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalPrimaryButtonText: {
-    color: "#000",
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -348,10 +457,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalSecondaryButtonText: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 14,
     fontWeight: "600",
   },
+  // Recent results
   recentResultsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -360,7 +470,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   recentLabel: {
-    color: "#737373",
+    color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -375,17 +485,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#111",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1a1a1a",
+    borderColor: colors.border,
   },
   winBadge: {
     backgroundColor: "rgba(34, 197, 94, 0.15)",
     borderColor: "rgba(34, 197, 94, 0.3)",
   },
   drawBadge: {
-    backgroundColor: "rgba(115, 115, 115, 0.15)",
-    borderColor: "rgba(115, 115, 115, 0.3)",
+    backgroundColor: "rgba(120, 113, 108, 0.15)",
+    borderColor: "rgba(120, 113, 108, 0.3)",
   },
   lossBadge: {
     backgroundColor: "rgba(239, 68, 68, 0.15)",
@@ -394,19 +504,19 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: 12,
     fontWeight: "900",
-    color: "#737373",
+    color: colors.textSubtle,
   },
   winText: {
-    color: "#22c55e",
+    color: colors.success,
   },
   lossText: {
-    color: "#ef4444",
+    color: colors.danger,
   },
   drawResultText: {
-    color: "#a3a3a3",
+    color: colors.textMuted,
   },
   noGamesText: {
-    color: "#404040",
+    color: colors.textDisabled,
     fontSize: 12,
     fontStyle: "italic",
   },
