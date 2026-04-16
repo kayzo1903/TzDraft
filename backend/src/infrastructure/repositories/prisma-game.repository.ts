@@ -335,7 +335,7 @@ export class PrismaGameRepository implements IGameRepository {
     skip: number,
     take: number,
     filters?: GameHistoryFilters,
-  ): Promise<{ games: Game[]; total: number }> {
+  ): Promise<{ games: Game[]; moveCounts: number[]; total: number }> {
     const where: any = {
       OR: [{ whitePlayerId: playerId }, { blackPlayerId: playerId }],
       status: GameStatus.FINISHED,
@@ -372,14 +372,14 @@ export class PrismaGameRepository implements IGameRepository {
         orderBy: { endedAt: 'desc' },
         skip,
         take,
-        // No moves needed for history list — saves bandwidth
-        include: { clock: true },
+        include: { clock: true, _count: { select: { moves: true } } },
       }),
       this.prisma.game.count({ where }),
     ]);
 
     return {
       games: prismaGames.map((g) => this.toDomain(g)),
+      moveCounts: prismaGames.map((g) => (g as any)._count?.moves ?? 0),
       total,
     };
   }
