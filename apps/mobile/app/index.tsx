@@ -7,6 +7,7 @@ import { useAuthStore } from "../src/auth/auth-store";
 import api from "../src/lib/api";
 import { MiniBoard } from "../src/components/MiniBoard";
 import { ServiceCard } from "../src/components/ServiceCard";
+import { GuestBarrierModal } from "../src/components/auth/GuestBarrierModal";
 import {
   Trophy,
   History,
@@ -26,55 +27,7 @@ import { colors } from "../src/theme/colors";
 
 const { width } = Dimensions.get("window");
 
-interface GuestModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onSignup: () => void;
-}
 
-const GuestRegistrationModal = ({ visible, onClose, onSignup }: GuestModalProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalIconContainer}>
-            <UserPlus size={40} color={colors.primary} />
-          </View>
-          <Text style={styles.modalTitle}>
-            {t("auth.guestPopup.title", "Join the Community!")}
-          </Text>
-          <Text style={styles.modalText}>
-            {t("auth.guestPopup.subtitle", "You are currently playing as a guest. Register now to save your ratings, track your history, and join tournaments!")}
-          </Text>
-          <TouchableOpacity
-            style={styles.modalPrimaryButton}
-            onPress={onSignup}
-          >
-            <Text style={styles.modalPrimaryButtonText}>
-              {t("auth.guestPopup.primaryAction", "Create Free Account")}
-            </Text>
-            <ArrowRight size={18} color={colors.onPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.modalSecondaryButton}
-            onPress={onClose}
-          >
-            <Text style={styles.modalSecondaryButtonText}>
-              {t("auth.guestPopup.secondaryAction", "Continue as Guest")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
 
 const StatsGrid = ({ user }: { user: any }) => (
   <View style={styles.statsGrid}>
@@ -107,6 +60,7 @@ export default function Home() {
   const { isAuthenticated, user } = useAuthStore();
   const isGuest = user?.accountType === "GUEST";
   const [showGuestPopup, setShowGuestPopup] = useState(isGuest);
+  const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
   const [recentGames, setRecentGames] = useState<any[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
@@ -132,9 +86,16 @@ export default function Home() {
   const handlePlayOnline = () => {
     if (!isAuthenticated) {
       router.push("/welcome");
+    } else if (isGuest) {
+      setPendingRoute("/game/lobby");
+      setShowGuestPopup(true);
     } else {
       router.push("/game/lobby");
     }
+  };
+
+  const handlePlayFriend = () => {
+    router.push("/game/setup-friend");
   };
 
   return (
@@ -157,7 +118,7 @@ export default function Home() {
           <ServiceCard
             title={t("game.playFriend", "Play vs Friend")}
             subtitle={t("game.friendDescription", "Local or private online matches")}
-            onPress={() => router.push("/game/setup-friend")}
+            onPress={handlePlayFriend}
             icon={<Users size={54} color={colors.primary} />}
           />
           <ServiceCard
@@ -243,12 +204,16 @@ export default function Home() {
           />
         </View>
 
-        <GuestRegistrationModal
+        <GuestBarrierModal
           visible={showGuestPopup}
-          onClose={() => setShowGuestPopup(false)}
-          onSignup={() => {
+          onClose={() => {
             setShowGuestPopup(false);
-            router.push("/(auth)/signup");
+            setPendingRoute(null);
+          }}
+          onContinueAsGuest={() => {
+            if (pendingRoute) {
+              router.push(pendingRoute);
+            }
           }}
         />
         <View style={styles.footerSpacer} />
@@ -409,72 +374,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     padding: 20,
   },
-  // Guest modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: 32,
-    padding: 32,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primaryAlpha10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  modalTitle: {
-    color: colors.foreground,
-    fontSize: 22,
-    fontWeight: "900",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  modalText: {
-    color: colors.textMuted,
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 28,
-  },
-  modalPrimaryButton: {
-    backgroundColor: colors.primary,
-    width: "100%",
-    borderRadius: 16,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  modalPrimaryButtonText: {
-    color: colors.onPrimary,
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  modalSecondaryButton: {
-    width: "100%",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalSecondaryButtonText: {
-    color: colors.textSubtle,
-    fontSize: 14,
-    fontWeight: "600",
-  },
+
   // Recent results
   recentResultsRow: {
     flexDirection: "row",

@@ -249,7 +249,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
             </View>
           </ScrollView>
 
-          {isAuthenticated && (
+          {isAuthenticated && user?.accountType !== "GUEST" && (
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <LogOut color={colors.danger} size={20} />
               <Text style={styles.logoutText}>Logout</Text>
