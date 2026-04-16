@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  Dimensions,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { LoadingScreen } from "../src/components/ui/LoadingScreen";
 import {
   ArrowLeft,
   Bell,
@@ -189,9 +191,7 @@ export default function NotificationsScreen() {
 
       {/* Body */}
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
+        <LoadingScreen />
       ) : (
         <ScrollView
           style={styles.list}
