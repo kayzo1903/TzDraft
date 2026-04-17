@@ -572,7 +572,6 @@
     "winnerInline": "Winner: {winner}",
     "actions": {
       "undo": "Undo",
-      "flip": "Flip Board",
       "resign": "End a Game",
       "reset": "Reset Game",
       "home": "Home",

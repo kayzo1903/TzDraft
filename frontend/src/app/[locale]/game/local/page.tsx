@@ -554,9 +554,9 @@ export default function LocalGamePage() {
   const [sessionReported, setSessionReported] = useState(false);
   const [gameRunKey, setGameRunKey] = useState(0);
 
-  const { 
-    state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning, 
-    undo, resign, makeMove, reset, 
+  const {
+    state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning,
+    undo, resign, makeMove, reset,
     goBack, goForward, goToStart, goToEnd, goToMove,
     isMuted, toggleMute
   } = useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
