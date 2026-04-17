@@ -7,7 +7,88 @@
     "support": "Support",
     "login": "Log In",
     "signup": "Sign Up",
-    "language": "Language"
+    "join": "Join",
+    "language": "Language",
+    "en": "English",
+    "sw": "Swahili",
+    "rules": "Game Rules",
+    "privacy": "Privacy Policy",
+    "website": "Official Website",
+    "learn": "Learn Playbook"
+  },
+  "home": {
+    "tagline": "Experience the finest draft platform",
+    "recentResults": "Recent Results",
+    "noGames": "No games yet",
+    "stats": "Your Stats",
+    "tournaments": "Tournaments",
+    "tournamentDesc": "Join official prize tournaments",
+    "history": "Game History",
+    "historyDesc": "Review and analyze your past matches"
+  },
+  "game": {
+    "playOnline": "Play Online 🌐",
+    "onlineDescription": "Test your skills against players worldwide",
+    "playAI": "Play vs AI",
+    "aiDescription": "Challenge our top-tier neural engine",
+    "playFriend": "Play vs Friend",
+    "friendDescription": "Local or private online matches"
+  },
+  "freePlay": {
+    "title": "Free Play",
+    "description": "Control both sides, manual board flip",
+    "action": "Play Now",
+    "result": {
+      "whiteWins": "White Wins",
+      "blackWins": "Black Wins",
+      "draw": "Draw",
+      "noMovesForBlack": "White has no moves for Black",
+      "noMovesForWhite": "Black has no moves for White",
+      "drawEnded": "The game ended in a draw"
+    },
+    "save": {
+      "saveAction": "Save",
+      "title": "Save Study",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. King endgame pattern",
+      "descLabel": "Description",
+      "descPlaceholder": "Describe what makes this position interesting…",
+      "helpText": "Saved studies may be used by the TzDraft team to create puzzles and playbooks.",
+      "saving": "Saving…",
+      "loginRequired": "Login Required",
+      "loginMessage": "You need an account to save studies. Your saved games help us build puzzles and playbooks for the community.",
+      "loginAction": "Log In",
+      "successTitle": "Study Saved",
+      "successMessage": "Your study has been saved. Thank you for contributing!",
+      "errorMessage": "Failed to save the study. Please try again."
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "optional": "optional",
+    "error": "Error",
+    "done": "Done",
+    "back": "Back",
+    "retry": "Retry"
+  },
+  "studies": {
+    "title": "My Studies",
+    "homeSubtitle": "Browse and replay your saved Free Play studies",
+    "badge": "FREE PLAY",
+    "replayBadge": "STUDY REPLAY",
+    "moves": "moves",
+    "move": "Move",
+    "loadError": "Failed to load studies. Please try again.",
+    "emptyTitle": "No Studies Yet",
+    "emptySubtitle": "Play a Free Play game and tap Save to record interesting positions.",
+    "goPlay": "Open Free Play",
+    "startPosition": "Start position",
+    "start": "Start",
+    "end": "End",
+    "prev": "Prev",
+    "next": "Next",
+    "noDescription": "No description provided.",
+    "loading": "Loading your studies…"
   },
   "hero": {
     "title": "Play TzDraft",
@@ -54,6 +135,15 @@
       }
     }
   },
+  "learn": {
+    "heading": "Learn Playbook",
+    "subheading": "Study tactics, rules, and gamebooks to improve your game.",
+    "articles": "Articles",
+    "tactics": "Tactics Playbook",
+    "gamebooks": "Gamebook (kopi)",
+    "onProgress": "In Progress",
+    "more": "View All"
+  },
   "auth": {
     "login": {
       "station": "TzDraft Station",
@@ -68,6 +158,7 @@
       "forgotPassword": "Forgot password?",
       "rememberMe": "Remember me",
       "noAccount": "Don't have an account?",
+      "newToApp": "New to TzDraft?",
       "signupLink": "Create Account",
       "identifier": "Phone Number or Username",
       "identifierPlaceholder": "07** *** *** or username",
@@ -205,11 +296,19 @@
       "good": "Good",
       "strong": "Strong",
       "veryStrong": "Very Strong"
+    },
+    "guestPopup": {
+      "title": "Join the Community!",
+      "subtitle": "You are currently playing as a guest. Register now to save your ratings, track your history, and join tournaments!",
+      "primaryAction": "Create Free Account",
+      "secondaryAction": "Continue as Guest"
     }
   },
   "support": {
     "title": "Support Center",
     "subtitle": "Have a question or run into a bug? We're here to help you get back to the game.",
+    "heroTitle": "How can we help?",
+    "heroSubtitle": "Access our documentation, rules, and support team directly.",
     "eyebrow": "Help for accounts, gameplay and fair play",
     "stats": {
       "response": "Typical response",
@@ -231,7 +330,16 @@
     },
     "faq": "Frequently Asked Questions",
     "contact": "Contact Us",
+    "legal": "Legal & Rules",
+    "rules": "Game Rules",
+    "privacy": "Privacy & Terms",
+    "website": "Visit Official Website",
     "contactSubtitle": "Send a clear message and include the game ID, invite code, or tournament name when relevant.",
+    "emailUs": "Email Support Team",
+    "faqsTitle": "Frequently Asked Questions",
+    "faqsDesc": "Common gameplay and account questions.",
+    "rulesDesc": "Official TZD draughts and tournament rules.",
+    "privacyDesc": "Data protection and platform guidelines.",
     "contactMethods": {
       "title": "Other ways to reach us",
       "email": "Email support",
@@ -464,16 +572,21 @@
     "winnerInline": "Winner: {winner}",
     "actions": {
       "undo": "Undo",
-      "resign": "Resign",
-      "reset": "Reset Game"
+      "flip": "Flip Board",
+      "resign": "End a Game",
+      "reset": "Reset Game",
+      "home": "Home",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "settings": "Options"
     },
     "progression": {
       "disabled": "Undo used — this game will not unlock the next bot."
     },
     "resign": {
-      "confirmTitle": "Confirm Resign",
-      "confirmQuestion": "Are you sure you want to resign?",
-      "confirmCta": "Yes, Resign",
+      "confirmTitle": "Confirm End a Game",
+      "confirmQuestion": "Are you sure you want to end the game?",
+      "confirmCta": "Yes, End Game",
       "cancel": "Cancel"
     },
     "gameOver": {
@@ -575,6 +688,11 @@
       }
     },
     "account": {
+      "name": "Game Name",
+      "noName": "Set game name",
+      "editName": "Edit Game Name",
+      "editNameDesc": "This name will be visible to other players.",
+      "namePlaceholder": "Enter your game name",
       "username": "Username",
       "phone": "Phone",
       "email": "Email",

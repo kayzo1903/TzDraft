@@ -54,7 +54,7 @@ export class UserService {
       country?: string;
       region?: string;
     },
-  ): Promise<User> {
+  ): Promise<any> {
     const updateData: Record<string, any> = {};
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName;
@@ -66,11 +66,16 @@ export class UserService {
     }
     if (data.region !== undefined) updateData.region = data.region;
 
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: updateData,
       include: { rating: true },
     });
+
+    return {
+      ...user,
+      rating: user.rating?.rating ?? 1200,
+    };
   }
 
   async getPlayerRank(userId: string): Promise<{

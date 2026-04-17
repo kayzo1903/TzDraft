@@ -17,10 +17,16 @@ export function validateEnv(
     'DATABASE_URL',
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
-    'REDIS_URL',
     'CORS_ORIGINS',
     'FRONTEND_URL',
   ];
+
+  // REDIS_URL is required in production but optional in development.
+  // In dev, all Redis-dependent features (matchmaking queue, WS adapter) fall
+  // back to in-memory / Prisma implementations automatically.
+  if (isProd) {
+    required.push('REDIS_URL');
+  }
 
   const missing = required.filter((key) => !config[key]);
   if (missing.length > 0) {
