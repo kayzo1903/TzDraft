@@ -82,7 +82,7 @@ describe('AuthController', () => {
       cookies: {
         refreshToken: 'cookie-refresh-token',
       },
-    } as Request;
+    } as unknown as Request;
     const res = {
       cookie: jest.fn(),
     } as unknown as Response;

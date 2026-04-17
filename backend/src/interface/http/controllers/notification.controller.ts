@@ -1,17 +1,22 @@
 import {
+  Body,
   Controller,
   Get,
   Patch,
+  Post,
   Param,
   Query,
   HttpCode,
   HttpStatus,
   UseGuards,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../../../auth/guards/admin.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import type { INotificationRepository } from '../../../domain/notification/repositories/notification.repository.interface';
-import { Inject } from '@nestjs/common';
+import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -19,6 +24,8 @@ export class NotificationController {
   constructor(
     @Inject('INotificationRepository')
     private readonly notifRepo: INotificationRepository,
+    @Inject(forwardRef(() => GamesGateway))
+    private readonly gateway: GamesGateway,
   ) {}
 
   @Get()
@@ -51,5 +58,23 @@ export class NotificationController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async markAllRead(@CurrentUser() user: { id: string }) {
     await this.notifRepo.markAllRead(user.id);
+  }
+
+  /**
+   * Admin-only: emit a pre-saved notification to the target user's WS room.
+   * Called by scripts/send-welcome.ts and other internal tooling.
+   *
+   * Body: { userId: string, notification: object }
+   */
+  @Post('admin/emit')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async adminEmit(
+    @Body('userId') userId: string,
+    @Body('notification') notification: any,
+  ) {
+    if (userId && notification) {
+      this.gateway.emitNotification(userId, notification);
+    }
   }
 }

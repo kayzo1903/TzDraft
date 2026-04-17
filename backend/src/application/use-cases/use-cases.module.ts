@@ -4,6 +4,7 @@ import { MessagingModule } from '../../infrastructure/messaging/messaging.module
 import { EmailModule } from '../../infrastructure/email/email.module';
 import { BeamAfricaService } from '../../infrastructure/sms/beam-africa.service';
 import { TournamentNotificationService } from '../services/tournament-notification.service';
+import { ExpoPushService } from '../../infrastructure/push/expo-push.service';
 import { CreateGameUseCase } from './create-game.use-case';
 import { MakeMoveUseCase } from './make-move.use-case';
 import { GetGameStateUseCase } from './get-game-state.use-case';
@@ -60,6 +61,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     AiProgressionService,
     // Notification infrastructure
     BeamAfricaService,
+    ExpoPushService,
     TournamentNotificationService,
     // Tournament domain services
     EligibilityCheckService,

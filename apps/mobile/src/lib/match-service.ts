@@ -47,5 +47,31 @@ export const matchService = {
   async getGame(gameId: string): Promise<any> {
     const response = await api.get(`/games/${gameId}`);
     return response.data.data;
-  }
+  },
+
+  /**
+   * Join the matchmaking queue.
+   * Returns { status: "matched", gameId } if an opponent was found immediately,
+   * or { status: "waiting" } — then listen for the "matchFound" WS event.
+   *
+   * 30s timeout: the server may spend several seconds on zombie cleanup.
+   * If the HTTP response is dropped, the server still emits "matchFound"
+   * via WebSocket to both players, so the lobby catches it either way.
+   */
+  async joinQueue(
+    timeMs: number,
+    socketId: string,
+  ): Promise<{ status: "matched"; gameId: string } | { status: "waiting" }> {
+    const response = await api.post(
+      "/games/queue/join",
+      { timeMs, socketId },
+      { timeout: 30_000 },
+    );
+    return response.data.data;
+  },
+
+  /** Remove the current user from the matchmaking queue. */
+  async cancelQueue(): Promise<void> {
+    await api.post("/games/queue/cancel");
+  },
 };

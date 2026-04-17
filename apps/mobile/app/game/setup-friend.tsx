@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -23,14 +25,21 @@ import {
   Wifi,
   Monitor,
   Clock,
+  Lock,
   UserPlus,
+  FlipHorizontal2,
 } from "lucide-react-native";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { colors } from "../../src/theme/colors";
 import { GuestBarrierModal } from "../../src/components/auth/GuestBarrierModal";
+import { matchService } from "../../src/lib/match-service";
 
 const TIME_OPTIONS = [0, 3, 5, 10, 30] as const;
 type TimeOption = (typeof TIME_OPTIONS)[number];
+
+// While the player pool is small only 5-minute games are matchmade.
+// Other time controls are shown but disabled to signal future availability.
+const ONLINE_AVAILABLE_TIMES: TimeOption[] = [5];
 
 type SetupTab = "online" | "local";
 
@@ -42,38 +51,96 @@ export default function SetupFriendScreen() {
 
   const [activeTab, setActiveTab] = useState<SetupTab>(isGuest ? "local" : "online");
   const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
-  const [selectedTime, setSelectedTime] = useState<TimeOption>(10);
+  const [selectedTime, setSelectedTime] = useState<TimeOption>(5);
   const [timeMenuOpen, setTimeMenuOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [passDevice, setPassDevice] = useState(true);
+  const [noFlip, setNoFlip] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
+  const [onlineLoading, setOnlineLoading] = useState(false);
 
-  // Online PvP Restriction: Always ensure time is selected
+  // Online PvP: snap to 5 min whenever the tab switches to online (pool constraint)
   useEffect(() => {
-    if (activeTab === "online" && selectedTime === 0) {
-      setSelectedTime(10);
+    if (activeTab === "online" && !ONLINE_AVAILABLE_TIMES.includes(selectedTime)) {
+      setSelectedTime(5);
     }
   }, [activeTab, selectedTime]);
 
-  const handleCreateGame = () => {
+  const handleCreateGame = async () => {
     if (isGuest) {
       setShowGuestModal(true);
       return;
     }
-    console.log("Create Online Game");
+    const resolvedColor =
+      selectedColor === "RANDOM"
+        ? Math.random() < 0.5 ? "WHITE" : "BLACK"
+        : selectedColor;
+    const timeMs = selectedTime * 60 * 1000;
+    setOnlineLoading(true);
+    try {
+      const { gameId, inviteCode } = await matchService.createInviteGame(resolvedColor, timeMs);
+      router.push({
+        pathname: "/game/online-game",
+        params: {
+          gameId,
+          inviteCode,
+          isHost: "true",
+        },
+      });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      Alert.alert(
+        "Error",
+        e?.response?.data?.message ?? "Failed to create game. Please try again.",
+      );
+    } finally {
+      setOnlineLoading(false);
+    }
   };
 
-  const handleJoinGame = () => {
+  const handleJoinGame = async () => {
     if (isGuest) {
       setShowGuestModal(true);
       return;
     }
-    if (!joinCode) return;
-    console.log("Join Online Game", joinCode);
+    if (!joinCode.trim()) return;
+    setOnlineLoading(true);
+    try {
+      const { gameId } = await matchService.joinInviteGame(joinCode.trim());
+      router.push({
+        pathname: "/game/online-game",
+        params: {
+          gameId,
+          inviteCode: joinCode.trim(),
+          isHost: "false",
+        },
+      });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      Alert.alert(
+        "Invalid Code",
+        e?.response?.data?.message ?? "Could not find a game with that code.",
+      );
+    } finally {
+      setOnlineLoading(false);
+    }
   };
 
   const handlePlayLocal = () => {
-    console.log("Start Local Game");
+    // Resolve random color choice
+    const resolvedColor =
+      selectedColor === "RANDOM"
+        ? Math.random() < 0.5 ? "WHITE" : "BLACK"
+        : selectedColor;
+    router.push({
+      pathname: "/game/friend-local",
+      params: {
+        passDevice: passDevice ? "true" : "false",
+        noFlip: noFlip ? "true" : "false",
+        timeMinutes: String(selectedTime),
+        player1Color: resolvedColor,
+      },
+    });
   };
 
   const getTimeLabel = (time: number) => {
@@ -163,6 +230,19 @@ export default function SetupFriendScreen() {
         </View>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.toggleCard}
+        onPress={() => setNoFlip(!noFlip)}
+      >
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleTitle}>{t("setupFriend.local.noFlipTitle", "Fixed board")}</Text>
+          <Text style={styles.toggleDesc}>{t("setupFriend.local.noFlipDesc", "Board stays in one orientation — no auto-flip between turns")}</Text>
+        </View>
+        <View style={[styles.switchTrack, noFlip && styles.switchTrackOn]}>
+          <View style={[styles.switchHandle, noFlip && styles.switchHandleOn]} />
+        </View>
+      </TouchableOpacity>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t("setupFriend.local.rulesTitle", "Local rules")}</Text>
         <Text style={styles.sectionDesc}>
@@ -230,15 +310,21 @@ export default function SetupFriendScreen() {
       {/* Sticky Bottom Footer */}
       <View style={styles.footer}>
         <View style={styles.controlsRow}>
-          {/* Time Selector */}
+          {/* Time Selector — locked to 5 min for online; freely choosable for local */}
           <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setTimeMenuOpen(true)}
-            activeOpacity={0.8}
+            style={[styles.timeButton, activeTab === "online" && styles.timeButtonLocked]}
+            onPress={() => activeTab !== "online" && setTimeMenuOpen(true)}
+            activeOpacity={activeTab === "online" ? 1 : 0.8}
           >
-            <Clock color={colors.textMuted} size={20} />
-            <Text style={styles.controlLabel}>{getTimeLabel(selectedTime)}</Text>
-            <ChevronDown color={colors.textDisabled} size={16} />
+            <Clock color={activeTab === "online" ? colors.primary : colors.textMuted} size={20} />
+            <Text style={[styles.controlLabel, activeTab === "online" && { color: colors.primary }]}>
+              {getTimeLabel(selectedTime)}
+            </Text>
+            {activeTab === "online" ? (
+              <Lock color={colors.primary} size={14} />
+            ) : (
+              <ChevronDown color={colors.textDisabled} size={16} />
+            )}
           </TouchableOpacity>
 
           {/* Color Selector */}
@@ -268,7 +354,8 @@ export default function SetupFriendScreen() {
 
         {/* Primary Action Button */}
         <TouchableOpacity
-          style={styles.startButton}
+          style={[styles.startButton, onlineLoading && { opacity: 0.7 }]}
+          disabled={onlineLoading}
           onPress={() => {
             if (activeTab === "online") {
               if (joinCode.length > 0) handleJoinGame();
@@ -278,13 +365,17 @@ export default function SetupFriendScreen() {
             }
           }}
         >
-          <Text style={styles.startButtonText}>
-            {activeTab === "local"
-              ? t("setupFriend.local.playNow", "Play Now")
-              : joinCode.length > 0
-              ? t("setupFriend.online.joinGame", "Join Game")
-              : t("setupFriend.online.createGame", "Create Game")}
-          </Text>
+          {onlineLoading ? (
+            <ActivityIndicator color={colors.onPrimary} />
+          ) : (
+            <Text style={styles.startButtonText}>
+              {activeTab === "local"
+                ? t("setupFriend.local.playNow", "Play Now")
+                : joinCode.length > 0
+                ? t("setupFriend.online.joinGame", "Join Game")
+                : t("setupFriend.online.createGame", "Create Game")}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -310,22 +401,52 @@ export default function SetupFriendScreen() {
             <Text style={styles.drawUpTitle}>{t("setupAi.selectTime", "Match Time")}</Text>
 
             <Text style={styles.timeGroupLabel}>{t("setupFriend.online.timeGroupLabel", "MATCH TIME")}</Text>
+            {activeTab === "online" && (
+              <View style={styles.poolNotice}>
+                <Lock color={colors.textDisabled} size={12} />
+                <Text style={styles.poolNoticeText}>
+                  {t("setupFriend.online.poolNotice", "Only 5-min games available — more time controls unlock as the player pool grows.")}
+                </Text>
+              </View>
+            )}
             <View style={styles.timeGrid}>
               {TIME_OPTIONS.filter((t) => t > 0).map((time) => {
-                const active = selectedTime === time;
+                const isAvailableOnline = ONLINE_AVAILABLE_TIMES.includes(time as TimeOption);
+                const isDisabled = activeTab === "online" && !isAvailableOnline;
+                const active = selectedTime === time && !isDisabled;
                 return (
                   <TouchableOpacity
                     key={time}
-                    style={[styles.timeOption, active && styles.activeTimeOption]}
+                    style={[
+                      styles.timeOption,
+                      active && styles.activeTimeOption,
+                      isDisabled && styles.timeOptionDisabled,
+                    ]}
                     onPress={() => {
+                      if (isDisabled) return;
                       setSelectedTime(time);
                       setTimeMenuOpen(false);
                     }}
+                    activeOpacity={isDisabled ? 1 : 0.7}
                   >
-                    <Clock color={active ? colors.primary : colors.textMuted} size={24} />
-                    <Text style={[styles.timeOptionText, active && styles.activeTimeOptionText]}>
+                    <Clock
+                      color={isDisabled ? colors.textDisabled : active ? colors.primary : colors.textMuted}
+                      size={24}
+                    />
+                    <Text
+                      style={[
+                        styles.timeOptionText,
+                        active && styles.activeTimeOptionText,
+                        isDisabled && styles.timeOptionTextDisabled,
+                      ]}
+                    >
                       {time} min
                     </Text>
+                    {isDisabled && (
+                      <View style={styles.soonBadge}>
+                        <Text style={styles.soonBadgeText}>SOON</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -621,6 +742,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  timeButtonLocked: {
+    borderColor: colors.primaryAlpha30,
+    backgroundColor: colors.primaryAlpha05,
+  },
   controlLabel: {
     flex: 1,
     color: colors.foreground,
@@ -727,6 +852,9 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primaryAlpha05,
   },
+  timeOptionDisabled: {
+    opacity: 0.35,
+  },
   timeOptionText: {
     color: colors.textMuted,
     fontSize: 16,
@@ -734,6 +862,39 @@ const styles = StyleSheet.create({
   },
   activeTimeOptionText: {
     color: colors.foreground,
+  },
+  timeOptionTextDisabled: {
+    color: colors.textDisabled,
+  },
+  soonBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  soonBadgeText: {
+    color: colors.textDisabled,
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  poolNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  poolNoticeText: {
+    flex: 1,
+    color: colors.textDisabled,
+    fontSize: 12,
+    lineHeight: 16,
   },
   noTimeOption: {
     marginTop: 16,
