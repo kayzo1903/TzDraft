@@ -108,9 +108,7 @@ export class ExpoPushService {
             `Expo push ticket error: ${ticket.message} (${ticket.details?.error})`,
           );
           if (ticket.details?.error === 'DeviceNotRegistered') {
-            await this.invalidateToken(
-              messages[json.data.indexOf(ticket)]?.to,
-            );
+            await this.invalidateToken(messages[json.data.indexOf(ticket)]?.to);
           }
         }
       }

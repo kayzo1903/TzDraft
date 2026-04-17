@@ -28,10 +28,7 @@ export class StudyController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Post()
-  async saveStudy(
-    @Body() dto: SaveStudyDto,
-    @CurrentUser() user: any,
-  ) {
+  async saveStudy(@Body() dto: SaveStudyDto, @CurrentUser() user: any) {
     const study = await this.prisma.savedStudy.create({
       data: {
         userId: user.id,

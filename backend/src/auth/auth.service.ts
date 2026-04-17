@@ -635,7 +635,8 @@ export class AuthService {
           title: 'Welcome to TzDraft!',
           body: 'Cheza Drafti mtandaoni na wapezaji wa Tanzania. Jiunge na ligi, pambana na AI, au mualike rafiki!',
           metadata: {
-            bodyEn: 'Play Drafti online with players from Tanzania. Join leagues, compete against AI, or invite friends!',
+            bodyEn:
+              'Play Drafti online with players from Tanzania. Join leagues, compete against AI, or invite friends!',
           },
           read: false,
           createdAt: new Date(),

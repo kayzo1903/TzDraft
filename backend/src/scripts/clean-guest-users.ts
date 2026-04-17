@@ -31,11 +31,13 @@ async function cleanGuestUsers() {
       await prisma.otpCode.deleteMany({ where: { userId: user.id } });
       await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
       await prisma.verificationToken.deleteMany({ where: { userId: user.id } });
-      await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+      await prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id },
+      });
       await prisma.notification.deleteMany({ where: { userId: user.id } });
       await prisma.rating.deleteMany({ where: { userId: user.id } });
       await prisma.matchmakingQueue.deleteMany({ where: { userId: user.id } });
-      
+
       // Delete games where user is white or black player
       await prisma.move.deleteMany({
         where: {
@@ -49,10 +51,12 @@ async function cleanGuestUsers() {
           OR: [{ whitePlayerId: user.id }, { blackPlayerId: user.id }],
         },
       });
-      
+
       // Delete tournament participants
-      await prisma.tournamentParticipant.deleteMany({ where: { userId: user.id } });
-      
+      await prisma.tournamentParticipant.deleteMany({
+        where: { userId: user.id },
+      });
+
       // Finally delete the user
       await prisma.user.delete({ where: { id: user.id } });
 

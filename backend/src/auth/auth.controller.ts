@@ -17,7 +17,10 @@ import { AuthGuard } from '@nestjs/passport';
 import type { CookieOptions, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
-import { GoogleOAuthGuard, GoogleMobileOAuthGuard } from './guards/google-oauth.guard';
+import {
+  GoogleOAuthGuard,
+  GoogleMobileOAuthGuard,
+} from './guards/google-oauth.guard';
 import {
   RegisterDto,
   LoginDto,
@@ -268,10 +271,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Patch('push-token')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async savePushToken(
-    @CurrentUser() user: any,
-    @Body('token') token: string,
-  ) {
+  async savePushToken(@CurrentUser() user: any, @Body('token') token: string) {
     if (token && typeof token === 'string') {
       await this.userService.savePushToken(user.id, token);
     }

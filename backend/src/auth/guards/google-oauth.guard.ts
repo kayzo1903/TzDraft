@@ -31,8 +31,11 @@ export class GoogleMobileOAuthGuard extends AuthGuard('google') {
 
     let backendUrl = configured;
     if (!backendUrl) {
-      const req = context.switchToHttp().getRequest<{ headers: Record<string, string> }>();
-      const host = req.headers['host'] ?? `localhost:${process.env.PORT ?? '3002'}`;
+      const req = context
+        .switchToHttp()
+        .getRequest<{ headers: Record<string, string> }>();
+      const host =
+        req.headers['host'] ?? `localhost:${process.env.PORT ?? '3002'}`;
       const proto = req.headers['x-forwarded-proto'] ?? 'http';
       backendUrl = `${proto}://${host}`;
     }

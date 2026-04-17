@@ -6,7 +6,8 @@ const prisma = new PrismaClient();
 const WELCOME_NOTIFICATION = {
   title: 'Welcome to TzDraft!',
   body: 'Cheza Drafti mtandaoni na wapezaji wa Tanzania. Jiunge na ligi, pambana na AI, au mualike rafiki!',
-  bodyEn: 'Play Drafti online with players from Tanzania. Join leagues, compete against AI, or invite friends!',
+  bodyEn:
+    'Play Drafti online with players from Tanzania. Join leagues, compete against AI, or invite friends!',
 };
 
 async function sendWelcomeNotifications() {
@@ -55,7 +56,9 @@ async function sendWelcomeNotifications() {
       });
 
       successCount++;
-      console.log(`✅ Sent to user: ${user.id.slice(0, 8)}... (${user.phoneNumber || 'no phone'})`);
+      console.log(
+        `✅ Sent to user: ${user.id.slice(0, 8)}... (${user.phoneNumber || 'no phone'})`,
+      );
     } catch (error) {
       console.error(`❌ Failed for user ${user.id}:`, error.message);
     }
