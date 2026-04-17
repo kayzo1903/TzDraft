@@ -1,22 +1,33 @@
-# Exclude all node_modules everywhere
-**/node_modules
+# Dependencies
+**/node_modules/
 
-# Git history
-.git
+# Version control and local tooling
+.git/
+.github/
+.vscode/
+.claude/
 
-# Irrelevant workspaces — only apps/mobile + packages/ needed
-docs
-engines
-frontend
-backend
+# Large local toolchains and non-mobile workspaces
+emsdk/
+docs/
+engines/
+frontend/
+backend/
+load-tests/
+build/
 
-# Build artifacts
-**/.expo
-**/dist
-**/android
-**/ios
-**/build
+# Generated output and native folders
+**/.expo/
+**/.next/
+**/.turbo/
+**/.cache/
+**/.vs/
+**/dist/
+**/build/
+**/web-build/
+**/android/
+**/ios/
 
-# Logs and temp
+# Logs and OS files
 *.log
 **/.DS_Store
