@@ -1,0 +1,41 @@
+{
+  "cli": {
+    "version": ">= 10.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SIMULATE_OFFLINE": "false",
+        "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
+        "EXPO_PUBLIC_SANITY_DATASET": "production"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging-api.tzdraft.com",
+        "EXPO_PUBLIC_SIMULATE_OFFLINE": "false",
+        "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
+        "EXPO_PUBLIC_SANITY_DATASET": "staging"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.tzdraft.com",
+        "EXPO_PUBLIC_SIMULATE_OFFLINE": "false",
+        "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
+        "EXPO_PUBLIC_SANITY_DATASET": "production"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
