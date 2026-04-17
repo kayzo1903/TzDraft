@@ -1,11 +1,22 @@
-node_modules
+# Exclude all node_modules everywhere
+**/node_modules
+
+# Git history
 .git
+
+# Irrelevant workspaces — only apps/mobile + packages/ needed
 docs
 engines
 frontend
 backend
-*.log
+
+# Build artifacts
 **/.expo
 **/dist
 **/android
 **/ios
+**/build
+
+# Logs and temp
+*.log
+**/.DS_Store
