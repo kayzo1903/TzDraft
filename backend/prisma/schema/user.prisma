@@ -34,6 +34,10 @@ model User {
     googleId      String? @unique @map("google_id")
     oauthProvider String? @map("oauth_provider") // 'google', 'facebook', etc.
 
+    // Push notifications
+    pushToken          String?   @map("push_token")
+    pushTokenUpdatedAt DateTime? @map("push_token_updated_at")
+
     gamesAsWhite           Game[]                 @relation("WhitePlayer")
     gamesAsBlack           Game[]                 @relation("BlackPlayer")
     rating                 Rating?

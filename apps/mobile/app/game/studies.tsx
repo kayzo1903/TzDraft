@@ -300,7 +300,7 @@ export default function StudiesScreen() {
         subtitle={t("studies.deleteMessage", "\"{{name}}\" will be permanently removed.", { name: deleteTarget?.name })}
         icon={Trash2}
         iconColor={colors.danger}
-        iconBg={colors.dangerAlpha15}
+        iconBg={colors.dangerAlpha20}
         actions={[
           { label: t("common.cancel", "Cancel"), onPress: () => setDeleteTarget(null) },
           { label: t("common.delete", "Delete"), onPress: handleDelete, type: "destructive", loading: isDeleting },

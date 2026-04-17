@@ -265,6 +265,25 @@ export class AuthController {
     return { success: true, data: updated };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch('push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async savePushToken(
+    @CurrentUser() user: any,
+    @Body('token') token: string,
+  ) {
+    if (token && typeof token === 'string') {
+      await this.userService.savePushToken(user.id, token);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('push-token/clear')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async clearPushToken(@CurrentUser() user: any) {
+    await this.userService.clearPushToken(user.id);
+  }
+
   @Public()
   @Get('google')
   @UseGuards(GoogleOAuthGuard)

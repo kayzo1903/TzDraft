@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -62,7 +63,7 @@ export default function LearnScreen() {
               <InProgressBadge />
            </View>
            <Text style={styles.tacticDesc} numberOfLines={2}>{desc}</Text>
-           <View style={[styles.diffBadge, styles[`diff_${tactic.difficulty}` as keyof typeof styles]]}>
+           <View style={[styles.diffBadge, styles[`diff_${tactic.difficulty}` as keyof typeof styles] as ViewStyle]}>
              <Text style={styles.diffText}>{tactic.difficulty}</Text>
            </View>
         </View>

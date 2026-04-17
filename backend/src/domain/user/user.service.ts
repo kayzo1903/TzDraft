@@ -78,6 +78,20 @@ export class UserService {
     };
   }
 
+  async savePushToken(userId: string, token: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: token, pushTokenUpdatedAt: new Date() },
+    });
+  }
+
+  async clearPushToken(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: null, pushTokenUpdatedAt: null },
+    });
+  }
+
   async getPlayerRank(userId: string): Promise<{
     global: number | null;
     country: number | null;

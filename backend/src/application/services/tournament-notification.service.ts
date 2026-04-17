@@ -4,6 +4,7 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import { EmailService } from '../../infrastructure/email/email.service';
 import { BeamAfricaService } from '../../infrastructure/sms/beam-africa.service';
 import { GamesGateway } from '../../infrastructure/messaging/games.gateway';
+import { ExpoPushService } from '../../infrastructure/push/expo-push.service';
 import {
   Notification,
   NotificationType,
@@ -24,6 +25,7 @@ export class TournamentNotificationService {
     private readonly emailService: EmailService,
     private readonly smsService: BeamAfricaService,
     private readonly prisma: PrismaService,
+    private readonly expoPush: ExpoPushService,
   ) {}
 
   // ── Registration ─────────────────────────────────────────────────────────
@@ -42,6 +44,10 @@ export class TournamentNotificationService {
       },
     );
     this.gateway.emitNotification(userId, notif);
+    void this.expoPush.sendToUser(userId, notif.title, notif.body, {
+      tournamentId: tournament.id,
+      screen: 'tournament',
+    });
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user?.email) {
@@ -83,6 +89,10 @@ export class TournamentNotificationService {
           },
         );
         this.gateway.emitNotification(user.id, notif);
+        void this.expoPush.sendToUser(user.id, notif.title, notif.body, {
+          tournamentId: tournament.id,
+          screen: 'tournament',
+        });
 
         if (user.email) {
           void this.emailService.sendTournamentStarted(
@@ -139,6 +149,11 @@ export class TournamentNotificationService {
         },
       );
       this.gateway.emitNotification(player.id, notif);
+      void this.expoPush.sendToUser(player.id, notif.title, notif.body, {
+        tournamentId: tournament.id,
+        matchId: match.id,
+        screen: 'tournament',
+      });
 
       if (player.email) {
         void this.emailService.sendMatchAssigned(
@@ -195,6 +210,11 @@ export class TournamentNotificationService {
         },
       );
       this.gateway.emitNotification(user.id, notif);
+      void this.expoPush.sendToUser(user.id, notif.title, notif.body, {
+        tournamentId: tournament.id,
+        matchId: match.id,
+        screen: 'tournament',
+      });
 
       if (user.email) {
         void this.emailService.sendMatchResult(
@@ -240,6 +260,10 @@ export class TournamentNotificationService {
           },
         );
         this.gateway.emitNotification(user.id, notif);
+        void this.expoPush.sendToUser(user.id, notif.title, notif.body, {
+          tournamentId: tournament.id,
+          screen: 'tournament',
+        });
 
         if (user.email) {
           void this.emailService.sendTournamentCompleted(
@@ -276,6 +300,10 @@ export class TournamentNotificationService {
           },
         );
         this.gateway.emitNotification(user.id, notif);
+        void this.expoPush.sendToUser(user.id, notif.title, notif.body, {
+          tournamentId: tournament.id,
+          screen: 'tournament',
+        });
 
         // SMS for cancellation
         void this.smsService.sendTournamentAlert(

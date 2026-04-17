@@ -184,7 +184,7 @@ function SaveFeedbackModal({
   const isSuccess = type === "success";
   const icon = isSuccess ? CheckCircle2 : AlertCircle;
   const accent = isSuccess ? colors.primary : colors.danger;
-  const bg = isSuccess ? colors.primaryAlpha15 : colors.dangerAlpha15;
+  const bg = isSuccess ? colors.primaryAlpha15 : colors.dangerAlpha20;
 
   return (
     <ThemedModal

@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -13,12 +14,14 @@ import { PrismaService } from '../infrastructure/database/prisma/prisma.service'
 import { UserService } from '../domain/user/user.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { normalizePhoneNumber } from '../shared/utils/phone.util';
-import * as crypto from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 
 type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private userService: UserService,
@@ -102,6 +105,9 @@ export class AuthService {
     await this.prisma.otpCode.deleteMany({
       where: { id: verifiedOtp.id },
     });
+
+    // Send welcome notification
+    await this.createWelcomeNotification(user.id);
 
     // Generate tokens
     const { accessToken, refreshToken } = await this.generateTokens(user.id);
@@ -306,7 +312,7 @@ export class AuthService {
     });
 
     // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetToken = randomBytes(32).toString('hex');
     await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
@@ -477,6 +483,9 @@ export class AuthService {
       include: { rating: true },
     });
 
+    // Send welcome notification for new OAuth users
+    await this.createWelcomeNotification(user.id);
+
     return user;
   }
 
@@ -501,7 +510,7 @@ export class AuthService {
       }
 
       // Add random suffix
-      const suffix = crypto.randomBytes(2).toString('hex');
+      const suffix = randomBytes(2).toString('hex');
       username = `${baseUsername}_${suffix}`;
       attempts++;
     }
@@ -538,7 +547,7 @@ export class AuthService {
    * Create a temporary guest account for invite-link joins (no registration required)
    */
   async createGuestUser(): Promise<AuthResponseDto> {
-    const suffix = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 chars
+    const suffix = randomBytes(4).toString('hex').toUpperCase(); // 8 chars
     const username = `Guest_${suffix}`;
     const displayName = username;
     const phoneNumber = `GUEST_${crypto.randomUUID().replace(/-/g, '')}`;
@@ -556,6 +565,9 @@ export class AuthService {
       },
       include: { rating: true },
     });
+
+    // Send welcome notification for new guest users
+    await this.createWelcomeNotification(user.id);
 
     const { accessToken, refreshToken } = await this.generateTokens(user.id);
 
@@ -608,6 +620,31 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  /**
+   * Create welcome notification for new users
+   */
+  private async createWelcomeNotification(userId: string): Promise<void> {
+    try {
+      await this.prisma.notification.create({
+        data: {
+          id: randomUUID(),
+          userId,
+          type: 'WELCOME',
+          title: 'Welcome to TzDraft!',
+          body: 'Cheza Drafti mtandaoni na wapezaji wa Tanzania. Jiunge na ligi, pambana na AI, au mualike rafiki!',
+          metadata: {
+            bodyEn: 'Play Drafti online with players from Tanzania. Join leagues, compete against AI, or invite friends!',
+          },
+          read: false,
+          createdAt: new Date(),
+        },
+      });
+    } catch (err) {
+      // Non-fatal — don't block registration
+      this.logger.warn(`Failed to create welcome notification: ${err}`);
+    }
   }
 
   /**

@@ -161,8 +161,8 @@ const styles = StyleSheet.create({
   },
   langContainer: {
     position: "absolute",
-    bottom: 24,
-    right: 24,
+    top: 60,
+    right: 20,
     zIndex: 10,
   },
 });

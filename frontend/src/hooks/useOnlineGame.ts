@@ -1009,7 +1009,16 @@ export const useOnlineGame = (gameId: string) => {
     try {
       await gameService.startGame(gameId);
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to start game.");
+      const raw = err?.response?.data?.message;
+      setError(
+        typeof raw === "string"
+          ? raw
+          : typeof raw?.message === "string"
+            ? raw.message
+            : Array.isArray(raw?.message)
+              ? raw.message.join(", ")
+              : err?.message ?? "Failed to start game.",
+      );
     } finally {
       setIsSubmitting(false);
     }
