@@ -63,6 +63,7 @@ export function useSocket(): UseSocketResult {
 
   useEffect(() => {
     if (!isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSocket(null);
       return;
     }

@@ -32,7 +32,7 @@ export class GetGameHistoryUseCase {
     take: number,
     filters?: GameHistoryFilters,
   ): Promise<{ items: GameHistoryItem[]; total: number }> {
-    const { games, total } =
+    const { games, moveCounts, total } =
       await this.gameRepository.findCompletedGamesByPlayer(
         playerId,
         skip,
@@ -41,7 +41,7 @@ export class GetGameHistoryUseCase {
       );
 
     const items = await Promise.all(
-      games.map(async (game) => {
+      games.map(async (game, idx) => {
         const isWhite = game.whitePlayerId === playerId;
         const opponentId = isWhite ? game.blackPlayerId : game.whitePlayerId;
         const myElo = isWhite ? game.whiteElo : game.blackElo;
@@ -76,7 +76,7 @@ export class GetGameHistoryUseCase {
           }
         }
 
-        const moveCount = game.moves?.length ?? 0;
+        const moveCount = moveCounts[idx] ?? 0;
         const durationMs =
           game.startedAt && game.endedAt
             ? game.endedAt.getTime() - game.startedAt.getTime()

@@ -17,7 +17,10 @@ import { AuthGuard } from '@nestjs/passport';
 import type { CookieOptions, Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
-import { GoogleOAuthGuard } from './guards/google-oauth.guard';
+import {
+  GoogleOAuthGuard,
+  GoogleMobileOAuthGuard,
+} from './guards/google-oauth.guard';
 import {
   RegisterDto,
   LoginDto,
@@ -265,6 +268,22 @@ export class AuthController {
     return { success: true, data: updated };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch('push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async savePushToken(@CurrentUser() user: any, @Body('token') token: string) {
+    if (token && typeof token === 'string') {
+      await this.userService.savePushToken(user.id, token);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('push-token/clear')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async clearPushToken(@CurrentUser() user: any) {
+    await this.userService.clearPushToken(user.id);
+  }
+
   @Public()
   @Get('google')
   @UseGuards(GoogleOAuthGuard)
@@ -292,6 +311,35 @@ export class AuthController {
       return res.redirect(
         `${process.env.FRONTEND_URL!}/sw/auth/login?error=google_failed`,
       );
+    }
+  }
+
+  // ─── Mobile Google OAuth ────────────────────────────────────────────────────
+  // Uses a separate callbackURL (/auth/google/mobile-callback) so that it can
+  // be registered independently in Google Console and redirect to the app's
+  // deep-link scheme instead of the web frontend URL.
+
+  @Public()
+  @Get('google/mobile')
+  @UseGuards(GoogleMobileOAuthGuard)
+  async googleMobileAuth() {
+    // Passport redirects to Google — nothing to do here.
+  }
+
+  @Public()
+  @Get('google/mobile-callback')
+  @UseGuards(GoogleMobileOAuthGuard)
+  async googleMobileCallback(@CurrentUser() user: any, @Res() res: Response) {
+    try {
+      const { accessToken, refreshToken } =
+        await this.authService.generateTokens(user.id);
+
+      // Redirect to the app's deep-link scheme — openAuthSessionAsync intercepts this.
+      return res.redirect(
+        `tzdraft-mobile://auth/callback?accessToken=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`,
+      );
+    } catch {
+      return res.redirect(`tzdraft-mobile://auth/callback?error=google_failed`);
     }
   }
 }

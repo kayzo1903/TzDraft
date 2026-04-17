@@ -563,6 +563,7 @@ export default function LocalGamePage() {
   const [showResign, setShowResign] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {

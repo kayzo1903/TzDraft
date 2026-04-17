@@ -408,6 +408,7 @@ export function useVoiceChat(gameId: string): UseVoiceChatResult {
   // ── Phase 3: Load audio devices on mount + react to device plug/unplug ───
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAudioDevices();
     navigator.mediaDevices.addEventListener("devicechange", loadAudioDevices);
     return () => {

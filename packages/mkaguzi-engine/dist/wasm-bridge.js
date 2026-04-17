@@ -46,13 +46,16 @@ export async function initEngine(wasmJsUrl = '/wasm/mkaguzi_wasm.js') {
         return _initPromise; // loading in progress
     _initPromise = (async () => {
         // The Emscripten glue is an ES module (built with -sEXPORT_ES6=1).
-        // Use dynamic import() so import.meta.url is correctly set inside the
-        // module — Emscripten uses it to locate mkaguzi_wasm.wasm automatically.
-        //
-        // /* webpackIgnore: true */ prevents Next.js webpack/Turbopack from
-        // trying to statically bundle the runtime URL.
+        // Use new Function('u','return import(u)') instead of a bare import(url)
+        // expression so that:
+        //  - Hermes (React Native) can compile this file without errors — it
+        //    rejects import(variable) at parse time even if the function is unused.
+        //  - Next.js webpack/Turbopack still won't statically bundle the URL.
         const absoluteUrl = new URL(wasmJsUrl, globalThis.location?.href ?? 'http://localhost').href;
-        const { default: factory } = await import(/* webpackIgnore: true */ absoluteUrl);
+        const dynamicImport = 
+        // eslint-disable-next-line no-new-func
+        new Function('u', 'return import(u)');
+        const { default: factory } = await dynamicImport(absoluteUrl);
         if (typeof factory !== 'function') {
             throw new Error(`Failed to load Mkaguzi WASM from ${wasmJsUrl}: expected a Module factory function`);
         }

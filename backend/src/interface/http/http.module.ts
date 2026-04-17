@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UseCasesModule } from '../../application/use-cases/use-cases.module';
 import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
+import { AuthModule } from '../../auth/auth.module';
 import { GameController } from './controllers/game.controller';
 import { MoveController } from './controllers/move.controller';
 import { SupportController } from './controllers/support.controller';
@@ -14,6 +15,10 @@ import {
   PuzzleController,
   AdminPuzzleController,
 } from './controllers/puzzle.controller';
+import {
+  StudyController,
+  AdminStudyController,
+} from './controllers/study.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
 
@@ -28,6 +33,7 @@ import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.servic
     EmailModule,
     RepositoryModule,
     PrismaModule,
+    AuthModule,
   ],
   controllers: [
     GameController,
@@ -38,6 +44,8 @@ import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.servic
     NotificationController,
     PuzzleController,
     AdminPuzzleController,
+    StudyController,
+    AdminStudyController,
   ],
   providers: [GetAiMoveUseCase, PuzzleMinerService],
 })

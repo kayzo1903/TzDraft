@@ -93,7 +93,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  transpilePackages: ["@tzdraft/shared-client"],
+  transpilePackages: ["@tzdraft/shared-client", "@tzdraft/translations"],
   turbopack: {
     root: path.resolve(__dirname, ".."),
   },

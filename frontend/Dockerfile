@@ -9,6 +9,7 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY packages/shared-client/package.json ./packages/shared-client/
+COPY packages/translations/package.json ./packages/translations/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 
@@ -18,6 +19,7 @@ RUN pnpm install --frozen-lockfile
 # Copy source
 COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 COPY packages/shared-client/ ./packages/shared-client/
+COPY packages/translations/ ./packages/translations/
 COPY frontend/ ./frontend/
 
 # Build Mkaguzi engine TypeScript package first (frontend imports it via webpack alias)

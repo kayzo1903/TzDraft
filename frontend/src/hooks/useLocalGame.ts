@@ -423,7 +423,6 @@ export const useLocalGame = (
     });
   }, []);
 
-
   // Re-render once when the WASM engine finishes loading so legalMoves is computed.
   const [engineReady, setEngineReady] = useState(isEngineReady());
   useEffect(() => {
@@ -440,7 +439,6 @@ export const useLocalGame = (
     }
     return currentBoard;
   }, [board, moves, viewingMoveIndex]);
-
 
   const pieces = useMemo(
     () => boardToUiPieces(boardAtViewingIndex, flipForPlayer),

@@ -8,10 +8,11 @@ async function initEngine(wasmJsUrl = "/wasm/mkaguzi_wasm.js") {
     return _initPromise;
   _initPromise = (async () => {
     const absoluteUrl = new URL(wasmJsUrl, globalThis.location?.href ?? "http://localhost").href;
-    const { default: factory } = await import(
-      /* webpackIgnore: true */
-      absoluteUrl
+    const dynamicImport = (
+      // eslint-disable-next-line no-new-func
+      new Function("u", "return import(u)")
     );
+    const { default: factory } = await dynamicImport(absoluteUrl);
     if (typeof factory !== "function") {
       throw new Error(`Failed to load Mkaguzi WASM from ${wasmJsUrl}: expected a Module factory function`);
     }

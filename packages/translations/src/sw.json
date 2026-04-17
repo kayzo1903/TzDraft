@@ -7,7 +7,88 @@
     "support": "Msaada",
     "login": "Ingia",
     "signup": "Jisajili",
-    "language": "Lugha"
+    "join": "Jiunge",
+    "language": "Lugha",
+    "en": "Kiingereza",
+    "sw": "Kiswahili",
+    "rules": "Sheria za Mchezo",
+    "privacy": "Sera ya Faragha",
+    "website": "Tovuti Rasmi",
+    "learn": "Jifunze Kopi"
+  },
+  "home": {
+    "tagline": "Pata uzoefu wa jukwaa bora la drafti",
+    "recentResults": "Matokeo ya Hivi Karibuni",
+    "noGames": "Bado huna michezo",
+    "stats": "Takwimu Zako",
+    "tournaments": "Mashindano",
+    "tournamentDesc": "Jiunge na mashindano rasmi ya kishindo",
+    "history": "Historia ya Michezo",
+    "historyDesc": "Kagua na uchambue mechi zako za zamani"
+  },
+  "game": {
+    "playOnline": "Cheza Mtandaoni 🌐",
+    "onlineDescription": "Pima ujuzi wako dhidi ya wachezaji ulimwenguni kote",
+    "playAI": "Cheza na AI",
+    "aiDescription": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish",
+    "playFriend": "Cheza na Rafiki",
+    "friendDescription": "Mechi za ana kwa ana au za mtandaoni"
+  },
+  "freePlay": {
+    "title": "Mazoezi Huria",
+    "description": "Cheza pande zote, geuza ubao mwenyewe",
+    "action": "Anza Sasa",
+    "result": {
+      "whiteWins": "Meupe Washinda",
+      "blackWins": "Weusi Washinda",
+      "draw": "Sare",
+      "noMovesForBlack": "Meupe hawezi kusonga kwa Weusi",
+      "noMovesForWhite": "Weusi hawezi kusonga kwa Meupe",
+      "drawEnded": "Mchezo uliishia sare"
+    },
+    "save": {
+      "saveAction": "Hifadhi",
+      "title": "Hifadhi Mchezo",
+      "nameLabel": "Jina",
+      "namePlaceholder": "mfano: Mkakati wa mwisho wa mchezo",
+      "descLabel": "Maelezo",
+      "descPlaceholder": "Eleza kinachofanya nafasi hii kuwa ya kuvutia…",
+      "helpText": "Michezo iliyohifadhiwa inaweza kutumika na timu ya TzDraft kuunda mafumbo na vitabu vya michezo.",
+      "saving": "Inahifadhi…",
+      "loginRequired": "Ingia Kwanza",
+      "loginMessage": "Unahitaji akaunti ili kuhifadhi michezo yako ya mazoezi. Michezo yako inasaidia timu kuunda mafumbo na vitabu vya michezo.",
+      "loginAction": "Ingia",
+      "successTitle": "Mchezo Umehifadhiwa",
+      "successMessage": "Mchezo wako umehifadhiwa. Asante kwa mchango wako!",
+      "errorMessage": "Imeshindwa kuhifadhi mchezo. Tafadhali jaribu tena."
+    }
+  },
+  "common": {
+    "cancel": "Ghairi",
+    "optional": "si lazima",
+    "error": "Hitilafu",
+    "done": "Imekamilika",
+    "back": "Rudi",
+    "retry": "Jaribu Tena"
+  },
+  "studies": {
+    "title": "Michezo Yangu",
+    "homeSubtitle": "Tazama na rudia michezo yako ya mazoezi iliyohifadhiwa",
+    "badge": "MAZOEZI HURIA",
+    "replayBadge": "KURUDIA MCHEZO",
+    "moves": "hatua",
+    "move": "Hatua",
+    "loadError": "Imeshindwa kupakia michezo. Tafadhali jaribu tena.",
+    "emptyTitle": "Hakuna Michezo Bado",
+    "emptySubtitle": "Cheza mchezo wa Mazoezi Huria na bonyeza Hifadhi kurekodi nafasi za kuvutia.",
+    "goPlay": "Fungua Mazoezi Huria",
+    "startPosition": "Nafasi ya mwanzo",
+    "start": "Mwanzo",
+    "end": "Mwisho",
+    "prev": "Nyuma",
+    "next": "Mbele",
+    "noDescription": "Hakuna maelezo yaliyotolewa.",
+    "loading": "Inapakia michezo yako…"
   },
   "hero": {
     "title": "Cheza TzDraft",
@@ -54,6 +135,15 @@
       }
     }
   },
+  "learn": {
+    "heading": "Jifunze Kopi",
+    "subheading": "Soma mbinu, sheria, na gamebook ili kuboresha mchezo wako.",
+    "articles": "Makala",
+    "tactics": "Mbinu za Playbook",
+    "gamebooks": "Gamebook (kopi)",
+    "onProgress": "Inaandaliwa",
+    "more": "Angalia Zote"
+  },
   "auth": {
     "login": {
       "station": "Kituo cha TzDraft",
@@ -68,6 +158,7 @@
       "forgotPassword": "Umesahau nenosiri?",
       "rememberMe": "Nikumbuke",
       "noAccount": "Huna akaunti?",
+      "newToApp": "Mgeni kwenye TzDraft?",
       "signupLink": "Fungua Akaunti",
       "identifier": "Nambari ya Simu au Jina la Utumiaji",
       "identifierPlaceholder": "07** *** *** au jina la utumiaji",
@@ -205,11 +296,19 @@
       "good": "Nzuri",
       "strong": "Imara",
       "veryStrong": "Imara Sana"
+    },
+    "guestPopup": {
+      "title": "Jiunge na Jamii!",
+      "subtitle": "Kwa sasa unacheza kama mgeni. Jisajili sasa ili uhifadhi ukadiriaji wako, fuatilia historia yako, na ujiunge na mashindano!",
+      "primaryAction": "Fungua Akaunti ya Bure",
+      "secondaryAction": "Endelea kama Mgeni"
     }
   },
   "support": {
     "title": "Kituo cha Msaada",
     "subtitle": "Una swali au umepata tatizo? Tuko hapa kukusaidia uendelee na mchezo.",
+    "heroTitle": "Je, tunawezaje kukusaidia?",
+    "heroSubtitle": "Pata nyaraka, sheria, na uwasiliani na timu ya msaada moja kwa moja.",
     "eyebrow": "Msaada wa akaunti, mchezo na usalama wa mashindano",
     "stats": {
       "response": "Muda wa majibu",
@@ -231,7 +330,16 @@
     },
     "faq": "Maswali Yanayoulizwa Mara kwa Mara",
     "contact": "Wasiliana Nasi",
+    "legal": "Sera na Sheria",
+    "rules": "Sheria za Mchezo",
+    "privacy": "Sera na Faragha",
+    "website": "Tembelea Tovuti Rasmi",
     "contactSubtitle": "Tuma maelezo wazi, na jumuisha kitambulisho cha mchezo, msimbo wa mwaliko, au jina la mashindano inapohusika.",
+    "emailUs": "Tuma Barua Pepe kwa Timu ya Msaada",
+    "faqsTitle": "Maswali Yanayoulizwa Mara kwa Mara",
+    "faqsDesc": "Maswali ya kawaida kuhusu mchezo na akaunti.",
+    "rulesDesc": "Viwango rasmi vya mchezo wa drafti na sheria za mashindano.",
+    "privacyDesc": "Ulinzi wa data na miongozo ya jukwaa.",
     "contactMethods": {
       "title": "Njia nyingine za kutufikia",
       "email": "Tuma barua pepe kwa msaada",
@@ -464,6 +572,7 @@
     "winnerInline": "Mshindi: {winner}",
     "actions": {
       "undo": "Rudisha",
+      "flip": "Geuza Ubao",
       "resign": "Jisalimishe",
       "reset": "Anza Upya",
       "home": "Nyumbani",
@@ -579,6 +688,11 @@
       }
     },
     "account": {
+      "name": "Jina la uchezaji",
+      "noName": "Weka jina la uchezaji",
+      "editName": "Badili jina la uchezaji",
+      "editNameDesc": "Jina hili litaonekana kwa wachezaji wengine.",
+      "namePlaceholder": "Ingiza jina lako la uchezaji",
       "username": "Jina la mtumiaji",
       "phone": "Simu",
       "email": "Barua pepe",

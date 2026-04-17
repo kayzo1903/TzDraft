@@ -2,6 +2,13 @@ jest.mock(
   '@nestjs/common',
   () => ({
     Injectable: () => () => undefined,
+    Logger: class Logger {
+      log() {}
+      error() {}
+      warn() {}
+      debug() {}
+      verbose() {}
+    },
     UnauthorizedException: class UnauthorizedException extends Error {
       constructor(message?: string) {
         super(message);
