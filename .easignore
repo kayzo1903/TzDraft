@@ -1,0 +1,11 @@
+node_modules
+.git
+docs
+engines
+frontend
+backend
+*.log
+**/.expo
+**/dist
+**/android
+**/ios
