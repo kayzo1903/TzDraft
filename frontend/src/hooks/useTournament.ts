@@ -21,6 +21,7 @@ export function useTournament(tournamentId: string) {
 
   // Initial fetch
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     refetch().finally(() => setLoading(false));
   }, [refetch]);

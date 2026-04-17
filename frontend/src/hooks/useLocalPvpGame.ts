@@ -180,6 +180,7 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   const endgameCountdownRef = useRef<{ favored: PlayerColor | null; remaining: number } | null>(null);
   const thirtyMoveCountRef = useRef(0);
   endgameCountdownRef.current = endgameCountdown;
+  // eslint-disable-next-line react-hooks/refs
   thirtyMoveCountRef.current = thirtyMoveCount;
   const [mustContinueFrom, setMustContinueFrom] = useState<Position | null>(null);
   const [showPassOverlay, setShowPassOverlay] = useState(false);

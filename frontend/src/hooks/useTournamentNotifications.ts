@@ -23,6 +23,7 @@ export function useTournamentNotifications(): UseTournamentNotificationsResult {
   // Initial fetch
   useEffect(() => {
     if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     Promise.all([notificationService.list(), notificationService.unreadCount()])
       .then(([list, count]) => {

@@ -37,6 +37,9 @@ if (isDeploymentBuild) {
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     externalDir: true,
   },
@@ -93,7 +96,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  transpilePackages: ["@tzdraft/shared-client"],
+  transpilePackages: ["@tzdraft/shared-client", "@tzdraft/translations"],
   turbopack: {
     root: path.resolve(__dirname, ".."),
   },

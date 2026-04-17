@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 // jest.setup.js globally mocks tournament-notification.service — unmock it
 // so we test the real implementation here.
 jest.unmock('./tournament-notification.service');
@@ -74,20 +75,27 @@ function makeMatch(overrides: Partial<any> = {}): any {
   return { id: 'match-1', ...overrides };
 }
 
-function makeSvc(overrides: {
-  users?: any[];
-  notifRepo?: any;
-  email?: any;
-  sms?: any;
-  expoPush?: any;
-} = {}): {
+function makeSvc(
+  overrides: {
+    users?: any[];
+    notifRepo?: any;
+    email?: any;
+    sms?: any;
+    expoPush?: any;
+  } = {},
+): {
   svc: TournamentNotificationService;
   gateway: GamesGateway;
   expoPush: ReturnType<typeof makeExpoPush>;
   notifRepo: ReturnType<typeof makeNotifRepo>;
 } {
   const users = overrides.users ?? [
-    { id: 'u1', email: 'a@b.com', phoneNumber: '+255700000001', displayName: 'Alice' },
+    {
+      id: 'u1',
+      email: 'a@b.com',
+      phoneNumber: '+255700000001',
+      displayName: 'Alice',
+    },
   ];
   const notifRepo = overrides.notifRepo ?? makeNotifRepo();
   const gateway = new GamesGateway({} as any);
@@ -130,18 +138,26 @@ describe('TournamentNotificationService', () => {
       );
       expect(gateway.emitNotification).toHaveBeenCalledWith(
         'u1',
-        expect.objectContaining({ type: NotificationType.TOURNAMENT_REGISTERED }),
+        expect.objectContaining({
+          type: NotificationType.TOURNAMENT_REGISTERED,
+        }),
       );
       expect(expoPush.sendToUser).toHaveBeenCalledWith(
         'u1',
         expect.any(String),
         expect.any(String),
-        expect.objectContaining({ tournamentId: 'tourn-1', screen: 'tournament' }),
+        expect.objectContaining({
+          tournamentId: 'tourn-1',
+          screen: 'tournament',
+        }),
       );
     });
 
     it('still sends push even when DB persist throws', async () => {
-      const badRepo = { ...makeNotifRepo(), create: jest.fn().mockRejectedValue(new Error('DB down')) };
+      const badRepo = {
+        ...makeNotifRepo(),
+        create: jest.fn().mockRejectedValue(new Error('DB down')),
+      };
       const { svc, expoPush } = makeSvc({ notifRepo: badRepo });
 
       await svc.notifyRegistered('u1', makeTournament());
@@ -155,8 +171,18 @@ describe('TournamentNotificationService', () => {
   describe('notifyTournamentStarted', () => {
     it('sends WS + push to every participant', async () => {
       const users = [
-        { id: 'u1', email: 'a@b.com', phoneNumber: '+255700000001', displayName: 'Alice' },
-        { id: 'u2', email: 'b@c.com', phoneNumber: '+255700000002', displayName: 'Bob' },
+        {
+          id: 'u1',
+          email: 'a@b.com',
+          phoneNumber: '+255700000001',
+          displayName: 'Alice',
+        },
+        {
+          id: 'u2',
+          email: 'b@c.com',
+          phoneNumber: '+255700000002',
+          displayName: 'Bob',
+        },
       ];
       const { svc, gateway, expoPush } = makeSvc({ users });
 
@@ -178,24 +204,40 @@ describe('TournamentNotificationService', () => {
   describe('notifyMatchAssigned', () => {
     it('notifies both players with opponent name in title', async () => {
       const users = [
-        { id: 'p1', email: 'p1@t.com', phoneNumber: '+255700000001', displayName: 'Alice' },
-        { id: 'p2', email: 'p2@t.com', phoneNumber: '+255700000002', displayName: 'Bob' },
+        {
+          id: 'p1',
+          email: 'p1@t.com',
+          phoneNumber: '+255700000001',
+          displayName: 'Alice',
+        },
+        {
+          id: 'p2',
+          email: 'p2@t.com',
+          phoneNumber: '+255700000002',
+          displayName: 'Bob',
+        },
       ];
       const { svc, gateway, expoPush } = makeSvc({ users });
 
-      await svc.notifyMatchAssigned('p1', 'p2', makeMatch(), makeTournament(), 1);
+      await svc.notifyMatchAssigned(
+        'p1',
+        'p2',
+        makeMatch(),
+        makeTournament(),
+        1,
+      );
 
       expect(gateway.emitNotification).toHaveBeenCalledTimes(2);
       expect(expoPush.sendToUser).toHaveBeenCalledTimes(2);
 
       // Alice's notification mentions Bob
-      const [, aliceTitle] = (expoPush.sendToUser as jest.Mock).mock.calls.find(
+      const [, aliceTitle] = expoPush.sendToUser.mock.calls.find(
         ([uid]: [string]) => uid === 'p1',
       );
       expect(aliceTitle).toMatch(/Bob/);
 
       // Bob's notification mentions Alice
-      const [, bobTitle] = (expoPush.sendToUser as jest.Mock).mock.calls.find(
+      const [, bobTitle] = expoPush.sendToUser.mock.calls.find(
         ([uid]: [string]) => uid === 'p2',
       );
       expect(bobTitle).toMatch(/Alice/);
@@ -203,28 +245,56 @@ describe('TournamentNotificationService', () => {
 
     it('sends push with matchId and tournamentId in data', async () => {
       const users = [
-        { id: 'p1', email: null, phoneNumber: '+255700000001', displayName: 'Alice' },
-        { id: 'p2', email: null, phoneNumber: '+255700000002', displayName: 'Bob' },
+        {
+          id: 'p1',
+          email: null,
+          phoneNumber: '+255700000001',
+          displayName: 'Alice',
+        },
+        {
+          id: 'p2',
+          email: null,
+          phoneNumber: '+255700000002',
+          displayName: 'Bob',
+        },
       ];
       const { svc, expoPush } = makeSvc({ users });
 
-      await svc.notifyMatchAssigned('p1', 'p2', makeMatch({ id: 'match-99' }), makeTournament(), 2);
+      await svc.notifyMatchAssigned(
+        'p1',
+        'p2',
+        makeMatch({ id: 'match-99' }),
+        makeTournament(),
+        2,
+      );
 
-      const callData = (expoPush.sendToUser as jest.Mock).mock.calls.map(
+      const callData = expoPush.sendToUser.mock.calls.map(
         ([, , , data]: [string, string, string, any]) => data,
       );
       for (const d of callData) {
-        expect(d).toMatchObject({ matchId: 'match-99', tournamentId: 'tourn-1', screen: 'tournament' });
+        expect(d).toMatchObject({
+          matchId: 'match-99',
+          tournamentId: 'tourn-1',
+          screen: 'tournament',
+        });
       }
     });
 
     it('does nothing if either player is missing from the DB', async () => {
       const { svc, gateway, expoPush } = makeSvc({
-        users: [{ id: 'p1', email: null, phoneNumber: '+1', displayName: 'Alice' }],
+        users: [
+          { id: 'p1', email: null, phoneNumber: '+1', displayName: 'Alice' },
+        ],
       });
 
       // p2 not found
-      await svc.notifyMatchAssigned('p1', 'p2', makeMatch(), makeTournament(), 1);
+      await svc.notifyMatchAssigned(
+        'p1',
+        'p2',
+        makeMatch(),
+        makeTournament(),
+        1,
+      );
 
       expect(gateway.emitNotification).not.toHaveBeenCalled();
       expect(expoPush.sendToUser).not.toHaveBeenCalled();
@@ -241,9 +311,16 @@ describe('TournamentNotificationService', () => {
       ];
       const { svc, notifRepo, expoPush } = makeSvc({ users });
 
-      await svc.notifyMatchResult('winner', 'loser', makeMatch(), makeTournament(), '2-0', 1);
+      await svc.notifyMatchResult(
+        'winner',
+        'loser',
+        makeMatch(),
+        makeTournament(),
+        '2-0',
+        1,
+      );
 
-      const createdTypes = (notifRepo.create as jest.Mock).mock.calls.map(
+      const createdTypes = notifRepo.create.mock.calls.map(
         (args) => args[0].type,
       );
       expect(createdTypes).toContain(NotificationType.MATCH_RESULT);
@@ -254,7 +331,14 @@ describe('TournamentNotificationService', () => {
     it('handles null winner/loser gracefully', async () => {
       const { svc, expoPush } = makeSvc({ users: [] });
 
-      await svc.notifyMatchResult(null, null, makeMatch(), makeTournament(), '0-0', 1);
+      await svc.notifyMatchResult(
+        null,
+        null,
+        makeMatch(),
+        makeTournament(),
+        '0-0',
+        1,
+      );
 
       expect(expoPush.sendToUser).not.toHaveBeenCalled();
     });
@@ -270,10 +354,14 @@ describe('TournamentNotificationService', () => {
       ];
       const { svc, notifRepo } = makeSvc({ users });
 
-      await svc.notifyTournamentCompleted(['champ', 'runner'], 'champ', makeTournament());
+      await svc.notifyTournamentCompleted(
+        ['champ', 'runner'],
+        'champ',
+        makeTournament(),
+      );
 
       // Each call is [notificationInstance], extract the first arg
-      const created: any[] = (notifRepo.create as jest.Mock).mock.calls.map((args) => args[0]);
+      const created: any[] = notifRepo.create.mock.calls.map((args) => args[0]);
       const champNotif = created.find((n) => n.userId === 'champ');
       const runnerNotif = created.find((n) => n.userId === 'runner');
 
@@ -289,7 +377,11 @@ describe('TournamentNotificationService', () => {
       }));
       const { svc, expoPush } = makeSvc({ users });
 
-      await svc.notifyTournamentCompleted(['u0', 'u1', 'u2'], 'u0', makeTournament());
+      await svc.notifyTournamentCompleted(
+        ['u0', 'u1', 'u2'],
+        'u0',
+        makeTournament(),
+      );
 
       expect(expoPush.sendToUser).toHaveBeenCalledTimes(3);
     });
@@ -300,8 +392,18 @@ describe('TournamentNotificationService', () => {
   describe('notifyTournamentCancelled', () => {
     it('persists TOURNAMENT_CANCELLED + emits WS + push for each participant', async () => {
       const users = [
-        { id: 'u1', email: null, phoneNumber: '+255700000001', displayName: 'Alice' },
-        { id: 'u2', email: null, phoneNumber: '+255700000002', displayName: 'Bob' },
+        {
+          id: 'u1',
+          email: null,
+          phoneNumber: '+255700000001',
+          displayName: 'Alice',
+        },
+        {
+          id: 'u2',
+          email: null,
+          phoneNumber: '+255700000002',
+          displayName: 'Bob',
+        },
       ];
       const { svc, gateway, expoPush, notifRepo } = makeSvc({ users });
 
