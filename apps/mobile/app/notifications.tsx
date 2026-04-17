@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { LoadingScreen } from "../src/components/ui/LoadingScreen";
 import {
   ArrowLeft,
   Bell,
@@ -23,19 +25,12 @@ import {
   CircleAlert,
   Flag,
   Users,
+  FlaskConical,
 } from "lucide-react-native";
-import api from "../src/lib/api";
 import { colors } from "../src/theme/colors";
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  read: boolean;
-  createdAt: string;
-  metadata?: Record<string, any>;
-}
+import { useNotifications } from "../src/hooks/useNotifications";
+import type { AppNotification } from "../src/hooks/useNotifications";
+import { sendPreviewNotification } from "../src/lib/push-notifications";
 
 const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
   TOURNAMENT_REGISTERED: { icon: Trophy,       color: "#f97316" },
@@ -43,7 +38,7 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
   TOURNAMENT_CANCELLED:  { icon: CircleAlert,   color: "#ef4444" },
   TOURNAMENT_COMPLETED:  { icon: Medal,         color: "#fbbf24" },
   MATCH_ASSIGNED:        { icon: Users,         color: "#a78bfa" },
-  MATCH_STARTED:         { icon: Swords,        color: "#38bdf8" },
+  MATCH_STARTED:        { icon: Swords,        color: "#38bdf8" },
   MATCH_RESULT:          { icon: Trophy,        color: "#10b981" },
   ROUND_ADVANCED:        { icon: ChevronRight,  color: "#f97316" },
   ELIMINATED:            { icon: Flag,          color: "#ef4444" },
@@ -51,76 +46,85 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60)   return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 60)    return `${diff}s ago`;
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
+
+// ---------------------------------------------------------------------------
+// Toast shown after firing a preview notification
+// ---------------------------------------------------------------------------
+
+function PreviewToast({ visible, label }: { visible: boolean; label: string }) {
+  const opacity = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.delay(2000),
+        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible, label]);
+
+  return (
+    <Animated.View style={[styles.toast, { opacity }]} pointerEvents="none">
+      <FlaskConical size={14} color={colors.primary} />
+      <Text style={styles.toastText}>{label}</Text>
+    </Animated.View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 export default function NotificationsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    refreshing,
+    refresh,
+    markRead,
+    markAllRead,
+    injectPreview,
+  } = useNotifications();
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [markingAll, setMarkingAll] = useState(false);
+  const [markingAll, setMarkingAll] = React.useState(false);
+  const [previewing, setPreviewing] = React.useState(false);
+  const [toastLabel, setToastLabel] = React.useState("");
+  const [toastKey, setToastKey] = React.useState(0);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await api.get("/notifications?limit=50");
-      setNotifications(res.data);
-    } catch (e) {
-      console.error("[Notifications] Fetch failed:", e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications();
-  };
-
-  const markRead = async (id: string) => {
-    try {
-      await api.patch(`/notifications/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-    } catch (e) {
-      console.error("[Notifications] Mark read failed:", e);
-    }
-  };
-
-  const markAllRead = async () => {
+  const handleMarkAllRead = async () => {
     setMarkingAll(true);
+    await markAllRead();
+    setMarkingAll(false);
+  };
+
+  const handlePreview = async () => {
+    if (previewing) return;
+    setPreviewing(true);
     try {
-      await api.patch("/notifications/read-all");
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    } catch (e) {
-      console.error("[Notifications] Mark all read failed:", e);
+      const sample = await sendPreviewNotification();
+      injectPreview(sample);
+      setToastLabel(`${sample.type}`);
+      setToastKey((k) => k + 1);
     } finally {
-      setMarkingAll(false);
+      setPreviewing(false);
     }
   };
 
-  const handlePress = (n: Notification) => {
+  const handlePress = (n: AppNotification) => {
     if (!n.read) markRead(n.id);
-    // Navigate to relevant screen based on type
     if (n.metadata?.tournamentId) {
-      router.push(`/game/tournament/${n.metadata.tournamentId}`);
+      router.push(`/game/tournament/${n.metadata.tournamentId}` as any);
     }
   };
 
-  const renderItem = (n: Notification) => {
+  const renderItem = (n: AppNotification) => {
     const meta = TYPE_META[n.type] ?? { icon: Bell, color: colors.primary };
     const Icon = meta.icon;
 
@@ -131,15 +135,16 @@ export default function NotificationsScreen() {
         onPress={() => handlePress(n)}
         activeOpacity={0.7}
       >
-        {/* Icon */}
         <View style={[styles.iconWrap, { backgroundColor: meta.color + "18" }]}>
           <Icon size={20} color={meta.color} />
         </View>
 
-        {/* Content */}
         <View style={styles.itemContent}>
           <View style={styles.itemHeader}>
-            <Text style={[styles.itemTitle, !n.read && styles.itemTitleUnread]} numberOfLines={1}>
+            <Text
+              style={[styles.itemTitle, !n.read && styles.itemTitleUnread]}
+              numberOfLines={1}
+            >
               {n.title}
             </Text>
             <Text style={styles.itemTime}>{timeAgo(n.createdAt)}</Text>
@@ -149,7 +154,6 @@ export default function NotificationsScreen() {
           </Text>
         </View>
 
-        {/* Unread dot */}
         {!n.read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
     );
@@ -170,34 +174,59 @@ export default function NotificationsScreen() {
           )}
         </Text>
 
-        {unreadCount > 0 ? (
-          <TouchableOpacity
-            style={styles.markAllBtn}
-            onPress={markAllRead}
-            disabled={markingAll}
-          >
-            {markingAll ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <CheckCheck size={20} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 44 }} />
-        )}
+        <View style={styles.headerActions}>
+          {/* Dev-only preview button */}
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[styles.iconBtn, styles.previewBtn]}
+              onPress={handlePreview}
+              disabled={previewing}
+              accessibilityLabel="Send preview notification"
+            >
+              {previewing ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <FlaskConical size={18} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          )}
+
+          {unreadCount > 0 ? (
+            <TouchableOpacity
+              style={[styles.iconBtn, styles.markAllBtn]}
+              onPress={handleMarkAllRead}
+              disabled={markingAll}
+            >
+              {markingAll ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <CheckCheck size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          ) : (
+            /* spacer so title stays centred when no unread */
+            !__DEV__ && <View style={{ width: 44 }} />
+          )}
+        </View>
       </View>
 
       {/* Body */}
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
+        <LoadingScreen />
       ) : (
         <ScrollView
           style={styles.list}
-          contentContainerStyle={notifications.length === 0 ? styles.emptyContainer : styles.listContent}
+          contentContainerStyle={
+            notifications.length === 0
+              ? styles.emptyContainer
+              : styles.listContent
+          }
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.primary}
+            />
           }
         >
           {notifications.length === 0 ? (
@@ -205,20 +234,19 @@ export default function NotificationsScreen() {
               <BellOff size={48} color={colors.surfaceElevated} />
               <Text style={styles.emptyTitle}>All caught up</Text>
               <Text style={styles.emptySub}>
-                Tournament updates, match results, and round changes will appear here.
+                Tournament updates, match results, and round changes will appear
+                here.
+                {__DEV__ && "\n\nTap 🧪 to preview each notification type."}
               </Text>
             </View>
           ) : (
             <>
-              {/* Unread section */}
               {notifications.filter((n) => !n.read).length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>New</Text>
                   {notifications.filter((n) => !n.read).map(renderItem)}
                 </View>
               )}
-
-              {/* Read section */}
               {notifications.filter((n) => n.read).length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>Earlier</Text>
@@ -228,6 +256,11 @@ export default function NotificationsScreen() {
             </>
           )}
         </ScrollView>
+      )}
+
+      {/* Toast feedback */}
+      {__DEV__ && (
+        <PreviewToast key={toastKey} visible={toastKey > 0} label={toastLabel} />
       )}
     </SafeAreaView>
   );
@@ -263,20 +296,26 @@ const styles = StyleSheet.create({
   headerBadge: {
     color: colors.primary,
   },
-  markAllBtn: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: colors.primaryAlpha10,
     borderWidth: 1,
-    borderColor: colors.primaryAlpha30,
     alignItems: "center",
     justifyContent: "center",
   },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+  previewBtn: {
+    backgroundColor: colors.primaryAlpha05,
+    borderColor: colors.primaryAlpha15,
+  },
+  markAllBtn: {
+    backgroundColor: colors.primaryAlpha10,
+    borderColor: colors.primaryAlpha30,
   },
   list: {
     flex: 1,
@@ -378,5 +417,24 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.primary,
     flexShrink: 0,
+  },
+  toast: {
+    position: "absolute",
+    bottom: 32,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  toastText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

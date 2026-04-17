@@ -1094,7 +1094,9 @@ export default function OnlineGamePage() {
           {/* Error toast */}
           {state.error && (
             <div className="mt-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300 text-center">
-              {state.error}
+              {typeof state.error === "string"
+                ? state.error
+                : (state.error as any)?.message ?? "An error occurred"}
             </div>
           )}
 

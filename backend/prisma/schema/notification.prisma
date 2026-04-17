@@ -29,4 +29,5 @@ enum NotificationType {
     MATCH_RESULT
     ROUND_ADVANCED
     ELIMINATED
+    WELCOME
 }

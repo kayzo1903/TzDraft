@@ -272,8 +272,10 @@ export class GameController {
     );
 
     if (result.status === 'matched') {
-      // Notify the matched opponent via their current live socket
+      // Notify both players via WS so the game starts even if the HTTP
+      // response is dropped (e.g. mobile network hiccup / request abort).
       this.gamesGateway.emitMatchFound(result.opponentUserId, result.gameId);
+      this.gamesGateway.emitMatchFound(user.id, result.gameId);
     }
 
     return {

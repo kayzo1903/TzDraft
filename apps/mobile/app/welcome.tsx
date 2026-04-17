@@ -1,16 +1,16 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, SafeAreaView } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { authClient } from "../src/lib/auth-client";
 import { useAuthStore } from "../src/auth/auth-store";
 import { WelcomeBoard } from "../src/components/WelcomeBoard";
 import { colors } from "../src/theme/colors";
+import { LanguageSwitcher } from "../src/components/LanguageSwitcher";
 
 export default function Welcome() {
   const { t } = useTranslation();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const { status, hasHydrated } = useAuthStore();
 
   // If the user already has an active session (e.g. restored nav state from
@@ -25,20 +25,19 @@ export default function Welcome() {
     }
   }, [status, hasHydrated]);
 
-  const handleGuestPlay = async () => {
-    setIsLoading(true);
-    try {
-      await authClient.loginAsGuest();
-      router.replace("/");
-    } catch (error) {
-      console.error("[Welcome] Guest play failed:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  // Local guest — no network call, no DB row. Sets a temporary in-memory
+  // identity that is never persisted to SecureStore.
+  const handleGuestPlay = () => {
+    authClient.loginAsLocalGuest();
+    router.replace("/");
   };
 
   return (
     <SafeAreaView style={styles.root}>
+      <View style={styles.langContainer}>
+        <LanguageSwitcher />
+      </View>
+
       <View style={styles.container}>
         <View style={styles.branding}>
           <Image
@@ -63,16 +62,8 @@ export default function Welcome() {
             <Text style={styles.loginButtonText}>{t("nav.login", "Login to Your Account")}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.guestButton}
-            onPress={handleGuestPlay}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Text style={styles.guestButtonText}>{t("nav.play", "Play as a Guest")}</Text>
-            )}
+          <TouchableOpacity style={styles.guestButton} onPress={handleGuestPlay}>
+            <Text style={styles.guestButtonText}>{t("nav.play", "Play as a Guest")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -167,5 +158,11 @@ const styles = StyleSheet.create({
   signupHighlight: {
     color: colors.primary,
     fontWeight: "bold",
+  },
+  langContainer: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
   },
 });

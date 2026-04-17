@@ -153,7 +153,16 @@ export default function GameHistoryScreen() {
   const renderGameItem = ({ item }: { item: GameHistoryItem }) => (
     <TouchableOpacity 
       style={styles.gameCard}
-      onPress={() => console.log("Replay", item.id)}
+      onPress={() =>
+        router.push({
+          pathname: "/game/game-replay",
+          params: {
+            id: item.id,
+            opponentName: item.opponent?.displayName ?? "AI",
+            result: item.result,
+          },
+        })
+      }
     >
       <View style={styles.gameCardLeft}>
         <View style={[styles.resultIndicator, {
@@ -196,9 +205,6 @@ export default function GameHistoryScreen() {
           <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("home.history", "Game History")}</Text>
-        <TouchableOpacity style={styles.backButton}>
-           <Filter size={20} color={colors.foreground} />
-        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -334,11 +340,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
   },
   headerTitle: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
     color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
+    zIndex: -1,
   },
   statsContainer: {
     padding: 20,

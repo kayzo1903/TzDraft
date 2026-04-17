@@ -22,10 +22,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    let message: string | object;
+    let message: string;
     if (isHttp) {
       const res = exception.getResponse();
-      message = typeof res === 'string' ? res : res;
+      if (typeof res === 'string') {
+        message = res;
+      } else {
+        // NestJS HttpException response is { message, error, statusCode }.
+        // Extract the inner message as a flat string so clients never receive
+        // a nested object where they expect a string.
+        const inner = (res as Record<string, unknown>).message;
+        if (typeof inner === 'string') {
+          message = inner;
+        } else if (Array.isArray(inner)) {
+          message = inner.join(', ');
+        } else {
+          message = exception.message;
+        }
+      }
     } else {
       // Non-HTTP (unexpected) errors — log full error, return generic message
       this.logger.error(

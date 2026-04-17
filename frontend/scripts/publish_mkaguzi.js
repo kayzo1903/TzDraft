@@ -2,12 +2,15 @@ const { createClient } = require("@sanity/client");
 const fs = require("fs");
 const path = require("path");
 
+// Load environment variables from .env.local
+require("dotenv").config({ path: path.resolve(__dirname, "../.env.local") });
+
 const client = createClient({
-  projectId: "wvztgicc",
-  dataset: "production",
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || "wvztgicc",
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || "production",
   useCdn: false,
   apiVersion: "2026-03-18",
-  token: "REDACTED_REVOKE_AND_REPLACE"
+  token: process.env.SANITY_WRITE_TOKEN
 });
 
 // Helper to convert Markdown-ish text to Portable Text blocks

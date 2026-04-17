@@ -15,6 +15,8 @@ import {
   Vibration,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import {
   ArrowLeft,
   X,
@@ -466,6 +468,7 @@ function ResultModal({
 // ─── Main Screen ────────────────────────────────────────────────────────────────
 export default function VsAiScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams() as unknown as VsAiParams;
   const { isReady, initError } = useMkaguzi();
   const { user } = useAuthStore();
@@ -649,23 +652,17 @@ export default function VsAiScreen() {
 
   // ── Loading screen ────────────────────────────────────────────────────────
   if (!isReady) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingCenter}>
-          {initError ? (
-            <>
-              <Text style={[styles.loadingText, { color: colors.danger }]}>Engine failed to load</Text>
-              <Text style={[styles.loadingText, { fontSize: 12, marginTop: 8, color: colors.textMuted }]}>{initError}</Text>
-            </>
-          ) : (
-            <>
-              <ActivityIndicator color={colors.primary} size="large" />
-              <Text style={styles.loadingText}>Loading engine…</Text>
-            </>
-          )}
-        </View>
-      </SafeAreaView>
-    );
+    if (initError) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingCenter}>
+            <Text style={[styles.loadingText, { color: colors.danger }]}>Engine failed to load</Text>
+            <Text style={[styles.loadingText, { fontSize: 12, marginTop: 8, color: colors.textMuted }]}>{initError}</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+    return <LoadingScreen message={t("game.loadingEngine", "Loading engine…")} />;
   }
 
   return (

@@ -5,18 +5,17 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Image,
   Dimensions,
+  ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
-import { BookOpen, Sparkles, Target, ChevronRight } from "lucide-react-native";
+import { BookOpen, Target, ChevronLeft } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
-import { fetchTactics, SanityArticle, SanityTactic } from "../src/services/sanity.service";
+import { fetchTactics, SanityTactic } from "../src/services/sanity.service";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
+import { LoadingScreen } from "../src/components/ui/LoadingScreen";
 
 const { width } = Dimensions.get("window");
 
@@ -34,7 +33,6 @@ export default function LearnScreen() {
   const router = useRouter();
   const locale = i18n.language;
 
-  const [articles, setArticles] = useState<SanityArticle[]>([]);
   const [tactics, setTactics] = useState<SanityTactic[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,25 +52,6 @@ export default function LearnScreen() {
     }
   };
 
-  const renderArticle = (article: SanityArticle) => {
-    const title = article.title?.[locale as "en" | "sw"] || article.title?.en || "Article";
-    const desc = article.description?.[locale as "en" | "sw"] || article.description?.en || "";
-
-    return (
-      <TouchableOpacity key={article.slug} style={styles.articleCard} activeOpacity={0.8}>
-        <Image 
-          source={article.coverImageUrl ? { uri: article.coverImageUrl } : require("../assets/icon.png")} 
-          style={styles.articleImage} 
-        />
-        <View style={styles.articleContent}>
-          <InProgressBadge />
-          <Text style={styles.articleTitle} numberOfLines={2}>{title}</Text>
-          <Text style={styles.articleDesc} numberOfLines={2}>{desc}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
   const renderTactic = (tactic: SanityTactic) => {
     const desc = tactic.description?.[locale as "en" | "sw"] || tactic.description?.en || "";
     
@@ -84,7 +63,7 @@ export default function LearnScreen() {
               <InProgressBadge />
            </View>
            <Text style={styles.tacticDesc} numberOfLines={2}>{desc}</Text>
-           <View style={[styles.diffBadge, styles[`diff_${tactic.difficulty}` as keyof typeof styles]]}>
+           <View style={[styles.diffBadge, styles[`diff_${tactic.difficulty}` as keyof typeof styles] as ViewStyle]}>
              <Text style={styles.diffText}>{tactic.difficulty}</Text>
            </View>
         </View>
@@ -99,36 +78,30 @@ export default function LearnScreen() {
   ];
 
   if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ChevronLeft color={colors.textMuted} size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t("learn.heading", "Learn & Master")}</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <View style={styles.iconBox}>
-              <BookOpen size={24} color={colors.primary} />
-            </View>
-            <Text style={styles.title}>{t("learn.heading", "Learn & Master")}</Text>
-          </View>
-          <Text style={styles.subtitle}>{t("learn.subheading", "Study tactics, rules, and gamebooks to improve your game.")}</Text>
-        </View>
-
         {/* Tactics Playbook */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Target size={18} color={colors.primary} />
             <Text style={styles.sectionTitle}>{t("learn.tactics", "Tactics Playbook")}</Text>
           </View>
-          <View style={styles.tacticsList}>
+          <View style={styles.card}>
             {tactics.map(renderTactic)}
-             {tactics.length === 0 && (
+            {tactics.length === 0 && (
               <Text style={styles.emptyText}>No tactics yet.</Text>
             )}
           </View>
@@ -140,9 +113,16 @@ export default function LearnScreen() {
             <BookOpen size={18} color={colors.primary} />
             <Text style={styles.sectionTitle}>{t("learn.gamebooks", "Gamebook (kopi)")}</Text>
           </View>
-          <View style={styles.gamebookList}>
-            {gamebooks.map((book) => (
-              <TouchableOpacity key={book.id} style={styles.gamebookItem} activeOpacity={0.7}>
+          <View style={styles.card}>
+            {gamebooks.map((book, index) => (
+              <TouchableOpacity 
+                key={book.id} 
+                style={[
+                  styles.gamebookItem, 
+                  index === gamebooks.length - 1 && { borderBottomWidth: 0 }
+                ]} 
+                activeOpacity={0.7}
+              >
                 <View style={styles.gamebookContent}>
                   <Text style={styles.gamebookTitle}>{book.title}</Text>
                   <Text style={styles.gamebookSub}>{book.sub}</Text>
@@ -175,44 +155,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  loader: {
-    flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   header: {
-    marginBottom: 24,
-  },
-  titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  iconBox: {
+  backButton: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.primaryAlpha10,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  title: {
+  headerTitle: {
     color: colors.foreground,
-    fontSize: 28,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: -0.5,
+    fontSize: 18,
+    fontWeight: "bold",
   },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 15,
-    marginTop: 8,
-    lineHeight: 22,
+  scrollContent: {
+    padding: 12,
   },
   section: {
     marginBottom: 32,
@@ -222,6 +188,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
     color: colors.foreground,
@@ -230,31 +197,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 2,
   },
-  webArticleCard: {
-    borderRadius: 20,
-    overflow: "hidden",
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  webArticleGradient: {
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  webArticleInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  webArticleTitle: {
-    color: colors.foreground,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  webArticleSub: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 4,
+    overflow: "hidden",
   },
   badge: {
     backgroundColor: colors.primaryAlpha10,
@@ -271,15 +219,10 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
   },
-  tacticsList: {
-    gap: 12,
-  },
   tacticCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   tacticInfo: {
     gap: 8,
@@ -315,36 +258,32 @@ const styles = StyleSheet.create({
   diff_beginner: { borderColor: "rgba(34, 197, 94, 0.3)", backgroundColor: "rgba(34, 197, 94, 0.1)" },
   diff_intermediate: { borderColor: colors.primaryAlpha30, backgroundColor: colors.primaryAlpha10 },
   diff_pro: { borderColor: "rgba(239, 68, 68, 0.3)", backgroundColor: "rgba(239, 68, 68, 0.1)" },
-  gamebookList: {
-    gap: 10,
-  },
   gamebookItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
     padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   gamebookContent: {
     flex: 1,
+    marginRight: 12,
   },
   gamebookTitle: {
     color: colors.foreground,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "bold",
   },
   gamebookSub: {
-    color: colors.textMuted,
-    fontSize: 11,
+    color: colors.textSubtle,
+    fontSize: 12,
     marginTop: 2,
   },
   infoBox: {
     marginTop: 20,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(249, 115, 22, 0.1)",
   },
@@ -359,6 +298,8 @@ const styles = StyleSheet.create({
     color: colors.textDisabled,
     fontStyle: "italic",
     fontSize: 13,
+    padding: 24,
+    textAlign: "center",
   },
   footerSpacer: {
     height: 60,

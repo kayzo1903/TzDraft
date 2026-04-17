@@ -30,9 +30,14 @@ import {
   Crown,
   Minus,
   BookmarkPlus,
+  BookmarkPlus as BookmarkIcon,
   BookMarked,
   LogIn,
   CheckCircle2,
+  AlertCircle,
+  Trash2,
+  Edit3,
+  type LucideIcon,
 } from "lucide-react-native";
 import { ActivityIndicator } from "react-native";
 import { BoardState } from "@tzdraft/mkaguzi-engine";
@@ -42,6 +47,8 @@ import { useFreeGame } from "../../src/hooks/useFreeGame";
 import { useGameAudio } from "../../src/hooks/useGameAudio";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { studyService } from "../../src/services/study.service";
+import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
+import { ThemedModal } from "../../src/components/ui/ThemedModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -174,39 +181,23 @@ function SaveFeedbackModal({
   message: string;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
   const isSuccess = type === "success";
+  const icon = isSuccess ? CheckCircle2 : AlertCircle;
   const accent = isSuccess ? colors.primary : colors.danger;
-  const iconBg = isSuccess ? colors.primaryAlpha10 : "rgba(239,68,68,0.10)";
-  const iconBorder = isSuccess ? colors.primaryAlpha30 : "rgba(239,68,68,0.25)";
+  const bg = isSuccess ? colors.primaryAlpha15 : colors.dangerAlpha20;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <View style={feedbackStyles.card}>
-            {/* Icon */}
-            <View style={[feedbackStyles.iconWrap, { backgroundColor: iconBg, borderColor: iconBorder }]}>
-              {isSuccess
-                ? <CheckCircle2 color={accent} size={36} />
-                : <X color={accent} size={36} />}
-            </View>
-
-            {/* Text */}
-            <Text style={[feedbackStyles.title, { color: accent }]}>{title}</Text>
-            <Text style={feedbackStyles.message}>{message}</Text>
-
-            {/* Action */}
-            <TouchableOpacity
-              style={[feedbackStyles.btn, { backgroundColor: accent }]}
-              onPress={onClose}
-            >
-              <Text style={feedbackStyles.btnText}>{t("common.done", "Done")}</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+    <ThemedModal
+      visible={visible}
+      onClose={onClose}
+      label={isSuccess ? "SAVE SUCCESSFUL" : "SAVE FAILED"}
+      title={title}
+      subtitle={message}
+      icon={icon}
+      iconColor={accent}
+      iconBg={bg}
+      actions={[{ label: "Got it", onPress: onClose, type: "primary" }]}
+    />
   );
 }
 
@@ -222,39 +213,18 @@ function LoginRequiredModal({
 }) {
   const { t } = useTranslation();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <View style={saveStyles.card}>
-            <View style={saveStyles.header}>
-              <View style={[saveStyles.headerIconWrap, { backgroundColor: "rgba(245,158,11,0.12)", borderColor: "rgba(245,158,11,0.25)" }]}>
-                <LogIn color="#f59e0b" size={20} />
-              </View>
-              <Text style={saveStyles.headerTitle}>{t("freePlay.save.loginRequired", "Login Required")}</Text>
-              <TouchableOpacity onPress={onClose} style={saveStyles.closeBtn}>
-                <X color={colors.textMuted} size={18} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={saveStyles.body}>
-              <Text style={saveStyles.loginMsg}>
-                {t("freePlay.save.loginMessage", "You need an account to save studies. Your saved games help us build puzzles and playbooks for the community.")}
-              </Text>
-            </View>
-
-            <View style={saveStyles.footer}>
-              <TouchableOpacity style={saveStyles.cancelBtn} onPress={onClose}>
-                <Text style={saveStyles.cancelBtnText}>{t("common.cancel", "Cancel")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={saveStyles.saveBtn} onPress={onLogin}>
-                <LogIn color="#000" size={16} />
-                <Text style={saveStyles.saveBtnText}>{t("freePlay.save.loginAction", "Log In")}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+    <ThemedModal
+      visible={visible}
+      onClose={onClose}
+      label="AUTHENTICATION REQUIRED"
+      title={t("freePlay.save.loginRequired", "Login Required")}
+      subtitle={t("freePlay.save.loginMessage", "You need an account to save studies. Your saved games help us build puzzles and playbooks for the community.")}
+      icon={LogIn}
+      actions={[
+        { label: t("common.cancel", "Cancel"), onPress: onClose },
+        { label: t("freePlay.save.loginAction", "Log In"), onPress: onLogin, type: "primary" },
+      ]}
+    />
   );
 }
 
@@ -285,73 +255,54 @@ function SaveStudyModal({
   const canSave = name.trim().length > 0 && !isSaving;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-        <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={saveStyles.card}>
-              <View style={saveStyles.header}>
-                <View style={[saveStyles.headerIconWrap, { backgroundColor: colors.primaryAlpha10, borderColor: colors.primaryAlpha30 }]}>
-                  <BookmarkPlus color={colors.primary} size={20} />
-                </View>
-                <Text style={saveStyles.headerTitle}>{t("freePlay.save.title", "Save Study")}</Text>
-                <TouchableOpacity onPress={onClose} style={saveStyles.closeBtn} disabled={isSaving}>
-                  <X color={colors.textMuted} size={18} />
-                </TouchableOpacity>
-              </View>
+    <ThemedModal
+      visible={visible}
+      onClose={onClose}
+      label="PLAYBOOK COLLECTION"
+      title={t("freePlay.save.title", "Save Study")}
+      icon={BookmarkIcon}
+      dismissable={!isSaving}
+      actions={[
+        { label: t("common.cancel", "Cancel"), onPress: onClose },
+        { label: t("freePlay.save.saveAction", "Save"), onPress: () => onSave(name.trim(), description.trim()), type: "primary", loading: isSaving },
+      ]}
+    >
+      <View style={{ gap: 12 }}>
+        <View>
+          <Text style={saveStyles.fieldLabel}>{t("freePlay.save.nameLabel", "Name")} *</Text>
+          <TextInput
+            style={saveStyles.input}
+            placeholder={t("freePlay.save.namePlaceholder", "e.g. King endgame pattern")}
+            placeholderTextColor={colors.textDisabled}
+            value={name}
+            onChangeText={setName}
+            maxLength={120}
+            editable={!isSaving}
+            returnKeyType="next"
+          />
+        </View>
 
-              <View style={saveStyles.body}>
-                <Text style={saveStyles.fieldLabel}>{t("freePlay.save.nameLabel", "Name")} *</Text>
-                <TextInput
-                  style={saveStyles.input}
-                  placeholder={t("freePlay.save.namePlaceholder", "e.g. King endgame pattern")}
-                  placeholderTextColor={colors.textDisabled}
-                  value={name}
-                  onChangeText={setName}
-                  maxLength={120}
-                  editable={!isSaving}
-                  returnKeyType="next"
-                />
+        <View>
+          <Text style={saveStyles.fieldLabel}>{t("freePlay.save.descLabel", "Description (optional)")}</Text>
+          <TextInput
+            style={[saveStyles.input, saveStyles.inputMultiline]}
+            placeholder={t("freePlay.save.descPlaceholder", "Describe what makes this position interesting…")}
+            placeholderTextColor={colors.textDisabled}
+            value={description}
+            onChangeText={setDescription}
+            maxLength={500}
+            multiline
+            numberOfLines={3}
+            editable={!isSaving}
+            textAlignVertical="top"
+          />
+        </View>
 
-                <Text style={[saveStyles.fieldLabel, { marginTop: 12 }]}>{t("freePlay.save.descLabel", "Description")} ({t("common.optional", "optional")})</Text>
-                <TextInput
-                  style={[saveStyles.input, saveStyles.inputMultiline]}
-                  placeholder={t("freePlay.save.descPlaceholder", "Describe what makes this position interesting…")}
-                  placeholderTextColor={colors.textDisabled}
-                  value={description}
-                  onChangeText={setDescription}
-                  maxLength={500}
-                  multiline
-                  numberOfLines={3}
-                  editable={!isSaving}
-                  textAlignVertical="top"
-                />
-
-                <Text style={saveStyles.helpText}>
-                  {t("freePlay.save.helpText", "Saved studies may be used by the TzDraft team to create puzzles and playbooks.")}
-                </Text>
-              </View>
-
-              <View style={saveStyles.footer}>
-                <TouchableOpacity style={saveStyles.cancelBtn} onPress={onClose} disabled={isSaving}>
-                  <Text style={saveStyles.cancelBtnText}>{t("common.cancel", "Cancel")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[saveStyles.saveBtn, !canSave && saveStyles.saveBtnDisabled]}
-                  onPress={() => onSave(name.trim(), description.trim())}
-                  disabled={!canSave}
-                >
-                  {isSaving
-                    ? <ActivityIndicator size="small" color="#000" />
-                    : <BookmarkPlus color="#000" size={16} />}
-                  <Text style={saveStyles.saveBtnText}>{isSaving ? t("freePlay.save.saving", "Saving…") : t("freePlay.save.saveAction", "Save")}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
-    </Modal>
+        <Text style={saveStyles.helpText}>
+          {t("freePlay.save.helpText", "Saved studies may be used by the TzDraft team to create puzzles and playbooks.")}
+        </Text>
+      </View>
+    </ThemedModal>
   );
 }
 
@@ -566,14 +517,7 @@ export default function FreePlayScreen() {
   const capturedByBlack = 12 - whitePiecesCount;
 
   if (!game.isReady) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={styles.loadingText}>Initializing Engine...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingScreen message={t("game.loadingEngine", "Initializing Engine...")} />;
   }
 
   return (

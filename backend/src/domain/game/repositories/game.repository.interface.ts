@@ -111,7 +111,7 @@ export interface IGameRepository {
     skip: number,
     take: number,
     filters?: GameHistoryFilters,
-  ): Promise<{ games: Game[]; total: number }>;
+  ): Promise<{ games: Game[]; moveCounts: number[]; total: number }>;
 
   /**
    * Aggregate win/loss/draw stats for a player across all finished games.
