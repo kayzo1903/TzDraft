@@ -13,11 +13,13 @@ import { AdminGuard } from './guards/admin.guard';
 import { UserModule } from '../domain/user/user.module';
 import { PrismaModule } from '../infrastructure/database/prisma/prisma.module';
 import { BeamAfricaService } from '../infrastructure/sms/beam-africa.service';
+import { StorageModule } from '../infrastructure/storage/storage.module';
 
 @Module({
   imports: [
     UserModule,
     PrismaModule,
+    StorageModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

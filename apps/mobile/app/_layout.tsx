@@ -19,6 +19,7 @@ import { LoadingScreen } from "../src/components/ui/LoadingScreen";
 import { colors } from "../src/theme/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { syncPushToken, getNotificationRoute } from "../src/lib/push-notifications";
+import { NotificationPermissionModal } from "../src/components/auth/NotificationPermissionModal";
 
 const PENDING_INVITE_KEY = "pendingInviteCode";
 
@@ -37,6 +38,8 @@ export default function RootLayout() {
   const pathname = usePathname();
   const rootNavState = useRootNavigationState();
   const { status } = useAuthStore();
+
+  const [showNotifModal, setShowNotifModal] = useState(false);
 
   const isRedirecting = useRef(false);
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
@@ -105,10 +108,18 @@ export default function RootLayout() {
     preloadBotImages().catch(() => {});
   }, []);
 
-  // Register push token once the user is authenticated
+  // Show our themed modal first; only hit the OS dialog if user agrees
   useEffect(() => {
     if (status !== "authenticated") return;
-    syncPushToken().catch(() => {});
+    Notifications.getPermissionsAsync().then(({ status: perm }) => {
+      if (perm === "granted") {
+        // Already allowed — just sync silently
+        syncPushToken().catch(() => {});
+      } else if (perm === "undetermined") {
+        setShowNotifModal(true);
+      }
+      // "denied" — respect user choice, don't prompt again
+    });
   }, [status]);
 
   // Handle notification taps (app in background/killed)
@@ -180,6 +191,7 @@ export default function RootLayout() {
             <Stack.Screen name="game/history" options={{ headerShown: false }} />
             <Stack.Screen name="game/game-replay" options={{ headerShown: false }} />
             <Stack.Screen name="game/leaderboard" options={{ headerShown: false }} />
+            <Stack.Screen name="game/player/[userId]" options={{ headerShown: false }} />
             <Stack.Screen name="game/studies" options={{ headerShown: false }} />
             <Stack.Screen name="game/study-replay" options={{ headerShown: false }} />
             <Stack.Screen name="game/tournaments" options={{ headerShown: false }} />
@@ -194,6 +206,14 @@ export default function RootLayout() {
               <LoadingScreen />
             </View>
           )}
+          <NotificationPermissionModal
+            visible={showNotifModal}
+            onEnable={() => {
+              setShowNotifModal(false);
+              syncPushToken().catch(() => {});
+            }}
+            onSkip={() => setShowNotifModal(false)}
+          />
         </GestureHandlerRootView>
       </MkaguziProvider>
     </I18nextProvider>

@@ -4,13 +4,12 @@
   "private": true,
   "description": "Tanzania Drafti - A modern online drafts game platform",
   "license": "UNLICENSED",
-  "pnpm": {
-    "workspaces": [
-      "backend",
-      "frontend",
-      "packages/*"
-    ]
-  },
+  "workspaces": [
+    "backend",
+    "frontend",
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "pnpm -r run start:dev",
     "build": "pnpm -r run build",

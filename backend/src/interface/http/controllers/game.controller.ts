@@ -43,6 +43,7 @@ import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { JoinQueueUseCase } from '../../../application/use-cases/join-queue.use-case';
 import { GetGameHistoryUseCase } from '../../../application/use-cases/get-game-history.use-case';
 import { GetPlayerStatsUseCase } from '../../../application/use-cases/get-player-stats.use-case';
+import { UserService } from '../../../domain/user/user.service';
 import { GameType } from '../../../shared/constants/game.constants';
 import { AiProgressionService } from '../../../application/use-cases/ai-progression.service';
 
@@ -64,6 +65,7 @@ export class GameController {
     private readonly getGameHistoryUseCase: GetGameHistoryUseCase,
     private readonly getPlayerStatsUseCase: GetPlayerStatsUseCase,
     private readonly aiProgressionService: AiProgressionService,
+    private readonly userService: UserService,
   ) {}
 
   /**
@@ -432,6 +434,56 @@ export class GameController {
   /**
    * Get all moves for a game (for replay)
    */
+  // ── Public player profile ────────────────────────────────────────────────
+
+  @Get('players/:userId/profile')
+  @Public()
+  @ApiOperation({ summary: 'Get public profile of a player' })
+  async getPlayerProfile(@Param('userId') userId: string) {
+    const user = await this.userService.findById(userId);
+    if (!user) return { success: false, data: null };
+    const [stats, rank] = await Promise.all([
+      this.getPlayerStatsUseCase.execute(userId),
+      this.userService.getPlayerRank(userId),
+    ]);
+    return {
+      success: true,
+      data: {
+        id: user.id,
+        displayName: user.displayName,
+        username: user.username,
+        avatarUrl: (user as any).avatarUrl ?? null,
+        country: user.country,
+        region: user.region,
+        rating: (user as any).rating?.rating ?? 1200,
+        gamesPlayed: (user as any).rating?.gamesPlayed ?? 0,
+        wins: stats.wins,
+        losses: stats.losses,
+        draws: stats.draws,
+        winRate: stats.winRate,
+        rank: rank.global,
+        totalPlayers: rank.totalPlayers,
+      },
+    };
+  }
+
+  @Get('players/:userId/games')
+  @Public()
+  @ApiOperation({ summary: 'Get public game history of a player' })
+  async getPlayerGames(
+    @Param('userId') userId: string,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
+    @Query('take', new DefaultValuePipe(20), ParseIntPipe) take: number,
+  ) {
+    const data = await this.getGameHistoryUseCase.execute(
+      userId,
+      Math.max(0, skip),
+      Math.min(Math.max(1, take), 50),
+      {},
+    );
+    return { success: true, data };
+  }
+
   @Get(':id/replay')
   @Public()
   @ApiOperation({ summary: 'Get all moves for game replay' })

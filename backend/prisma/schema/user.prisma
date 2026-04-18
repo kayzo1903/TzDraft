@@ -30,6 +30,9 @@ model User {
     createdAt    DateTime  @default(now()) @map("created_at")
     lastLoginAt  DateTime? @map("last_login_at")
 
+    // Profile
+    avatarUrl     String? @map("avatar_url")
+
     // OAuth fields
     googleId      String? @unique @map("google_id")
     oauthProvider String? @map("oauth_provider") // 'google', 'facebook', etc.

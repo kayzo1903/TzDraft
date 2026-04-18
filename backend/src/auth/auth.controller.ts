@@ -11,7 +11,13 @@ import {
   Req,
   UnauthorizedException,
   Res,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { R2StorageService } from '../infrastructure/storage/r2-storage.service';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import type { CookieOptions, Request, Response } from 'express';
@@ -43,6 +49,7 @@ export class AuthController {
     private authService: AuthService,
     private otpService: OtpService,
     private userService: UserService,
+    private r2: R2StorageService,
   ) {}
 
   private getCookie(req: Request, name: string): string | undefined {
@@ -247,15 +254,17 @@ export class AuthController {
   @Get('leaderboard')
   async getLeaderboard(
     @Query('skip') skip = '0',
-    @Query('take') take = '50',
+    @Query('take') take = '20',
     @Query('country') country?: string,
     @Query('region') region?: string,
+    @Query('search') search?: string,
   ) {
     const data = await this.userService.getLeaderboard({
       skip: parseInt(skip, 10),
       take: Math.min(parseInt(take, 10), 100),
       country,
       region,
+      search: search?.trim() || undefined,
     });
     return { success: true, data };
   }
@@ -266,6 +275,41 @@ export class AuthController {
   async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
     const updated = await this.userService.updateProfile(user.id, dto);
     return { success: true, data: updated };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+      fileFilter: (_req, file, cb) => {
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+          return cb(new BadRequestException('Only JPEG, PNG or WebP images are allowed'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadAvatar(
+    @CurrentUser() user: any,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string } | undefined,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+
+    const current = await this.userService.findById(user.id);
+    const existingAvatar = (current as any)?.avatarUrl as string | undefined;
+
+    const avatarUrl = await this.r2.uploadAvatar(file.buffer, file.mimetype, user.id);
+    await this.userService.updateProfile(user.id, { avatarUrl });
+
+    // Only remove the old object after the new upload and DB update succeed.
+    if (existingAvatar && existingAvatar !== avatarUrl) {
+      await this.r2.deleteByUrl(existingAvatar);
+    }
+
+    return { success: true, data: { avatarUrl } };
   }
 
   @UseGuards(JwtAuthGuard)

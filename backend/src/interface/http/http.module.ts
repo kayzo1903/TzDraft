@@ -21,6 +21,7 @@ import {
 } from './controllers/study.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
+import { UserModule } from '../../domain/user/user.module';
 
 /**
  * HTTP Module
@@ -34,6 +35,7 @@ import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.servic
     RepositoryModule,
     PrismaModule,
     AuthModule,
+    UserModule,
   ],
   controllers: [
     GameController,

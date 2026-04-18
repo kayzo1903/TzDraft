@@ -15,6 +15,8 @@ jest.mock(
       HttpCode: decorator,
       Req: decorator,
       Res: decorator,
+      UseInterceptors: decorator,
+      UploadedFile: decorator,
       HttpStatus: {
         CREATED: 201,
         OK: 200,
@@ -30,6 +32,12 @@ jest.mock(
   },
   { virtual: true },
 );
+jest.mock(
+  '@nestjs/platform-express',
+  () => ({ FileInterceptor: () => () => undefined }),
+  { virtual: true },
+);
+jest.mock('multer', () => ({ memoryStorage: () => ({}) }), { virtual: true });
 jest.mock('@nestjs/throttler', () => ({ Throttle: () => () => undefined }), {
   virtual: true,
 });
@@ -54,6 +62,9 @@ jest.mock('./guards/jwt-auth.guard', () => ({
 jest.mock('../domain/user/user.service', () => ({
   UserService: class UserService {},
 }));
+jest.mock('../infrastructure/storage/r2-storage.service', () => ({
+  R2StorageService: class R2StorageService {},
+}));
 
 import { AuthController } from './auth.controller';
 
@@ -74,6 +85,7 @@ describe('AuthController', () => {
     };
     const controller = new AuthController(
       authService as any,
+      {} as any,
       {} as any,
       {} as any,
     );
