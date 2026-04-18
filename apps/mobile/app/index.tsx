@@ -1,28 +1,34 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator, ScrollView, Dimensions, Modal } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const Emoji = ({ children }: { children: string }) => (
+  <Text style={{ fontSize: 30 }}>{children}</Text>
+);
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../src/auth/auth-store";
 import api from "../src/lib/api";
-import { MiniBoard } from "../src/components/MiniBoard";
 import { ServiceCard } from "../src/components/ServiceCard";
 import { GuestBarrierModal } from "../src/components/auth/GuestBarrierModal";
 import {
-  Trophy,
-  History,
   Zap,
   Timer,
   Clock,
   Layers,
-  Users,
-  Cpu,
-  ArrowRight,
-  UserPlus,
-  Medal,
-  Sparkles,
-  BookOpen,
 } from "lucide-react-native";
+
+// Non-brand card accent colors (chess.com style — each card has its own identity)
+const CARD_COLORS = {
+  online:      "#3b82f6", // blue
+  ai:          "#8b5cf6", // violet
+  friend:      "#10b981", // emerald
+  freePlay:    "#06b6d4", // cyan
+  learn:       "#f59e0b", // amber
+  tournaments: "#eab308", // gold
+  history:     "#6366f1", // indigo
+  leaderboard: "#ec4899", // pink
+} as const;
 import { colors } from "../src/theme/colors";
 
 const { width } = Dimensions.get("window");
@@ -84,11 +90,8 @@ export default function Home() {
   };
 
   const handlePlayOnline = () => {
-    if (!isAuthenticated) {
-      router.push("/welcome");
-    } else if (isGuest) {
-      setPendingRoute("/game/lobby");
-      setShowGuestPopup(true);
+    if (!isAuthenticated || isGuest) {
+      router.push("/(auth)/login");
     } else {
       router.push("/game/lobby");
     }
@@ -107,31 +110,36 @@ export default function Home() {
             title={t("game.playOnline", "Play Online")}
             subtitle={t("game.onlineDescription", "Test your skills against players worldwide")}
             onPress={handlePlayOnline}
-            icon={<MiniBoard size={54} />}
+            iconColor={CARD_COLORS.online}
+            icon={<Emoji>🌐</Emoji>}
           />
           <ServiceCard
             title={t("game.playAI", "Play vs AI")}
             subtitle={t("game.aiDescription", "Challenge our top-tier neural engine")}
             onPress={() => router.push("/game/setup-ai")}
-            icon={<Cpu size={54} color={colors.primary} />}
+            iconColor={CARD_COLORS.ai}
+            icon={<Emoji>🤖</Emoji>}
           />
           <ServiceCard
             title={t("game.playFriend", "Play vs Friend")}
             subtitle={t("game.friendDescription", "Local or private online matches")}
             onPress={handlePlayFriend}
-            icon={<Users size={54} color={colors.primary} />}
+            iconColor={CARD_COLORS.friend}
+            icon={<Emoji>🤝</Emoji>}
           />
           <ServiceCard
             title={t("freePlay.title", "Free Play")}
             subtitle={t("freePlay.description", "Control both sides, manual board flip")}
             onPress={() => router.push("/game/free-play")}
-            icon={<MiniBoard size={54} />}
+            iconColor={CARD_COLORS.freePlay}
+            icon={<Emoji>♟️</Emoji>}
           />
           <ServiceCard
             title={t("learn.heading", "Learn & Master")}
             subtitle={t("learn.subheading", "Study tactics, rules, and gamebooks")}
             onPress={() => router.push("/learn")}
-            icon={<BookOpen size={54} color={colors.primary} />}
+            iconColor={CARD_COLORS.learn}
+            icon={<Emoji>📚</Emoji>}
           />
         </View>
 
@@ -147,7 +155,8 @@ export default function Home() {
             title={t("home.tournaments", "Tournaments")}
             subtitle={t("home.tournamentDesc", "Join official prize tournaments")}
             onPress={() => router.push("/game/tournaments")}
-            icon={<Trophy size={54} color={colors.primary} />}
+            iconColor={CARD_COLORS.tournaments}
+            icon={<Emoji>🏆</Emoji>}
           />
 
           {!isGuest && (
@@ -191,7 +200,8 @@ export default function Home() {
                 title={t("home.history", "Game History")}
                 subtitle={t("home.historyDesc", "Review and analyze your past matches")}
                 onPress={() => router.push("/game/history")}
-                icon={<History size={54} color={colors.primary} />}
+                iconColor={CARD_COLORS.history}
+                icon={<Emoji>📋</Emoji>}
               />
             </>
           )}
@@ -200,7 +210,8 @@ export default function Home() {
             title={t("home.leaderboard", "Leaderboard")}
             subtitle={t("home.leaderboardDesc", "View global rankings and top players")}
             onPress={() => router.push("/game/leaderboard")}
-            icon={<Medal size={54} color={colors.primary} />}
+            iconColor={CARD_COLORS.leaderboard}
+            icon={<Emoji>🏅</Emoji>}
           />
         </View>
 

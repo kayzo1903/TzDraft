@@ -18,6 +18,7 @@ interface User {
   username?: string;
   displayName?: string;
   image?: string;
+  avatarUrl?: string;
   accountType?: "GUEST" | "REGISTERED" | "OAUTH_PENDING";
   rating?: number;
 }

@@ -23,6 +23,8 @@ build/
 **/.cache/
 **/.vs/
 **/dist/
+!packages/**/dist/
+!packages/**/dist/**
 **/build/
 **/web-build/
 **/android/

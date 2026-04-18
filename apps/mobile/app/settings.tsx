@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Alert, Linking } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Linking, Image } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/auth-store";
 import { authClient } from "../src/lib/auth-client";
@@ -17,19 +18,30 @@ import {
   ChevronRight,
   FileText,
   HelpCircle,
+  Camera,
+  AlertCircle,
+  ImageOff,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../src/i18n";
 import { colors } from "../src/theme/colors";
 import { SUPPORT_URLS } from "../src/lib/urls";
+import api from "../src/lib/api";
+import { ThemedModal } from "../src/components/ui/ThemedModal";
+
+const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const router = useRouter();
   const [isNameModalVisible, setIsNameModalVisible] = React.useState(false);
+  const [isAvatarModalVisible, setIsAvatarModalVisible] = React.useState(false);
   const [newName, setNewName] = React.useState(user?.displayName || "");
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
+  const [pendingAvatar, setPendingAvatar] = React.useState<{ uri: string; mimeType: string } | null>(null);
+  const [errorModal, setErrorModal] = React.useState<{ title: string; message: string } | null>(null);
 
   const openWebPage = async (url: string) => {
     try {
@@ -49,6 +61,10 @@ export default function SettingsScreen() {
     }
   }, [user?.displayName]);
 
+  const showError = (title: string, message: string) => {
+    setErrorModal({ title, message });
+  };
+
   const handleUpdateName = async () => {
     if (!newName.trim()) return;
     setIsUpdating(true);
@@ -56,9 +72,69 @@ export default function SettingsScreen() {
       await authClient.updateProfile({ displayName: newName.trim() });
       setIsNameModalVisible(false);
     } catch (error) {
-      Alert.alert("Error", "Failed to update display name. Please try again.");
+      showError("Update Failed", "Failed to update display name. Please try again.");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const closeAvatarModal = () => {
+    if (isUploadingAvatar) return;
+    setPendingAvatar(null);
+    setIsAvatarModalVisible(false);
+  };
+
+  const handleChooseAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      showError("Permission Required", "Allow access to your photo library to change your avatar.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > MAX_AVATAR_SIZE_BYTES) {
+      showError("File Too Large", "Please choose an image under 2 MB.");
+      return;
+    }
+
+    setPendingAvatar({ uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" });
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!pendingAvatar || !user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const filename = pendingAvatar.uri.split("/").pop() ?? "avatar.jpg";
+      const formData = new FormData();
+      formData.append("file", {
+        uri: pendingAvatar.uri,
+        name: filename,
+        type: pendingAvatar.mimeType,
+      } as any);
+
+      const response = await api.post("/auth/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const avatarUrl: string = response.data.data.avatarUrl;
+      setUser({ ...user, avatarUrl });
+      setPendingAvatar(null);
+      setIsAvatarModalVisible(false);
+    } catch (error: any) {
+      const message = error?.response?.data?.message ?? "Upload failed. Please try again.";
+      showError("Upload Failed", message);
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -80,6 +156,29 @@ export default function SettingsScreen() {
     user.phoneNumber.startsWith("+255") &&
     user.accountType !== "GUEST"
   );
+  const avatarSource = pendingAvatar?.uri ?? user?.avatarUrl ?? user?.image;
+  const avatarSettingValue = pendingAvatar
+    ? t("settings.account.photoPending", "Unsaved")
+    : avatarSource
+      ? t("settings.account.photoChange", "Change")
+      : t("settings.account.photoAdd", "Add");
+  const avatarModalActions = [
+    {
+      label: t("common.cancel", "Cancel"),
+      onPress: closeAvatarModal,
+      type: "secondary" as const,
+    },
+    ...(pendingAvatar
+      ? [
+          {
+            label: t("common.save", "Save"),
+            onPress: handleSaveAvatar,
+            type: "primary" as const,
+            loading: isUploadingAvatar,
+          },
+        ]
+      : []),
+  ];
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={styles.section}>
@@ -95,6 +194,8 @@ export default function SettingsScreen() {
     onPress,
     showChevron = true,
     valueColor = colors.textSecondary,
+    showPreview = false,
+    previewUri,
   }: {
     icon: any;
     label: string;
@@ -102,6 +203,8 @@ export default function SettingsScreen() {
     onPress?: () => void;
     showChevron?: boolean;
     valueColor?: string;
+    showPreview?: boolean;
+    previewUri?: string;
   }) => (
     <TouchableOpacity
       style={styles.settingItem}
@@ -116,6 +219,14 @@ export default function SettingsScreen() {
         <Text style={styles.settingLabel}>{label}</Text>
       </View>
       <View style={styles.settingRight}>
+        {showPreview &&
+          (previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.settingAvatar} />
+          ) : (
+            <View style={styles.settingAvatarPlaceholder}>
+              <User color={colors.primary} size={14} />
+            </View>
+          ))}
         {value && <Text style={[styles.settingValue, { color: valueColor }]}>{value}</Text>}
         {showChevron && <ChevronRight color={colors.textDisabled} size={18} />}
       </View>
@@ -159,6 +270,15 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title={t("settings.sections.account", "Account")}>
+          <SettingItem
+            icon={Camera}
+            label={t("settings.account.photo", "Profile Photo")}
+            value={avatarSettingValue}
+            valueColor={pendingAvatar ? colors.primary : colors.textSecondary}
+            onPress={() => setIsAvatarModalVisible(true)}
+            showPreview={true}
+            previewUri={avatarSource}
+          />
           <SettingItem
             icon={User}
             label={t("settings.account.name", "Game Name")}
@@ -252,6 +372,68 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      <ThemedModal
+        visible={isAvatarModalVisible}
+        onClose={closeAvatarModal}
+        dismissable={!isUploadingAvatar}
+        label={t("settings.account.photo", "Profile Photo")}
+        title={t("settings.account.photoTitle", "Update profile photo")}
+        subtitle={
+          pendingAvatar
+            ? t("settings.account.photoSubtitlePending", "Preview your new photo, then save to apply it.")
+            : t("settings.account.photoSubtitle", "Choose a square image under 2 MB for the best result.")
+        }
+        icon={Camera}
+        iconBg={colors.primaryAlpha10}
+        iconColor={colors.primary}
+        actions={avatarModalActions}
+      >
+        <View style={styles.avatarModalBody}>
+          <View style={styles.avatarPreview}>
+            {avatarSource ? (
+              <Image source={{ uri: avatarSource }} style={styles.avatarPreviewImage} />
+            ) : (
+              <User color={colors.primary} size={42} />
+            )}
+          </View>
+          <Text style={styles.avatarModalHint}>
+            {pendingAvatar
+              ? t("settings.account.photoHelperPending", "Your new photo is ready. Tap Save to update your account.")
+              : t("settings.account.photoHelper", "You can pick a new image now and only publish it after you save.")}
+          </Text>
+          <TouchableOpacity
+            style={styles.avatarPickerButton}
+            onPress={handleChooseAvatar}
+            disabled={isUploadingAvatar}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.avatarPickerButtonText}>
+              {pendingAvatar
+                ? t("settings.account.photoReplace", "Choose another photo")
+                : t("settings.account.photoChoose", "Choose photo")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ThemedModal>
+
+      <ThemedModal
+        visible={!!errorModal}
+        onClose={() => setErrorModal(null)}
+        label={t("common.error", "Error")}
+        title={errorModal?.title ?? ""}
+        subtitle={errorModal?.message ?? ""}
+        icon={errorModal?.title === "File Too Large" ? ImageOff : AlertCircle}
+        iconBg={colors.dangerAlpha20}
+        iconColor={colors.danger}
+        actions={[
+          {
+            label: t("common.done", "Done"),
+            onPress: () => setErrorModal(null),
+            type: "primary",
+          },
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -335,6 +517,23 @@ const styles = StyleSheet.create({
   settingRight: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  settingAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 8,
+  },
+  settingAvatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 8,
+    backgroundColor: colors.primaryAlpha10,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+    alignItems: "center",
+    justifyContent: "center",
   },
   settingValue: {
     fontSize: 14,
@@ -428,5 +627,48 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
     fontSize: 15,
     fontWeight: "bold",
+  },
+  avatarModalBody: {
+    alignItems: "center",
+  },
+  avatarPreview: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: colors.primaryAlpha10,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  avatarPreviewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarModalHint: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  avatarPickerButton: {
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  avatarPickerButtonText: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

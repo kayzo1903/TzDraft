@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AccountType } from '@prisma/client';
+import { AccountType, UserRole } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
@@ -53,6 +53,7 @@ export class UserService {
       email?: string;
       country?: string;
       region?: string;
+      avatarUrl?: string;
     },
   ): Promise<any> {
     const updateData: Record<string, any> = {};
@@ -65,6 +66,7 @@ export class UserService {
       updateData.region = null;
     }
     if (data.region !== undefined) updateData.region = data.region;
+    if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
 
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -103,11 +105,11 @@ export class UserService {
       return { global: null, country: null, region: null, totalPlayers: 0 };
 
     const myUser = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!myUser || myUser.accountType !== AccountType.REGISTERED) {
+    if (!myUser || myUser.accountType === AccountType.GUEST || myUser.role === UserRole.ADMIN) {
       return { global: null, country: null, region: null, totalPlayers: 0 };
     }
 
-    const registeredWhere = { user: { accountType: AccountType.REGISTERED } };
+    const registeredWhere = { user: { accountType: { notIn: [AccountType.GUEST] }, role: UserRole.USER } };
 
     const [globalRank, totalPlayers] = await Promise.all([
       this.prisma.rating.count({
@@ -126,7 +128,8 @@ export class UserService {
           where: {
             rating: { gt: myRating.rating },
             user: {
-              accountType: AccountType.REGISTERED,
+              accountType: { notIn: [AccountType.GUEST] },
+              role: UserRole.USER,
               country: myUser.country,
             },
           },
@@ -140,7 +143,8 @@ export class UserService {
           where: {
             rating: { gt: myRating.rating },
             user: {
-              accountType: AccountType.REGISTERED,
+              accountType: { notIn: [AccountType.GUEST] },
+              role: UserRole.USER,
               country: myUser.country,
               region: myUser.region,
             },
@@ -161,12 +165,14 @@ export class UserService {
     take?: number;
     country?: string;
     region?: string;
+    search?: string;
   }): Promise<{
     items: Array<{
       rank: number;
       userId: string;
       displayName: string;
       username: string;
+      avatarUrl?: string | null;
       country: string | null;
       region: string | null;
       rating: number;
@@ -174,17 +180,23 @@ export class UserService {
     }>;
     total: number;
   }> {
-    const { skip = 0, take = 50, country, region } = options;
+    const { skip = 0, take = 50, country, region, search } = options;
 
     const EXCLUDED_USERNAMES = ['admin', 'teste', 'tester01'];
 
     const userFilter: Record<string, any> = {
-      accountType: AccountType.REGISTERED,
-      isVerified: true,
+      accountType: { notIn: [AccountType.GUEST] },
+      role: UserRole.USER,
       username: { notIn: EXCLUDED_USERNAMES },
     };
     if (country) userFilter.country = country;
     if (region) userFilter.region = region;
+    if (search) {
+      userFilter.OR = [
+        { displayName: { contains: search, mode: 'insensitive' } },
+        { username: { contains: search, mode: 'insensitive' } },
+      ];
+    }
     const where =
       Object.keys(userFilter).length > 0 ? { user: userFilter } : {};
 
@@ -199,6 +211,7 @@ export class UserService {
             select: {
               displayName: true,
               username: true,
+              avatarUrl: true,
               country: true,
               region: true,
             },
@@ -214,6 +227,7 @@ export class UserService {
         userId: e.userId,
         displayName: e.user.displayName,
         username: e.user.username,
+        avatarUrl: e.user.avatarUrl,
         country: e.user.country,
         region: e.user.region,
         rating: e.rating,
@@ -226,9 +240,15 @@ export class UserService {
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: {
-        rating: true,
-      },
+      include: { rating: true },
+    });
+  }
+
+  async findManyByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    return this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      include: { rating: true },
     });
   }
 

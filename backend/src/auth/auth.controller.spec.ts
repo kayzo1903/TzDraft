@@ -76,6 +76,7 @@ describe('AuthController', () => {
       authService as any,
       {} as any,
       {} as any,
+      {} as any,
     );
 
     const req = {
