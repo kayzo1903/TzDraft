@@ -15,6 +15,8 @@ jest.mock(
       Req: dec,
       Res: dec,
       Inject: dec,
+      UseInterceptors: dec,
+      UploadedFile: dec,
       HttpStatus: { CREATED: 201, OK: 200, NO_CONTENT: 204 },
       UnauthorizedException: class UnauthorizedException extends Error {
         constructor(msg?: string) {
@@ -26,6 +28,12 @@ jest.mock(
   },
   { virtual: true },
 );
+jest.mock(
+  '@nestjs/platform-express',
+  () => ({ FileInterceptor: () => () => undefined }),
+  { virtual: true },
+);
+jest.mock('multer', () => ({ memoryStorage: () => ({}) }), { virtual: true });
 jest.mock('@nestjs/throttler', () => ({ Throttle: () => () => undefined }), {
   virtual: true,
 });
@@ -47,6 +55,9 @@ jest.mock('./decorators/current-user.decorator', () => ({
 }));
 jest.mock('./guards/jwt-auth.guard', () => ({ JwtAuthGuard: class {} }));
 jest.mock('../domain/user/user.service', () => ({ UserService: class {} }));
+jest.mock('../infrastructure/storage/r2-storage.service', () => ({
+  R2StorageService: class R2StorageService {},
+}));
 
 import { AuthController } from './auth.controller';
 
