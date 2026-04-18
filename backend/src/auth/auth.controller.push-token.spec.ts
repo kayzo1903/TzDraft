@@ -68,6 +68,7 @@ describe('AuthController — push token endpoints', () => {
       {} as any, // authService
       {} as any, // otpService
       userService as any,
+      {} as any, // r2StorageService
     );
     return { controller, userService };
   }

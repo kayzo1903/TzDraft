@@ -37,9 +37,28 @@ export interface LeaderboardEntry {
   userId: string;
   displayName: string;
   username: string;
+  avatarUrl?: string | null;
   country: string | null;
+  region: string | null;
   rating: number;
   gamesPlayed: number;
+}
+
+export interface PublicPlayerProfile {
+  id: string;
+  displayName: string;
+  username: string;
+  avatarUrl: string | null;
+  country: string | null;
+  region: string | null;
+  rating: number;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  rank: number | null;
+  totalPlayers: number;
 }
 
 export interface LeaderboardFilters {
@@ -47,6 +66,7 @@ export interface LeaderboardFilters {
   take?: number;
   country?: string;
   region?: string;
+  search?: string;
 }
 
 export interface ReplayMove {
@@ -118,7 +138,24 @@ export const historyService = {
     };
     if (filters.country) params.country = filters.country;
     if (filters.region) params.region = filters.region;
+    if (filters.search) params.search = filters.search;
     const res = await api.get("/auth/leaderboard", { params });
+    return res.data.data;
+  },
+
+  async getPlayerProfile(userId: string): Promise<PublicPlayerProfile> {
+    const res = await api.get(`/games/players/${userId}/profile`);
+    return res.data.data;
+  },
+
+  async getPlayerGames(
+    userId: string,
+    skip = 0,
+    take = 20,
+  ): Promise<{ items: GameHistoryItem[]; total: number }> {
+    const res = await api.get(`/games/players/${userId}/games`, {
+      params: { skip: String(skip), take: String(take) },
+    });
     return res.data.data;
   },
 };

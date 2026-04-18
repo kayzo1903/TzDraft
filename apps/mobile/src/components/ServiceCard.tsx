@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { ArrowRight } from "lucide-react-native";
+import { MiniBoard } from "./MiniBoard";
 import { colors } from "../theme/colors";
 
 interface ServiceCardProps {
@@ -8,6 +8,7 @@ interface ServiceCardProps {
   subtitle: string;
   onPress: () => void;
   icon?: React.ReactNode;
+  iconColor?: string;
   isLocked?: boolean;
 }
 
@@ -16,68 +17,95 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   subtitle,
   onPress,
   icon,
-  isLocked,
+  iconColor = "#3b82f6",
 }) => {
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          {icon}
+    <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={styles.wrapper}>
+      <View style={styles.card}>
+        {/* Top accent line */}
+        <View style={[styles.accentLine, { backgroundColor: iconColor + "60" }]} />
+
+        {/* LEFT: draughts board */}
+        <View style={[styles.boardWrap, { borderColor: iconColor + "40" }]}>
+          <MiniBoard size={72} />
+          <View style={[styles.boardOverlay, { backgroundColor: iconColor + "20" }]} />
         </View>
-        <View style={styles.textContainer}>
+
+        {/* MIDDLE: text */}
+        <View style={styles.textSide}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-      </View>
-      <View style={styles.actionContainer}>
-        <ArrowRight size={20} color={isLocked ? colors.textDisabled : colors.primary} />
+
+        {/* RIGHT: icon */}
+        <View style={[styles.iconWrap, { backgroundColor: iconColor + "18", borderColor: iconColor + "40" }]}>
+          {icon}
+        </View>
       </View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
+  wrapper: {
+    marginBottom: 10,
     borderRadius: 20,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  card: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
+    paddingVertical: 16,
+    paddingLeft: 14,
+    paddingRight: 16,
+    minHeight: 96,
+    position: "relative",
+    backgroundColor: colors.surface,
   },
-  content: {
-    flexDirection: "row",
-    alignItems: "center",
+  accentLine: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+  boardWrap: {
+    borderRadius: 10,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    position: "relative",
+  },
+  boardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  textSide: {
     flex: 1,
-  },
-  iconContainer: {
-    marginRight: 16,
-  },
-  textContainer: {
-    flex: 1,
+    paddingHorizontal: 14,
   },
   title: {
     color: colors.foreground,
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: "800",
+    marginBottom: 5,
+    letterSpacing: 0.1,
   },
   subtitle: {
     color: colors.textMuted,
     fontSize: 13,
+    lineHeight: 18,
   },
-  actionContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },

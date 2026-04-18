@@ -12,6 +12,7 @@ export class AuthResponseDto {
     role?: 'USER' | 'ADMIN';
     isBanned?: boolean;
     accountType?: 'REGISTERED' | 'GUEST' | 'OAUTH_PENDING';
+    avatarUrl?: string;
   };
   accessToken: string;
   refreshToken: string;

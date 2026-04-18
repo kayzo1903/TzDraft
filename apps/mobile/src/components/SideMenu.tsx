@@ -10,6 +10,7 @@ import {
   ScrollView,
   Animated,
   Easing,
+  Image,
 } from "react-native";
 import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink, BookOpen, BookMarked } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -140,7 +141,14 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.avatarPlaceholder}>
-                    <User color={colors.primary} size={32} />
+                    {user?.avatarUrl || user?.image ? (
+                      <Image
+                        source={{ uri: user.avatarUrl ?? user.image }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <User color={colors.primary} size={32} />
+                    )}
                   </View>
                   <View>
                     <Text style={styles.username}>{user?.displayName || user?.username || "User"}</Text>
@@ -315,6 +323,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.borderStrong,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   username: {
     color: colors.foreground,
