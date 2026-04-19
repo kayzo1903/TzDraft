@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Crown,
-  Flag,
+  Lightbulb,
   Undo2,
   Volume2,
   VolumeX,
@@ -38,8 +38,9 @@ import { colors } from "../../src/theme/colors";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
 import { useAiGame, type PlayerColorParam, type TimeControl } from "../../src/hooks/useAiGame";
 import { getBotByLevel, getTierForLevel, BOT_IMAGES, TIERS } from "../../src/lib/game/bots";
+import { getEndgameReasonLabel } from "../../src/lib/game/rules";
 import { useMkaguzi } from "../../src/lib/game/mkaguzi-mobile";
-import { BoardState } from "@tzdraft/mkaguzi-engine";
+import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { aiChallengeService, type AiProgressionSummary } from "../../src/services/ai-challenge.service";
 import { applyServerProgression, getCachedMaxUnlockedLevel } from "../../src/lib/game/bot-progression";
@@ -160,8 +161,8 @@ const capturedStyles = StyleSheet.create({
   extra: { color: colors.textMuted, fontSize: 10, fontWeight: "bold" },
 });
 
-// ─── Resign Modal ──────────────────────────────────────────────────────────────
-function ResignModal({
+// ─── Leave Modal ──────────────────────────────────────────────────────────────
+function LeaveModal({
   botName,
   visible,
   onConfirm,
@@ -187,13 +188,13 @@ function ResignModal({
                 <AlertTriangle color={colors.primary} size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={modalStyles.resignTitleSmall}>CONFIRM RESIGN</Text>
-                <Text style={modalStyles.resignTitle}>Resign this game?</Text>
+                <Text style={modalStyles.resignTitleSmall}>LEAVE GAME</Text>
+                <Text style={modalStyles.resignTitle}>Leave this game?</Text>
               </View>
             </View>
 
             <Text style={modalStyles.resignBody}>
-              Giving up against <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{botName}</Text>?
+              Leaving your game against <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{botName}</Text>?
               {"\n"}You won't earn progression from this game.
             </Text>
 
@@ -208,7 +209,7 @@ function ResignModal({
                 style={[modalStyles.resignBtn, modalStyles.resignBtnDanger]}
                 onPress={onConfirm}
               >
-                <Text style={modalStyles.resignBtnText}>Resign</Text>
+                <Text style={modalStyles.resignBtnText}>Leave</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -294,20 +295,31 @@ function OptionsModal({
   );
 }
 
+// ─── Endgame Countdown Indicator ──────────────────────────────────────────────
+function EndgameCountdownIndicator({
+  remaining,
+  favoredColor,
+  t,
+}: {
+  remaining: number;
+  favoredColor: string | null;
+  t: (key: string, options?: any) => string;
+}) {
+  return (
+    <View style={styles.countdownContainer}>
+      <AlertTriangle color="#fb923c" size={14} style={{ marginRight: 6 }} />
+      <Text style={styles.countdownText}>
+        {favoredColor
+          ? t("gameArena.endgameCountdown", { remaining, favored: favoredColor })
+          : t("gameArena.endgameCountdownEqual", { remaining })}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Result Modal ──────────────────────────────────────────────────────────────
 type GameOutcome = "win" | "loss" | "draw";
 
-function reasonLabel(reason: string, isPlayerWin: boolean, isDraw: boolean): string {
-  switch (reason) {
-    case "time":     return isPlayerWin ? "Opponent timed out" : "Time expired";
-    case "resign":   return "Resigned";
-    case "stalemate":
-    case "checkmate": return isPlayerWin ? "No moves left for opponent" : "No moves available";
-    default:
-      if (isDraw) return "Draw by rule";
-      return isPlayerWin ? "Well played" : "Better luck next time";
-  }
-}
 
 function ResultModal({
   visible,
@@ -336,6 +348,7 @@ function ResultModal({
   onNextOpponent?: () => void;
   didUnlockNext: boolean;
 }) {
+  const { t } = useTranslation();
   const outcome: GameOutcome = isPlayerWin ? "win" : isDraw ? "draw" : "loss";
 
   const cfg = {
@@ -403,7 +416,7 @@ function ResultModal({
               
               <View style={[resultStyles.reasonPill, { borderColor: cfg.accentColor + "55", backgroundColor: cfg.accentColor + "18" }]}>
                 <Text style={[resultStyles.reasonText, { color: cfg.accentColor }]}>
-                  {reasonLabel(reason, isPlayerWin, isDraw)}
+                  {getEndgameReasonLabel(reason, isPlayerWin, isDraw, t)}
                 </Text>
               </View>
             </View>
@@ -511,8 +524,7 @@ export default function VsAiScreen() {
       .catch(() => {}); // offline — fall back to local-only tracking
   }, [isReady, isRegistered, botLevel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [showResignModal, setShowResignModal] = useState(false);
-  const [resignGoBack, setResignGoBack] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [tierUnlock, setTierUnlock] = useState<(typeof TIER_UNLOCK_DATA)[number] | null>(null);
 
@@ -676,8 +688,7 @@ export default function VsAiScreen() {
             if (game.result) {
               router.replace("/game/setup-ai");
             } else {
-              setResignGoBack(true);
-              setShowResignModal(true);
+              setShowLeaveModal(true);
             }
           }}
         >
@@ -725,6 +736,19 @@ export default function VsAiScreen() {
           disabled={!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor || isViewingHistory}
           flipped={game.flipBoard}
         />
+        {game.endgameCountdown && (
+          <EndgameCountdownIndicator
+            remaining={game.endgameCountdown.remaining}
+            favoredColor={
+              game.endgameCountdown.favored !== null
+                ? game.endgameCountdown.favored === PlayerColor.WHITE
+                  ? "White"
+                  : "Black"
+                : null
+            }
+            t={t}
+          />
+        )}
       </View>
 
       {/* ── Human player row ──────────────────────────────────────────────── */}
@@ -825,14 +849,23 @@ export default function VsAiScreen() {
           <Text style={styles.actionBtnLabel}>Settings</Text>
         </TouchableOpacity>
 
-        {/* Resign */}
+        {/* Hint */}
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={() => { if (!game.result) { setResignGoBack(false); setShowResignModal(true); } }}
-          disabled={!!game.result}
+          onPress={() => { if (!game.result) game.hint(); }}
+          disabled={!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor}
         >
-          <Flag color={game.result ? colors.textDisabled : colors.textDisabled} size={22} />
-          <Text style={styles.actionBtnLabel}>Resign</Text>
+          <Lightbulb
+            color={(!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor) ? colors.textDisabled : colors.foreground}
+            size={22}
+          />
+          <Text style={[
+            styles.actionBtnLabel,
+            (!game.result && !game.isAiThinking && game.currentPlayer === game.playerColor)
+              && { color: colors.foreground },
+          ]}>
+            Hint
+          </Text>
         </TouchableOpacity>
 
         {/* Undo */}
@@ -868,22 +901,15 @@ export default function VsAiScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Resign modal ── */}
-      <ResignModal
+      {/* ── Leave modal ── */}
+      <LeaveModal
         botName={bot.name}
-        visible={showResignModal}
+        visible={showLeaveModal}
         onConfirm={() => {
-          setShowResignModal(false);
-          if (resignGoBack) {
-            // Back-button resign: leave immediately, no result card.
-            game.resign();
-            router.replace("/game/setup-ai");
-          } else {
-            // Flag resign: stay on screen, result card appears.
-            game.resign();
-          }
+          setShowLeaveModal(false);
+          router.replace("/game/setup-ai");
         }}
-        onCancel={() => { setShowResignModal(false); setResignGoBack(false); }}
+        onCancel={() => { setShowLeaveModal(false); }}
       />
 
       {/* ── Options modal ── */}
@@ -1043,6 +1069,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  countdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(251,146,60,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251,146,60,0.35)",
+  },
+  countdownText: {
+    color: "#fdba74",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
 
   // History bar (with chevrons)

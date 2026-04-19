@@ -2,6 +2,10 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { BoardState, PlayerColor, Position } from "@tzdraft/mkaguzi-engine";
 import { useMkaguzi } from "../lib/game/mkaguzi-mobile";
 import type { RawMove } from "../lib/game/bridge-types";
+import {
+  EndgameCountdown,
+  evaluateEndgameCountdown,
+} from "../lib/game/rules";
 
 const INITIAL_FEN = "W:W1,2,3,4,5,6,7,8,9,10,11,12:B21,22,23,24,25,26,27,28,29,30,31,32";
 
@@ -34,6 +38,8 @@ export interface FreeGameState {
   fenHistory: string[];
   result: FreeGameResult | null;
   moveCount: number;
+  /** Art. 8 countdown state for lone king / three kings draws */
+  endgameCountdown: EndgameCountdown | null;
 }
 
 export function useFreeGame() {
@@ -52,8 +58,13 @@ export function useFreeGame() {
   const [invalidMoveSignal, setInvalidMoveSignal] = useState(0);
   const [resetCount, setResetCount] = useState(0);
   const [result, setResult] = useState<FreeGameResult | null>(null);
+  const [endgameCountdown, setEndgameCountdown] = useState<EndgameCountdown | null>(null);
 
   const fenHistory = useRef<string[]>([INITIAL_FEN]);
+  const thirtyMoveCount = useRef(0);
+  const endgameCountdownRef = useRef<EndgameCountdown | null>(null);
+
+  useEffect(() => { endgameCountdownRef.current = endgameCountdown; }, [endgameCountdown]);
 
   const computeCapturables = useCallback((moves: RawMove[]): number[] => {
     const caps = new Set<number>();
@@ -96,6 +107,21 @@ export function useFreeGame() {
         captureCount: move.captures.length,
       };
 
+      // Art. 8 Draw Rules
+      const { reason: drawReason, nextCountdown, nextThirtyCount } = evaluateEndgameCountdown(
+        BoardState.fromFen(newFen),
+        currentPlayer,
+        move.captures.length > 0,
+        endgameCountdownRef.current,
+        thirtyMoveCount.current
+      );
+      thirtyMoveCount.current = nextThirtyCount;
+      setEndgameCountdown(nextCountdown);
+
+      // Threefold Repetition (Art. 8.2)
+      const occurrences = fenHistory.current.filter((f) => f === newFen).length;
+      const isRepetition = occurrences >= 2; // current fen not pushed yet
+
       setFen(newFen);
       setBoard(BoardState.fromFen(newFen));
       setCurrentPlayer(nextPlayer);
@@ -106,6 +132,19 @@ export function useFreeGame() {
       setSelectedSquare(null);
       setValidDestinations([]);
       setCapturablePieces(computeCapturables(nextMoves));
+
+      // Game over checks
+      if (drawReason) {
+        setResult({ winner: "DRAW", reason: drawReason });
+        return;
+      }
+      if (isRepetition) {
+        const actualOccurrences = fenHistory.current.filter((f) => f === newFen).length;
+        if (actualOccurrences >= 3) {
+          setResult({ winner: "DRAW", reason: "repetition" });
+          return;
+        }
+      }
 
       // Game-over detection: no legal moves for the next player = they lose
       if (nextMoves.length === 0) {
@@ -171,6 +210,8 @@ export function useFreeGame() {
     setLastMove(null);
     setMoveHistory([]);
     setResult(null);
+    setEndgameCountdown(null);
+    thirtyMoveCount.current = 0;
     fenHistory.current = [INITIAL_FEN];
     setResetCount((n) => n + 1);
   }, []);
@@ -217,5 +258,6 @@ export function useFreeGame() {
     isReady: bridge.isReady,
     invalidMoveSignal,
     fenHistory: fenHistory.current,
+    endgameCountdown,
   };
 }

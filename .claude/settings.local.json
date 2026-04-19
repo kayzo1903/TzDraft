@@ -102,7 +102,8 @@
       "Bash(curl -s -X POST http://localhost:3002/auth/guest -H \"Content-Type: application/json\")",
       "Bash(grep -v \"import\\\\|//\")",
       "Bash(grep \"@nestjs/throttler\" node_modules/.pnpm/*/package.json)",
-      "Bash(node -e \"console.log\\(require\\('./node_modules/@nestjs/throttler/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\('./node_modules/@nestjs/throttler/package.json'\\).version\\)\")",
+      "Bash(Start-Process powershell *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",

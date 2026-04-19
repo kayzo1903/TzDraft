@@ -40,8 +40,9 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { ActivityIndicator } from "react-native";
-import { BoardState } from "@tzdraft/mkaguzi-engine";
+import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { colors } from "../../src/theme/colors";
+import { getEndgameReasonLabel } from "../../src/lib/game/rules";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
 import { useFreeGame } from "../../src/hooks/useFreeGame";
 import { useGameAudio } from "../../src/hooks/useGameAudio";
@@ -51,6 +52,28 @@ import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import { ThemedModal } from "../../src/components/ui/ThemedModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// --- Endgame Countdown Indicator ---
+function EndgameCountdownIndicator({
+  remaining,
+  favoredColor,
+  t,
+}: {
+  remaining: number;
+  favoredColor: string | null;
+  t: (key: string, options?: any) => string;
+}) {
+  return (
+    <View style={styles.countdownContainer}>
+      <AlertCircle color="#fb923c" size={14} style={{ marginRight: 6 }} />
+      <Text style={styles.countdownText}>
+        {favoredColor
+          ? t("gameArena.endgameCountdown", { remaining, favored: favoredColor })
+          : t("gameArena.endgameCountdownEqual", { remaining })}
+      </Text>
+    </View>
+  );
+}
 
 // --- Captured pieces dots ---
 function CapturedDots({ count, color }: { count: number; color: "WHITE" | "BLACK" }) {
@@ -327,11 +350,13 @@ function FreePlayResultModal({
   const borderColor = isDraw ? "rgba(56,189,248,0.30)" : colors.primaryAlpha30;
 
   const title = isDraw ? "Draw" : winner === "WHITE" ? "White Wins" : "Black Wins";
-  const subtitle = isDraw
-    ? "The game ended in a draw"
+  
+  const { t } = useTranslation();
+  const subtitle = isDraw 
+    ? getEndgameReasonLabel(reason, false, true, t)
     : winner === "WHITE"
-    ? "White has no moves for Black"
-    : "Black has no moves for White";
+      ? "White captured all pieces or stalemated Black"
+      : "Black captured all pieces or stalemated White";
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -566,6 +591,19 @@ export default function FreePlayScreen() {
           disabled={isViewingHistory || !!game.result}
           flipped={game.flipBoard}
         />
+        {game.endgameCountdown && (
+          <EndgameCountdownIndicator
+            remaining={game.endgameCountdown.remaining}
+            favoredColor={
+              game.endgameCountdown.favored !== null
+                ? game.endgameCountdown.favored === PlayerColor.WHITE
+                  ? "White"
+                  : "Black"
+                : null
+            }
+            t={t}
+          />
+        )}
       </View>
 
       {/* --- White / Human Row --- */}
@@ -742,6 +780,32 @@ const styles = StyleSheet.create({
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   loadingText: { color: colors.textMuted, fontSize: 16 },
 
+  boardWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  countdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(251,146,60,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251,146,60,0.35)",
+  },
+  countdownText: {
+    color: "#fdba74",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -805,13 +869,6 @@ const styles = StyleSheet.create({
 
   colorChip: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
   colorChipWhite: { backgroundColor: colors.pieceWhite, borderColor: "#c8b49a" },
-
-  boardWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
 
   historyBar: {
     height: 46,
