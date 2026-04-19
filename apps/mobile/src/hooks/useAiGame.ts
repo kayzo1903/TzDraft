@@ -113,9 +113,9 @@ export interface AiGameState {
 
 export interface AiGameActions {
   selectSquare: (pdn: number) => void;
-  resign: () => void;
   reset: () => void;
   undo: () => void;
+  hint: () => Promise<void>;
 }
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
@@ -481,16 +481,24 @@ export function useAiGame(
     ],
   );
 
-  // ── resign ────────────────────────────────────────────────────────────────
-  const resign = useCallback(() => {
-    if (result) return;
-    stopTimer();
-    stopMoveTimer();
-    const winner = resolvedColor === PlayerColor.WHITE ? "BLACK" : "WHITE";
-    const r: GameResult = { winner, reason: "resign" };
-    setResult(r);
-    resultRef.current = r;
-  }, [result, resolvedColor, stopTimer, stopMoveTimer]);
+  // ── hint ──────────────────────────────────────────────────────────────────
+  const hint = useCallback(async () => {
+    if (result || isAiThinking || currentPlayer !== resolvedColor) return;
+    
+    setIsAiThinking(true);
+    aiThinkingRef.current = true;
+    try {
+      // Use a mid-level fast search for the hint (e.g. level 6 is ~1s)
+      const best = await getBestMove(fen, 6, fenHistory.current, bridge);
+      if (best) {
+        setSelectedSquare(best.from);
+        setValidDestinations([best.to]);
+      }
+    } finally {
+      aiThinkingRef.current = false;
+      setIsAiThinking(false);
+    }
+  }, [result, isAiThinking, currentPlayer, resolvedColor, fen, bridge]);
 
   // ── undo ──────────────────────────────────────────────────────────────────
   const undo = useCallback(() => {
@@ -616,7 +624,7 @@ export function useAiGame(
     fenHistory: fenHistory.current,
     endgameCountdown,
     selectSquare,
-    resign,
+    hint,
     reset,
     undo,
   };

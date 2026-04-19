@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Crown,
-  Flag,
+  Lightbulb,
   Undo2,
   Volume2,
   VolumeX,
@@ -161,8 +161,8 @@ const capturedStyles = StyleSheet.create({
   extra: { color: colors.textMuted, fontSize: 10, fontWeight: "bold" },
 });
 
-// ─── Resign Modal ──────────────────────────────────────────────────────────────
-function ResignModal({
+// ─── Leave Modal ──────────────────────────────────────────────────────────────
+function LeaveModal({
   botName,
   visible,
   onConfirm,
@@ -188,13 +188,13 @@ function ResignModal({
                 <AlertTriangle color={colors.primary} size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={modalStyles.resignTitleSmall}>CONFIRM RESIGN</Text>
-                <Text style={modalStyles.resignTitle}>Resign this game?</Text>
+                <Text style={modalStyles.resignTitleSmall}>LEAVE GAME</Text>
+                <Text style={modalStyles.resignTitle}>Leave this game?</Text>
               </View>
             </View>
 
             <Text style={modalStyles.resignBody}>
-              Giving up against <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{botName}</Text>?
+              Leaving your game against <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{botName}</Text>?
               {"\n"}You won't earn progression from this game.
             </Text>
 
@@ -209,7 +209,7 @@ function ResignModal({
                 style={[modalStyles.resignBtn, modalStyles.resignBtnDanger]}
                 onPress={onConfirm}
               >
-                <Text style={modalStyles.resignBtnText}>Resign</Text>
+                <Text style={modalStyles.resignBtnText}>Leave</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -524,8 +524,7 @@ export default function VsAiScreen() {
       .catch(() => {}); // offline — fall back to local-only tracking
   }, [isReady, isRegistered, botLevel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [showResignModal, setShowResignModal] = useState(false);
-  const [resignGoBack, setResignGoBack] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [tierUnlock, setTierUnlock] = useState<(typeof TIER_UNLOCK_DATA)[number] | null>(null);
 
@@ -689,8 +688,7 @@ export default function VsAiScreen() {
             if (game.result) {
               router.replace("/game/setup-ai");
             } else {
-              setResignGoBack(true);
-              setShowResignModal(true);
+              setShowLeaveModal(true);
             }
           }}
         >
@@ -851,14 +849,23 @@ export default function VsAiScreen() {
           <Text style={styles.actionBtnLabel}>Settings</Text>
         </TouchableOpacity>
 
-        {/* Resign */}
+        {/* Hint */}
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={() => { if (!game.result) { setResignGoBack(false); setShowResignModal(true); } }}
-          disabled={!!game.result}
+          onPress={() => { if (!game.result) game.hint(); }}
+          disabled={!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor}
         >
-          <Flag color={game.result ? colors.textDisabled : colors.textDisabled} size={22} />
-          <Text style={styles.actionBtnLabel}>Resign</Text>
+          <Lightbulb
+            color={(!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor) ? colors.textDisabled : colors.foreground}
+            size={22}
+          />
+          <Text style={[
+            styles.actionBtnLabel,
+            (!game.result && !game.isAiThinking && game.currentPlayer === game.playerColor)
+              && { color: colors.foreground },
+          ]}>
+            Hint
+          </Text>
         </TouchableOpacity>
 
         {/* Undo */}
@@ -894,22 +901,15 @@ export default function VsAiScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Resign modal ── */}
-      <ResignModal
+      {/* ── Leave modal ── */}
+      <LeaveModal
         botName={bot.name}
-        visible={showResignModal}
+        visible={showLeaveModal}
         onConfirm={() => {
-          setShowResignModal(false);
-          if (resignGoBack) {
-            // Back-button resign: leave immediately, no result card.
-            game.resign();
-            router.replace("/game/setup-ai");
-          } else {
-            // Flag resign: stay on screen, result card appears.
-            game.resign();
-          }
+          setShowLeaveModal(false);
+          router.replace("/game/setup-ai");
         }}
-        onCancel={() => { setShowResignModal(false); setResignGoBack(false); }}
+        onCancel={() => { setShowLeaveModal(false); }}
       />
 
       {/* ── Options modal ── */}
