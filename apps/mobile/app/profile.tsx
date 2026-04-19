@@ -16,7 +16,7 @@ import { User, LogOut, ChevronLeft, Settings, Shield, Bell, BookMarked, Camera, 
 import { useTranslation } from "react-i18next";
 import { colors } from "../src/theme/colors";
 import * as ImagePicker from "expo-image-picker";
-import api from "../src/lib/api";
+import api, { API_URL } from "../src/lib/api";
 import { ThemedModal } from "../src/components/ui/ThemedModal";
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
@@ -69,14 +69,29 @@ export default function ProfileScreen() {
     setUploading(true);
     try {
       const filename = uri.split("/").pop() ?? "avatar.jpg";
+      const token = useAuthStore.getState().token;
       const formData = new FormData();
       formData.append("file", { uri, name: filename, type: mimeType } as any);
 
-      const response = await api.post("/auth/avatar", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await fetch(`${API_URL}/auth/avatar`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
       });
 
-      const avatarUrl: string = response.data.data.avatarUrl;
+      if (!res.ok) {
+        let errMsg = "Upload failed. Please try again.";
+        try {
+          const errData = await res.json();
+          if (errData?.message) errMsg = errData.message;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
+      const responseData = await res.json();
+      const avatarUrl: string = responseData.data.avatarUrl;
       setUser({ ...user!, avatarUrl });
       setPendingAvatar(null);
     } catch (err: any) {

@@ -2,6 +2,11 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { BoardState, PlayerColor, Position } from "@tzdraft/mkaguzi-engine";
 import { useMkaguzi } from "../lib/game/mkaguzi-mobile";
 import type { RawMove } from "../lib/game/bridge-types";
+import {
+  EndgameCountdown,
+  evaluateEndgameCountdown,
+  computeTimeoutResult,
+} from "../lib/game/rules";
 
 const INITIAL_FEN = "W:W1,2,3,4,5,6,7,8,9,10,11,12:B21,22,23,24,25,26,27,28,29,30,31,32";
 
@@ -26,7 +31,7 @@ export interface LocalMoveRecord {
 
 export interface LocalGameResult {
   winner: "WHITE" | "BLACK" | "DRAW";
-  reason: "stalemate" | "time" | "resign" | "agreement";
+  reason: string;
 }
 
 export interface LocalPvpGameState {
@@ -51,6 +56,8 @@ export interface LocalPvpGameState {
   handoffPlayerName: string;
   /** Per-player time remaining in seconds — display as MM:SS (only valid when timeMinutes > 0) */
   timeLeft: { WHITE: number; BLACK: number };
+  /** Art. 8 countdown state for lone king / three kings draws */
+  endgameCountdown: EndgameCountdown | null;
 }
 
 export function useLocalPvpGame(config: LocalPvpConfig) {
@@ -77,6 +84,7 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
   const [invalidMoveSignal, setInvalidMoveSignal] = useState(0);
   const [resetCount, setResetCount] = useState(0);
   const [result, setResult] = useState<LocalGameResult | null>(null);
+  const [endgameCountdown, setEndgameCountdown] = useState<EndgameCountdown | null>(null);
 
   // ── Pass-device overlay ────────────────────────────────────────────────────
   // On first load we show the overlay so Player 1 sees "Your turn" before any moves
@@ -89,6 +97,12 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
     WHITE: timeMinutes * 60,
     BLACK: timeMinutes * 60,
   });
+  const thirtyMoveCount = useRef(0);
+  const endgameCountdownRef = useRef<EndgameCountdown | null>(null);
+  const resultRef = useRef<LocalGameResult | null>(null);
+
+  useEffect(() => { endgameCountdownRef.current = endgameCountdown; }, [endgameCountdown]);
+  useEffect(() => { resultRef.current = result; }, [result]);
   // Stop timer ticking when overlay is up or game is over
   const timerActive = timeMinutes > 0 && !awaitingHandoff && result === null;
 
@@ -100,10 +114,13 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
       setTimeLeft((prev) => {
         const next = prev[currentPlayerStr] - 1;
         if (next <= 0) {
-          clearInterval(id);
           const loser = currentPlayerStr;
-          const winner = loser === "WHITE" ? "BLACK" : "WHITE";
-          setResult({ winner, reason: "time" });
+          const winner = computeTimeoutResult(
+            board,
+            currentPlayer,
+            endgameCountdownRef.current
+          );
+          setResult({ winner, reason: winner === "DRAW" ? "timeout-draw" : "time" });
           return { ...prev, [currentPlayerStr]: 0 };
         }
         return { ...prev, [currentPlayerStr]: next };
@@ -160,6 +177,21 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
         captureCount: move.captures.length,
       };
 
+      // Art. 8 Draw Rules
+      const { reason: drawReason, nextCountdown, nextThirtyCount } = evaluateEndgameCountdown(
+        BoardState.fromFen(newFen),
+        currentPlayer,
+        move.captures.length > 0,
+        endgameCountdownRef.current,
+        thirtyMoveCount.current
+      );
+      thirtyMoveCount.current = nextThirtyCount;
+      setEndgameCountdown(nextCountdown);
+
+      // Threefold Repetition (Art. 8.2)
+      const occurrences = fenHistory.current.filter((f) => f === newFen).length;
+      const isRepetition = occurrences >= 2; // current fen not pushed yet
+
       setFen(newFen);
       setBoard(BoardState.fromFen(newFen));
       setCurrentPlayer(nextPlayerColor);
@@ -170,6 +202,20 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
       setSelectedSquare(null);
       setValidDestinations([]);
       setCapturablePieces(computeCapturables(nextMoves));
+
+      // Game over checks
+      if (drawReason) {
+        setResult({ winner: "DRAW", reason: drawReason });
+        return;
+      }
+      if (isRepetition && occurrences >= 2) {
+        // We check 2 because we haven't pushed the current fen yet, so 2 existing means 3 total.
+        const actualOccurrences = fenHistory.current.filter((f) => f === newFen).length;
+        if (actualOccurrences >= 3) {
+          setResult({ winner: "DRAW", reason: "repetition" });
+          return;
+        }
+      }
 
       // Game over: no legal moves
       if (nextMoves.length === 0) {
@@ -262,6 +308,9 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
     setResult(null);
     // Dismiss handoff overlay if it was showing (undo takes us back to the previous player)
     setAwaitingHandoff(false);
+    // Reset endgame counters on undo? Usually yes in local play.
+    thirtyMoveCount.current = 0; // Simplified for undo
+    setEndgameCountdown(null);
   }, [bridge, computeCapturables, result]);
 
   // ── Reset ──────────────────────────────────────────────────────────────────
@@ -282,6 +331,8 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
       setHandoffPlayerName(playerName(player1Color === "WHITE" ? "WHITE" : "BLACK"));
       setAwaitingHandoff(true);
     }
+    setEndgameCountdown(null);
+    thirtyMoveCount.current = 0;
     setResetCount((n) => n + 1);
   }, [timeMinutes, passDevice, player1Color]);
 
@@ -316,11 +367,10 @@ export function useLocalPvpGame(config: LocalPvpConfig) {
     awaitingHandoff,
     handoffPlayerName,
     acknowledgeHandoff,
-    timeLeft,
-    player1Color,
-    player2Color,
     player1Name,
     player2Name,
     playerName,
+    endgameCountdown,
+    timeLeft,
   };
 }

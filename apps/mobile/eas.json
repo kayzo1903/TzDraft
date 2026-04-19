@@ -19,7 +19,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.tzdraft.com",
+        "EXPO_PUBLIC_API_URL": "https://api.tzdraft.co.tz",
         "EXPO_PUBLIC_SIMULATE_OFFLINE": "false",
         "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
         "EXPO_PUBLIC_SANITY_DATASET": "staging"

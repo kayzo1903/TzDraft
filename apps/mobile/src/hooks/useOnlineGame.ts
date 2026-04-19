@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BoardState, PlayerColor, Position } from "@tzdraft/mkaguzi-engine";
 import { useMkaguzi } from "../lib/game/mkaguzi-mobile";
 import type { RawMove } from "../lib/game/bridge-types";
+import {
+  EndgameCountdown,
+  evaluateEndgameCountdown,
+} from "../lib/game/rules";
 import { matchService } from "../lib/match-service";
 import { useAuthStore } from "../auth/auth-store";
 import { useSocket } from "./useSocket";
@@ -73,6 +77,7 @@ export function useOnlineGame(gameId: string) {
   const [capturablePieces, setCapturablePieces] = useState<number[]>([]);
   const [lastMove, setLastMove] = useState<{ from: number; to: number } | null>(null);
   const [invalidMoveSignal, setInvalidMoveSignal] = useState(0);
+  const [endgameCountdown, setEndgameCountdown] = useState<EndgameCountdown | null>(null);
 
   // ── Move history ────────────────────────────────────────────────────────────
   const [moveHistory, setMoveHistory] = useState<MoveHistoryEntry[]>([]);
@@ -112,6 +117,10 @@ export function useOnlineGame(gameId: string) {
   const [disconnectSecondsRemaining, setDisconnectSecondsRemaining] =
     useState<number | null>(null);
   const disconnectCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const thirtyMoveCount = useRef(0);
+  const endgameCountdownRef = useRef<EndgameCountdown | null>(null);
+  useEffect(() => { endgameCountdownRef.current = endgameCountdown; }, [endgameCountdown]);
 
   // ── Stable refs for timer/socket closures ─────────────────────────────────
   const prevMoveCountRef = useRef(0);
@@ -235,6 +244,18 @@ export function useOnlineGame(gameId: string) {
     },
     [],
   );
+
+  const updateEndgameStatus = useCallback((nextBoard: BoardState, player: PlayerColor, hadCapture: boolean) => {
+    const { reason: _, nextCountdown, nextThirtyCount } = evaluateEndgameCountdown(
+      nextBoard,
+      player,
+      hadCapture,
+      endgameCountdownRef.current,
+      thirtyMoveCount.current
+    );
+    thirtyMoveCount.current = nextThirtyCount;
+    setEndgameCountdown(nextCountdown);
+  }, []);
 
   // ── Fetch game state from API ──────────────────────────────────────────────
   const fetchGameState = useCallback(async () => {
@@ -393,8 +414,9 @@ export function useOnlineGame(gameId: string) {
     const handleUpdate = async (data?: unknown) => {
       const d = data as Record<string, unknown> | undefined;
 
-      // No lastMove data — full sync needed (e.g. opponent joined)
       if (!d?.lastMove) {
+        setEndgameCountdown(null);
+        thirtyMoveCount.current = 0;
         fetchGameState();
         return;
       }
@@ -473,12 +495,30 @@ export function useOnlineGame(gameId: string) {
             if (!newFen) return;
             setFen(newFen);
             setBoard(BoardState.fromFen(newFen));
+            const player = incomingMoveNum % 2 === 1 ? PlayerColor.WHITE : PlayerColor.BLACK;
+            const nextBoard = BoardState.fromFen(newFen);
+            const prevBoard = BoardState.fromFen(prevFen);
+            const prevPieces = prevBoard.getPiecesByColor(PlayerColor.WHITE).length + prevBoard.getPiecesByColor(PlayerColor.BLACK).length;
+            const nextPieces = nextBoard.getPiecesByColor(PlayerColor.WHITE).length + nextBoard.getPiecesByColor(PlayerColor.BLACK).length;
+            const hadCapture = nextPieces < prevPieces;
+
+            updateEndgameStatus(nextBoard, player, hadCapture); 
             setLastMove({ from, to });
             setMoveCount(incomingMoveNum);
             prevMoveCountRef.current = incomingMoveNum;
             setSelectedSquare(null);
             setValidDestinations([]);
-            setFenHistory((prev) => [...prev, newFen]);
+            
+            const nextHistory = [...fenHistory, newFen];
+            setFenHistory(nextHistory);
+
+            // Proactive Threefold Repetition Check (Art. 8.2)
+            const occurrences = nextHistory.filter((f) => f === newFen).length;
+            if (occurrences >= 3 && !resultRef.current) {
+              const r = { winner: "DRAW" as const, reason: "repetition" };
+              setResult(r);
+              resultRef.current = r;
+            }
           });
           return prevFen;
         });
@@ -678,6 +718,9 @@ export function useOnlineGame(gameId: string) {
         setValidDestinations([]);
         // Optimistic history entry (notation will be corrected by server echo)
         const optPlayer: "WHITE" | "BLACK" = newCount % 2 === 0 ? "WHITE" : "BLACK";
+        const playerEnum = optPlayer === "WHITE" ? PlayerColor.WHITE : PlayerColor.BLACK;
+        updateEndgameStatus(BoardState.fromFen(newFen), playerEnum, false);
+
         setMoveHistory((prev) => {
           if (prev.length >= newCount) return prev;
           return [...prev, { moveNumber: newCount, player: optPlayer, notation: `${from}-${to}`, from, to }];
@@ -834,6 +877,7 @@ export function useOnlineGame(gameId: string) {
     isReady: bridge.isReady,
     // Clock
     timeLeft,
+    endgameCountdown,
     // Draw / rematch
     drawOffer,
     rematchOffer,

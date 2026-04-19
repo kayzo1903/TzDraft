@@ -62,6 +62,12 @@ services:
       BEAM_AFRICA_SECRET_KEY: ${BEAM_AFRICA_SECRET_KEY:-}
       # ── Sentry ──
       SENTRY_DSN: ${SENTRY_DSN:-}
+      # ── Cloudflare R2 ──
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-tzdraft}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
     ports:
       - "3002:3002"
     depends_on:

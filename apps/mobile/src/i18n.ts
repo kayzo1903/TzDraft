@@ -26,6 +26,8 @@ const initI18n = async () => {
       fallbackLng: "en",
       interpolation: {
         escapeValue: false,
+        prefix: "{",
+        suffix: "}",
       },
     });
 };

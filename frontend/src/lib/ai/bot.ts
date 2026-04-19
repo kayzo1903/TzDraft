@@ -134,12 +134,15 @@ export async function getBestMove(
   const params = getParams(level);
 
   // ─── Human Blunder Logic ────────────────────────────────────────────────
-  // If a blunder is triggered, we pick a completely random legal move
-  // instead of asking the engine. This ensures beginners can win.
+  // If a blunder is triggered, we pick a random legal move instead of asking
+  // the engine. Must still respect mandatory capture — only blunder among
+  // capture moves when captures are available, otherwise any quiet move is fair.
   if (params.blunderChance > 0 && Math.random() < params.blunderChance) {
     const legalMoves = MkaguziEngine.generateLegalMoves(board, player);
     if (legalMoves.length > 0) {
-      return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+      const captures = legalMoves.filter((m) => m.capturedSquares.length > 0);
+      const pool = captures.length > 0 ? captures : legalMoves;
+      return pool[Math.floor(Math.random() * pool.length)];
     }
   }
 
