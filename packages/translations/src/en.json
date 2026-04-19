@@ -596,7 +596,17 @@
       "winnerLabel": "Winner:",
       "playAgain": "Play Again",
       "nextBot": "Next Bot",
-      "endGame": "End Game"
+      "endGame": "End Game",
+      "reasons": {
+        "repetition": "Threefold repetition (Art. 9.2)",
+        "rule30": "30 moves without capture/change (Art. 9.3)",
+        "rule12": "3 Kings vs 1 King (Art. 9.4)",
+        "rule5": "Lone King survival (Art. 9.5)",
+        "timeoutDraw": "Time expired (Insufficient material)",
+        "stalemate": "Stalemate",
+        "time": "Time expired",
+        "resign": "Resignation"
+      }
     }
   },
   "profile": {

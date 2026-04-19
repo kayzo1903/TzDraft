@@ -38,8 +38,9 @@ import { colors } from "../../src/theme/colors";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
 import { useAiGame, type PlayerColorParam, type TimeControl } from "../../src/hooks/useAiGame";
 import { getBotByLevel, getTierForLevel, BOT_IMAGES, TIERS } from "../../src/lib/game/bots";
+import { getEndgameReasonLabel } from "../../src/lib/game/rules";
 import { useMkaguzi } from "../../src/lib/game/mkaguzi-mobile";
-import { BoardState } from "@tzdraft/mkaguzi-engine";
+import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { aiChallengeService, type AiProgressionSummary } from "../../src/services/ai-challenge.service";
 import { applyServerProgression, getCachedMaxUnlockedLevel } from "../../src/lib/game/bot-progression";
@@ -294,20 +295,31 @@ function OptionsModal({
   );
 }
 
+// ─── Endgame Countdown Indicator ──────────────────────────────────────────────
+function EndgameCountdownIndicator({
+  remaining,
+  favoredColor,
+  t,
+}: {
+  remaining: number;
+  favoredColor: string | null;
+  t: (key: string, options?: any) => string;
+}) {
+  return (
+    <View style={styles.countdownContainer}>
+      <AlertTriangle color="#fb923c" size={14} style={{ marginRight: 6 }} />
+      <Text style={styles.countdownText}>
+        {favoredColor
+          ? t("gameArena.endgameCountdown", { remaining, favored: favoredColor })
+          : t("gameArena.endgameCountdownEqual", { remaining })}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Result Modal ──────────────────────────────────────────────────────────────
 type GameOutcome = "win" | "loss" | "draw";
 
-function reasonLabel(reason: string, isPlayerWin: boolean, isDraw: boolean): string {
-  switch (reason) {
-    case "time":     return isPlayerWin ? "Opponent timed out" : "Time expired";
-    case "resign":   return "Resigned";
-    case "stalemate":
-    case "checkmate": return isPlayerWin ? "No moves left for opponent" : "No moves available";
-    default:
-      if (isDraw) return "Draw by rule";
-      return isPlayerWin ? "Well played" : "Better luck next time";
-  }
-}
 
 function ResultModal({
   visible,
@@ -336,6 +348,7 @@ function ResultModal({
   onNextOpponent?: () => void;
   didUnlockNext: boolean;
 }) {
+  const { t } = useTranslation();
   const outcome: GameOutcome = isPlayerWin ? "win" : isDraw ? "draw" : "loss";
 
   const cfg = {
@@ -403,7 +416,7 @@ function ResultModal({
               
               <View style={[resultStyles.reasonPill, { borderColor: cfg.accentColor + "55", backgroundColor: cfg.accentColor + "18" }]}>
                 <Text style={[resultStyles.reasonText, { color: cfg.accentColor }]}>
-                  {reasonLabel(reason, isPlayerWin, isDraw)}
+                  {getEndgameReasonLabel(reason, isPlayerWin, isDraw, t)}
                 </Text>
               </View>
             </View>
@@ -725,6 +738,19 @@ export default function VsAiScreen() {
           disabled={!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor || isViewingHistory}
           flipped={game.flipBoard}
         />
+        {game.endgameCountdown && (
+          <EndgameCountdownIndicator
+            remaining={game.endgameCountdown.remaining}
+            favoredColor={
+              game.endgameCountdown.favored !== null
+                ? game.endgameCountdown.favored === PlayerColor.WHITE
+                  ? "White"
+                  : "Black"
+                : null
+            }
+            t={t}
+          />
+        )}
       </View>
 
       {/* ── Human player row ──────────────────────────────────────────────── */}
@@ -1043,6 +1069,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  countdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(251,146,60,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251,146,60,0.35)",
+  },
+  countdownText: {
+    color: "#fdba74",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
 
   // History bar (with chevrons)

@@ -597,7 +597,17 @@
       "winnerLabel": "Mshindi:",
       "playAgain": "Cheza Tena",
       "nextBot": "AI inayofuata",
-      "endGame": "Maliza Mchezo"
+      "endGame": "Maliza Mchezo",
+      "reasons": {
+        "repetition": "Kurudiwa mara tatu (Art. 9.2)",
+        "rule30": "Hatua 30 bila kula/kubadilika (Art. 9.3)",
+        "rule12": "Wafalme 3 dhidi ya 1 (Art. 9.4)",
+        "rule5": "Mfalme pekee amepona (Art. 9.5)",
+        "timeoutDraw": "Muda umeisha (Nguvu hazitoshi)",
+        "stalemate": "Ubanaji",
+        "time": "Muda umeisha",
+        "resign": "Kujisalimisha"
+      }
     }
   },
   "profile": {

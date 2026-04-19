@@ -29,8 +29,9 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react-native";
-import { BoardState } from "@tzdraft/mkaguzi-engine";
+import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { colors } from "../../src/theme/colors";
+import { getEndgameReasonLabel } from "../../src/lib/game/rules";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
 import { useLocalPvpGame } from "../../src/hooks/useLocalPvpGame";
 import { useGameAudio } from "../../src/hooks/useGameAudio";
@@ -80,6 +81,28 @@ const capStyles = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 5, borderWidth: 1 },
   extra: { color: colors.textMuted, fontSize: 10, fontWeight: "bold" },
 });
+
+// ─── Endgame Countdown Indicator ──────────────────────────────────────────────
+function EndgameCountdownIndicator({
+  remaining,
+  favoredColor,
+  t,
+}: {
+  remaining: number;
+  favoredColor: string | null;
+  t: (key: string, options?: any) => string;
+}) {
+  return (
+    <View style={styles.countdownContainer}>
+      <AlertTriangle color="#fb923c" size={14} style={{ marginRight: 6 }} />
+      <Text style={styles.countdownText}>
+        {favoredColor
+          ? t("gameArena.endgameCountdown", { remaining, favored: favoredColor })
+          : t("gameArena.endgameCountdownEqual", { remaining })}
+      </Text>
+    </View>
+  );
+}
 
 // ─── Pass-device handoff overlay ──────────────────────────────────────────────
 function PassDeviceOverlay({
@@ -455,14 +478,10 @@ function ResultModal({
   const accentColor = isDraw ? "#38bdf8" : colors.primary;
   const borderColor = isDraw ? "rgba(56,189,248,0.30)" : colors.primaryAlpha30;
 
-  const reasonText =
-    reason === "resign"
-      ? "by resignation"
-      : reason === "time"
-      ? "on time"
-      : reason === "agreement"
-      ? "by mutual agreement"
-      : "no moves available";
+  const { t } = useTranslation();
+  const reasonText = reason === "agreement" 
+    ? t("gameArena.gameOver.reasons.resign") 
+    : getEndgameReasonLabel(reason, false, isDraw, t);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -682,6 +701,19 @@ export default function FriendLocalScreen() {
           disabled={isViewingHistory || !!game.result || game.awaitingHandoff}
           flipped={game.flipBoard}
         />
+        {game.endgameCountdown && (
+          <EndgameCountdownIndicator
+            remaining={game.endgameCountdown.remaining}
+            favoredColor={
+              game.endgameCountdown.favored !== null
+                ? game.endgameCountdown.favored === PlayerColor.WHITE
+                  ? "White"
+                  : "Black"
+                : null
+            }
+            t={t}
+          />
+        )}
       </View>
 
       {/* ── Bottom player bar ─────────────────────────────────────────────── */}
@@ -847,9 +879,9 @@ export default function FriendLocalScreen() {
           winner={game.result.winner}
           reason={game.result.reason}
           moveCount={game.moveCount}
-          player1Name={game.player1Name}
-          player2Name={game.player2Name}
-          player1Color={game.player1Color}
+          player1Name="Player 1"
+          player2Name="Player 2"
+          player1Color={player1Color}
           onHome={() => router.replace("/game/setup-friend")}
         />
       )}
@@ -926,6 +958,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  countdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(251,146,60,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251,146,60,0.35)",
+  },
+  countdownText: {
+    color: "#fdba74",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
 
   historyBar: {

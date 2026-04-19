@@ -14,6 +14,11 @@ import { useMkaguzi } from "../lib/game/mkaguzi-mobile";
 import { getBestMove } from "../lib/game/ai-search";
 import { markLevelCompletedLocally } from "../lib/game/bot-progression";
 import type { RawMove, RawGameResult } from "../lib/game/bridge-types";
+import {
+  EndgameCountdown,
+  evaluateEndgameCountdown,
+  computeTimeoutResult,
+} from "../lib/game/rules";
 
 // ─── Initial FEN (app convention: WHITE at PDN 1-12, BLACK at PDN 21-32) ──────
 const INITIAL_FEN =
@@ -59,6 +64,11 @@ export interface LastMove {
   to: number;
 }
 
+export interface LastMove {
+  from: number;
+  to: number;
+}
+
 export interface AiGameState {
   fen: string;
   board: BoardState;
@@ -95,7 +105,11 @@ export interface AiGameState {
   flipBoard: boolean;
   /** Direct access to the FEN history for history scrubbing in the UI */
   fenHistory: string[];
+  /** Art. 8 countdown state for lone king / three kings draws */
+  endgameCountdown: EndgameCountdown | null;
 }
+
+// Endgame rule logic moved to src/lib/game/rules.ts
 
 export interface AiGameActions {
   selectSquare: (pdn: number) => void;
@@ -149,15 +163,19 @@ export function useAiGame(
   const [invalidMoveSignal, setInvalidMoveSignal] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ WHITE: totalSeconds, BLACK: totalSeconds });
   const [moveTimeLeft, setMoveTimeLeft] = useState(moveSeconds);
+  const [endgameCountdown, setEndgameCountdown] = useState<EndgameCountdown | null>(null);
 
   // ── Draw-rule counters ────────────────────────────────────────────────────
   const fenHistory = useRef<string[]>([INITIAL_FEN]);
   const reversibleMoveCount = useRef(0);
-  const threeKingsCount = useRef(0);
-  const endgameCount = useRef(0);
+  const thirtyMoveCount = useRef(0);
+  const endgameCountdownRef = useRef<EndgameCountdown | null>(null);
   const aiThinkingRef = useRef(false);
   const resultRef = useRef<GameResult | null>(null);
   const undoUsedRef = useRef(false);
+
+  // Sync ref to state
+  useEffect(() => { endgameCountdownRef.current = endgameCountdown; }, [endgameCountdown]);
 
   // ── Total-time timer (human only — AI has no clock) ───────────────────────
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -179,9 +197,12 @@ export function useAiGame(
           if (resultRef.current) { stopTimer(); return prev; }
           const remaining = prev[player] - 1;
           if (remaining <= 0) {
-            stopTimer();
-            const winner = player === PlayerColor.WHITE ? "BLACK" : "WHITE";
-            const r: GameResult = { winner, reason: "time" };
+            const winner = computeTimeoutResult(
+              board,
+              player,
+              endgameCountdownRef.current,
+            );
+            const r: GameResult = { winner, reason: winner === "DRAW" ? "timeout-draw" : "time" };
             setResult(r);
             resultRef.current = r;
             return { ...prev, [player]: 0 };
@@ -212,8 +233,12 @@ export function useAiGame(
         if (resultRef.current) { stopMoveTimer(); return prev; }
         if (prev <= 1) {
           stopMoveTimer();
-          const winner = resolvedColor === PlayerColor.WHITE ? "BLACK" : "WHITE";
-          const r: GameResult = { winner, reason: "time" };
+          const winner = computeTimeoutResult(
+            board,
+            resolvedColor,
+            endgameCountdownRef.current,
+          );
+          const r: GameResult = { winner, reason: winner === "DRAW" ? "timeout-draw" : "time" };
           setResult(r);
           resultRef.current = r;
           return 0;
@@ -232,17 +257,17 @@ export function useAiGame(
 
   const checkResult = useCallback(
     async (newFen: string): Promise<GameResult | null> => {
-      const raw: RawGameResult = await bridge.gameResult(
-        newFen,
-        reversibleMoveCount.current,
-        threeKingsCount.current,
-        endgameCount.current,
-      );
+      // For threefold repetition (Art. 8.2)
+      const occurrences = fenHistory.current.filter((f) => f === newFen).length;
+      if (occurrences >= 3) return { winner: "DRAW", reason: "repetition" };
+
+      // Art. 8 rules handled by evaluating counters in submitMove.
+      // We pass 0s to the engine-bridge result check because we handle those
+      // Articles (8.3, 8.4, 8.5) explicitly in the hook for better control.
+      const raw: RawGameResult = await bridge.gameResult(newFen, 0, 0, 0);
+
       if (raw.status === "ongoing") return null;
       if (raw.status === "win") {
-        // NOTE: appFenToMkaguziFen in the WASM bridge swaps WHITE↔BLACK squares
-        // before calling the engine. So the engine's "white" winner is actually
-        // the app's BLACK player and "black" winner is the app's WHITE player.
         const winner =
           raw.winner === "white" ? "BLACK" : raw.winner === "black" ? "WHITE" : "DRAW";
         return { winner, reason: raw.reason ?? "checkmate" };
@@ -252,6 +277,8 @@ export function useAiGame(
     [bridge],
   );
 
+  // Endgame rule logic moved to src/lib/game/rules.ts
+
   // ── Apply a move (human or AI) ────────────────────────────────────────────
   const submitMove = useCallback(
     async (move: RawMove, currentFen: string, player: PlayerColor) => {
@@ -260,12 +287,23 @@ export function useAiGame(
       const newFen = await bridge.applyMove(currentFen, move.from, move.to);
       if (!newFen) return;
 
-      // Draw counters
+      const newBoard = BoardState.fromFen(newFen);
+
+      // Draw rules (Art. 8)
       if (move.captures.length > 0 || move.promote) {
         reversibleMoveCount.current = 0;
       } else {
         reversibleMoveCount.current += 1;
       }
+      const { reason: drawReason, nextCountdown, nextThirtyCount } = evaluateEndgameCountdown(
+        newBoard,
+        player,
+        move.captures.length > 0,
+        endgameCountdownRef.current,
+        thirtyMoveCount.current,
+      );
+      thirtyMoveCount.current = nextThirtyCount;
+      setEndgameCountdown(nextCountdown);
       fenHistory.current.push(newFen);
 
       // Update last-move, captures, and history
@@ -288,12 +326,13 @@ export function useAiGame(
         },
       ]);
 
-      const newBoard = BoardState.fromFen(newFen);
       const nextPlayer =
         player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
 
       // Check result
-      const gameResult = await checkResult(newFen);
+      const gameResult =
+        (drawReason ? { winner: "DRAW", reason: drawReason } as GameResult : null) ||
+        (await checkResult(newFen));
       if (gameResult) {
         stopTimer();
         stopMoveTimer();
@@ -477,17 +516,22 @@ export function useAiGame(
         newCapturedBy[m.player] += m.captureCount;
       }
 
-      // Recompute reversibleMoveCount — count trailing moves with no captures/promotions
-      let revCount = 0;
-      for (let i = newHistory.length - 1; i >= 0; i--) {
-        if (newHistory[i].captureCount > 0) break;
-        revCount++;
-      }
-      reversibleMoveCount.current = revCount;
-
       // Restore board + state
       const restoredBoard = BoardState.fromFen(restoredFen);
       const prevPlayer = newHistory.length % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+
+      // Recompute Art. 8 counters from restored state
+      const wp = restoredBoard.getPiecesByColor(PlayerColor.WHITE);
+      const bp = restoredBoard.getPiecesByColor(PlayerColor.BLACK);
+      const wk = wp.filter((p) => p.isKing()).length;
+      const bk = bp.filter((p) => p.isKing()).length;
+      const wm = wp.length - wk;
+      const bm = bp.length - bk;
+
+      // Reset counters — recomputing accurately on every move is better, but here we reset
+      // to let evaluateEndgameCountdown re-detect the scenario on the next move.
+      thirtyMoveCount.current = 0;
+      setEndgameCountdown(null);
 
       stopTimer();
       stopMoveTimer();
@@ -541,8 +585,8 @@ export function useAiGame(
     undoUsedRef.current = false;
     fenHistory.current = [INITIAL_FEN];
     reversibleMoveCount.current = 0;
-    threeKingsCount.current = 0;
-    endgameCount.current = 0;
+    thirtyMoveCount.current = 0;
+    setEndgameCountdown(null);
     setTimeLeft({ WHITE: totalSeconds, BLACK: totalSeconds });
     setMoveTimeLeft(moveSeconds);
     // Increment last — triggers the init effect after all state is wiped
@@ -570,6 +614,7 @@ export function useAiGame(
     undoUsed: undoUsedRef.current,
     flipBoard: resolvedColor === PlayerColor.BLACK,
     fenHistory: fenHistory.current,
+    endgameCountdown,
     selectSquare,
     resign,
     reset,

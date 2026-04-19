@@ -29,8 +29,10 @@ import {
   X,
   AlertCircle,
 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { colors } from "../../src/theme/colors";
+import { getEndgameReasonLabel } from "../../src/lib/game/rules";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
 import { useOnlineGame } from "../../src/hooks/useOnlineGame";
 import { useGameAudio } from "../../src/hooks/useGameAudio";
@@ -440,6 +442,27 @@ const disconnectStyles = StyleSheet.create({
   },
 });
 
+// ─── Endgame Countdown Indicator ──────────────────────────────────────────────
+function EndgameCountdownIndicator({
+  remaining,
+  favoredColor,
+}: {
+  remaining: number;
+  favoredColor: string | null;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.countdownContainer}>
+      <AlertCircle color="#fb923c" size={14} style={{ marginRight: 6 }} />
+      <Text style={styles.countdownText}>
+        {favoredColor
+          ? t("gameArena.endgameCountdown", { remaining, favored: favoredColor })
+          : t("gameArena.endgameCountdownEqual", { remaining })}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Resign modal ──────────────────────────────────────────────────────────────
 function ResignModal({
   visible,
@@ -602,18 +625,12 @@ function ResultModal({
     ? "You Won!"
     : "You Lost";
 
-  const reasonText =
-    reason === "resign"
-      ? "by resignation"
-      : reason === "time"
-      ? "on time"
-      : reason === "agreement"
-      ? "by mutual agreement"
-      : reason === "aborted"
-      ? "game was aborted"
-      : reason
-      ? reason
-      : "";
+  const { t } = useTranslation();
+  const reasonText = reason === "aborted" 
+    ? t("common.error") 
+    : reason === "agreement"
+      ? t("gameArena.gameOver.reasons.resign")
+      : getEndgameReasonLabel(reason || "", iWon, isDraw, t);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -1128,6 +1145,18 @@ export default function OnlineGameScreen() {
               disabled={!!game.result || game.currentPlayer !== game.myColor || isViewingHistory}
               flipped={game.flipBoard}
             />
+            {game.endgameCountdown && (
+              <EndgameCountdownIndicator
+                remaining={game.endgameCountdown.remaining}
+                favoredColor={
+                  game.endgameCountdown.favored !== null
+                    ? game.endgameCountdown.favored === PlayerColor.WHITE
+                      ? "White"
+                      : "Black"
+                    : null
+                }
+              />
+            )}
           </View>
           {!game.isReady && (
             <View style={styles.engineOverlay}>
@@ -1484,6 +1513,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 6,
     paddingHorizontal: 8,
+  },
+  countdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(251,146,60,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251,146,60,0.35)",
+  },
+  countdownText: {
+    color: "#fdba74",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
   engineOverlay: {
     flexDirection: "row",
