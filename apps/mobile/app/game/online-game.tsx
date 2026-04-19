@@ -914,10 +914,11 @@ export default function OnlineGameScreen() {
         params: {
           gameId: game.rematchNewGameId,
           isHost: game.rematchIWasOfferer ? "true" : "false",
+          ...(source ? { source } : {}),
         },
       });
     }
-  }, [game.rematchNewGameId, game.rematchIWasOfferer, router]);
+  }, [game.rematchNewGameId, game.rematchIWasOfferer, router, source]);
 
   // ── Audio ──────────────────────────────────────────────────────────────────
   useEffect(() => {
