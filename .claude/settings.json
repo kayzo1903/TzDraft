@@ -34,7 +34,10 @@
       "Bash(emcc --version)",
       "Bash(echo \"EXIT:$?\")",
       "Bash(pnpm dlx:*)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -E \"\\\\.log$|\\\\.bak$|\\\\.old$|\\\\.easignore$\")",
+      "Bash(grep -E \"\\\\.log$|\\\\.bak$|\\\\.old$\")",
+      "Bash(git reset *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Desktop\\TzDraft\\frontend\\src\\app\\[locale]\\game\\[id]\\review"
