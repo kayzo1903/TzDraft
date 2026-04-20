@@ -3,6 +3,12 @@ import { useAuthStore } from "../auth/auth-store";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { aiChallengeService } from "../services/ai-challenge.service";
+import {
+  hasLocalBotProgressToSync,
+  getLocalBotProgressSnapshot,
+  applyServerProgression,
+  clearLocalBotProgress,
+} from "./game/bot-progression";
 
 // Lazy load GoogleSignin to prevent crashes in Expo Go or older builds
 const getGoogleSignin = () => {
