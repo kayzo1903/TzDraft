@@ -16,7 +16,9 @@
     "prisma:generate": "prisma generate",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:emails": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/scripts/test-notification-emails.ts"
+    "test:emails": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/scripts/test-notification-emails.ts",
+    "test:push": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/scripts/send-welcome-notifications.ts",
+    "count:tokens": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/scripts/count-tokens.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",

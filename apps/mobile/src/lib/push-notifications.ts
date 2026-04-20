@@ -40,9 +40,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return null;
   }
 
-  const tokenData = await Notifications.getExpoPushTokenAsync({
-    projectId: "tzdraft-mobile",
-  });
+  const tokenData = await Notifications.getExpoPushTokenAsync();
 
   return tokenData.data;
 }
@@ -73,6 +71,9 @@ export function getNotificationRoute(
   const screen = data.screen as string | undefined;
   if (screen === "tournament" && data.tournamentId) {
     return `/game/tournament/${data.tournamentId}`;
+  }
+  if (data.type === "WELCOME") {
+    return "/";
   }
   return null;
 }
