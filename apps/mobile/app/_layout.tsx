@@ -20,6 +20,7 @@ import { colors } from "../src/theme/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { syncPushToken, getNotificationRoute } from "../src/lib/push-notifications";
 import { NotificationPermissionModal } from "../src/components/auth/NotificationPermissionModal";
+import { QueryProvider } from "../src/providers/QueryProvider";
 
 const PENDING_INVITE_KEY = "pendingInviteCode";
 
@@ -168,58 +169,60 @@ export default function RootLayout() {
   // Always render the Stack so Expo Router's navigator is mounted from the first render.
   // The LoadingScreen sits as an absolute overlay on top until auth is resolved.
   return (
-    <I18nextProvider i18n={i18n}>
-      <MkaguziProvider>
-        <GestureHandlerRootView style={styles.container}>
-          <StatusBar style="light" />
-          {showHeader && <Header onMenuPress={() => setIsMenuVisible(true)} />}
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="welcome" options={{ headerShown: false }} />
-            <Stack.Screen name="index" options={{ title: "Home" }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ title: "Profile" }} />
-            <Stack.Screen name="notifications" options={{ headerShown: false }} />
-            <Stack.Screen name="game/vs-ai" options={{ headerShown: false }} />
-            <Stack.Screen name="game/online-game" options={{ headerShown: false }} />
-            <Stack.Screen name="game/setup-friend" options={{ headerShown: false }} />
-            <Stack.Screen name="game/friend-local" options={{ headerShown: false }} />
-            <Stack.Screen name="game/free-play" options={{ headerShown: false }} />
-            <Stack.Screen name="game/setup-ai" options={{ headerShown: false }} />
-            <Stack.Screen name="game/lobby" options={{ headerShown: false }} />
-            <Stack.Screen name="game/history" options={{ headerShown: false }} />
-            <Stack.Screen name="game/game-replay" options={{ headerShown: false }} />
-            <Stack.Screen name="game/leaderboard" options={{ headerShown: false }} />
-            <Stack.Screen name="game/player/[userId]" options={{ headerShown: false }} />
-            <Stack.Screen name="game/studies" options={{ headerShown: false }} />
-            <Stack.Screen name="game/study-replay" options={{ headerShown: false }} />
-            <Stack.Screen name="game/tournaments" options={{ headerShown: false }} />
-            <Stack.Screen name="join/[code]" options={{ headerShown: false }} />
-          </Stack>
-          <SideMenu
-            isVisible={isMenuVisible}
-            onClose={() => setIsMenuVisible(false)}
-          />
-          {isLoading && (
-            <View style={styles.loadingOverlay}>
-              <LoadingScreen />
-            </View>
-          )}
-          <NotificationPermissionModal
-            visible={showNotifModal}
-            onEnable={() => {
-              setShowNotifModal(false);
-              syncPushToken().catch(() => {});
-            }}
-            onSkip={() => setShowNotifModal(false)}
-          />
-        </GestureHandlerRootView>
-      </MkaguziProvider>
-    </I18nextProvider>
+    <QueryProvider>
+      <I18nextProvider i18n={i18n}>
+        <MkaguziProvider>
+          <GestureHandlerRootView style={styles.container}>
+            <StatusBar style="light" />
+            {showHeader && <Header onMenuPress={() => setIsMenuVisible(true)} />}
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen name="welcome" options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ title: "Home" }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="profile" options={{ title: "Profile" }} />
+              <Stack.Screen name="notifications" options={{ headerShown: false }} />
+              <Stack.Screen name="game/vs-ai" options={{ headerShown: false }} />
+              <Stack.Screen name="game/online-game" options={{ headerShown: false }} />
+              <Stack.Screen name="game/setup-friend" options={{ headerShown: false }} />
+              <Stack.Screen name="game/friend-local" options={{ headerShown: false }} />
+              <Stack.Screen name="game/free-play" options={{ headerShown: false }} />
+              <Stack.Screen name="game/setup-ai" options={{ headerShown: false }} />
+              <Stack.Screen name="game/lobby" options={{ headerShown: false }} />
+              <Stack.Screen name="game/history" options={{ headerShown: false }} />
+              <Stack.Screen name="game/game-replay" options={{ headerShown: false }} />
+              <Stack.Screen name="game/leaderboard" options={{ headerShown: false }} />
+              <Stack.Screen name="game/player/[userId]" options={{ headerShown: false }} />
+              <Stack.Screen name="game/studies" options={{ headerShown: false }} />
+              <Stack.Screen name="game/study-replay" options={{ headerShown: false }} />
+              <Stack.Screen name="game/tournaments" options={{ headerShown: false }} />
+              <Stack.Screen name="join/[code]" options={{ headerShown: false }} />
+            </Stack>
+            <SideMenu
+              isVisible={isMenuVisible}
+              onClose={() => setIsMenuVisible(false)}
+            />
+            {isLoading && (
+              <View style={styles.loadingOverlay}>
+                <LoadingScreen />
+              </View>
+            )}
+            <NotificationPermissionModal
+              visible={showNotifModal}
+              onEnable={() => {
+                setShowNotifModal(false);
+                syncPushToken().catch(() => {});
+              }}
+              onSkip={() => setShowNotifModal(false)}
+            />
+          </GestureHandlerRootView>
+        </MkaguziProvider>
+      </I18nextProvider>
+    </QueryProvider>
   );
 }
 

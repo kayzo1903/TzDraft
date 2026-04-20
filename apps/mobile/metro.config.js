@@ -16,6 +16,10 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
-// 4. Removed manual symlink flag to follow Expo defaults
+// 4. Enable symlinks so pnpm-managed packages resolve correctly
+config.resolver.unstable_enableSymlinks = true;
+
+// 5. Disable hierarchical lookup to avoid resolving stale/wrong versions
+config.resolver.disableHierarchicalLookup = false;
 
 module.exports = config;
