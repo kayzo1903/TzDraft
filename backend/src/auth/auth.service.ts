@@ -15,19 +15,25 @@ import { UserService } from '../domain/user/user.service';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto';
 import { normalizePhoneNumber } from '../shared/utils/phone.util';
 import { randomUUID, randomBytes } from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 
 type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private googleClient: OAuth2Client;
 
   constructor(
     private prisma: PrismaService,
     private userService: UserService,
     private jwtService: JwtService,
     private config: ConfigService,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client(
+      this.config.get('GOOGLE_CLIENT_ID'),
+    );
+  }
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     // Validate password confirmation
@@ -414,6 +420,7 @@ export class AuthService {
     email: string;
     name: string;
     oauthProvider: string;
+    avatarUrl?: string;
   }): Promise<any> {
     // Check if user exists by email
     let user = await this.prisma.user.findUnique({
@@ -429,30 +436,18 @@ export class AuthService {
           data: {
             isVerified: false,
             accountType: AccountType.OAUTH_PENDING,
+            ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}),
           },
           include: { rating: true },
         });
-      } else if (
-        !user.phoneNumber.startsWith('+255') &&
-        user.accountType !== AccountType.OAUTH_PENDING
-      ) {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: { accountType: AccountType.OAUTH_PENDING },
-          include: { rating: true },
-        });
-      }
-
-      // User exists, update googleId if not already set
-      if (!user.googleId) {
+      } else {
+        // Just update avatar if needed
         user = await this.prisma.user.update({
           where: { id: user.id },
           data: {
             googleId: profile.googleId,
             oauthProvider: profile.oauthProvider,
-            accountType: user.phoneNumber.startsWith('+255')
-              ? AccountType.REGISTERED
-              : AccountType.OAUTH_PENDING,
+            ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {}),
           },
           include: { rating: true },
         });
@@ -472,6 +467,7 @@ export class AuthService {
         displayName,
         googleId: profile.googleId,
         oauthProvider: profile.oauthProvider,
+        avatarUrl: profile.avatarUrl,
         phoneNumber: `oauth_${profile.googleId}`, // Placeholder since phoneNumber is required
         isVerified: false,
         accountType: AccountType.OAUTH_PENDING,
@@ -489,6 +485,54 @@ export class AuthService {
     await this.createWelcomeNotification(user.id);
 
     return user;
+  }
+
+  async verifyGoogleNativeToken(idToken: string): Promise<AuthResponseDto> {
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: this.config.get('GOOGLE_CLIENT_ID'),
+      });
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new UnauthorizedException('Invalid Google token payload');
+      }
+
+      const user = await this.validateOAuthUser({
+        googleId: payload.sub,
+        email: payload.email!,
+        name: payload.name!,
+        oauthProvider: 'google',
+        avatarUrl: payload.picture,
+      });
+
+      const { accessToken, refreshToken } = await this.generateTokens(user.id);
+
+      return {
+        user: {
+          id: user.id,
+          phoneNumber: user.phoneNumber.startsWith('oauth_')
+            ? ''
+            : user.phoneNumber,
+          email: user.email ?? undefined,
+          username: user.username,
+          displayName: user.displayName,
+          isVerified: user.isVerified,
+          rating: user.rating?.rating || 1200,
+          country: user.country ?? undefined,
+          region: user.region ?? undefined,
+          role: user.role,
+          isBanned: user.isBanned,
+          accountType: user.accountType,
+          avatarUrl: (user as any).avatarUrl ?? undefined,
+        },
+        accessToken,
+        refreshToken,
+      };
+    } catch (error: any) {
+      this.logger.error(`Google token verification failed: ${error.message}`);
+      throw new UnauthorizedException('Invalid Google token');
+    }
   }
 
   private async generateUniqueUsername(email: string): Promise<string> {

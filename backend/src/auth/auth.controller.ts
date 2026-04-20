@@ -386,4 +386,16 @@ export class AuthController {
       return res.redirect(`tzdraft-mobile://auth/callback?error=google_failed`);
     }
   }
+  @Public()
+  @Post('google/signin-native')
+  @HttpCode(HttpStatus.OK)
+  async googleSigninNative(
+    @Body('idToken') idToken: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    if (!idToken) throw new BadRequestException('ID Token is required');
+    const result = await this.authService.verifyGoogleNativeToken(idToken);
+    this.setAuthCookies(res, result);
+    return result;
+  }
 }

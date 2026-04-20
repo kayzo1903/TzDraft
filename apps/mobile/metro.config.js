@@ -8,7 +8,7 @@ const workspaceRoot = path.resolve(projectRoot, "../..");
 const config = getDefaultConfig(projectRoot);
 
 // 2. Watch all files within the monorepo
-config.watchFolders = [workspaceRoot];
+config.watchFolders.push(workspaceRoot);
 
 // 3. Let Metro look for modules in both the project and workspace node_modules
 config.resolver.nodeModulesPaths = [
@@ -16,7 +16,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
-// 4. Follow pnpm's Windows junctions / symlinks
-config.resolver.unstable_enableSymlinks = true;
+// 4. Removed manual symlink flag to follow Expo defaults
 
 module.exports = config;

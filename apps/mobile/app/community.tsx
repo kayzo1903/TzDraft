@@ -11,13 +11,9 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
-  Users,
   Trophy,
   Medal,
   ChevronRight,
-  Star,
-  MessageSquare,
-  Share2,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 
@@ -74,52 +70,6 @@ export default function CommunityHub() {
             onPress={() => router.push("/game/leaderboard")}
             color="#ec4899"
           />
-          <CommunityCard
-            icon={Users}
-            title={t("community.clubs", "Player Clubs")}
-            subtitle={t("community.clubsDesc", "Join groups or create your own community")}
-            onPress={() => {}}
-            color="#8b5cf6"
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t("community.social", "Social")}</Text>
-          <View style={styles.socialGrid}>
-            <TouchableOpacity style={styles.socialBox}>
-              <MessageSquare color={colors.primary} size={24} />
-              <Text style={styles.socialLabel}>Discord</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBox}>
-              <Share2 color={colors.primary} size={24} />
-              <Text style={styles.socialLabel}>Invite</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.topPlayersSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>{t("community.topPlayers", "Top Players")}</Text>
-            <Text style={styles.viewAll}>{t("common.viewAll", "View All")}</Text>
-          </View>
-          {[1, 2, 3].map((i) => (
-            <View key={i} style={styles.playerRow}>
-              <View style={styles.playerInfo}>
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>{i}</Text>
-                </View>
-                <View>
-                  <Text style={styles.playerName}>Grandmaster_{i}</Text>
-                  <Text style={styles.playerRating}>2840 ELO</Text>
-                </View>
-              </View>
-              <Star
-                color={i === 1 ? colors.primary : colors.textDisabled}
-                size={16}
-                fill={i === 1 ? colors.primary : "transparent"}
-              />
-            </View>
-          ))}
         </View>
 
         <View style={{ height: 40 }} />
@@ -212,79 +162,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   cardSubtitle: {
-    color: colors.textSubtle,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  socialGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  socialBox: {
-    flex: 1,
-    height: 90,
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  socialLabel: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  topPlayersSection: {
-    gap: 12,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  viewAll: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  playerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    padding: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  playerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  avatarText: {
-    color: colors.primary,
-    fontWeight: "900",
-  },
-  playerName: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  playerRating: {
     color: colors.textSubtle,
     fontSize: 12,
   },
