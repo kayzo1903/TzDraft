@@ -10,38 +10,48 @@ const WELCOME_NOTIFICATION = {
     'Play Drafti online with players from Tanzania. Join leagues, compete against AI, or invite friends!',
 };
 
-async function sendWelcomeNotifications() {
-  console.log('🔔 Sending welcome notifications to all users...\n');
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+const CHUNK_SIZE = 100;
 
-  // Get all users
+async function sendWelcomeNotifications() {
+  console.log('🔔 Sending welcome notifications to all users (DB + Push + WS)...\n');
+
+  // Get all users with their push tokens
   const users = await prisma.user.findMany({
-    select: { id: true, phoneNumber: true },
+    select: { id: true, phoneNumber: true, username: true, pushToken: true },
   });
 
-  console.log(`Found ${users.length} users\n`);
+  console.log(`Found ${users.length} total users\n`);
 
   let successCount = 0;
+  let pushTokenCount = 0;
   let skipCount = 0;
+
+  const pushMessages: any[] = [];
+  const force = process.argv.includes('--force');
 
   for (const user of users) {
     try {
-      // Check if user already has a welcome notification
-      const existing = await prisma.notification.findFirst({
-        where: {
-          userId: user.id,
-          type: 'WELCOME' as any,
-        },
-      });
+      if (!force) {
+        // Check if user already has a welcome notification
+        const existing = await prisma.notification.findFirst({
+          where: {
+            userId: user.id,
+            type: 'WELCOME' as any,
+          },
+        });
 
-      if (existing) {
-        skipCount++;
-        continue;
+        if (existing) {
+          skipCount++;
+          continue;
+        }
       }
 
-      // Create welcome notification
+      // 1. Create welcome notification in DB
+      const notificationId = randomUUID();
       await prisma.notification.create({
         data: {
-          id: randomUUID(),
+          id: notificationId,
           userId: user.id,
           type: 'WELCOME' as any,
           title: WELCOME_NOTIFICATION.title,
@@ -55,19 +65,59 @@ async function sendWelcomeNotifications() {
         },
       });
 
+      // 2. Prepare Push Notification if token exists
+      if (user.pushToken) {
+        pushMessages.push({
+          to: user.pushToken,
+          title: WELCOME_NOTIFICATION.title,
+          body: WELCOME_NOTIFICATION.body,
+          data: { type: 'WELCOME', screen: 'home' },
+          sound: 'default',
+          channelId: 'default',
+          priority: 'high',
+        });
+        pushTokenCount++;
+      }
+
       successCount++;
       console.log(
-        `✅ Sent to user: ${user.id.slice(0, 8)}... (${user.phoneNumber || 'no phone'})`,
+        `✅ DB Notification created for: ${user.username || user.id.slice(0, 8)}... (${user.pushToken ? 'Push ready' : 'No token'})`,
       );
     } catch (error) {
       console.error(`❌ Failed for user ${user.id}:`, error.message);
     }
   }
 
+  // 3. Broadcast Push Notifications in chunks
+  if (pushMessages.length > 0) {
+    console.log(`\n🚀 Sending ${pushMessages.length} Push Notifications via Expo...`);
+    for (let i = 0; i < pushMessages.length; i += CHUNK_SIZE) {
+      const chunk = pushMessages.slice(i, i + CHUNK_SIZE);
+      try {
+        const res = await fetch(EXPO_PUSH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(chunk),
+        });
+        if (res.ok) {
+          console.log(`   - Chunk ${Math.floor(i / CHUNK_SIZE) + 1} sent successfully.`);
+        } else {
+          console.error(`   - Chunk ${Math.floor(i / CHUNK_SIZE) + 1} failed:`, await res.text());
+        }
+      } catch (err) {
+        console.error(`   - Chunk error:`, err.message);
+      }
+    }
+  }
+
   console.log('\n────────────────────────────────────');
   console.log(`📊 Summary:`);
-  console.log(`   ✅ Sent: ${successCount}`);
-  console.log(`   ⏭️  Skipped (already exists): ${skipCount}`);
+  console.log(`   ✅ DB Records: ${successCount}`);
+  console.log(`   🚀 Push Sent: ${pushTokenCount}`);
+  console.log(`   ⏭️  Skipped: ${skipCount}`);
   console.log(`   ❌ Failed: ${users.length - successCount - skipCount}`);
   console.log('────────────────────────────────────\n');
 
