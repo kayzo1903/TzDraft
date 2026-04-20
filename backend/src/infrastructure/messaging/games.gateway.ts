@@ -535,6 +535,59 @@ export class GamesGateway
     return {};
   }
 
+  @SubscribeMessage('resign')
+  async handleResign(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ): Promise<{ error?: string }> {
+    const userId = client.data.user?.id;
+    if (!userId) return { error: 'Not authenticated' };
+    if (this.isWsRateLimited(client.id)) return { error: 'Too many requests' };
+
+    try {
+      const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
+        strict: false,
+      });
+      const { winner } = await endGameUseCase.resign(data.gameId, userId);
+      this.emitGameOver(data.gameId, {
+        gameId: data.gameId,
+        winner: winner.toString(),
+        reason: 'resign',
+      });
+      this.logger.log(`User ${userId} resigned from game ${data.gameId}`);
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || 'Resignation failed' };
+    }
+  }
+
+  @SubscribeMessage('abort')
+  async handleAbort(
+    @MessageBody() data: { gameId: string },
+    @ConnectedSocket() client: Socket,
+  ): Promise<{ error?: string }> {
+    const userId = client.data.user?.id;
+    if (!userId) return { error: 'Not authenticated' };
+    if (this.isWsRateLimited(client.id)) return { error: 'Too many requests' };
+
+    try {
+      const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
+        strict: false,
+      });
+      await endGameUseCase.abort(data.gameId, userId);
+      this.emitGameOver(data.gameId, {
+        gameId: data.gameId,
+        winner: null,
+        reason: 'aborted',
+      });
+      this.logger.log(`User ${userId} aborted game ${data.gameId}`);
+      return {};
+    } catch (err: any) {
+      return { error: err?.message || 'Abortion failed' };
+    }
+  }
+
+
   /* ── Rematch flow ────────────────────────────────────────────────────── */
 
   @SubscribeMessage('offerRematch')

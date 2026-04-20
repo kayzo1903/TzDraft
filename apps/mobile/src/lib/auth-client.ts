@@ -10,7 +10,20 @@ import {
   clearLocalBotProgress,
 } from "./game/bot-progression";
 
+// Lazy load GoogleSignin to prevent crashes in Expo Go or older builds
+const getGoogleSignin = () => {
+  try {
+    return require("@react-native-google-signin/google-signin").GoogleSignin;
+  } catch (e) {
+    return null;
+  }
+};
+
 class AuthClient {
+  constructor() {
+    // Configuration handled lazily during sign-in to avoid early native module access
+  }
+
   /**
    * If the player won any games locally before registering/logging in,
    * push that progress to the server so it isn't lost.
@@ -140,47 +153,43 @@ class AuthClient {
     useAuthStore.getState().setStatus("transitioning");
 
     try {
-      const result = await WebBrowser.openAuthSessionAsync(
-        `${API_URL}/auth/google/mobile`,
-        "tzdraft-mobile://auth/callback",
-      );
-
-      if (result.type !== "success") {
-        // User cancelled or browser closed without completing auth.
-        useAuthStore.getState().setStatus("unauthenticated");
-        return null;
+      const GoogleSignin = getGoogleSignin();
+      if (!GoogleSignin) {
+        throw new Error(
+          "Native Google Sign-In is not available. Please ensure you are using a development build (not Expo Go) and have built the app binary."
+        );
       }
-
-      // Parse tokens from the deep-link URL.
-      const url = new URL(result.url);
-      const error = url.searchParams.get("error");
-      if (error) {
-        useAuthStore.getState().setStatus("unauthenticated");
-        throw new Error(`Google sign-in failed: ${error}`);
-      }
-
-      const accessToken = url.searchParams.get("accessToken");
-      const refreshToken = url.searchParams.get("refreshToken");
-      if (!accessToken) {
-        useAuthStore.getState().setStatus("unauthenticated");
-        throw new Error("Google sign-in did not return a token.");
-      }
-
-      // Fetch user profile with the new token.
-      const profileRes = await api.get("/auth/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
+      
+      // Configure on the fly (idempotent)
+      GoogleSignin.configure({
+        webClientId: "583911650740-l7g21qc3sgl3qspi3q3fhfjlrn6dcqqt.apps.googleusercontent.com",
+        offlineAccess: true,
       });
-      const user = profileRes.data;
 
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      
+      const idToken = userInfo.data?.idToken;
+      if (!idToken) {
+        throw new Error("No ID Token returned from Google Sign-In");
+      }
+
+      // Send the ID token to our new native-auth endpoint
+      const response = await api.post("/auth/google/signin-native", { idToken });
+      const { accessToken, refreshToken, user } = response.data;
+
+      // Save tokens and user
       useAuthStore.getState().setToken(accessToken);
       useAuthStore.getState().setUser(user);
       if (refreshToken) {
         await SecureStore.setItemAsync("refreshToken", refreshToken);
       }
+      
       useAuthStore.getState().setStatus("authenticated");
       this.syncLocalAiProgressIfNeeded();
       return { accessToken, user };
-    } catch (error) {
+    } catch (error: any) {
+      console.error("[AuthClient] Google Native Sign-In failed:", error);
       useAuthStore.getState().setStatus("unauthenticated");
       throw error;
     }
