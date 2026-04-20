@@ -14,6 +14,7 @@ import {
   Switch,
   Vibration,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
@@ -33,6 +34,7 @@ import {
   Undo2,
   Volume2,
   VolumeX,
+  User as UserIcon,
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
@@ -711,7 +713,7 @@ export default function VsAiScreen() {
 
       {/* ── Opponent (bot) row ────────────────────────────────────────────── */}
       <View style={[styles.playerBar, styles.playerBarTop]}>
-        <Image source={BOT_IMAGES[bot.imageKey]} style={styles.avatar} />
+        <Image source={BOT_IMAGES[bot.imageKey]} style={styles.playerAvatar} />
         <View style={styles.playerMeta}>
           <Text style={styles.playerNameText}>{bot.name}</Text>
           <CapturedDots count={botCapturedCount} color={humanColor as "WHITE" | "BLACK"} />
@@ -753,10 +755,24 @@ export default function VsAiScreen() {
 
       {/* ── Human player row ──────────────────────────────────────────────── */}
       <View style={[styles.playerBar, styles.playerBarBottom]}>
-        <View style={[
-          styles.colorChip,
-          game.playerColor.toString() === "WHITE" ? styles.colorChipWhite : styles.colorChipBlack,
-        ]} />
+        <View style={styles.avatarContainer}>
+          {user?.avatarUrl ? (
+            <ExpoImage
+              source={user.avatarUrl}
+              style={styles.playerAvatar}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
+              <UserIcon color={colors.textDisabled} size={18} />
+            </View>
+          )}
+          <View style={[
+            styles.playerColorBadge,
+            game.playerColor.toString() === "WHITE" ? styles.chipWhite : styles.chipBlack,
+          ]} />
+        </View>
         <View style={styles.playerMeta}>
           <Text style={styles.playerNameText}>You</Text>
           <CapturedDots count={playerCapturedCount} color={opponentColor as "WHITE" | "BLACK"} />
@@ -1015,12 +1031,35 @@ const styles = StyleSheet.create({
   },
   playerBarBottom: {
     borderTopWidth: 1,
-    backgroundColor: colors.surface + "55",
+    backgroundColor: "rgba(15,23,42,0.4)",
   },
-  avatar: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: colors.surface,
+  avatarContainer: {
+    position: "relative",
   },
+  playerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceElevated,
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  playerColorBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    zIndex: 1,
+  },
+  chipWhite: { backgroundColor: colors.pieceWhite, borderColor: "#c8b49a" },
+  chipBlack: { backgroundColor: colors.pieceBlack, borderColor: "#3a3028" },
   playerMeta: { flex: 1, gap: 2 },
   playerNameText: { color: colors.foreground, fontSize: 13, fontWeight: "bold" },
   
@@ -1044,7 +1083,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
-  colorChip: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
   colorChipWhite: { backgroundColor: colors.pieceWhite, borderColor: "#c8b49a" },
   colorChipBlack: { backgroundColor: colors.pieceBlack, borderColor: "#3a3028" },
 

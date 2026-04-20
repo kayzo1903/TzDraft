@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -28,6 +29,7 @@ import {
   WifiOff,
   X,
   AlertCircle,
+  User as UserIcon,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
@@ -1095,7 +1097,22 @@ export default function OnlineGameScreen() {
         <>
           {/* ── Top player bar ────────────────────────────────────────── */}
           <View style={[styles.playerBar, styles.playerBarTop]}>
-            <View style={[styles.colorChip, topColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
+            <View style={styles.avatarContainer}>
+              {topPlayer?.avatarUrl ? (
+                <Image
+                  source={topPlayer.avatarUrl}
+                  style={styles.playerAvatar}
+                  contentFit="cover"
+                  transition={200}
+                />
+              ) : (
+                <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
+                  <UserIcon color={colors.textDisabled} size={18} />
+                </View>
+              )}
+              <View style={[styles.playerColorBadge, topColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
+            </View>
+
             <View style={styles.playerMeta}>
               <View style={styles.playerNameRow}>
                 <Text style={styles.playerName} numberOfLines={1}>
@@ -1168,7 +1185,22 @@ export default function OnlineGameScreen() {
 
           {/* ── Bottom player bar ─────────────────────────────────────── */}
           <View style={[styles.playerBar, styles.playerBarBottom]}>
-            <View style={[styles.colorChip, bottomColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
+            <View style={styles.avatarContainer}>
+              {bottomPlayer?.avatarUrl ? (
+                <Image
+                  source={bottomPlayer.avatarUrl}
+                  style={styles.playerAvatar}
+                  contentFit="cover"
+                  transition={200}
+                />
+              ) : (
+                <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
+                  <UserIcon color={colors.textDisabled} size={18} />
+                </View>
+              )}
+              <View style={[styles.playerColorBadge, bottomColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
+            </View>
+
             <View style={styles.playerMeta}>
               <View style={styles.playerNameRow}>
                 <Text style={styles.playerName} numberOfLines={1}>
@@ -1416,6 +1448,31 @@ const styles = StyleSheet.create({
   playerBarBottom: {
     borderTopWidth: 1,
     backgroundColor: colors.surface + "55",
+  },
+  avatarContainer: {
+    position: "relative",
+  },
+  playerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceElevated,
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  playerColorBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    zIndex: 1,
   },
   colorChip: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
   chipWhite: { backgroundColor: colors.pieceWhite, borderColor: "#c8b49a" },
