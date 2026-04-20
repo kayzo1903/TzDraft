@@ -1,12 +1,10 @@
 {
   "expo": {
-    "name": "TzDraft",
     "slug": "tzdraft",
     "owner": "tzdraft",
     "scheme": "tzdraft-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -25,10 +23,6 @@
     },
     "android": {
       "package": "com.tzdraft.mobile",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
-      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
@@ -65,7 +59,8 @@
           "defaultChannel": "default",
           "sounds": []
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {
