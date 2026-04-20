@@ -161,8 +161,8 @@ class AuthClient {
       }
       
       // Configure on the fly (idempotent)
-      GoogleSignin.configure({
-        webClientId: "583911650740-l7g21qc3sgl3qspi3q3fhfjlrn6dcqqt.apps.googleusercontent.com",
+        iosClientId: "", // Handled by GoogleService-Info.plist if needed
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
         offlineAccess: true,
       });
 
