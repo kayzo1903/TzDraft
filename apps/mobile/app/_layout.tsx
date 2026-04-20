@@ -112,9 +112,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (status !== "authenticated") return;
     Notifications.getPermissionsAsync().then(({ status: perm }) => {
+      console.log(`[Push] Current status: ${perm}`);
       if (perm === "granted") {
-        // Already allowed — just sync silently
-        syncPushToken().catch(() => {});
+        console.log("[Push] Syncing token...");
+        syncPushToken()
+          .then(() => console.log("[Push] Token synced successfully"))
+          .catch((err) => console.error("[Push] Token sync failed:", err));
       } else if (perm === "undetermined") {
         setShowNotifModal(true);
       }
