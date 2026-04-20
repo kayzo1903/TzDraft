@@ -4,10 +4,18 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import { normalizePhoneNumber } from '../../shared/utils/phone.util';
+import { RedisService } from '../../infrastructure/cache/redis.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
+
+  private getCacheKey(id: string): string {
+    return `user:profile:${id}`;
+  }
 
   /**
    * Find user by phone number
@@ -74,10 +82,15 @@ export class UserService {
       include: { rating: true },
     });
 
-    return {
+    const result = {
       ...user,
       rating: user.rating?.rating ?? 1200,
     };
+
+    // Update cache
+    await this.redis.setex(this.getCacheKey(userId), 3600, JSON.stringify(result));
+
+    return result;
   }
 
   async savePushToken(userId: string, token: string): Promise<void> {
@@ -238,18 +251,62 @@ export class UserService {
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({
+    const cacheKey = this.getCacheKey(id);
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        /* invalid cache */
+      }
+    }
+
+    const user = await this.prisma.user.findUnique({
       where: { id },
       include: { rating: true },
     });
+
+    if (user) {
+      await this.redis.setex(cacheKey, 3600, JSON.stringify(user)); // 1 hour TTL
+    }
+    return user;
   }
 
   async findManyByIds(ids: string[]) {
     if (ids.length === 0) return [];
-    return this.prisma.user.findMany({
-      where: { id: { in: ids } },
-      include: { rating: true },
-    });
+
+    // Try to get as many as possible from cache
+    const results: User[] = [];
+    const missingIds: string[] = [];
+
+    await Promise.all(
+      ids.map(async (id) => {
+        const cached = await this.redis.get(this.getCacheKey(id));
+        if (cached) {
+          try {
+            results.push(JSON.parse(cached));
+          } catch {
+            missingIds.push(id);
+          }
+        } else {
+          missingIds.push(id);
+        }
+      }),
+    );
+
+    if (missingIds.length > 0) {
+      const dbUsers = await this.prisma.user.findMany({
+        where: { id: { in: missingIds } },
+        include: { rating: true },
+      });
+
+      for (const user of dbUsers) {
+        results.push(user);
+        await this.redis.setex(this.getCacheKey(user.id), 3600, JSON.stringify(user));
+      }
+    }
+
+    return results;
   }
 
   /**

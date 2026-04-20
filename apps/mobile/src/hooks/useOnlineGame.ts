@@ -43,6 +43,7 @@ export interface OnlinePlayerInfo {
   id: string;
   username?: string;
   displayName?: string;
+  avatarUrl?: string | null;
   /** rating is a nested object (Prisma include: { rating: true }) */
   rating?: {
     rating: number;
