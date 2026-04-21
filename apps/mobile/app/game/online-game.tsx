@@ -366,6 +366,47 @@ const disconnectStyles = StyleSheet.create({
   },
 });
 
+// ─── Local Disconnect banner ───────────────────────────────────────────────────
+function LocalDisconnectBanner({ visible }: { visible: boolean }) {
+  const { t } = useTranslation();
+  if (!visible) return null;
+  return (
+    <View style={localDisconnectStyles.container}>
+      <WifiOff color={colors.danger} size={15} />
+      <View style={{ flex: 1 }}>
+        <Text style={localDisconnectStyles.title}>{t("gameArena.status.offlineTitle", "You're Offline")}</Text>
+        <Text style={localDisconnectStyles.text}>{t("gameArena.status.offlineBody", "Trying to reconnect...")}</Text>
+      </View>
+      <ActivityIndicator size="small" color={colors.danger} />
+    </View>
+  );
+}
+
+const localDisconnectStyles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.dangerAlpha20 || "rgba(239,68,68,0.2)",
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(239,68,68,0.3)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 12,
+  },
+  title: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  text: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: "bold",
+    opacity: 0.8,
+  },
+});
+
 // ─── Endgame Countdown Indicator ──────────────────────────────────────────────
 function EndgameCountdownIndicator({
   remaining,
@@ -1545,7 +1586,7 @@ export default function OnlineGameScreen() {
               onSquarePress={game.selectSquare}
               onInvalidPress={() => game.selectSquare(-1)}
               lastMove={displayLastMove}
-               disabled={!!game.result || game.currentPlayer !== game.myColor || isViewingHistory}
+               disabled={!!game.result || game.currentPlayer !== game.myColor || isViewingHistory || (!game.connected)}
               flipped={game.flipBoard}
             />
 
@@ -1635,9 +1676,10 @@ export default function OnlineGameScreen() {
 
           {/* ── Disconnect banner ──────────────────────────────────────── */}
           <DisconnectBanner
-            visible={!game.opponentConnected}
+            visible={!game.opponentConnected && !game.result && game.connected}
             secondsRemaining={game.disconnectSecondsRemaining}
           />
+          <LocalDisconnectBanner visible={!game.connected && !game.result} />
 
           {/* ── Move history strip ─────────────────────────────────────── */}
           <View style={styles.historyBar}>

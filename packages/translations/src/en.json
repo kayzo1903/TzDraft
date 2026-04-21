@@ -570,7 +570,9 @@
       "yourMove": "Your move",
       "botToMove": "Bot to move",
       "toMove": "To Move",
-      "onlineMatch": "ONLINE MATCH"
+      "onlineMatch": "ONLINE MATCH",
+      "offlineTitle": "You're Offline",
+      "offlineBody": "Trying to reconnect..."
     },
     "endgameCountdown": "Endgame countdown: {remaining} moves remaining for {favored}",
     "endgameCountdownEqual": "King vs King: draw in {remaining} moves",

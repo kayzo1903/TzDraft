@@ -570,7 +570,9 @@
       "yourMove": "Zamu yako",
       "botToMove": "Zamu ya AI",
       "toMove": "Zamu",
-      "onlineMatch": "MECHI MTANDAONI"
+      "onlineMatch": "MECHI MTANDAONI",
+      "offlineTitle": "Uko Nje ya Mtandao",
+      "offlineBody": "Inajaribu kuunganisha tena..."
     },
     "endgameCountdown": "Hesabu ya mwisho: hatua {remaining} zimebaki kwa {favored}",
     "endgameCountdownEqual": "Mfalme dhidi ya Mfalme: sare baada ya hatua {remaining}",

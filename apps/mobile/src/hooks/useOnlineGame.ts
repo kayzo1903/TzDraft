@@ -74,7 +74,7 @@ export interface GameReaction {
 
 export function useOnlineGame(gameId: string) {
   const bridge = useMkaguzi();
-  const { socket } = useSocket();
+  const { socket, connected, reconnecting } = useSocket();
 
   // ── Core board state ───────────────────────────────────────────────────────
   const [fen, setFen] = useState(INITIAL_FEN);
@@ -971,6 +971,9 @@ export function useOnlineGame(gameId: string) {
     rematchOfferedByMe:
       rematchOffer.offeredByUserId !== null &&
       (rematchOffer.offeredByUserId === userId || rematchOffer.offeredByUserId === "self"),
+    // Local connection
+    connected,
+    reconnecting,
     // Opponent connection
     opponentConnected,
     disconnectSecondsRemaining,
