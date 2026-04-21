@@ -24,7 +24,9 @@
     "tournaments": "Tournaments",
     "tournamentDesc": "Join official prize tournaments",
     "history": "Game History",
-    "historyDesc": "Review and analyze your past matches"
+    "historyDesc": "Review and analyze your past matches",
+    "matchInProgress": "Match in Progress",
+    "rejoinGame": "Rejoin Game"
   },
   "game": {
     "playOnline": "Play Online 🌐",

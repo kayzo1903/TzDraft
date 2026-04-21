@@ -1480,6 +1480,9 @@ export default function OnlineGameScreen() {
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => {
+            if (game.isWaiting && isHost) {
+              game.abort();
+            }
             if (game.result || game.isWaiting) router.replace(exitRoute as any);
             else router.back();
           }}
@@ -1516,7 +1519,12 @@ export default function OnlineGameScreen() {
           inviteCode={inviteCode}
           bothPlayersPresent={game.bothPlayersPresent}
           onStartGame={game.startGame}
-          onLeave={() => router.replace(exitRoute as any)}
+          onLeave={() => {
+            if (isHost && game.isWaiting) {
+              game.abort();
+            }
+            router.replace(exitRoute as any);
+          }}
           isSubmitting={game.isSubmitting}
         />
       ) : (

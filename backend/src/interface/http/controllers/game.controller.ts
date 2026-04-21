@@ -23,6 +23,7 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { Public } from '../../../auth/decorators/public.decorator';
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { GetGameStateUseCase } from '../../../application/use-cases/get-game-state.use-case';
+import { GetActiveGameUseCase } from '../../../application/use-cases/get-active-game.use-case';
 import { EndGameUseCase } from '../../../application/use-cases/end-game.use-case';
 import {
   CreatePvEGameDto,
@@ -59,6 +60,7 @@ export class GameController {
   constructor(
     private readonly createGameUseCase: CreateGameUseCase,
     private readonly getGameStateUseCase: GetGameStateUseCase,
+    private readonly getActiveGameUseCase: GetActiveGameUseCase,
     private readonly endGameUseCase: EndGameUseCase,
     private readonly gamesGateway: GamesGateway,
     private readonly joinQueueUseCase: JoinQueueUseCase,
@@ -298,6 +300,20 @@ export class GameController {
   @ApiResponse({ status: 204, description: 'Removed from queue' })
   async cancelQueue(@CurrentUser() user: any) {
     await this.joinQueueUseCase.cancelQueue(user.id);
+  }
+
+  /**
+   * Get current active game for the user, if any
+   */
+  @Get('active')
+  @ApiOperation({ summary: 'Get current active game' })
+  @ApiResponse({ status: 200, description: 'Returns active game ID if exists' })
+  async getActiveGame(@CurrentUser() user: any) {
+    const game = await this.getActiveGameUseCase.execute(user.id);
+    return {
+      success: true,
+      data: game ? { id: game.id, gameType: game.gameType } : null,
+    };
   }
 
   /**

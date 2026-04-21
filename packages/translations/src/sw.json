@@ -24,7 +24,9 @@
     "tournaments": "Mashindano",
     "tournamentDesc": "Jiunge na mashindano rasmi ya kishindo",
     "history": "Historia ya Michezo",
-    "historyDesc": "Kagua na uchambue mechi zako za zamani"
+    "historyDesc": "Kagua na uchambue mechi zako za zamani",
+    "matchInProgress": "Mechi Inaendelea",
+    "rejoinGame": "Rudi Kwenye Mechi"
   },
   "game": {
     "playOnline": "Cheza Mtandaoni 🌐",
