@@ -68,9 +68,8 @@ class AuthClient {
       
       // ONLY clear session if server explicitly returns 401 Unauthorized
       if (error.response?.status === 401) {
-        console.log("[AuthClient] Session invalid (401), clearing session.");
-        state.logout();
-        await SecureStore.deleteItemAsync("refreshToken");
+        console.log("[AuthClient] Session invalid (401), clearing session and signing out.");
+        await this.logout();
       } else {
         // For 500, network errors, timeouts, etc.
         // We keep the authenticated status and trust the local state
@@ -170,7 +169,17 @@ class AuthClient {
       });
 
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
+      
+      // Force account selection for a solid production setup.
+      // 1. signOut() clears the app's native session.
+      // 2. prompt: 'select_account' tells Google to always show the chooser.
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore errors if already signed out
+      }
+
+      const userInfo = await GoogleSignin.signIn({ prompt: "select_account" });
       
       const idToken = userInfo.data?.idToken;
       if (!idToken) {
@@ -228,11 +237,20 @@ class AuthClient {
     aiChallengeService.clearCache();
 
     try {
+      // Also sign out from Native Google if applicable
+      const GoogleSignin = getGoogleSignin();
+      if (GoogleSignin) {
+        const isSignedIn = await GoogleSignin.isSignedIn();
+        if (isSignedIn) {
+          await GoogleSignin.signOut();
+        }
+      }
+
       if (refreshToken) {
         await api.post("/auth/logout", { refreshToken });
       }
     } catch (error) {
-      console.error("[AuthClient] Logout failed on server:", error);
+      console.error("[AuthClient] Logout failed partially:", error);
     } finally {
       await SecureStore.deleteItemAsync("refreshToken");
       await clearLocalBotProgress();
