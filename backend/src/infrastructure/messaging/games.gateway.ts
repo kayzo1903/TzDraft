@@ -855,6 +855,24 @@ export class GamesGateway
     client.to(data.gameId).emit('voice:hangup', {});
   }
 
+  @SubscribeMessage('sendReaction')
+  async handleSendReaction(
+    @MessageBody() data: { gameId: string; emoji: string },
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    const userId = client.data.user?.id;
+    if (!userId || !data.gameId || !data.emoji) return;
+    if (!(await this.isInRoom(client, data.gameId))) return;
+
+    const APPROVED_EMOJIS = ['👍', '👏', '🤣', '😮', '🔥', '🧠', '😠', '🙏'];
+    if (!APPROVED_EMOJIS.includes(data.emoji)) return;
+
+    this.server.to(data.gameId).emit('reactionReceived', {
+      userId,
+      emoji: data.emoji,
+    });
+  }
+
   /* ── Timeout claim ──────────────────────────────────────────────────── */
 
   @SubscribeMessage('claimTimeout')

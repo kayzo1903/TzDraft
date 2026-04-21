@@ -10,7 +10,16 @@ import {
   Dimensions,
   Platform,
   ScrollView,
+  Switch,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+  runOnJS,
+} from "react-native-reanimated";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +40,10 @@ import {
   Check,
   AlertCircle,
   User as UserIcon,
+  Smile,
+  Volume2,
+  VolumeX,
+  Settings,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
@@ -40,6 +53,7 @@ import { DraughtsBoard, HighlightType } from "../../src/components/game/Draughts
 import { useOnlineGame } from "../../src/hooks/useOnlineGame";
 import { useGameAudio } from "../../src/hooks/useGameAudio";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
+import { useAuthStore } from "../../src/auth/auth-store";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -596,6 +610,308 @@ function OnlineDrawConfirmModal({
   );
 }
 
+// ─── Floating Emoji Animation ────────────────────────────────────────────────
+function FloatingEmoji({ emoji, side }: { emoji: string; side: "TOP" | "BOTTOM" }) {
+  const translateY = useSharedValue(0);
+  const translateX = useSharedValue(0);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.5);
+  
+  // Base offset near the name, varies slightly to avoid overlap
+  const randomStartX = useRef(Math.random() * 20).current; 
+  // Add slight random rotation
+  const randomRot = useRef(`${(Math.random() - 0.5) * 20}deg`).current;
+
+  useEffect(() => {
+    opacity.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(1, { duration: 1500 }),
+      withTiming(0, { duration: 1000 })
+    );
+    scale.value = withSpring(1.2);
+    
+    // Tiny vertical bounce on spawn, then stay horizontally aligned with the bar
+    translateY.value = withSequence(
+      withTiming(side === "TOP" ? 8 : -8, { duration: 400 }),
+      withTiming(0, { duration: 2600 })
+    );
+
+    // Animate smoothly to the right, across the username bar
+    translateX.value = withTiming(80 + Math.random() * 40, { duration: 3000 });
+  }, [side]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: randomStartX + translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+      { rotate: randomRot },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        reactionStyles.floatingContainer,
+        side === "TOP" ? reactionStyles.floatTop : reactionStyles.floatBottom,
+        animatedStyle,
+      ]}
+    >
+      <Text style={reactionStyles.emojiText}>{emoji}</Text>
+    </Animated.View>
+  );
+}
+
+// ─── Options Modal ─────────────────────────────────────────────────────────────
+function OptionsModal({
+  visible,
+  isSoundMuted,
+  onToggleSound,
+  isReactionMuted,
+  onToggleReaction,
+  onClose,
+}: {
+  visible: boolean;
+  isSoundMuted: boolean;
+  onToggleSound: () => void;
+  isReactionMuted: boolean;
+  onToggleReaction: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={optionsStyles.backdrop} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={optionsStyles.card}>
+          <View style={optionsStyles.header}>
+            <View style={optionsStyles.headerIconWrap}>
+              <Settings color={colors.textMuted} size={16} />
+            </View>
+            <Text style={optionsStyles.headerTitle}>{t("gameArena.actions.settings")}</Text>
+            <TouchableOpacity onPress={onClose} style={optionsStyles.closeBtn}>
+              <X color={colors.textMuted} size={18} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={optionsStyles.body}>
+            <TouchableOpacity style={optionsStyles.row} onPress={onToggleSound}>
+              <View style={[optionsStyles.rowIcon, { backgroundColor: "rgba(56,189,248,0.10)", borderColor: "rgba(56,189,248,0.20)" }]}>
+                {isSoundMuted ? <VolumeX color="#38bdf8" size={20} /> : <Volume2 color="#38bdf8" size={20} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={optionsStyles.rowTitle}>{t("gameArena.actions.muteSound")}</Text>
+                <Text style={optionsStyles.rowSub}>{isSoundMuted ? t("gameArena.actions.unmute") : t("gameArena.actions.mute")}</Text>
+              </View>
+              <Switch
+                value={!isSoundMuted}
+                onValueChange={onToggleSound}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={optionsStyles.row} onPress={onToggleReaction}>
+              <View style={[optionsStyles.rowIcon, { backgroundColor: "rgba(251,146,60,0.10)", borderColor: "rgba(251,146,60,0.20)" }]}>
+                <Smile color="#fb923c" size={20} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={optionsStyles.rowTitle}>{t("gameArena.actions.muteReactions")}</Text>
+                <Text style={optionsStyles.rowSub}>{isReactionMuted ? t("gameArena.actions.unmute") : t("gameArena.actions.mute")}</Text>
+              </View>
+              <Switch
+                value={!isReactionMuted}
+                onValueChange={onToggleReaction}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={optionsStyles.footer}>
+            <TouchableOpacity style={optionsStyles.doneBtn} onPress={onClose}>
+              <Text style={optionsStyles.doneBtnText}>{t("common.done")}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ─── Reaction Picker ───────────────────────────────────────────────────────────
+const REACTION_LIST = ["👍", "👏", "🤣", "😮", "🔥", "🧠", "😠", "🙏"];
+
+function ReactionPicker({
+  visible,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  onSelect: (emoji: string) => void;
+  onClose: () => void;
+}) {
+  if (!visible) return null;
+
+  return (
+    <View style={reactionStyles.pickerContainer}>
+      <TouchableOpacity style={reactionStyles.backdrop} activeOpacity={1} onPress={onClose} />
+      <View style={reactionStyles.pickerCard}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={reactionStyles.pickerContent}>
+          {REACTION_LIST.map((emoji) => (
+            <TouchableOpacity
+              key={emoji}
+              style={reactionStyles.emojiBtn}
+              onPress={() => {
+                onSelect(emoji);
+                onClose();
+              }}
+            >
+              <Text style={reactionStyles.emojiPickerText}>{emoji}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+const reactionStyles = StyleSheet.create({
+  pickerContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    height: 1000,
+    top: -1000,
+    backgroundColor: "transparent",
+  },
+  pickerCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 20,
+  },
+  pickerContent: {
+    gap: 12,
+    paddingHorizontal: 12,
+  },
+  emojiBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emojiPickerText: {
+    fontSize: 24,
+  },
+  floatingContainer: {
+    position: "absolute",
+    left: 70, // Start past the avatar, aligning with the player name
+    zIndex: 2000,
+  },
+  floatTop: {
+    top: 70,
+  },
+  floatBottom: {
+    bottom: 120,
+  },
+  emojiText: {
+    fontSize: 50,
+  },
+});
+
+const optionsStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  card: {
+    width: "100%",
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4,
+    overflow: "hidden",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  headerTitle: {
+    flex: 1,
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  closeBtn: { padding: 4 },
+  body: { padding: 8 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    gap: 16,
+    borderRadius: 16,
+  },
+  rowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowTitle: { color: colors.foreground, fontSize: 15, fontWeight: "bold" },
+  rowSub: { color: colors.textMuted, fontSize: 12 },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: colors.border },
+  doneBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  doneBtnText: {
+    color: colors.onPrimary,
+    fontSize: 15,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+});
+
 function ResultModal({
   visible,
   winner,
@@ -937,9 +1253,14 @@ export default function OnlineGameScreen() {
   const game = useOnlineGame(gameId);
   const audio = useGameAudio();
   const { t } = useTranslation();
+  const { user } = useAuthStore();
+  const userId = user?.id;
 
   const [showResignModal, setShowResignModal] = useState(false);
   const [showDrawConfirmModal, setShowDrawConfirmModal] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [isReactionMuted, setIsReactionMuted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [viewingMoveIndex, setViewingMoveIndex] = useState<number | null>(null);
 
@@ -1134,13 +1455,12 @@ export default function OnlineGameScreen() {
           </Text>
         </View>
 
-        <View style={styles.iconBtn}>
-          {game.isWaiting ? (
-            <ActivityIndicator color={colors.textMuted} size="small" />
-          ) : (
-            <Wifi color={colors.success} size={18} />
-          )}
-        </View>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => setShowOptionsModal(true)}
+        >
+          <Settings color={colors.textMuted} size={20} />
+        </TouchableOpacity>
       </View>
 
       {/* ── Error banner ─────────────────────────────────────────────────── */}
@@ -1225,9 +1545,11 @@ export default function OnlineGameScreen() {
               onSquarePress={game.selectSquare}
               onInvalidPress={() => game.selectSquare(-1)}
               lastMove={displayLastMove}
-              disabled={!!game.result || game.currentPlayer !== game.myColor || isViewingHistory}
+               disabled={!!game.result || game.currentPlayer !== game.myColor || isViewingHistory}
               flipped={game.flipBoard}
             />
+
+
             {game.endgameCountdown && (
               <EndgameCountdownIndicator
                 remaining={game.endgameCountdown.remaining}
@@ -1406,16 +1728,54 @@ export default function OnlineGameScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Resign */}
+             {/* Resign */}
             {game.moveCount > 0 && !game.result && (
               <TouchableOpacity style={styles.actionBtn} onPress={() => setShowResignModal(true)}>
                 <Flag color={colors.foreground} size={22} />
                 <Text style={[styles.actionBtnLabel, { color: colors.foreground }]}>{t("gameArena.actions.resign")}</Text>
               </TouchableOpacity>
             )}
+
+            {/* Reaction */}
+            {!game.result && !isReactionMuted && (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => setShowReactionPicker(true)}
+              >
+                <Smile color={colors.foreground} size={22} />
+                <Text style={styles.actionBtnLabel}>{t("gameArena.actions.react", "React")}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </>
       )}
+
+      <ReactionPicker
+        visible={showReactionPicker}
+        onSelect={game.sendReaction}
+        onClose={() => setShowReactionPicker(false)}
+      />
+
+      <OptionsModal
+        visible={showOptionsModal}
+        isSoundMuted={audio.isMuted}
+        onToggleSound={audio.toggleMute}
+        isReactionMuted={isReactionMuted}
+        onToggleReaction={() => setIsReactionMuted(!isReactionMuted)}
+        onClose={() => setShowOptionsModal(false)}
+      />
+
+      {/* ── Floating Reactions ────────────────────────────────────────────── */}
+      {!isReactionMuted && game.activeReactions.map((r) => {
+        const isMe = r.userId === userId;
+        return (
+          <FloatingEmoji
+            key={r.id}
+            emoji={r.emoji}
+            side={isMe ? "BOTTOM" : "TOP"}
+          />
+        );
+      })}
 
       {/* ── Modals ────────────────────────────────────────────────────────── */}
       <ResignModal

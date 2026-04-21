@@ -63,6 +63,13 @@ export interface MoveHistoryEntry {
   to: number;
 }
 
+export interface GameReaction {
+  id: string;
+  emoji: string;
+  userId: string;
+  timestamp: number;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useOnlineGame(gameId: string) {
@@ -116,6 +123,9 @@ export function useOnlineGame(gameId: string) {
   // Tracks whether the local player was the one who offered the rematch (vs accepted).
   // Used so the navigation can set isHost correctly for the new game.
   const [rematchIWasOfferer, setRematchIWasOfferer] = useState(false);
+
+  // ── Reactions ──────────────────────────────────────────────────────────────
+  const [activeReactions, setActiveReactions] = useState<GameReaction[]>([]);
 
   // ── Disconnect tracking ────────────────────────────────────────────────────
   const [opponentConnected, setOpponentConnected] = useState(true);
@@ -630,6 +640,22 @@ export function useOnlineGame(gameId: string) {
     const handleRematchCancelled = () =>
       setRematchOffer({ offeredByUserId: null, status: "cancelled" });
 
+    const handleReactionReceived = (data: { userId: string; emoji: string }) => {
+      const newReaction: GameReaction = {
+        id: Math.random().toString(36).substring(7),
+        emoji: data.emoji,
+        userId: data.userId,
+        timestamp: Date.now(),
+      };
+
+      setActiveReactions((prev) => [...prev, newReaction]);
+
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        setActiveReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
+      }, 3000);
+    };
+
     socket.on("gameStateUpdated", handleUpdate);
     socket.on("gameOver", handleGameOver);
     socket.on("drawOffered", handleDrawOffered);
@@ -642,6 +668,7 @@ export function useOnlineGame(gameId: string) {
     socket.on("rematchAccepted", handleRematchAccepted);
     socket.on("rematchDeclined", handleRematchDeclined);
     socket.on("rematchCancelled", handleRematchCancelled);
+    socket.on("reactionReceived", handleReactionReceived);
 
     return () => {
       socket.off("connect", handleReconnect);
@@ -657,8 +684,9 @@ export function useOnlineGame(gameId: string) {
       socket.off("rematchAccepted", handleRematchAccepted);
       socket.off("rematchDeclined", handleRematchDeclined);
       socket.off("rematchCancelled", handleRematchCancelled);
+      socket.off("reactionReceived", handleReactionReceived);
     };
-  }, [socket, gameId, fetchGameState, applyClockSnapshot]);
+  }, [socket, gameId, fetchGameState, applyClockSnapshot, userId]);
 
   // ── Auto-reset rematch status after 3s on decline/unavailable ───────────
   useEffect(() => {
@@ -886,6 +914,25 @@ export function useOnlineGame(gameId: string) {
     setRematchIWasOfferer(false);
   }, [socket, gameId]);
 
+  // ── Reactions ──────────────────────────────────────────────────────────────
+  const lastReactionTime = useRef<number>(0);
+
+  const sendReaction = useCallback(
+    (emoji: string) => {
+      if (!socket || !userId) return;
+      
+      // Throttle: limit to 1 reaction per 1.5 seconds per user to prevent spam
+      const now = Date.now();
+      if (now - lastReactionTime.current < 1500) {
+        return;
+      }
+      lastReactionTime.current = now;
+
+      socket.emit("sendReaction", { gameId, emoji });
+    },
+    [socket, gameId, userId]
+  );
+
   return {
     // Board state
     fen,
@@ -940,6 +987,8 @@ export function useOnlineGame(gameId: string) {
     acceptRematch,
     declineRematch,
     cancelRematch,
+    activeReactions,
+    sendReaction,
     refetch: fetchGameState,
   };
 }
