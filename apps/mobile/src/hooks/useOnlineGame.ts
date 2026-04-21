@@ -9,6 +9,7 @@ import {
 import { matchService } from "../lib/match-service";
 import { useAuthStore } from "../auth/auth-store";
 import { useSocket } from "./useSocket";
+import { useTranslation } from "react-i18next";
 
 const INITIAL_FEN =
   "W:W1,2,3,4,5,6,7,8,9,10,11,12:B21,22,23,24,25,26,27,28,29,30,31,32";
@@ -75,6 +76,7 @@ export interface GameReaction {
 export function useOnlineGame(gameId: string) {
   const bridge = useMkaguzi();
   const { socket, connected, reconnecting } = useSocket();
+  const { t } = useTranslation();
 
   // ── Core board state ───────────────────────────────────────────────────────
   const [fen, setFen] = useState(INITIAL_FEN);
@@ -797,11 +799,11 @@ export function useOnlineGame(gameId: string) {
         if (ackHandled) return;
         ackHandled = true;
         setIsSubmitting(false);
-        setError("Move timed out — check your connection.");
+        setError(t("gameArena.status.moveTimeout"));
         fetchGameState();
       }, 8000);
     },
-    [bridge, fen, moveCount, gameId, result, socket, isSubmitting, fetchGameState],
+    [bridge, fen, moveCount, gameId, result, socket, isSubmitting, fetchGameState, t],
   );
 
   // ── Start game (host) ──────────────────────────────────────────────────────

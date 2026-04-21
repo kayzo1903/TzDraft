@@ -572,7 +572,8 @@
       "toMove": "To Move",
       "onlineMatch": "ONLINE MATCH",
       "offlineTitle": "You're Offline",
-      "offlineBody": "Trying to reconnect..."
+      "offlineBody": "Trying to reconnect...",
+      "moveTimeout": "Move timed out — check your connection."
     },
     "endgameCountdown": "Endgame countdown: {remaining} moves remaining for {favored}",
     "endgameCountdownEqual": "King vs King: draw in {remaining} moves",

@@ -846,13 +846,13 @@ const reactionStyles = StyleSheet.create({
     elevation: 20,
   },
   pickerContent: {
-    gap: 12,
+    gap: 8,
     paddingHorizontal: 12,
   },
   emojiBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
