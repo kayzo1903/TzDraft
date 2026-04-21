@@ -69,7 +69,8 @@
     "error": "Error",
     "done": "Done",
     "back": "Back",
-    "retry": "Retry"
+    "retry": "Retry",
+    "rematch": "Rematch"
   },
   "studies": {
     "title": "My Studies",
@@ -577,7 +578,8 @@
       "home": "Home",
       "mute": "Mute",
       "unmute": "Unmute",
-      "settings": "Options"
+      "settings": "Options",
+      "hint": "Hint"
     },
     "progression": {
       "disabled": "Undo used — this game will not unlock the next bot."
@@ -597,6 +599,20 @@
       "playAgain": "Play Again",
       "nextBot": "Next Bot",
       "endGame": "End Game",
+      "backToLobby": "Back to Lobby",
+      "youWon": "You Won!",
+      "youLost": "You Lost",
+      "gameAborted": "Game Aborted",
+      "moves": "Moves",
+      "result": "Result",
+      "mode": "Mode",
+      "online": "Online",
+      "rematchRequested": "Opponent wants a rematch!",
+      "waitingForOpponent": "Waiting for opponent to accept…",
+      "botLevel": "Bot Level",
+      "levelComplete": "Level {level} complete!",
+      "levelUnlocked": "Level {level} Unlocked",
+      "setup": "Setup",
       "reasons": {
         "repetition": "Threefold repetition (Art. 9.2)",
         "rule30": "30 moves without capture/change (Art. 9.3)",
@@ -605,7 +621,8 @@
         "timeoutDraw": "Time expired (Insufficient material)",
         "stalemate": "Stalemate",
         "time": "Time expired",
-        "resign": "Resignation"
+        "resign": "Resignation",
+        "agreement": "Draw by Agreement"
       }
     }
   },
@@ -741,5 +758,24 @@
     "podiumGames": "Games",
     "prev": "Prev",
     "next": "Next"
+  },
+  "vs-ai": {
+    "waitingForFirstMove": "Waiting for first move…"
+  },
+  "lobby": {
+    "title": "Play Online",
+    "playersOnline": "Online",
+    "playersSearching": "Searching",
+    "you": "You",
+    "selectMode": "Time Control",
+    "poolNotice": "Only 5-min Blitz available — more time controls unlock as the player pool grows.",
+    "findOpponent": "Find Opponent",
+    "connecting": "Connecting…",
+    "searching": "Searching for Opponent…",
+    "othersSearching": "players searching",
+    "timeRemaining": "Time remaining",
+    "timeoutHint": "No opponent found yet. Try the AI or search again.",
+    "matchVsAi": "Match vs AI",
+    "searchAgain": "Search Again"
   }
 }

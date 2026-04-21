@@ -28,6 +28,7 @@ import {
   VolumeX,
   X,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react-native";
 import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { colors } from "../../src/theme/colors";
@@ -45,6 +46,8 @@ interface FriendLocalParams {
   noFlip: string;           // "true" | "false"
   timeMinutes: string;      // "0" | "3" | "5" | "10" | "30"
   player1Color: string;     // "WHITE" | "BLACK"
+  player1Name?: string;
+  player2Name?: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -458,6 +461,7 @@ function ResultModal({
   player2Name,
   player1Color,
   onHome,
+  onRematch,
 }: {
   visible: boolean;
   winner: "WHITE" | "BLACK" | "DRAW";
@@ -467,6 +471,7 @@ function ResultModal({
   player2Name: string;
   player1Color: "WHITE" | "BLACK";
   onHome: () => void;
+  onRematch: () => void;
 }) {
   const isDraw = winner === "DRAW";
   const winnerName = isDraw
@@ -479,9 +484,7 @@ function ResultModal({
   const borderColor = isDraw ? "rgba(56,189,248,0.30)" : colors.primaryAlpha30;
 
   const { t } = useTranslation();
-  const reasonText = reason === "agreement" 
-    ? t("gameArena.gameOver.reasons.resign") 
-    : getEndgameReasonLabel(reason, false, isDraw, t);
+  const reasonText = getEndgameReasonLabel(reason, false, isDraw, t);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -492,16 +495,16 @@ function ResultModal({
               {isDraw ? <Minus color={accentColor} size={36} /> : <Crown color={accentColor} size={36} />}
             </View>
             <Text style={[resStyles.title, { color: accentColor }]}>
-              {isDraw ? "Draw" : `${winnerName} Wins`}
+              {isDraw ? t("freePlay.result.draw") : t("gameArena.gameOver.congratsNamed", { name: winnerName })}
             </Text>
-            <Text style={resStyles.subtitle}>{isDraw ? reasonText : reasonText}</Text>
+            <Text style={resStyles.subtitle}>{reasonText}</Text>
           </View>
 
           <View style={resStyles.statsRow}>
             {[
-              { label: "MOVES", value: String(moveCount) },
-              { label: "RESULT", value: isDraw ? "DRAW" : "WIN" },
-              { label: "MODE", value: "LOCAL" },
+              { label: t("gameArena.gameOver.moves"), value: String(moveCount) },
+              { label: t("gameArena.gameOver.result"), value: isDraw ? "DRAW" : "WIN" },
+              { label: t("gameArena.gameOver.mode"), value: "LOCAL" },
             ].map(({ label, value }, i) => (
               <View
                 key={label}
@@ -514,9 +517,13 @@ function ResultModal({
           </View>
 
           <View style={resStyles.actions}>
-            <TouchableOpacity style={[resStyles.btnPrimary, { backgroundColor: accentColor, flex: 1 }]} onPress={onHome}>
-              <ArrowLeft color="#000" size={16} />
-              <Text style={resStyles.btnPrimaryText}>Back to Setup</Text>
+            <TouchableOpacity style={[resStyles.btnSecondary, { flex: 1, height: 48 }]} onPress={onHome}>
+              <ArrowLeft color={colors.textMuted} size={16} />
+              <Text style={resStyles.btnSecondaryText}>{t("gameArena.gameOver.endGame")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[resStyles.btnPrimary, { backgroundColor: accentColor, flex: 1.5, height: 48 }]} onPress={onRematch}>
+              <RotateCcw color="#000" size={16} />
+              <Text style={resStyles.btnPrimaryText}>{t("common.rematch")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -530,6 +537,7 @@ export default function FriendLocalScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams() as unknown as FriendLocalParams;
+  const handleBack = () => router.back();
 
   const [passDevice, setPassDevice] = useState(params.passDevice === "true");
   const [noFlip, setNoFlip] = useState(params.noFlip === "true");
@@ -882,13 +890,14 @@ export default function FriendLocalScreen() {
       {game.result && (
         <ResultModal
           visible={!!game.result}
-          winner={game.result.winner}
-          reason={game.result.reason}
-          moveCount={game.moveCount}
-          player1Name="Player 1"
-          player2Name="Player 2"
+          winner={game.result?.winner ?? "DRAW"}
+          reason={game.result?.reason ?? ""}
+          moveCount={game.moveHistory.length}
+          player1Name={params.player1Name || "Player 1"}
+          player2Name={params.player2Name || "Player 2"}
           player1Color={player1Color}
-          onHome={() => router.replace("/game/setup-friend")}
+          onHome={handleBack}
+          onRematch={game.reset}
         />
       )}
     </SafeAreaView>

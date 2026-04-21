@@ -194,21 +194,26 @@ export function getEndgameReasonLabel(
   reason: string,
   isWin: boolean,
   isDraw: boolean,
-  t: any
-): string {
-  switch (reason) {
-    case "time":         return t("gameArena.gameOver.reasons.time");
-    case "resign":       return t("gameArena.gameOver.reasons.resign");
-    case "repetition":   return t("gameArena.gameOver.reasons.repetition");
-    case "30-move":      return t("gameArena.gameOver.reasons.rule30");
-    case "three-kings":  return t("gameArena.gameOver.reasons.rule12");
-    case "endgame":      return t("gameArena.gameOver.reasons.rule5");
-    case "insufficient-material": return t("gameArena.gameOver.reasons.insufficientMaterial", "Insufficient Material");
-    case "timeout-draw": return t("gameArena.gameOver.reasons.timeoutDraw");
-    case "stalemate":
-    case "checkmate":    return isWin ? t("gameArena.gameOver.reasons.stalemate") : t("gameArena.gameOver.reasons.stalemate");
-    default:
-      if (isDraw) return t("gameArena.gameOver.reasons.rule12"); // general fallback for Art. 8
-      return isWin ? "Well played" : "Better luck next time";
+  t: any,
+) {
+  // If t is not provided or not a function, fallback to raw strings or reason
+  const translate = typeof t === "function" ? t : (k: string, d?: string) => d || k;
+
+  if (isDraw) {
+    if (reason === "agreement") return translate("gameArena.gameOver.reasons.agreement");
+    if (reason === "stalemate") return translate("gameArena.gameOver.reasons.stalemate");
+    if (reason === "repetition") return translate("gameArena.gameOver.reasons.repetition");
+    if (reason === "30-move") return translate("gameArena.gameOver.reasons.rule30");
+    if (reason === "three-kings") return translate("gameArena.gameOver.reasons.rule12");
+    if (reason === "endgame") return translate("gameArena.gameOver.reasons.rule5");
+    if (reason === "insufficient-material") return translate("gameArena.gameOver.reasons.insufficientMaterial", "Insufficient Material");
+    if (reason === "timeout-draw") return translate("gameArena.gameOver.reasons.timeoutDraw");
+    return translate("freePlay.result.draw", "Draw");
   }
+
+  if (reason === "resign") return translate("gameArena.gameOver.reasons.resign");
+  if (reason === "time") return translate("gameArena.gameOver.reasons.time");
+
+  // Fallback for general win/loss with no specific reason
+  return isWin ? translate("gameArena.gameOver.youWon", "Victory") : translate("gameArena.gameOver.youLost", "Defeat");
 }

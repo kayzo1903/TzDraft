@@ -69,7 +69,8 @@
     "error": "Hitilafu",
     "done": "Imekamilika",
     "back": "Rudi",
-    "retry": "Jaribu Tena"
+    "retry": "Jaribu Tena",
+    "rematch": "Rudia Mechi"
   },
   "studies": {
     "title": "Michezo Yangu",
@@ -578,7 +579,8 @@
       "home": "Nyumbani",
       "mute": "Zima Sauti",
       "unmute": "Washa Sauti",
-      "settings": "Mipangilio"
+      "settings": "Mipangilio",
+      "hint": "Dokezo"
     },
     "progression": {
       "disabled": "Umetumia Rudisha — mchezo huu hautafungua bot inayofuata."
@@ -598,6 +600,20 @@
       "playAgain": "Cheza Tena",
       "nextBot": "AI inayofuata",
       "endGame": "Maliza Mchezo",
+      "backToLobby": "Rudi Lobby",
+      "youWon": "Umeshinda!",
+      "youLost": "Umeshindwa",
+      "gameAborted": "Mchezo Umefutwa",
+      "moves": "Hatua",
+      "result": "Matokeo",
+      "mode": "Mfumo",
+      "online": "Mtandaoni",
+      "rematchRequested": "Mpinzani anataka kurudia mechi!",
+      "waitingForOpponent": "Inasubiri mpinzani akubali…",
+      "botLevel": "Kiwango cha AI",
+      "levelComplete": "Kiwango cha {level} kimekamilika!",
+      "levelUnlocked": "Kiwango cha {level} kimefunguliwa",
+      "setup": "Mpangilio",
       "reasons": {
         "repetition": "Kurudiwa mara tatu (Art. 9.2)",
         "rule30": "Hatua 30 bila kula/kubadilika (Art. 9.3)",
@@ -606,7 +622,8 @@
         "timeoutDraw": "Muda umeisha (Nguvu hazitoshi)",
         "stalemate": "Ubanaji",
         "time": "Muda umeisha",
-        "resign": "Kujisalimisha"
+        "resign": "Kujisalimisha",
+        "agreement": "Sare ya makubaliano"
       }
     }
   },
@@ -742,5 +759,24 @@
     "podiumGames": "Michezo",
     "prev": "Iliyopita",
     "next": "Inayofuata"
+  },
+  "vs-ai": {
+    "waitingForFirstMove": "Inasubiri hatua ya kwanza..."
+  },
+  "lobby": {
+    "title": "Cheza Mtandaoni",
+    "playersOnline": "Mtandaoni",
+    "playersSearching": "Wanatafuta",
+    "you": "Wewe",
+    "selectMode": "Muda wa Mchezo",
+    "poolNotice": "Mchezo wa dakika 5 pekee ndio unapatikana — chaguo zaidi zitafunguliwa idadi ya wachezaji ikiongezeka.",
+    "findOpponent": "Tafuta Mpinzani",
+    "connecting": "Inaunganisha…",
+    "searching": "Inatafuta mpinzani…",
+    "othersSearching": "wachezaji wanatafuta",
+    "timeRemaining": "Muda uliobaki",
+    "timeoutHint": "Hakuna mpinzani aliyepatikana kwa sasa. Jaribu AI au tafuta tena.",
+    "matchVsAi": "Cheza na AI",
+    "searchAgain": "Tafuta Tena"
   }
 }
