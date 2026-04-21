@@ -309,100 +309,6 @@ const waitStyles = StyleSheet.create({
   },
 });
 
-// ─── Draw offer banner ─────────────────────────────────────────────────────────
-function DrawOfferBanner({
-  visible,
-  isOfferedByMe,
-  onAccept,
-  onDecline,
-  onCancel,
-}: {
-  visible: boolean;
-  isOfferedByMe: boolean;
-  onAccept: () => void;
-  onDecline: () => void;
-  onCancel: () => void;
-}) {
-  if (!visible) return null;
-  return (
-    <View style={drawBannerStyles.container}>
-      {isOfferedByMe ? (
-        <>
-          <Handshake color={colors.textMuted} size={16} />
-          <Text style={drawBannerStyles.text}>Draw offer sent</Text>
-          <TouchableOpacity style={drawBannerStyles.cancelBtn} onPress={onCancel}>
-            <X color={colors.textMuted} size={14} />
-            <Text style={drawBannerStyles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <Handshake color={colors.primary} size={16} />
-          <Text style={drawBannerStyles.text}>Opponent offers a draw</Text>
-          <TouchableOpacity style={drawBannerStyles.declineBtn} onPress={onDecline}>
-            <Text style={drawBannerStyles.declineText}>Decline</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={drawBannerStyles.acceptBtn} onPress={onAccept}>
-            <Text style={drawBannerStyles.acceptText}>Accept</Text>
-          </TouchableOpacity>
-        </>
-      )}
-    </View>
-  );
-}
-
-const drawBannerStyles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.primaryAlpha30,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    gap: 8,
-  },
-  text: {
-    flex: 1,
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "bold",
-  },
-  acceptBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  acceptText: {
-    color: "#000",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  declineBtn: {
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  declineText: {
-    color: colors.foreground,
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  cancelBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  cancelText: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-});
 
 // ─── Disconnect banner ─────────────────────────────────────────────────────────
 function DisconnectBanner({
@@ -578,6 +484,83 @@ const modalStyles = StyleSheet.create({
 });
 
 // ─── Result modal ──────────────────────────────────────────────────────────────
+// ─── Online Draw Offer Modal ──────────────────────────────────────────────────
+function OnlineDrawOfferModal({
+  visible,
+  opponentName,
+  onAccept,
+  onDecline,
+}: {
+  visible: boolean;
+  opponentName: string;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={[modalStyles.backdrop, { justifyContent: "center" }]}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={modalStyles.card}>
+            <View style={modalStyles.iconWrap}>
+              <Handshake color="#38bdf8" size={28} />
+            </View>
+            <Text style={modalStyles.title}>Draw Offered</Text>
+            <Text style={modalStyles.body}>
+              <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{opponentName}</Text>
+              {" "}is offering a draw. Do you accept?
+            </Text>
+            <View style={modalStyles.btns}>
+              <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onDecline}>
+                <Text style={modalStyles.btnText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[modalStyles.btn, { backgroundColor: "#38bdf8" }]} onPress={onAccept}>
+                <Text style={[modalStyles.btnText, { color: "#000" }]}>Accept</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Online Draw Confirm Modal ────────────────────────────────────────────────
+function OnlineDrawConfirmModal({
+  visible,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onCancel}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={modalStyles.card}>
+            <View style={modalStyles.iconWrap}>
+              <Handshake color={colors.primary} size={28} />
+            </View>
+            <Text style={modalStyles.title}>Offer a Draw?</Text>
+            <Text style={modalStyles.body}>
+              Your opponent will be notified and can choose to accept or decline the draw.
+            </Text>
+            <View style={modalStyles.btns}>
+              <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onCancel}>
+                <Text style={modalStyles.btnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[modalStyles.btn, { backgroundColor: colors.primary }]} onPress={onConfirm}>
+                <Text style={[modalStyles.btnText, { color: "#000" }]}>Offer Draw</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 function ResultModal({
   visible,
   winner,
@@ -885,6 +868,7 @@ export default function OnlineGameScreen() {
   const audio = useGameAudio();
 
   const [showResignModal, setShowResignModal] = useState(false);
+  const [showDrawConfirmModal, setShowDrawConfirmModal] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [viewingMoveIndex, setViewingMoveIndex] = useState<number | null>(null);
 
@@ -943,6 +927,20 @@ export default function OnlineGameScreen() {
     }
     if (!game.result) prevResultRef.current = null;
   }, [game.result, audio]);
+
+  // ── Draw offer notification ───────────────────────────────────────────────
+  const prevDrawOfferByRef = useRef<string | null>(null);
+  useEffect(() => {
+    const offeredBy = game.drawOffer.offeredByUserId;
+    if (offeredBy && offeredBy !== prevDrawOfferByRef.current) {
+      // Only play if it's the opponent offering
+      const myId = game.myColorStr === "WHITE" ? game.players.white?.id : game.players.black?.id;
+      if (offeredBy !== myId) {
+        audio.playNotification();
+      }
+    }
+    prevDrawOfferByRef.current = offeredBy;
+  }, [game.drawOffer.offeredByUserId, game.myColorStr, game.players, audio]);
 
   // ── Auto-start for lobby (matchmaking) games ──────────────────────────────
   // Matched games are created ACTIVE on the backend. If the game somehow
@@ -1245,14 +1243,6 @@ export default function OnlineGameScreen() {
             )}
           </View>
 
-          {/* ── Draw offer banner ─────────────────────────────────────── */}
-          <DrawOfferBanner
-            visible={game.drawOffer.offeredByUserId !== null}
-            isOfferedByMe={drawOfferedByMe}
-            onAccept={game.acceptDraw}
-            onDecline={game.declineDraw}
-            onCancel={game.cancelDraw}
-          />
 
           {/* ── Disconnect banner ──────────────────────────────────────── */}
           <DisconnectBanner
@@ -1334,7 +1324,10 @@ export default function OnlineGameScreen() {
             {game.moveCount > 0 && !game.result && (
               <TouchableOpacity
                 style={styles.actionBtn}
-                onPress={() => { if (drawOfferedByMe) game.cancelDraw(); else game.offerDraw(); }}
+                onPress={() => {
+                  if (drawOfferedByMe) game.cancelDraw();
+                  else setShowDrawConfirmModal(true);
+                }}
               >
                 <Handshake
                   color={drawOfferedByMe ? colors.primary : colors.foreground}
@@ -1383,6 +1376,22 @@ export default function OnlineGameScreen() {
         onAcceptRematch={game.acceptRematch}
         onDeclineRematch={game.declineRematch}
         onCancelRematch={game.cancelRematch}
+      />
+
+      <OnlineDrawOfferModal
+        visible={game.drawOffer.offeredByUserId !== null && !drawOfferedByMe && !game.result}
+        opponentName={playerDisplayName(topColor === game.myColorStr ? bottomPlayer : topPlayer)}
+        onAccept={game.acceptDraw}
+        onDecline={game.declineDraw}
+      />
+
+      <OnlineDrawConfirmModal
+        visible={showDrawConfirmModal}
+        onCancel={() => setShowDrawConfirmModal(false)}
+        onConfirm={() => {
+          setShowDrawConfirmModal(false);
+          game.offerDraw();
+        }}
       />
     </SafeAreaView>
   );

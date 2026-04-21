@@ -45,6 +45,7 @@ export default function OnlineLobby() {
   const [searchSeconds, setSearchSeconds] = useState(SEARCH_TIMEOUT_SECONDS);
   const [timeoutReached, setTimeoutReached] = useState(false);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [counts, setCounts] = useState({ online: 0, searching: 0 });
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -117,7 +118,16 @@ export default function OnlineLobby() {
       goToGame(data.gameId);
     };
     socket.on("matchFound", handler);
-    return () => { socket.off("matchFound", handler); };
+    
+    const countsHandler = (data: { onlineCount: number; searchingCount: number }) => {
+      setCounts({ online: data.onlineCount, searching: data.searchingCount });
+    };
+    socket.on("playerCountsUpdated", countsHandler);
+
+    return () => { 
+      socket.off("matchFound", handler); 
+      socket.off("playerCountsUpdated", countsHandler);
+    };
   }, [socket, goToGame]);
 
   // ── Searching countdown ───────────────────────────────────────────────────
@@ -273,12 +283,19 @@ export default function OnlineLobby() {
               <View style={styles.statCard}>
                 <Users color={colors.primary} size={20} />
                 <Text style={styles.statValue}>
-                  {connected ? "●" : "—"}
+                  {connected ? counts.online : "—"}
                 </Text>
                 <Text style={styles.statLabel}>
-                  {connected
-                    ? t("lobby.connected", "Connected")
-                    : t("lobby.offline", "Offline")}
+                  {t("lobby.playersOnline", "Online")}
+                </Text>
+              </View>
+              <View style={styles.statCard}>
+                <Search color={colors.primary} size={20} />
+                <Text style={styles.statValue}>
+                  {connected ? counts.searching : "—"}
+                </Text>
+                <Text style={styles.statLabel}>
+                  {t("lobby.playersSearching", "Searching")}
                 </Text>
               </View>
               <View style={styles.statCard}>
@@ -371,6 +388,12 @@ export default function OnlineLobby() {
                 ]}
               >
                 {formatSearchTime(searchSeconds)}
+              </Text>
+            </View>
+
+            <View style={styles.searchingStats}>
+              <Text style={styles.searchingStatsText}>
+                {counts.searching} {t("lobby.othersSearching", "players searching")}
               </Text>
             </View>
 
@@ -487,7 +510,7 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
   },
   statCard: {
     flex: 1,
@@ -736,6 +759,19 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: colors.danger,
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  searchingStats: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchingStatsText: {
+    color: colors.textSubtle,
+    fontSize: 14,
     fontWeight: "bold",
   },
 });

@@ -2,7 +2,7 @@
 
 **OFFICIAL RULES**
 
-*Version 2.3 - Draw & Timeout Rules Revision*
+*Version 2.4 - Insufficient Material Draw Update*
 
 *Including Online Governance & Engine Compliance Standards*
 
@@ -252,11 +252,11 @@ A player wins when the opponent:
 
 **Tanzania Draughts uses the following draw rules. All draw conditions apply during normal play (clock status is irrelevant unless Article 10 applies separately).**
 
-## 8.1. King vs. King — Not an Automatic Draw
+## 8.1. King vs. King — Immediate Draw (Insufficient Material)
 
-- **A King vs. King position is NOT an automatic draw.** In TZD, a flying king may capture an opposing king. Play continues until one king captures the other, or a draw is declared by another rule (threefold repetition, 30-move rule, or Article 10 timeout provisions).
+- **A King vs. King position results in an immediate draw by insufficient material**, provided that the player whose turn it is possesses at least one legal move.
 
-- The term "insufficient material" in TZD applies **only** in clock-timeout situations as defined in Article 10. It does not trigger an automatic in-game draw.
+- In Draughts, if a player has no legal moves, they lose. Therefore, if a 1K vs. 1K situation is reached where one player is blocked, the standard rules of victory apply. However, if both kings can move freely, no forced win is possible, and the game is declared a draw immediately to avoid unnecessary play.
 
 ## 8.2. Threefold Repetition
 
@@ -627,7 +627,13 @@ Engines must detect and declare the following draws, each with a labelled reason
 
 # B. Version History
 
-**Version 2.3 (Current) — Draw & Timeout Rules Revision**
+**Version 2.4 (Current) — Insufficient Material Draw Update**
+
+- **Revised Article 8.1:** Established 1 King vs. 1 King as an immediate draw by insufficient material, ending the previous standard where such games could continue for 30 moves or until timeout.
+
+- **Updated Article 10.3:** Aligned timeout logic with the new immediate draw standard.
+
+**Version 2.3 — Draw & Timeout Rules Revision**
 
 - **Rewrote Article 8.1:** K vs. K is no longer an automatic in-game draw. Kings can capture kings in TZD. "Insufficient material" now applies exclusively to clock-timeout situations (Article 10).
 
@@ -698,7 +704,7 @@ These rules were developed by the Tanzania Draughts Federation (TZD) Rules Commi
 
 - Engine developers and online platform operators
 
-*Tanzania Draughts Federation • Official Rules v2.3 • 2026*
+*Tanzania Draughts Federation • Official Rules v2.4 • 2026*
 
 
 | Rule Aspect | Tanzania Draughts-64 | Brazilian Variant |

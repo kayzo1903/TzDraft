@@ -20,6 +20,7 @@ import { EndGameUseCase } from '../../application/use-cases/end-game.use-case';
 import { CreateGameUseCase } from '../../application/use-cases/create-game.use-case';
 import { JwtService } from '@nestjs/jwt';
 import { GameStatus, GameType } from '../../shared/constants/game.constants';
+import { IMatchmakingRepository } from '../../domain/game/repositories/matchmaking.repository.interface';
 
 /** Grace period for a player who has made moves and then disconnects. */
 const ABANDON_TIMEOUT_MS = 40_000;
@@ -39,6 +40,8 @@ const K_USER_GAME = (userId: string) => `ws:user:game:${userId}`;
 const K_SIGNAL = 'ws:internal:signal';
 /** TTL (seconds) for transient WS keys — longer than any game duration. */
 const KEY_TTL_S = 24 * 60 * 60; // 24 h
+const K_ONLINE_USERS = 'ws:online_users';
+const BROADCAST_INTERVAL_MS = 5000;
 
 /**
  * Parse Socket.IO allowed origins from env in a resilient way.
@@ -106,6 +109,8 @@ export class GamesGateway
   private localDrawOffers = new Map<string, string>();
   /** gameId → userId who offered rematch (dev-mode fallback) */
   private localRematchOffers = new Map<string, string>();
+  /** Set of userIds currently online (dev-mode fallback) */
+  private localOnlineUsers = new Set<string>();
 
   /** ioredis clients dedicated to pub/sub for the Socket.IO adapter. */
   private pubClient: Redis;
@@ -161,6 +166,9 @@ export class GamesGateway
     });
 
     this.logger.log('Socket.IO Redis adapter and internal signals initialized');
+
+    // Start periodic broadcast of player counts
+    setInterval(() => void this.broadcastPlayerCounts(), BROADCAST_INTERVAL_MS);
   }
 
   handleConnection(client: Socket) {
@@ -186,6 +194,13 @@ export class GamesGateway
 
       // Join personal room so emitMatchFound works cross-instance
       void client.join(`user:${payload.sub}`);
+
+      // Track online status
+      if (this.pubClient) {
+        void this.pubClient.sadd(K_ONLINE_USERS, payload.sub);
+      } else {
+        this.localOnlineUsers.add(payload.sub);
+      }
 
       this.logger.log(`Client connected: ${client.id} (User: ${payload.sub})`);
     } catch {
@@ -216,6 +231,13 @@ export class GamesGateway
       (s) => s.id !== client.id,
     ).length;
     if (otherConnections > 0) return;
+
+    // Last socket disconnected for this user — remove from online set
+    if (this.pubClient) {
+      void this.pubClient.srem(K_ONLINE_USERS, userId);
+    } else {
+      this.localOnlineUsers.delete(userId);
+    }
 
     // Resolve which game the user is currently in.
     const gameId = this.pubClient
@@ -1098,5 +1120,31 @@ export class GamesGateway
     const authHeader = client.handshake.headers.authorization ?? '';
     const [type, token] = authHeader.split(' ');
     return type === 'Bearer' ? token : null;
+  }
+
+  /* ── Broadcasting counts ────────────────────────────────────────────── */
+
+  private async broadcastPlayerCounts() {
+    try {
+      // 1. Get online count
+      const onlineCount = this.pubClient
+        ? await this.pubClient.scard(K_ONLINE_USERS)
+        : this.localOnlineUsers.size;
+
+      // 2. Get searching count
+      const matchmakingRepo = this.moduleRef.get<IMatchmakingRepository>(
+        'IMatchmakingRepository',
+        { strict: false },
+      );
+      const searchingCount = await matchmakingRepo.count().catch(() => 0);
+
+      // 3. Broadcast to everyone
+      this.server.emit('playerCountsUpdated', {
+        onlineCount,
+        searchingCount,
+      });
+    } catch (err) {
+      this.logger.error(`Failed to broadcast player counts: ${err.message}`);
+    }
   }
 }

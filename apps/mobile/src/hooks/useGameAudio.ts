@@ -90,11 +90,18 @@ export function useGameAudio() {
     });
   }, []);
 
+  const playNotification = useCallback(() => {
+    genericNotifyRef.current
+      ?.setStatusAsync({ positionMillis: 0, shouldPlay: true })
+      .catch(() => {});
+  }, []);
+
   return {
     playGameStart,
     playCapture,
     playMove,
     playGameEnd,
+    playNotification,
     isMuted,
     toggleMute,
   };

@@ -603,6 +603,12 @@ export default function FriendLocalScreen() {
     if (!game.result) prevResultRef.current = null;
   }, [game.result, audio]);
 
+  useEffect(() => {
+    if (drawPhase === "confirm" || drawPhase === "respond") {
+      audio.playNotification();
+    }
+  }, [drawPhase, audio]);
+
   // ── Board highlights ───────────────────────────────────────────────────────
   const highlights: Record<number, HighlightType> = {};
   if (!isViewingHistory) {

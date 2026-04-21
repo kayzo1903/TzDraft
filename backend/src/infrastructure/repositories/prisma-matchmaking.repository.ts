@@ -138,6 +138,10 @@ export class PrismaMatchmakingRepository implements IMatchmakingRepository {
     });
   }
 
+  async count(): Promise<number> {
+    return this.prisma.matchmakingQueue.count();
+  }
+
   private toDomain(row: {
     id: string;
     userId: string;

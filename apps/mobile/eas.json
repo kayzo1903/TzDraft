@@ -23,7 +23,9 @@
         "EXPO_PUBLIC_API_URL": "https://api.tzdraft.co.tz",
         "EXPO_PUBLIC_SIMULATE_OFFLINE": "false",
         "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
-        "EXPO_PUBLIC_SANITY_DATASET": "production"
+        "EXPO_PUBLIC_SANITY_DATASET": "production",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "583911650740-l7g21qc3sgl3qspi3q3fhfjlrn6dcqqt.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "583911650740-a6ng737m7t4dbnkcctbeq6oot7i1pj94.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -33,7 +35,9 @@
         "EXPO_PUBLIC_API_URL": "https://api.tzdraft.com",
         "EXPO_PUBLIC_SIMULATE_OFFLINE": "false",
         "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
-        "EXPO_PUBLIC_SANITY_DATASET": "production"
+        "EXPO_PUBLIC_SANITY_DATASET": "production",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "583911650740-l7g21qc3sgl3qspi3q3fhfjlrn6dcqqt.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "583911650740-a6ng737m7t4dbnkcctbeq6oot7i1pj94.apps.googleusercontent.com"
       }
     }
   },

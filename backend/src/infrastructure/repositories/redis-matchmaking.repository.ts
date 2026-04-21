@@ -224,4 +224,26 @@ export class RedisMatchmakingRepository implements IMatchmakingRepository {
       }
     }
   }
+
+  async count(): Promise<number> {
+    const keys: string[] = [];
+    let cursor = '0';
+    do {
+      const [nextCursor, found] = await this.rc.scan(
+        cursor,
+        'MATCH',
+        'mmq:zset:*',
+        'COUNT',
+        100,
+      );
+      cursor = nextCursor;
+      keys.push(...found);
+    } while (cursor !== '0');
+
+    let total = 0;
+    for (const key of keys) {
+      total += await this.rc.zcard(key);
+    }
+    return total;
+  }
 }

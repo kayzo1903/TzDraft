@@ -108,6 +108,12 @@ export function evaluateEndgameCountdown(
     return { reason: null, nextCountdown: nextCountdownState, nextThirtyCount };
   }
 
+  // Art. 8.1 / 10.2 — Immediate Draw by Insufficient Material (1 King vs 1 King)
+  const is1v1 = whiteLoneKing && blackLoneKing;
+  if (is1v1) {
+    return { reason: "insufficient-material", nextCountdown: null, nextThirtyCount: 0 };
+  }
+
   // If none of the specific 5/12 move limits apply, but it's kings-only, 
   // show the 30-move draw countdown (when it gets closer, e.g. last 10 moves).
   if (allKings && nextThirtyCount >= 40) {
@@ -197,6 +203,7 @@ export function getEndgameReasonLabel(
     case "30-move":      return t("gameArena.gameOver.reasons.rule30");
     case "three-kings":  return t("gameArena.gameOver.reasons.rule12");
     case "endgame":      return t("gameArena.gameOver.reasons.rule5");
+    case "insufficient-material": return t("gameArena.gameOver.reasons.insufficientMaterial", "Insufficient Material");
     case "timeout-draw": return t("gameArena.gameOver.reasons.timeoutDraw");
     case "stalemate":
     case "checkmate":    return isWin ? t("gameArena.gameOver.reasons.stalemate") : t("gameArena.gameOver.reasons.stalemate");
