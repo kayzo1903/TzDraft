@@ -161,8 +161,10 @@ class AuthClient {
       }
       
       // Configure on the fly (idempotent)
+      // webClientId is required so Google issues an idToken (signed against the Web client).
+      // androidClientId alone only produces a serverAuthCode, not an idToken.
       GoogleSignin.configure({
-        iosClientId: "", // Handled by GoogleService-Info.plist if needed
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
         offlineAccess: true,
       });
