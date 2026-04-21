@@ -175,6 +175,7 @@ function LeaveModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <TouchableOpacity
@@ -190,8 +191,8 @@ function LeaveModal({
                 <AlertTriangle color={colors.primary} size={20} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={modalStyles.resignTitleSmall}>LEAVE GAME</Text>
-                <Text style={modalStyles.resignTitle}>Leave this game?</Text>
+                <Text style={modalStyles.resignTitleSmall}>{t("gameArena.resign.confirmTitle")}</Text>
+                <Text style={modalStyles.resignTitle}>{t("gameArena.resign.confirmQuestion")}</Text>
               </View>
             </View>
 
@@ -205,13 +206,13 @@ function LeaveModal({
                 style={[modalStyles.resignBtn, modalStyles.resignBtnSecondary]}
                 onPress={onCancel}
               >
-                <Text style={modalStyles.resignBtnText}>Cancel</Text>
+                <Text style={modalStyles.resignBtnText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[modalStyles.resignBtn, modalStyles.resignBtnDanger]}
                 onPress={onConfirm}
               >
-                <Text style={modalStyles.resignBtnText}>Leave</Text>
+                <Text style={modalStyles.resignBtnText}>{t("gameArena.actions.resign")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -235,6 +236,7 @@ function OptionsModal({
   onHome: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity
@@ -249,7 +251,7 @@ function OptionsModal({
               <View style={optionsStyles.headerIconWrap}>
                 <Settings color={colors.textMuted} size={16} />
               </View>
-              <Text style={optionsStyles.headerTitle}>Settings</Text>
+              <Text style={optionsStyles.headerTitle}>{t("gameArena.actions.settings")}</Text>
               <TouchableOpacity onPress={onClose} style={optionsStyles.closeBtn}>
                 <X color={colors.textMuted} size={18} />
               </TouchableOpacity>
@@ -262,8 +264,8 @@ function OptionsModal({
                   {isMuted ? <VolumeX color="#38bdf8" size={20} /> : <Volume2 color="#38bdf8" size={20} />}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={optionsStyles.rowTitle}>Sound Effects</Text>
-                  <Text style={optionsStyles.rowSub}>{isMuted ? "Audio is currently muted" : "Audio is on"}</Text>
+                  <Text style={optionsStyles.rowTitle}>{t("gameArena.actions.mute")}</Text>
+                  <Text style={optionsStyles.rowSub}>{isMuted ? t("gameArena.actions.mute") : t("gameArena.actions.unmute")}</Text>
                 </View>
                 <Switch
                   value={!isMuted}
@@ -278,8 +280,8 @@ function OptionsModal({
                   <ArrowLeft color="#f59e0b" size={20} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={optionsStyles.rowTitle}>Go to Lobby</Text>
-                  <Text style={optionsStyles.rowSub}>Exit to main menu</Text>
+                  <Text style={optionsStyles.rowTitle}>{t("gameArena.actions.home")}</Text>
+                  <Text style={optionsStyles.rowSub}>{t("gameArena.gameOver.backToLobby")}</Text>
                 </View>
                 <ChevronRight color={colors.textDisabled} size={16} />
               </TouchableOpacity>
@@ -287,7 +289,7 @@ function OptionsModal({
 
             <View style={optionsStyles.footer}>
               <TouchableOpacity style={optionsStyles.doneBtn} onPress={onClose}>
-                <Text style={optionsStyles.doneBtnText}>Done</Text>
+                <Text style={optionsStyles.doneBtnText}>{t("common.done")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -404,10 +406,10 @@ function ResultModal({
               {didUnlockNext ? (
                  <View style={{ alignItems: "center", marginTop: 4 }}>
                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>
-                     Level {botLevel} complete!
+                     {t("gameArena.gameOver.levelComplete", { level: botLevel })}
                    </Text>
                    <View style={{ backgroundColor: colors.primaryAlpha15, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 6, borderWidth: 1, borderColor: colors.primaryAlpha30 }}>
-                     <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "bold" }}>🔓 Level {botLevel + 1} Unlocked</Text>
+                     <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "bold" }}>🔓 {t("gameArena.gameOver.levelUnlocked", { level: botLevel + 1 })}</Text>
                    </View>
                  </View>
               ) : (
@@ -432,9 +434,9 @@ function ResultModal({
           {/* ── Stats grid ── */}
           <View style={resultStyles.statsRow}>
             {[
-              { label: "MOVES", value: String(moveCount) },
-              { label: "BOT LEVEL", value: `Lv.${botLevel}` },
-              { label: "RESULT", value: isPlayerWin ? "WIN" : isDraw ? "DRAW" : "LOSS" },
+              { label: t("gameArena.gameOver.moves"), value: String(moveCount) },
+              { label: t("gameArena.gameOver.botLevel"), value: `Lv.${botLevel}` },
+              { label: t("gameArena.gameOver.result"), value: isPlayerWin ? "WIN" : isDraw ? "DRAW" : "LOSS" },
             ].map(({ label, value }, i) => (
               <View
                 key={label}
@@ -456,21 +458,21 @@ function ResultModal({
                 style={[resultStyles.btnPrimary, { backgroundColor: "rgba(52,211,153,0.65)", width: "100%" }]}
                 onPress={onNextOpponent}
               >
-                <Text style={resultStyles.btnPrimaryText}>Next AI</Text>
+                <Text style={resultStyles.btnPrimaryText}>{t("gameArena.gameOver.nextBot")}</Text>
                 <ArrowRight color="#000" size={16} />
               </TouchableOpacity>
             )}
             <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
               <TouchableOpacity style={resultStyles.btnSecondary} onPress={onRematch}>
                 <RotateCcw color={colors.foreground} size={16} />
-                <Text style={resultStyles.btnSecondaryText}>Rematch</Text>
+                <Text style={resultStyles.btnSecondaryText}>{t("common.rematch")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[resultStyles.btnPrimary, { backgroundColor: colors.primary, flex: 1, gap: 8 }]}
                 onPress={onBack}
               >
                 <Settings color={colors.onPrimary} size={16} />
-                <Text style={resultStyles.btnPrimaryText}>Setup</Text>
+                <Text style={resultStyles.btnPrimaryText}>{t("gameArena.gameOver.setup")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -719,10 +721,10 @@ export default function VsAiScreen() {
           <CapturedDots count={botCapturedCount} color={humanColor as "WHITE" | "BLACK"} />
         </View>
         
-        {game.isAiThinking && (
+        {game.isAiThinking && !game.result && (
           <View style={styles.thinkingContainer}>
             <ActivityIndicator size={12} color={colors.primary} />
-            <Text style={styles.thinkingText}>Thinking...</Text>
+            <Text style={styles.thinkingText}>{t("gameArena.status.aiThinking")}</Text>
           </View>
         )}
       </View>
@@ -774,7 +776,7 @@ export default function VsAiScreen() {
           ]} />
         </View>
         <View style={styles.playerMeta}>
-          <Text style={styles.playerNameText}>You</Text>
+          <Text style={styles.playerNameText}>{t("gameArena.you")}</Text>
           <CapturedDots count={playerCapturedCount} color={opponentColor as "WHITE" | "BLACK"} />
         </View>
         {timeControl.type === "total" && (
@@ -818,7 +820,7 @@ export default function VsAiScreen() {
           style={{ flex: 1 }}
         >
           {game.moveHistory.length === 0 ? (
-            <Text style={styles.historyEmpty}>Waiting for first move…</Text>
+            <Text style={styles.historyEmpty}>{t("vs-ai.waitingForFirstMove", "Waiting for first move…")}</Text>
           ) : (
             game.moveHistory.map((m, idx) => {
               const moveIndex = idx + 1; // moveIndex 1 means after move 0
@@ -861,8 +863,8 @@ export default function VsAiScreen() {
           style={styles.actionBtn}
           onPress={() => setShowOptionsModal(true)}
         >
-          <Settings color={colors.textDisabled} size={22} />
-          <Text style={styles.actionBtnLabel}>Settings</Text>
+          <Settings color={colors.foreground} size={22} />
+          <Text style={styles.actionBtnLabel}>{t("gameArena.actions.settings")}</Text>
         </TouchableOpacity>
 
         {/* Hint */}
@@ -880,7 +882,7 @@ export default function VsAiScreen() {
             (!game.result && !game.isAiThinking && game.currentPlayer === game.playerColor)
               && { color: colors.foreground },
           ]}>
-            Hint
+            {t("gameArena.actions.hint")}
           </Text>
         </TouchableOpacity>
 
@@ -903,7 +905,7 @@ export default function VsAiScreen() {
             game.moveHistory.length > 0 && !game.isAiThinking && !game.result
               && { color: colors.foreground },
           ]}>
-            Undo
+            {t("gameArena.actions.undo")}
           </Text>
         </TouchableOpacity>
 
@@ -912,8 +914,8 @@ export default function VsAiScreen() {
           style={styles.actionBtn}
           onPress={game.reset}
         >
-          <RotateCcw color={colors.textDisabled} size={22} />
-          <Text style={styles.actionBtnLabel}>Reset</Text>
+          <RotateCcw color={game.moveHistory.length > 0 ? colors.foreground : colors.textDisabled} size={22} />
+          <Text style={styles.actionBtnLabel}>{t("gameArena.actions.reset")}</Text>
         </TouchableOpacity>
       </View>
 

@@ -135,6 +135,7 @@ function WaitingRoom({
   onLeave: () => void;
   isSubmitting: boolean;
 }) {
+  const { t } = useTranslation();
   const handleShare = async () => {
     try {
       const deepLink = Linking.createURL(`join/${inviteCode}`);
@@ -159,8 +160,8 @@ function WaitingRoom({
 
       {isHost ? (
         <>
-          <Text style={waitStyles.title}>Waiting for opponent</Text>
-          <Text style={waitStyles.sub}>Share the code below with your friend</Text>
+          <Text style={waitStyles.title}>{t("setupFriend.online.gameCreated", "Waiting for opponent")}</Text>
+          <Text style={waitStyles.sub}>{t("setupFriend.online.bannerDesc", "Share the code below with your friend")}</Text>
 
           <View style={waitStyles.codeCard}>
             <Text style={waitStyles.code}>{inviteCode}</Text>
@@ -169,13 +170,13 @@ function WaitingRoom({
           <View style={waitStyles.shareRow}>
             <TouchableOpacity style={waitStyles.shareBtn} onPress={handleShare}>
               <Share2 color={colors.primary} size={18} />
-              <Text style={waitStyles.shareBtnText}>Share Invite</Text>
+              <Text style={waitStyles.shareBtnText}>{t("setupFriend.online.orCopyLink", "Share Invite")}</Text>
             </TouchableOpacity>
           </View>
 
           {bothPlayersPresent && (
             <>
-              <Text style={waitStyles.opponentJoined}>✓ Opponent has joined!</Text>
+              <Text style={waitStyles.opponentJoined}>✓ {t("gameArena.gameOver.waitingForOpponent", "Opponent has joined!")}</Text>
               <TouchableOpacity
                 style={waitStyles.startBtn}
                 disabled={isSubmitting}
@@ -184,7 +185,7 @@ function WaitingRoom({
                 {isSubmitting ? (
                   <ActivityIndicator color="#000" />
                 ) : (
-                  <Text style={waitStyles.startBtnText}>Start Game</Text>
+                  <Text style={waitStyles.startBtnText}>{t("setupAi.start.cta", "Start Game")}</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -192,14 +193,14 @@ function WaitingRoom({
         </>
       ) : (
         <>
-          <Text style={waitStyles.title}>Joined the game</Text>
-          <Text style={waitStyles.sub}>Waiting for the host to start…</Text>
+          <Text style={waitStyles.title}>{t("setupFriend.online.joiningGame", "Joined the game")}</Text>
+          <Text style={waitStyles.sub}>{t("gameArena.gameOver.waitingForOpponent", "Waiting for the host to start…")}</Text>
           <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} />
         </>
       )}
 
       <TouchableOpacity style={waitStyles.leaveBtn} onPress={onLeave}>
-        <Text style={waitStyles.leaveBtnText}>Leave</Text>
+        <Text style={waitStyles.leaveBtnText}>{t("gameArena.actions.resign", "Leave")}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -481,6 +482,31 @@ const modalStyles = StyleSheet.create({
     fontSize: 14,
     textTransform: "uppercase",
   },
+  bottomCard: {
+    width: "100%",
+    minWidth: "100%",
+    borderRadius: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    paddingTop: 20,
+    gap: 16,
+    borderWidth: 0,
+    borderTopWidth: 1,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+  },
+  absoluteBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
 });
 
 // ─── Result modal ──────────────────────────────────────────────────────────────
@@ -496,31 +522,31 @@ function OnlineDrawOfferModal({
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  if (!visible) return null;
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={[modalStyles.backdrop, { justifyContent: "center" }]}>
-        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <View style={modalStyles.card}>
-            <View style={modalStyles.iconWrap}>
-              <Handshake color="#38bdf8" size={28} />
-            </View>
-            <Text style={modalStyles.title}>Draw Offered</Text>
-            <Text style={modalStyles.body}>
-              <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{opponentName}</Text>
-              {" "}is offering a draw. Do you accept?
-            </Text>
-            <View style={modalStyles.btns}>
-              <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onDecline}>
-                <Text style={modalStyles.btnText}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[modalStyles.btn, { backgroundColor: "#38bdf8" }]} onPress={onAccept}>
-                <Text style={[modalStyles.btnText, { color: "#000" }]}>Accept</Text>
-              </TouchableOpacity>
-            </View>
+    <View style={modalStyles.absoluteBottom}>
+      <View style={[modalStyles.card, modalStyles.bottomCard, { elevation: 8, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 8 }]}>
+        <View style={modalStyles.headerRow}>
+          <View style={[modalStyles.iconWrap, { marginBottom: 0, width: 44, height: 44, borderRadius: 12 }]}>
+            <Handshake color="#38bdf8" size={22} />
           </View>
-        </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>Draw Offered</Text>
+            <Text style={[modalStyles.body, { textAlign: "left" }]}>
+              <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{opponentName}</Text> offers a draw.
+            </Text>
+          </View>
+        </View>
+        <View style={[modalStyles.btns, { marginTop: 8 }]}>
+          <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onDecline}>
+            <Text style={modalStyles.btnText}>Decline</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[modalStyles.btn, { backgroundColor: "#38bdf8" }]} onPress={onAccept}>
+            <Text style={[modalStyles.btnText, { color: "#000" }]}>Accept</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -534,30 +560,30 @@ function OnlineDrawConfirmModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
+  if (!visible) return null;
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onCancel}>
-        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <View style={modalStyles.card}>
-            <View style={modalStyles.iconWrap}>
-              <Handshake color={colors.primary} size={28} />
-            </View>
-            <Text style={modalStyles.title}>Offer a Draw?</Text>
-            <Text style={modalStyles.body}>
-              Your opponent will be notified and can choose to accept or decline the draw.
-            </Text>
-            <View style={modalStyles.btns}>
-              <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onCancel}>
-                <Text style={modalStyles.btnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[modalStyles.btn, { backgroundColor: colors.primary }]} onPress={onConfirm}>
-                <Text style={[modalStyles.btnText, { color: "#000" }]}>Offer Draw</Text>
-              </TouchableOpacity>
-            </View>
+    <View style={modalStyles.absoluteBottom}>
+      <View style={[modalStyles.card, modalStyles.bottomCard, { elevation: 8, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 8 }]}>
+         <View style={modalStyles.headerRow}>
+          <View style={[modalStyles.iconWrap, { marginBottom: 0, width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primaryAlpha15, borderColor: colors.primaryAlpha30 }]}>
+            <Handshake color={colors.primary} size={22} />
           </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+          <View style={{ flex: 1 }}>
+            <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>{t("gameArena.gameOver.drawRequestTitle", "Offer a Draw?")}</Text>
+            <Text style={[modalStyles.body, { textAlign: "left" }]}>{t("gameArena.gameOver.drawRequestDesc", "Opponent will be notified to accept or decline.")}</Text>
+          </View>
+        </View>
+        <View style={[modalStyles.btns, { marginTop: 8 }]}>
+          <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onCancel}>
+            <Text style={modalStyles.btnText}>{t("common.cancel")}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[modalStyles.btn, { backgroundColor: colors.primary }]} onPress={onConfirm}>
+            <Text style={[modalStyles.btnText, { color: "#000" }]}>{t("gameArena.actions.draw", "Offer Draw")}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -588,6 +614,7 @@ function ResultModal({
   onDeclineRematch: () => void;
   onCancelRematch: () => void;
 }) {
+  const { t } = useTranslation();
   if (!visible) return null;
 
   const isAborted = winner === null;
@@ -603,19 +630,14 @@ function ResultModal({
     : colors.danger;
 
   const title = isAborted
-    ? "Game Aborted"
+    ? t("gameArena.gameOver.gameAborted")
     : isDraw
-    ? "Draw"
+    ? t("freePlay.result.draw")
     : iWon
-    ? "You Won!"
-    : "You Lost";
+    ? t("gameArena.gameOver.youWon")
+    : t("gameArena.gameOver.youLost");
 
-  const { t } = useTranslation();
-  const reasonText = reason === "aborted" 
-    ? t("common.error") 
-    : reason === "agreement"
-      ? t("gameArena.gameOver.reasons.resign")
-      : getEndgameReasonLabel(reason || "", iWon, isDraw, t);
+  const reasonText = getEndgameReasonLabel(reason || "", iWon, isDraw, t);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -644,12 +666,12 @@ function ResultModal({
 
           <View style={resStyles.statsRow}>
             {[
-              { label: "MOVES", value: String(moveCount) },
+              { label: t("gameArena.gameOver.moves"), value: String(moveCount) },
               {
-                label: "RESULT",
+                label: t("gameArena.gameOver.result"),
                 value: isAborted ? "ABORT" : isDraw ? "DRAW" : iWon ? "WIN" : "LOSS",
               },
-              { label: "MODE", value: "ONLINE" },
+              { label: t("gameArena.gameOver.mode"), value: t("gameArena.gameOver.online") },
             ].map(({ label, value }, i) => (
               <View
                 key={label}
@@ -669,33 +691,33 @@ function ResultModal({
             <View style={resStyles.rematch}>
               {rematchOfferedByOpponent ? (
                 <>
-                  <Text style={resStyles.rematchHint}>Opponent wants a rematch!</Text>
+                  <Text style={resStyles.rematchHint}>{t("gameArena.gameOver.rematchRequested")}</Text>
                   <View style={resStyles.rematchRow}>
                     <TouchableOpacity
                       style={[resStyles.rematchBtn, resStyles.rematchBtnDecline]}
                       onPress={onDeclineRematch}
                     >
-                      <Text style={resStyles.rematchBtnText}>Decline</Text>
+                      <Text style={resStyles.rematchBtnText}>{t("common.cancel")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[resStyles.rematchBtn, resStyles.rematchBtnAccept]}
                       onPress={onAcceptRematch}
                     >
-                      <Text style={[resStyles.rematchBtnText, resStyles.rematchBtnTextAccept]}>Accept</Text>
+                      <Text style={[resStyles.rematchBtnText, resStyles.rematchBtnTextAccept]}>{t("auth.steps.otp.button")}</Text>
                     </TouchableOpacity>
                   </View>
                 </>
               ) : rematchOfferedByMe ? (
                 <View style={resStyles.rematchWaiting}>
                   <ActivityIndicator color={colors.primary} size="small" />
-                  <Text style={resStyles.rematchWaitText}>Waiting for opponent to accept…</Text>
+                  <Text style={resStyles.rematchWaitText}>{t("gameArena.gameOver.waitingForOpponent")}</Text>
                   <TouchableOpacity onPress={onCancelRematch} style={resStyles.rematchCancelBtn}>
-                    <Text style={resStyles.rematchCancelText}>Cancel</Text>
+                    <Text style={resStyles.rematchCancelText}>{t("common.cancel")}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity style={resStyles.rematchBtn} onPress={onOfferRematch}>
-                  <Text style={resStyles.rematchBtnText}>Rematch</Text>
+                  <Text style={resStyles.rematchBtnText}>{t("common.rematch")}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -703,7 +725,7 @@ function ResultModal({
 
           <TouchableOpacity style={resStyles.homeBtn} onPress={onHome}>
             <ArrowLeft color={colors.textMuted} size={16} />
-            <Text style={resStyles.homeBtnText}>Back to Lobby</Text>
+            <Text style={resStyles.homeBtnText}>{t("gameArena.gameOver.backToLobby")}</Text>
           </TouchableOpacity>
         </View>
       </View>

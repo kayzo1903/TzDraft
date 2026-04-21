@@ -121,6 +121,7 @@ function OptionsModal({
   onClose: () => void;
   showStudies: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onClose}>
@@ -130,7 +131,7 @@ function OptionsModal({
               <View style={optionsStyles.headerIconWrap}>
                 <Settings color={colors.textMuted} size={16} />
               </View>
-              <Text style={optionsStyles.headerTitle}>Settings</Text>
+              <Text style={optionsStyles.headerTitle}>{t("gameArena.actions.settings")}</Text>
               <TouchableOpacity onPress={onClose} style={optionsStyles.closeBtn}>
                 <X color={colors.textMuted} size={18} />
               </TouchableOpacity>
@@ -142,8 +143,8 @@ function OptionsModal({
                   {isMuted ? <VolumeX color="#38bdf8" size={20} /> : <Volume2 color="#38bdf8" size={20} />}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={optionsStyles.rowTitle}>Sound Effects</Text>
-                  <Text style={optionsStyles.rowSub}>{isMuted ? "Audio is muted" : "Audio is on"}</Text>
+                  <Text style={optionsStyles.rowTitle}>{t("gameArena.actions.mute")}</Text>
+                  <Text style={optionsStyles.rowSub}>{isMuted ? t("gameArena.actions.mute") : t("gameArena.actions.unmute")}</Text>
                 </View>
                 <Switch
                   value={!isMuted}
@@ -158,8 +159,8 @@ function OptionsModal({
                   <ArrowLeft color="#f59e0b" size={20} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={optionsStyles.rowTitle}>Go to Lobby</Text>
-                  <Text style={optionsStyles.rowSub}>Exit to main menu</Text>
+                  <Text style={optionsStyles.rowTitle}>{t("gameArena.actions.home")}</Text>
+                  <Text style={optionsStyles.rowSub}>{t("gameArena.gameOver.backToLobby")}</Text>
                 </View>
                 <ChevronRight color={colors.textDisabled} size={16} />
               </TouchableOpacity>
@@ -170,8 +171,8 @@ function OptionsModal({
                     <BookMarked color={colors.primary} size={20} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={optionsStyles.rowTitle}>My Studies</Text>
-                    <Text style={optionsStyles.rowSub}>Browse your saved games</Text>
+                    <Text style={optionsStyles.rowTitle}>{t("studies.title")}</Text>
+                    <Text style={optionsStyles.rowSub}>{t("studies.homeSubtitle")}</Text>
                   </View>
                   <ChevronRight color={colors.textDisabled} size={16} />
                 </TouchableOpacity>
@@ -180,7 +181,7 @@ function OptionsModal({
 
             <View style={optionsStyles.footer}>
               <TouchableOpacity style={optionsStyles.doneBtn} onPress={onClose}>
-                <Text style={optionsStyles.doneBtnText}>Done</Text>
+                <Text style={optionsStyles.doneBtnText}>{t("common.done")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -345,18 +346,22 @@ function FreePlayResultModal({
   onReset: () => void;
   onHome: () => void;
 }) {
+  const { t } = useTranslation();
   const isDraw = winner === "DRAW";
   const accentColor = isDraw ? "#38bdf8" : colors.primary;
   const borderColor = isDraw ? "rgba(56,189,248,0.30)" : colors.primaryAlpha30;
 
-  const title = isDraw ? "Draw" : winner === "WHITE" ? "White Wins" : "Black Wins";
+  const title = isDraw 
+    ? t("freePlay.result.draw") 
+    : winner === "WHITE" 
+      ? t("freePlay.result.whiteWins") 
+      : t("freePlay.result.blackWins");
   
-  const { t } = useTranslation();
   const subtitle = isDraw 
     ? getEndgameReasonLabel(reason, false, true, t)
     : winner === "WHITE"
-      ? "White captured all pieces or stalemated Black"
-      : "Black captured all pieces or stalemated White";
+      ? t("freePlay.result.noMovesForBlack")
+      : t("freePlay.result.noMovesForWhite");
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -376,9 +381,9 @@ function FreePlayResultModal({
           {/* Stats */}
           <View style={resultStyles.statsRow}>
             {[
-              { label: "MOVES", value: String(moveCount) },
-              { label: "RESULT", value: isDraw ? "DRAW" : "WIN" },
-              { label: "MODE", value: "FREE PLAY" },
+              { label: t("gameArena.gameOver.moves"), value: String(moveCount) },
+              { label: t("gameArena.gameOver.result"), value: isDraw ? t("freePlay.result.draw") : "WIN" },
+              { label: t("gameArena.gameOver.mode"), value: t("studies.badge") },
             ].map(({ label, value }, i) => (
               <View
                 key={label}
@@ -397,11 +402,11 @@ function FreePlayResultModal({
           <View style={resultStyles.actions}>
             <TouchableOpacity style={resultStyles.btnSecondary} onPress={onReset}>
               <RotateCcw color={colors.foreground} size={16} />
-              <Text style={resultStyles.btnSecondaryText}>Reset</Text>
+              <Text style={resultStyles.btnSecondaryText}>{t("gameArena.actions.reset")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[resultStyles.btnPrimary, { backgroundColor: accentColor }]} onPress={onHome}>
               <ArrowLeft color="#000" size={16} />
-              <Text style={resultStyles.btnPrimaryText}>Home</Text>
+              <Text style={resultStyles.btnPrimaryText}>{t("gameArena.actions.home")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -554,8 +559,8 @@ export default function FreePlayScreen() {
         </TouchableOpacity>
 
         <View style={styles.botTitleRow}>
-          <Text style={[styles.tierBadge, { color: colors.primary }]}>{t("freePlay.title", "Free Play").toUpperCase()}</Text>
-          <Text style={styles.botNameText}>{t("freePlay.title", "Free Play")}</Text>
+          <Text style={[styles.tierBadge, { color: colors.primary }]}>{t("studies.badge")}</Text>
+          <Text style={styles.botNameText}>{t("freePlay.title")}</Text>
           <Text style={styles.botEloText}>ANALYSIS MODE</Text>
         </View>
 
@@ -575,7 +580,7 @@ export default function FreePlayScreen() {
         </View>
         {game.currentPlayer === "BLACK" && !game.result && (
           <View style={styles.toMoveContainer}>
-            <Text style={styles.toMoveText}>To Move</Text>
+            <Text style={styles.toMoveText}>{t("gameArena.status.yourMove")}</Text>
           </View>
         )}
       </View>
@@ -615,7 +620,7 @@ export default function FreePlayScreen() {
         </View>
         {game.currentPlayer === "WHITE" && !game.result && (
           <View style={styles.toMoveContainer}>
-            <Text style={styles.toMoveText}>To Move</Text>
+            <Text style={styles.toMoveText}>{t("gameArena.status.yourMove")}</Text>
           </View>
         )}
       </View>
@@ -638,7 +643,7 @@ export default function FreePlayScreen() {
           style={{ flex: 1 }}
         >
           {game.moveHistory.length === 0 ? (
-            <Text style={styles.historyEmpty}>Ready for training…</Text>
+            <Text style={styles.historyEmpty}>{t("vs-ai.waitingForFirstMove", "Ready for training…")}</Text>
           ) : (
             game.moveHistory.map((m, idx) => {
               const moveIndex = idx + 1;
@@ -704,14 +709,14 @@ export default function FreePlayScreen() {
             size={22}
           />
           <Text style={[styles.actionBtnLabel, game.moveHistory.length > 0 && !game.result && { color: colors.foreground }]}>
-            Undo
+            {t("gameArena.actions.undo")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionBtn} onPress={game.reset}>
           <RotateCcw color={game.moveHistory.length > 0 ? colors.foreground : colors.textDisabled} size={22} />
           <Text style={[styles.actionBtnLabel, game.moveHistory.length > 0 && { color: colors.foreground }]}>
-            Reset
+            {t("gameArena.actions.reset")}
           </Text>
         </TouchableOpacity>
       </View>
