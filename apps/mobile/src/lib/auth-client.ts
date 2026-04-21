@@ -1,4 +1,5 @@
 import api, { API_URL } from "./api";
+import { queryClient } from "../providers/QueryProvider";
 import { useAuthStore } from "../auth/auth-store";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
@@ -235,6 +236,7 @@ class AuthClient {
     // Clear all in-memory caches that are user-specific so the next session
     // (same or different user) starts completely fresh.
     aiChallengeService.clearCache();
+    queryClient.clear();
 
     try {
       // Also sign out from Native Google if applicable
