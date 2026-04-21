@@ -22,6 +22,7 @@ import {
   Trophy,
   Lock,
   WifiOff,
+  Globe,
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
 import { matchService } from "../../src/lib/match-service";
@@ -45,6 +46,7 @@ export default function OnlineLobby() {
   const [searchSeconds, setSearchSeconds] = useState(SEARCH_TIMEOUT_SECONDS);
   const [timeoutReached, setTimeoutReached] = useState(false);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [counts, setCounts] = useState({ online: 0, searching: 0 });
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -117,7 +119,16 @@ export default function OnlineLobby() {
       goToGame(data.gameId);
     };
     socket.on("matchFound", handler);
-    return () => { socket.off("matchFound", handler); };
+    
+    const countsHandler = (data: { onlineCount: number; searchingCount: number }) => {
+      setCounts({ online: data.onlineCount, searching: data.searchingCount });
+    };
+    socket.on("playerCountsUpdated", countsHandler);
+
+    return () => { 
+      socket.off("matchFound", handler); 
+      socket.off("playerCountsUpdated", countsHandler);
+    };
   }, [socket, goToGame]);
 
   // ── Searching countdown ───────────────────────────────────────────────────
@@ -249,7 +260,10 @@ export default function OnlineLobby() {
         >
           <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t("lobby.title", "Online Match")}</Text>
+        <View style={styles.headerTitleContainer}>
+          <Globe color={colors.primary} size={20} />
+          <Text style={styles.headerTitle}>{t("lobby.title", "Play Online")}</Text>
+        </View>
         {/* Connection indicator */}
         <View style={[styles.connDot, connected ? styles.connDotOn : styles.connDotOff]} />
       </View>
@@ -273,12 +287,19 @@ export default function OnlineLobby() {
               <View style={styles.statCard}>
                 <Users color={colors.primary} size={20} />
                 <Text style={styles.statValue}>
-                  {connected ? "●" : "—"}
+                  {connected ? counts.online : "—"}
                 </Text>
                 <Text style={styles.statLabel}>
-                  {connected
-                    ? t("lobby.connected", "Connected")
-                    : t("lobby.offline", "Offline")}
+                  {t("lobby.playersOnline", "Online")}
+                </Text>
+              </View>
+              <View style={styles.statCard}>
+                <Search color={colors.primary} size={20} />
+                <Text style={styles.statValue}>
+                  {connected ? counts.searching : "—"}
+                </Text>
+                <Text style={styles.statLabel}>
+                  {t("lobby.playersSearching", "Searching")}
                 </Text>
               </View>
               <View style={styles.statCard}>
@@ -309,7 +330,7 @@ export default function OnlineLobby() {
                 <View style={[styles.modeCard, styles.activeModeCard]}>
                   <Zap color={colors.primary} size={24} />
                   <Text style={styles.modeTitle}>Blitz</Text>
-                  <Text style={styles.modeDesc}>5 min</Text>
+                  <Text style={styles.modeDesc}>{t("setupAi.time.minutes", { minutes: 5 })}</Text>
                 </View>
 
                 {/* Rapid — coming soon */}
@@ -318,7 +339,7 @@ export default function OnlineLobby() {
                   <Text style={[styles.modeTitle, styles.modeTitleDisabled]}>Rapid</Text>
                   <Text style={[styles.modeDesc, styles.modeDescDisabled]}>10 + 5</Text>
                   <View style={styles.soonBadge}>
-                    <Text style={styles.soonBadgeText}>SOON</Text>
+                    <Text style={styles.soonBadgeText}>{t("play.modes.online.comingSoon", "SOON")}</Text>
                   </View>
                 </View>
 
@@ -328,7 +349,7 @@ export default function OnlineLobby() {
                   <Text style={[styles.modeTitle, styles.modeTitleDisabled]}>Classic</Text>
                   <Text style={[styles.modeDesc, styles.modeDescDisabled]}>30 + 0</Text>
                   <View style={styles.soonBadge}>
-                    <Text style={styles.soonBadgeText}>SOON</Text>
+                    <Text style={styles.soonBadgeText}>{t("play.modes.online.comingSoon", "SOON")}</Text>
                   </View>
                 </View>
               </View>
@@ -363,7 +384,7 @@ export default function OnlineLobby() {
             </Text>
 
             <View style={styles.searchTimerBlock}>
-              <Text style={styles.searchTimerLabel}>Time remaining</Text>
+              <Text style={styles.searchTimerLabel}>{t("lobby.timeRemaining")}</Text>
               <Text
                 style={[
                   styles.searchTimer,
@@ -374,16 +395,22 @@ export default function OnlineLobby() {
               </Text>
             </View>
 
+            <View style={styles.searchingStats}>
+              <Text style={styles.searchingStatsText}>
+                {counts.searching} {t("lobby.othersSearching", "players searching")}
+              </Text>
+            </View>
+
             <View style={styles.modeChip}>
               <Zap color={colors.primary} size={14} />
-              <Text style={styles.modeChipText}>5 min · Blitz</Text>
+              <Text style={styles.modeChipText}>{t("setupAi.time.minutes", { minutes: 5 })} · Blitz</Text>
             </View>
 
             {/* Timeout hint — shown once countdown reaches 0 */}
             {timeoutReached && (
               <View style={styles.timeoutCard}>
                 <Text style={styles.timeoutText}>
-                  No opponent found yet. Try the AI or search again.
+                  {t("lobby.timeoutHint")}
                 </Text>
                 <View style={styles.timeoutActions}>
                   <TouchableOpacity
@@ -397,14 +424,14 @@ export default function OnlineLobby() {
                     }}
                   >
                     <Zap color={colors.primary} size={15} />
-                    <Text style={styles.timeoutBtnAIText}>Match vs AI</Text>
+                    <Text style={styles.timeoutBtnAIText}>{t("lobby.matchVsAi")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.timeoutBtn, styles.timeoutBtnSearch]}
                     onPress={handleKeepSearching}
                   >
                     <Search color={colors.textMuted} size={15} />
-                    <Text style={styles.timeoutBtnSearchText}>Search Again</Text>
+                    <Text style={styles.timeoutBtnSearchText}>{t("lobby.searchAgain")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -448,6 +475,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   connDot: {
     width: 10,
     height: 10,
@@ -487,7 +519,7 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
   },
   statCard: {
     flex: 1,
@@ -736,6 +768,19 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: colors.danger,
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  searchingStats: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchingStatsText: {
+    color: colors.textSubtle,
+    fontSize: 14,
     fontWeight: "bold",
   },
 });

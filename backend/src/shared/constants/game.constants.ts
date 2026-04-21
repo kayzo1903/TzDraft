@@ -51,6 +51,7 @@ export enum EndReason {
   DRAW_30_MOVE = 'DRAW_30_MOVE', // Art. 8.3 — 30 moves kings-only, no capture
   DRAW_THREE_KINGS = 'DRAW_THREE_KINGS', // Art. 8.5 — stronger side (3+ kings) failed to win in 12 moves
   DRAW_ENDGAME = 'DRAW_ENDGAME', // Art. 8.4 — K+Man vs K / 2K vs K, no win in 5 full moves
+  DRAW_INSUFFICIENT_MATERIAL = 'DRAW_INSUFFICIENT_MATERIAL', // Art. 8.1 — 1 King vs 1 King (Immediate)
 }
 
 /**
@@ -102,7 +103,7 @@ export const DEFAULT_TIME_CONTROLS = {
 /**
  * Rule Version
  */
-export const RULE_VERSION = 'TZ-8x8-v1';
+export const RULE_VERSION = 'TZ-8x8-v1.1';
 
 /**
  * Default ELO Rating

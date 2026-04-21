@@ -206,6 +206,30 @@ export class GameRulesService {
   }
 
   /**
+   * Art 8.1 — Insufficient Material (1 King vs 1 King).
+   * Declares an immediate draw if both players have only one king and no men,
+   * provided the side whose turn it is possesses at least one legal move.
+   */
+  isDrawByInsufficientMaterial(game: Game): boolean {
+    const whitePieces = game.board.getPiecesByColor(PlayerColor.WHITE);
+    const blackPieces = game.board.getPiecesByColor(PlayerColor.BLACK);
+
+    const is1v1 =
+      whitePieces.length === 1 &&
+      whitePieces[0].isKing() &&
+      blackPieces.length === 1 &&
+      blackPieces[0].isKing();
+
+    if (!is1v1) {
+      return false;
+    }
+
+    // In draughts, if you have no legal moves, you lose.
+    // Insufficient material draw only applies if the player is NOT stalemated.
+    return this.hasLegalMoves(game, game.currentTurn);
+  }
+
+  /**
    * End the game with a result
    */
   endGame(game: Game, winner: Winner, reason: EndReason): void {

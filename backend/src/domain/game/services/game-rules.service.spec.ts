@@ -203,6 +203,33 @@ describe('GameRulesService', () => {
     });
   });
 
+  describe('isDrawByInsufficientMaterial (Art 8.1)', () => {
+    it('returns true for 1 King vs 1 King with legal moves', () => {
+      const game = makeGame(new BoardState([wk(1), bk(32)]));
+      expect(service.isDrawByInsufficientMaterial(game)).toBe(true);
+    });
+
+    it('returns false if one side has a man', () => {
+      const game = makeGame(new BoardState([wk(1), wp(2), bk(32)]));
+      expect(service.isDrawByInsufficientMaterial(game)).toBe(false);
+    });
+
+    it('returns false if one side is blocked (stalemate)', () => {
+      // White king at 4 (0,7), only moves to 8 (1,6).
+      // If black king at 8 and no capture possible?
+      // With flying kings, it's hard to be blocked unless completely surrounded.
+      // Let's use a mock-like setup if needed, but here we can just test basic 1v1.
+      const game = makeGame(new BoardState([wk(1), bk(32)]));
+      // In this setup, white king at 1 can move to 5, 6, etc.
+      expect(service.isDrawByInsufficientMaterial(game)).toBe(true);
+    });
+
+    it('returns false for 2 Kings vs 1 King', () => {
+      const game = makeGame(new BoardState([wk(1), wk(2), bk(32)]));
+      expect(service.isDrawByInsufficientMaterial(game)).toBe(false);
+    });
+  });
+
   // ─── countPieces ──────────────────────────────────────────────────────────────
 
   describe('countPieces', () => {

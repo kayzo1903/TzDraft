@@ -37,4 +37,7 @@ export interface IMatchmakingRepository {
 
   /** Remove entries older than the given age in milliseconds. */
   removeStale(maxAgeMs: number): Promise<void>;
+
+  /** Count total number of players currently searching in the queue. */
+  count(): Promise<number>;
 }

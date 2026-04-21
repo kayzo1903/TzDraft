@@ -133,6 +133,8 @@ export class MakeMoveUseCase {
         this.gameRulesService.isDrawByArticle84Endgame(game.endgameMoveCount)
       ) {
         game.endGame(Winner.DRAW, EndReason.DRAW_ENDGAME);
+      } else if (this.gameRulesService.isDrawByInsufficientMaterial(game)) {
+        game.endGame(Winner.DRAW, EndReason.DRAW_INSUFFICIENT_MATERIAL);
       }
     }
 

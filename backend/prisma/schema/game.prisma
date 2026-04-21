@@ -99,6 +99,7 @@ enum EndReason {
     DRAW_30_MOVE
     DRAW_THREE_KINGS
     DRAW_ENDGAME
+    DRAW_INSUFFICIENT_MATERIAL
 }
 
 enum AiChallengeResult {
