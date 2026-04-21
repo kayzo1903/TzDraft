@@ -70,7 +70,9 @@
     "done": "Imekamilika",
     "back": "Rudi",
     "retry": "Jaribu Tena",
-    "rematch": "Rudia Mechi"
+    "rematch": "Rudia Mechi",
+    "accept": "Kubali",
+    "decline": "Kataa"
   },
   "studies": {
     "title": "Michezo Yangu",
@@ -566,29 +568,33 @@
       "aiThinking": "AI inafikiri...",
       "continueCapture": "Endelea kula",
       "yourMove": "Zamu yako",
-      "botToMove": "Zamu ya AI"
+      "botToMove": "Zamu ya AI",
+      "toMove": "Zamu",
+      "onlineMatch": "MECHI MTANDAONI"
     },
     "endgameCountdown": "Hesabu ya mwisho: hatua {remaining} zimebaki kwa {favored}",
     "endgameCountdownEqual": "Mfalme dhidi ya Mfalme: sare baada ya hatua {remaining}",
     "winnerInline": "Mshindi: {winner}",
     "actions": {
       "undo": "Rudisha",
-      "flip": "Geuza Ubao",
-      "resign": "Jisalimishe",
+      "resign": "Jiondoe",
+      "abort": "Ghairi",
+      "draw": "Sare",
       "reset": "Anza Upya",
       "home": "Nyumbani",
       "mute": "Zima Sauti",
       "unmute": "Washa Sauti",
       "settings": "Mipangilio",
-      "hint": "Dokezo"
+      "hint": "Dokezo",
+      "online": "Mechi Mtandaoni"
     },
     "progression": {
       "disabled": "Umetumia Rudisha — mchezo huu hautafungua bot inayofuata."
     },
     "resign": {
-      "confirmTitle": "Thibitisha Jisalimishe",
-      "confirmQuestion": "Una uhakika unataka kujisalimisha?",
-      "confirmCta": "Ndiyo, Jisalimishe",
+      "confirmTitle": "Jiondoe kwenye mechi?",
+      "confirmQuestion": "Utapoteza mchezo huu na mpinzani wako atashinda.",
+      "confirmCta": "Jiondoe",
       "cancel": "Ghairi"
     },
     "gameOver": {
@@ -610,6 +616,11 @@
       "online": "Mtandaoni",
       "rematchRequested": "Mpinzani anataka kurudia mechi!",
       "waitingForOpponent": "Inasubiri mpinzani akubali…",
+      "rematchEntering": "Inaingia kwenye mchezo mpya...",
+      "rematchAcceptedRedirecting": "Ombi limekubaliwa! Inakupeleka kwenye mchezo...",
+      "rematchDeclined": "Ombi la marudio limekataliwa",
+      "opponentUnavailable": "Mpinzani hapatikani kwa sasa",
+      "opponentInAnotherMatch": "Mpinzani tayari yuko kwenye mchezo mwingine",
       "botLevel": "Kiwango cha AI",
       "levelComplete": "Kiwango cha {level} kimekamilika!",
       "levelUnlocked": "Kiwango cha {level} kimefunguliwa",
@@ -623,7 +634,15 @@
         "stalemate": "Ubanaji",
         "time": "Muda umeisha",
         "resign": "Kujisalimisha",
-        "agreement": "Sare ya makubaliano"
+        "agreement": "Mkubaliano ya Sare"
+      },
+      "drawOffer": {
+        "title": "Ofa ya Sare",
+        "description": "{name} anasema: SARE VIPI? Unakubali?"
+      },
+      "drawRequest": {
+        "title": "Omba sare?",
+        "description": "Mpinzani atapewa taarifa ya kukata au kukubali"
       }
     }
   },

@@ -70,7 +70,9 @@
     "done": "Done",
     "back": "Back",
     "retry": "Retry",
-    "rematch": "Rematch"
+    "rematch": "Rematch",
+    "accept": "Accept",
+    "decline": "Decline"
   },
   "studies": {
     "title": "My Studies",
@@ -566,7 +568,9 @@
       "aiThinking": "AI thinking...",
       "continueCapture": "Continue capture",
       "yourMove": "Your move",
-      "botToMove": "Bot to move"
+      "botToMove": "Bot to move",
+      "toMove": "To Move",
+      "onlineMatch": "ONLINE MATCH"
     },
     "endgameCountdown": "Endgame countdown: {remaining} moves remaining for {favored}",
     "endgameCountdownEqual": "King vs King: draw in {remaining} moves",
@@ -574,12 +578,15 @@
     "actions": {
       "undo": "Undo",
       "resign": "End a Game",
+      "abort": "Abort",
+      "draw": "Draw",
       "reset": "Reset Game",
       "home": "Home",
       "mute": "Mute",
       "unmute": "Unmute",
       "settings": "Options",
-      "hint": "Hint"
+      "hint": "Hint",
+      "online": "Online Game"
     },
     "progression": {
       "disabled": "Undo used — this game will not unlock the next bot."
@@ -609,6 +616,11 @@
       "online": "Online",
       "rematchRequested": "Opponent wants a rematch!",
       "waitingForOpponent": "Waiting for opponent to accept…",
+      "rematchEntering": "Entering new game...",
+      "rematchAcceptedRedirecting": "Match Accepted! Redirecting...",
+      "rematchDeclined": "Rematch Declined",
+      "opponentUnavailable": "Opponent is no longer available",
+      "opponentInAnotherMatch": "Opponent is already in another match",
       "botLevel": "Bot Level",
       "levelComplete": "Level {level} complete!",
       "levelUnlocked": "Level {level} Unlocked",
@@ -623,6 +635,14 @@
         "time": "Time expired",
         "resign": "Resignation",
         "agreement": "Draw by Agreement"
+      },
+      "drawOffer": {
+        "title": "Draw Offer",
+        "description": "{name} has offered a draw. Would you like to accept?"
+      },
+      "drawRequest": {
+        "title": "Offer a Draw?",
+        "description": "Opponent will be notified to accept or decline."
       }
     }
   },

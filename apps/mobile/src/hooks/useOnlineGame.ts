@@ -36,6 +36,7 @@ export interface DrawOfferState {
 
 export interface RematchOfferState {
   offeredByUserId: string | null;
+  status: "pending" | "accepted" | "declined" | "unavailable" | "cancelled" | null;
 }
 
 /** Shape returned by GET /games/:id → players.white / players.black */
@@ -107,7 +108,10 @@ export function useOnlineGame(gameId: string) {
 
   // ── Draw / rematch ─────────────────────────────────────────────────────────
   const [drawOffer, setDrawOffer] = useState<DrawOfferState>({ offeredByUserId: null });
-  const [rematchOffer, setRematchOffer] = useState<RematchOfferState>({ offeredByUserId: null });
+  const [rematchOffer, setRematchOffer] = useState<RematchOfferState>({
+    offeredByUserId: null,
+    status: null,
+  });
   const [rematchNewGameId, setRematchNewGameId] = useState<string | null>(null);
   // Tracks whether the local player was the one who offered the rematch (vs accepted).
   // Used so the navigation can set isHost correctly for the new game.
@@ -615,15 +619,16 @@ export function useOnlineGame(gameId: string) {
     };
 
     const handleRematchOffered = (data: { offeredByUserId: string }) => {
-      setRematchOffer({ offeredByUserId: data.offeredByUserId });
+      setRematchOffer({ offeredByUserId: data.offeredByUserId, status: "pending" });
     };
     const handleRematchAccepted = (data: { newGameId: string }) => {
+      setRematchOffer((prev) => ({ ...prev, status: "accepted" }));
       setRematchNewGameId(data.newGameId);
     };
     const handleRematchDeclined = () =>
-      setRematchOffer({ offeredByUserId: null });
+      setRematchOffer({ offeredByUserId: null, status: "declined" });
     const handleRematchCancelled = () =>
-      setRematchOffer({ offeredByUserId: null });
+      setRematchOffer({ offeredByUserId: null, status: "cancelled" });
 
     socket.on("gameStateUpdated", handleUpdate);
     socket.on("gameOver", handleGameOver);
@@ -654,6 +659,17 @@ export function useOnlineGame(gameId: string) {
       socket.off("rematchCancelled", handleRematchCancelled);
     };
   }, [socket, gameId, fetchGameState, applyClockSnapshot]);
+
+  // ── Auto-reset rematch status after 3s on decline/unavailable ───────────
+  useEffect(() => {
+    if (rematchOffer.status === "declined" || rematchOffer.status === "unavailable") {
+      const timer = setTimeout(() => {
+        setRematchOffer({ offeredByUserId: null, status: null });
+        setRematchIWasOfferer(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [rematchOffer.status]);
 
   // ── Square selection ───────────────────────────────────────────────────────
   const selectSquare = useCallback(
@@ -823,29 +839,50 @@ export function useOnlineGame(gameId: string) {
 
   // ── Rematch actions ────────────────────────────────────────────────────────
   const offerRematch = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
-    socket.emit("offerRematch", { gameId });
-    setRematchOffer({ offeredByUserId: "self" });
+    if (!socket) {
+      setError("Not connected — please wait.");
+      return;
+    }
+    // Result check ensures we only offer AFTER a game ends
+    if (!result) return;
+
+    socket.emit(
+      "offerRematch",
+      { gameId },
+      (res?: { error?: string }) => {
+        if (res?.error) {
+          setRematchOffer({
+            offeredByUserId: null,
+            status: res.error.includes("already") ? "unavailable" : "declined",
+          });
+        }
+      }
+    );
+    setRematchOffer({ offeredByUserId: "self", status: "pending" });
     setRematchIWasOfferer(true);
-  }, [socket, gameId]);
+  }, [socket, gameId, result]);
 
   const acceptRematch = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
+    if (!socket) {
+      setError("Not connected — please wait.");
+      return;
+    }
     socket.emit("acceptRematch", { gameId });
-    // Acceptor is NOT the offerer — keep rematchIWasOfferer as false
+    setRematchOffer((prev) => ({ ...prev, status: "accepted" }));
+    setRematchIWasOfferer(false);
   }, [socket, gameId]);
 
   const declineRematch = useCallback(() => {
     if (!socket) return;
     socket.emit("declineRematch", { gameId });
-    setRematchOffer({ offeredByUserId: null });
+    setRematchOffer({ offeredByUserId: null, status: "declined" });
     setRematchIWasOfferer(false);
   }, [socket, gameId]);
 
   const cancelRematch = useCallback(() => {
     if (!socket) return;
     socket.emit("cancelRematch", { gameId });
-    setRematchOffer({ offeredByUserId: null });
+    setRematchOffer({ offeredByUserId: null, status: "cancelled" });
     setRematchIWasOfferer(false);
   }, [socket, gameId]);
 
@@ -879,11 +916,14 @@ export function useOnlineGame(gameId: string) {
     // Clock
     timeLeft,
     endgameCountdown,
-    // Draw / rematch
     drawOffer,
     rematchOffer,
     rematchNewGameId,
     rematchIWasOfferer,
+    drawOfferedByMe: drawOffer.offeredByUserId !== null && drawOffer.offeredByUserId === userId,
+    rematchOfferedByMe:
+      rematchOffer.offeredByUserId !== null &&
+      (rematchOffer.offeredByUserId === userId || rematchOffer.offeredByUserId === "self"),
     // Opponent connection
     opponentConnected,
     disconnectSecondsRemaining,

@@ -28,6 +28,7 @@ import {
   Wifi,
   WifiOff,
   X,
+  Check,
   AlertCircle,
   User as UserIcon,
 } from "lucide-react-native";
@@ -382,6 +383,7 @@ function ResignModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onCancel}>
@@ -390,22 +392,22 @@ function ResignModal({
             <View style={modalStyles.iconWrap}>
               <Flag color={colors.danger} size={28} />
             </View>
-            <Text style={modalStyles.title}>Resign this game?</Text>
+            <Text style={modalStyles.title}>{t("gameArena.resign.confirmTitle")}</Text>
             <Text style={modalStyles.body}>
-              You will concede the match and your opponent wins.
+              {t("gameArena.resign.confirmQuestion")}
             </Text>
             <View style={modalStyles.btns}>
               <TouchableOpacity
                 style={[modalStyles.btn, modalStyles.btnSecondary]}
                 onPress={onCancel}
               >
-                <Text style={modalStyles.btnText}>Cancel</Text>
+                <X color={colors.foreground} size={22} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[modalStyles.btn, modalStyles.btnDanger]}
                 onPress={onConfirm}
               >
-                <Text style={[modalStyles.btnText, { color: "#fff" }]}>Resign</Text>
+                <Check color="#fff" size={22} />
               </TouchableOpacity>
             </View>
           </View>
@@ -522,6 +524,7 @@ function OnlineDrawOfferModal({
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  const { t } = useTranslation();
   if (!visible) return null;
   return (
     <View style={modalStyles.absoluteBottom}>
@@ -531,18 +534,20 @@ function OnlineDrawOfferModal({
             <Handshake color="#38bdf8" size={22} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>Draw Offered</Text>
+            <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>
+              {t("gameArena.gameOver.drawOffer.title")}
+            </Text>
             <Text style={[modalStyles.body, { textAlign: "left" }]}>
-              <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{opponentName}</Text> offers a draw.
+              {t("gameArena.gameOver.drawOffer.description", { name: opponentName })}
             </Text>
           </View>
         </View>
         <View style={[modalStyles.btns, { marginTop: 8 }]}>
           <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onDecline}>
-            <Text style={modalStyles.btnText}>Decline</Text>
+            <X color={colors.foreground} size={22} />
           </TouchableOpacity>
           <TouchableOpacity style={[modalStyles.btn, { backgroundColor: "#38bdf8" }]} onPress={onAccept}>
-            <Text style={[modalStyles.btnText, { color: "#000" }]}>Accept</Text>
+            <Check color="#000" size={22} />
           </TouchableOpacity>
         </View>
       </View>
@@ -570,16 +575,20 @@ function OnlineDrawConfirmModal({
             <Handshake color={colors.primary} size={22} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>{t("gameArena.gameOver.drawRequestTitle", "Offer a Draw?")}</Text>
-            <Text style={[modalStyles.body, { textAlign: "left" }]}>{t("gameArena.gameOver.drawRequestDesc", "Opponent will be notified to accept or decline.")}</Text>
+            <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>
+              {t("gameArena.gameOver.drawRequest.title")}
+            </Text>
+            <Text style={[modalStyles.body, { textAlign: "left" }]}>
+              {t("gameArena.gameOver.drawRequest.description")}
+            </Text>
           </View>
         </View>
         <View style={[modalStyles.btns, { marginTop: 8 }]}>
           <TouchableOpacity style={[modalStyles.btn, modalStyles.btnSecondary]} onPress={onCancel}>
-            <Text style={modalStyles.btnText}>{t("common.cancel")}</Text>
+            <X color={colors.foreground} size={22} />
           </TouchableOpacity>
           <TouchableOpacity style={[modalStyles.btn, { backgroundColor: colors.primary }]} onPress={onConfirm}>
-            <Text style={[modalStyles.btnText, { color: "#000" }]}>{t("gameArena.actions.draw", "Offer Draw")}</Text>
+            <Check color="#000" size={22} />
           </TouchableOpacity>
         </View>
       </View>
@@ -593,26 +602,29 @@ function ResultModal({
   reason,
   moveCount,
   myColorStr,
-  rematchOfferedByMe,
-  rematchOfferedByOpponent,
   onHome,
   onOfferRematch,
   onAcceptRematch,
   onDeclineRematch,
   onCancelRematch,
+  rematchOffer,
+  rematchOfferedByMe,
 }: {
   visible: boolean;
   winner: "WHITE" | "BLACK" | "DRAW" | null;
   reason?: string;
   moveCount: number;
   myColorStr: "WHITE" | "BLACK" | null;
-  rematchOfferedByMe: boolean;
-  rematchOfferedByOpponent: boolean;
   onHome: () => void;
   onOfferRematch: () => void;
   onAcceptRematch: () => void;
   onDeclineRematch: () => void;
   onCancelRematch: () => void;
+  rematchOffer: {
+    offeredByUserId: string | null;
+    status: "pending" | "accepted" | "declined" | "unavailable" | "cancelled" | null;
+  };
+  rematchOfferedByMe: boolean;
 }) {
   const { t } = useTranslation();
   if (!visible) return null;
@@ -689,36 +701,72 @@ function ResultModal({
           {/* Rematch section — only if game wasn't aborted */}
           {!isAborted && (
             <View style={resStyles.rematch}>
-              {rematchOfferedByOpponent ? (
+              {rematchOffer.offeredByUserId !== null && !rematchOfferedByMe ? (
                 <>
-                  <Text style={resStyles.rematchHint}>{t("gameArena.gameOver.rematchRequested")}</Text>
+                  <Text style={resStyles.rematchHint}>
+                    {rematchOffer.status === "accepted"
+                      ? t("gameArena.gameOver.rematchEntering")
+                      : t("gameArena.gameOver.rematchRequested")}
+                  </Text>
                   <View style={resStyles.rematchRow}>
                     <TouchableOpacity
                       style={[resStyles.rematchBtn, resStyles.rematchBtnDecline]}
                       onPress={onDeclineRematch}
+                      disabled={rematchOffer.status === "accepted"}
                     >
-                      <Text style={resStyles.rematchBtnText}>{t("common.cancel")}</Text>
+                      <X color={colors.foreground} size={20} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[resStyles.rematchBtn, resStyles.rematchBtnAccept]}
                       onPress={onAcceptRematch}
+                      disabled={rematchOffer.status === "accepted"}
                     >
-                      <Text style={[resStyles.rematchBtnText, resStyles.rematchBtnTextAccept]}>{t("auth.steps.otp.button")}</Text>
+                      {rematchOffer.status === "accepted" ? (
+                        <ActivityIndicator color="#000" size="small" />
+                      ) : (
+                        <Check color="#000" size={20} />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </>
               ) : rematchOfferedByMe ? (
                 <View style={resStyles.rematchWaiting}>
                   <ActivityIndicator color={colors.primary} size="small" />
-                  <Text style={resStyles.rematchWaitText}>{t("gameArena.gameOver.waitingForOpponent")}</Text>
-                  <TouchableOpacity onPress={onCancelRematch} style={resStyles.rematchCancelBtn}>
-                    <Text style={resStyles.rematchCancelText}>{t("common.cancel")}</Text>
+                  <Text style={resStyles.rematchWaitText}>
+                    {rematchOffer.status === "accepted"
+                      ? t("gameArena.gameOver.rematchAcceptedRedirecting")
+                      : t("gameArena.gameOver.waitingForOpponent")}
+                  </Text>
+                  {rematchOffer.status !== "accepted" && (
+                    <TouchableOpacity onPress={onCancelRematch} style={resStyles.rematchCancelBtn}>
+                      <Text style={resStyles.rematchCancelText}>{t("common.cancel")}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : rematchOffer.status === "declined" ? (
+                <View style={resStyles.rematchWaiting}>
+                  <Text style={[resStyles.rematchWaitText, { color: colors.danger }]}>
+                    {t("gameArena.gameOver.rematchDeclined")}
+                  </Text>
+                  <TouchableOpacity style={resStyles.rematchBtn} onPress={onOfferRematch}>
+                    <Text style={resStyles.rematchBtnText}>{t("common.rematch")}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : rematchOffer.status === "unavailable" ? (
+                <View style={resStyles.rematchWaiting}>
+                  <Text style={[resStyles.rematchWaitText, { color: colors.warning }]}>
+                    {t("gameArena.gameOver.opponentUnavailable")}
+                  </Text>
+                  <TouchableOpacity style={resStyles.rematchBtn} onPress={onOfferRematch}>
+                    <Text style={resStyles.rematchBtnText}>{t("common.rematch")}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <TouchableOpacity style={resStyles.rematchBtn} onPress={onOfferRematch}>
-                  <Text style={resStyles.rematchBtnText}>{t("common.rematch")}</Text>
-                </TouchableOpacity>
+                <View style={resStyles.rematchRow}>
+                  <TouchableOpacity style={resStyles.rematchBtn} onPress={onOfferRematch}>
+                    <Text style={resStyles.rematchBtnText}>{t("common.rematch")}</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           )}
@@ -888,6 +936,7 @@ export default function OnlineGameScreen() {
 
   const game = useOnlineGame(gameId);
   const audio = useGameAudio();
+  const { t } = useTranslation();
 
   const [showResignModal, setShowResignModal] = useState(false);
   const [showDrawConfirmModal, setShowDrawConfirmModal] = useState(false);
@@ -1044,11 +1093,7 @@ export default function OnlineGameScreen() {
   const hasTimeControl = game.timeLeft !== null;
   const isMyTurn = game.currentPlayer === game.myColor && !game.result && !game.isWaiting;
 
-  const drawOfferedByMe =
-    game.drawOffer.offeredByUserId !== null &&
-    game.drawOffer.offeredByUserId === (game.myColorStr === "WHITE"
-      ? game.players.white?.id
-      : game.players.black?.id);
+  const drawOfferedByMe = game.drawOfferedByMe;
 
   const currentPlayerStr: "WHITE" | "BLACK" =
     game.currentPlayer === PlayerColor.WHITE ? "WHITE" : "BLACK";
@@ -1081,7 +1126,7 @@ export default function OnlineGameScreen() {
         </TouchableOpacity>
 
         <View style={styles.titleArea}>
-          <Text style={styles.titleBadge}>ONLINE MATCH</Text>
+          <Text style={styles.titleBadge}>{t("gameArena.status.onlineMatch")}</Text>
           <Text style={styles.titleText} numberOfLines={1}>
             {game.players.white || game.players.black
               ? `${playerDisplayName(game.players.white)} vs ${playerDisplayName(game.players.black)}`
@@ -1148,7 +1193,7 @@ export default function OnlineGameScreen() {
             </View>
             {currentPlayerStr === topColor && !game.result && (
               <View style={styles.toMoveChip}>
-                <Text style={styles.toMoveText}>To Move</Text>
+                <Text style={styles.toMoveText}>{t("gameArena.status.toMove")}</Text>
               </View>
             )}
             {hasTimeControl && game.timeLeft && (
@@ -1241,7 +1286,7 @@ export default function OnlineGameScreen() {
             </View>
             {currentPlayerStr === bottomColor && !game.result && (
               <View style={styles.toMoveChip}>
-                <Text style={styles.toMoveText}>To Move</Text>
+                <Text style={styles.toMoveText}>{t("gameArena.status.toMove")}</Text>
               </View>
             )}
             {hasTimeControl && game.timeLeft && (
@@ -1338,7 +1383,7 @@ export default function OnlineGameScreen() {
             {game.moveCount === 0 && !game.result && (
               <TouchableOpacity style={styles.actionBtn} onPress={() => game.abort()}>
                 <X color={colors.danger} size={22} />
-                <Text style={[styles.actionBtnLabel, { color: colors.danger }]}>Abort</Text>
+                <Text style={[styles.actionBtnLabel, { color: colors.danger }]}>{t("gameArena.actions.abort")}</Text>
               </TouchableOpacity>
             )}
 
@@ -1356,7 +1401,7 @@ export default function OnlineGameScreen() {
                   size={22}
                 />
                 <Text style={[styles.actionBtnLabel, drawOfferedByMe && { color: colors.primary }]}>
-                  {drawOfferedByMe ? "Cancel" : "Draw"}
+                  {drawOfferedByMe ? t("common.cancel") : t("gameArena.actions.draw")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -1365,7 +1410,7 @@ export default function OnlineGameScreen() {
             {game.moveCount > 0 && !game.result && (
               <TouchableOpacity style={styles.actionBtn} onPress={() => setShowResignModal(true)}>
                 <Flag color={colors.foreground} size={22} />
-                <Text style={[styles.actionBtnLabel, { color: colors.foreground }]}>Resign</Text>
+                <Text style={[styles.actionBtnLabel, { color: colors.foreground }]}>{t("gameArena.actions.resign")}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1388,16 +1433,13 @@ export default function OnlineGameScreen() {
         reason={game.result?.reason}
         moveCount={game.moveCount}
         myColorStr={game.myColorStr}
-        rematchOfferedByMe={game.rematchOffer.offeredByUserId === "self"}
-        rematchOfferedByOpponent={
-          game.rematchOffer.offeredByUserId !== null &&
-          game.rematchOffer.offeredByUserId !== "self"
-        }
         onHome={() => router.replace(exitRoute as any)}
         onOfferRematch={game.offerRematch}
         onAcceptRematch={game.acceptRematch}
         onDeclineRematch={game.declineRematch}
         onCancelRematch={game.cancelRematch}
+        rematchOffer={game.rematchOffer}
+        rematchOfferedByMe={game.rematchOfferedByMe}
       />
 
       <OnlineDrawOfferModal
