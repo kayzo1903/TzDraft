@@ -508,8 +508,9 @@ const styles = StyleSheet.create({
   },
   // ── Hero / Badge ─────────────────────────────────────────────────────────────
   hero: {
-    padding: 24,
-    paddingTop: 16,
+    paddingHorizontal: 24,
+    paddingTop: 4,
+    paddingBottom: 16,
     alignItems: "center",
   },
   badge: {

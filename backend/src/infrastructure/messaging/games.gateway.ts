@@ -620,6 +620,24 @@ export class GamesGateway
     const userId = client.data.user?.id;
     if (!userId) return { error: 'Not authenticated' };
 
+    const gameRepo = this.moduleRef.get('IGameRepository', { strict: false });
+    const game = await gameRepo.findById(data.gameId);
+    if (!game) return { error: 'Game not found' };
+
+    const opponentId =
+      game.whitePlayerId === userId ? game.blackPlayerId : game.whitePlayerId;
+    if (!opponentId) return { error: 'No opponent found' };
+
+    // Check if opponent is still online and in this game room.
+    // If they already joined a new game, K_USER_GAME will point elsewhere.
+    const opponentActiveGameId = this.pubClient
+      ? await this.pubClient.get(K_USER_GAME(opponentId))
+      : (this.localUserActiveGame.get(opponentId) ?? null);
+
+    if (opponentActiveGameId && opponentActiveGameId !== data.gameId) {
+      return { error: 'Opponent is already in another match' };
+    }
+
     const existing = this.pubClient
       ? await this.pubClient.get(K_REMATCH(data.gameId))
       : (this.localRematchOffers.get(data.gameId) ?? null);
@@ -835,6 +853,24 @@ export class GamesGateway
   ): Promise<void> {
     if (!(await this.isInRoom(client, data.gameId))) return;
     client.to(data.gameId).emit('voice:hangup', {});
+  }
+
+  @SubscribeMessage('sendReaction')
+  async handleSendReaction(
+    @MessageBody() data: { gameId: string; emoji: string },
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    const userId = client.data.user?.id;
+    if (!userId || !data.gameId || !data.emoji) return;
+    if (!(await this.isInRoom(client, data.gameId))) return;
+
+    const APPROVED_EMOJIS = ['👍', '👏', '🤣', '😮', '🔥', '🧠', '😠', '🙏'];
+    if (!APPROVED_EMOJIS.includes(data.emoji)) return;
+
+    this.server.to(data.gameId).emit('reactionReceived', {
+      userId,
+      emoji: data.emoji,
+    });
   }
 
   /* ── Timeout claim ──────────────────────────────────────────────────── */

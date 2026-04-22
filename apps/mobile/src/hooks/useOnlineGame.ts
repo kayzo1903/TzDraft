@@ -9,6 +9,7 @@ import {
 import { matchService } from "../lib/match-service";
 import { useAuthStore } from "../auth/auth-store";
 import { useSocket } from "./useSocket";
+import { useTranslation } from "react-i18next";
 
 const INITIAL_FEN =
   "W:W1,2,3,4,5,6,7,8,9,10,11,12:B21,22,23,24,25,26,27,28,29,30,31,32";
@@ -36,6 +37,7 @@ export interface DrawOfferState {
 
 export interface RematchOfferState {
   offeredByUserId: string | null;
+  status: "pending" | "accepted" | "declined" | "unavailable" | "cancelled" | null;
 }
 
 /** Shape returned by GET /games/:id → players.white / players.black */
@@ -62,11 +64,19 @@ export interface MoveHistoryEntry {
   to: number;
 }
 
+export interface GameReaction {
+  id: string;
+  emoji: string;
+  userId: string;
+  timestamp: number;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useOnlineGame(gameId: string) {
   const bridge = useMkaguzi();
-  const { socket } = useSocket();
+  const { socket, connected, reconnecting } = useSocket();
+  const { t } = useTranslation();
 
   // ── Core board state ───────────────────────────────────────────────────────
   const [fen, setFen] = useState(INITIAL_FEN);
@@ -107,11 +117,17 @@ export function useOnlineGame(gameId: string) {
 
   // ── Draw / rematch ─────────────────────────────────────────────────────────
   const [drawOffer, setDrawOffer] = useState<DrawOfferState>({ offeredByUserId: null });
-  const [rematchOffer, setRematchOffer] = useState<RematchOfferState>({ offeredByUserId: null });
+  const [rematchOffer, setRematchOffer] = useState<RematchOfferState>({
+    offeredByUserId: null,
+    status: null,
+  });
   const [rematchNewGameId, setRematchNewGameId] = useState<string | null>(null);
   // Tracks whether the local player was the one who offered the rematch (vs accepted).
   // Used so the navigation can set isHost correctly for the new game.
   const [rematchIWasOfferer, setRematchIWasOfferer] = useState(false);
+
+  // ── Reactions ──────────────────────────────────────────────────────────────
+  const [activeReactions, setActiveReactions] = useState<GameReaction[]>([]);
 
   // ── Disconnect tracking ────────────────────────────────────────────────────
   const [opponentConnected, setOpponentConnected] = useState(true);
@@ -615,15 +631,32 @@ export function useOnlineGame(gameId: string) {
     };
 
     const handleRematchOffered = (data: { offeredByUserId: string }) => {
-      setRematchOffer({ offeredByUserId: data.offeredByUserId });
+      setRematchOffer({ offeredByUserId: data.offeredByUserId, status: "pending" });
     };
     const handleRematchAccepted = (data: { newGameId: string }) => {
+      setRematchOffer((prev) => ({ ...prev, status: "accepted" }));
       setRematchNewGameId(data.newGameId);
     };
     const handleRematchDeclined = () =>
-      setRematchOffer({ offeredByUserId: null });
+      setRematchOffer({ offeredByUserId: null, status: "declined" });
     const handleRematchCancelled = () =>
-      setRematchOffer({ offeredByUserId: null });
+      setRematchOffer({ offeredByUserId: null, status: "cancelled" });
+
+    const handleReactionReceived = (data: { userId: string; emoji: string }) => {
+      const newReaction: GameReaction = {
+        id: Math.random().toString(36).substring(7),
+        emoji: data.emoji,
+        userId: data.userId,
+        timestamp: Date.now(),
+      };
+
+      setActiveReactions((prev) => [...prev, newReaction]);
+
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        setActiveReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
+      }, 3000);
+    };
 
     socket.on("gameStateUpdated", handleUpdate);
     socket.on("gameOver", handleGameOver);
@@ -637,6 +670,7 @@ export function useOnlineGame(gameId: string) {
     socket.on("rematchAccepted", handleRematchAccepted);
     socket.on("rematchDeclined", handleRematchDeclined);
     socket.on("rematchCancelled", handleRematchCancelled);
+    socket.on("reactionReceived", handleReactionReceived);
 
     return () => {
       socket.off("connect", handleReconnect);
@@ -652,8 +686,20 @@ export function useOnlineGame(gameId: string) {
       socket.off("rematchAccepted", handleRematchAccepted);
       socket.off("rematchDeclined", handleRematchDeclined);
       socket.off("rematchCancelled", handleRematchCancelled);
+      socket.off("reactionReceived", handleReactionReceived);
     };
-  }, [socket, gameId, fetchGameState, applyClockSnapshot]);
+  }, [socket, gameId, fetchGameState, applyClockSnapshot, userId]);
+
+  // ── Auto-reset rematch status after 3s on decline/unavailable ───────────
+  useEffect(() => {
+    if (rematchOffer.status === "declined" || rematchOffer.status === "unavailable") {
+      const timer = setTimeout(() => {
+        setRematchOffer({ offeredByUserId: null, status: null });
+        setRematchIWasOfferer(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [rematchOffer.status]);
 
   // ── Square selection ───────────────────────────────────────────────────────
   const selectSquare = useCallback(
@@ -753,11 +799,11 @@ export function useOnlineGame(gameId: string) {
         if (ackHandled) return;
         ackHandled = true;
         setIsSubmitting(false);
-        setError("Move timed out — check your connection.");
+        setError(t("gameArena.status.moveTimeout"));
         fetchGameState();
       }, 8000);
     },
-    [bridge, fen, moveCount, gameId, result, socket, isSubmitting, fetchGameState],
+    [bridge, fen, moveCount, gameId, result, socket, isSubmitting, fetchGameState, t],
   );
 
   // ── Start game (host) ──────────────────────────────────────────────────────
@@ -823,31 +869,71 @@ export function useOnlineGame(gameId: string) {
 
   // ── Rematch actions ────────────────────────────────────────────────────────
   const offerRematch = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
-    socket.emit("offerRematch", { gameId });
-    setRematchOffer({ offeredByUserId: "self" });
+    if (!socket) {
+      setError("Not connected — please wait.");
+      return;
+    }
+    // Result check ensures we only offer AFTER a game ends
+    if (!result) return;
+
+    socket.emit(
+      "offerRematch",
+      { gameId },
+      (res?: { error?: string }) => {
+        if (res?.error) {
+          setRematchOffer({
+            offeredByUserId: null,
+            status: res.error.includes("already") ? "unavailable" : "declined",
+          });
+        }
+      }
+    );
+    setRematchOffer({ offeredByUserId: "self", status: "pending" });
     setRematchIWasOfferer(true);
-  }, [socket, gameId]);
+  }, [socket, gameId, result]);
 
   const acceptRematch = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
+    if (!socket) {
+      setError("Not connected — please wait.");
+      return;
+    }
     socket.emit("acceptRematch", { gameId });
-    // Acceptor is NOT the offerer — keep rematchIWasOfferer as false
+    setRematchOffer((prev) => ({ ...prev, status: "accepted" }));
+    setRematchIWasOfferer(false);
   }, [socket, gameId]);
 
   const declineRematch = useCallback(() => {
     if (!socket) return;
     socket.emit("declineRematch", { gameId });
-    setRematchOffer({ offeredByUserId: null });
+    setRematchOffer({ offeredByUserId: null, status: "declined" });
     setRematchIWasOfferer(false);
   }, [socket, gameId]);
 
   const cancelRematch = useCallback(() => {
     if (!socket) return;
     socket.emit("cancelRematch", { gameId });
-    setRematchOffer({ offeredByUserId: null });
+    setRematchOffer({ offeredByUserId: null, status: "cancelled" });
     setRematchIWasOfferer(false);
   }, [socket, gameId]);
+
+  // ── Reactions ──────────────────────────────────────────────────────────────
+  const lastReactionTime = useRef<number>(0);
+
+  const sendReaction = useCallback(
+    (emoji: string) => {
+      if (!socket || !userId) return;
+      
+      // Throttle: limit to 1 reaction per 1.5 seconds per user to prevent spam
+      const now = Date.now();
+      if (now - lastReactionTime.current < 1500) {
+        return;
+      }
+      lastReactionTime.current = now;
+
+      socket.emit("sendReaction", { gameId, emoji });
+    },
+    [socket, gameId, userId]
+  );
 
   return {
     // Board state
@@ -879,11 +965,17 @@ export function useOnlineGame(gameId: string) {
     // Clock
     timeLeft,
     endgameCountdown,
-    // Draw / rematch
     drawOffer,
     rematchOffer,
     rematchNewGameId,
     rematchIWasOfferer,
+    drawOfferedByMe: drawOffer.offeredByUserId !== null && drawOffer.offeredByUserId === userId,
+    rematchOfferedByMe:
+      rematchOffer.offeredByUserId !== null &&
+      (rematchOffer.offeredByUserId === userId || rematchOffer.offeredByUserId === "self"),
+    // Local connection
+    connected,
+    reconnecting,
     // Opponent connection
     opponentConnected,
     disconnectSecondsRemaining,
@@ -900,6 +992,8 @@ export function useOnlineGame(gameId: string) {
     acceptRematch,
     declineRematch,
     cancelRematch,
+    activeReactions,
+    sendReaction,
     refetch: fetchGameState,
   };
 }

@@ -74,4 +74,10 @@ export const matchService = {
   async cancelQueue(): Promise<void> {
     await api.post("/games/queue/cancel");
   },
+
+  /** Get the current active game for the user, if any. */
+  async getActiveGame(): Promise<{ id: string; gameType: string } | null> {
+    const response = await api.get("/games/active");
+    return response.data.data;
+  },
 };

@@ -70,6 +70,11 @@ export function useSocket(): UseSocketResult {
 
   useEffect(() => {
     if (!isAuthenticated || !token) {
+      if (sharedSocket) {
+        sharedSocket.disconnect();
+        sharedSocket = null;
+        sharedToken = null;
+      }
       setSocket(null);
       setConnected(false);
       return;

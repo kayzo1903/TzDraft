@@ -8,6 +8,7 @@ import { ExpoPushService } from '../../infrastructure/push/expo-push.service';
 import { CreateGameUseCase } from './create-game.use-case';
 import { MakeMoveUseCase } from './make-move.use-case';
 import { GetGameStateUseCase } from './get-game-state.use-case';
+import { GetActiveGameUseCase } from './get-active-game.use-case';
 import { GetLegalMovesUseCase } from './get-legal-moves.use-case';
 import { EndGameUseCase } from './end-game.use-case';
 import { JoinQueueUseCase } from './join-queue.use-case';
@@ -53,6 +54,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     CreateGameUseCase,
     MakeMoveUseCase,
     GetGameStateUseCase,
+    GetActiveGameUseCase,
     GetLegalMovesUseCase,
     EndGameUseCase,
     JoinQueueUseCase,
@@ -89,6 +91,7 @@ import { MatchmakingAnalyticsService } from '../../infrastructure/analytics/matc
     CreateGameUseCase,
     MakeMoveUseCase,
     GetGameStateUseCase,
+    GetActiveGameUseCase,
     GetLegalMovesUseCase,
     EndGameUseCase,
     JoinQueueUseCase,
