@@ -12,6 +12,7 @@ COPY packages/shared-client/package.json ./packages/shared-client/
 COPY packages/translations/package.json ./packages/translations/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
+COPY apps/mobile/package.json ./apps/mobile/
 
 # Install all workspace deps
 RUN pnpm install --frozen-lockfile
@@ -26,7 +27,15 @@ COPY frontend/ ./frontend/
 WORKDIR /app/packages/mkaguzi-engine
 RUN pnpm build
 
+# Copy WASM artifacts into public/ so Next.js can serve them as static assets.
+# Done here instead of via the prebuild npm hook to avoid re-running the engine
+# build inside Docker and to give us an explicit, cacheable layer.
+RUN mkdir -p /app/frontend/public/wasm && \
+    cp -r /app/packages/mkaguzi-engine/wasm/. /app/frontend/public/wasm/
+
 # Build Next.js frontend
+# PNPM_IGNORE_SCRIPTS skips the `prebuild` hook (which would redundantly rebuild
+# the engine and re-copy WASM — both already done above).
 WORKDIR /app/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL
@@ -37,7 +46,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_BETTER_AUTH_URL=$NEXT_PUBLIC_BETTER_AUTH_URL
 ENV NEXT_PUBLIC_SANITY_PROJECT_ID=$NEXT_PUBLIC_SANITY_PROJECT_ID
 ENV NEXT_PUBLIC_SANITY_DATASET=$NEXT_PUBLIC_SANITY_DATASET
-RUN pnpm build
+RUN pnpm exec next build
 
 # ─── Stage 2: Production ──────────────────────────────────────────────────────
 FROM node:22-slim AS production
@@ -49,8 +58,11 @@ WORKDIR /app
 # Workspace manifests
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
+COPY packages/shared-client/package.json ./packages/shared-client/
+COPY packages/translations/package.json ./packages/translations/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
+COPY apps/mobile/package.json ./apps/mobile/
 
 # Production deps only; --ignore-scripts prevents mkaguzi-engine from rebuilding
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
