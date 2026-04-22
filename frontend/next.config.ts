@@ -4,10 +4,16 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin();
 
 // `next build` always runs with NODE_ENV=production, even for local verification.
-// Enforce real production URLs only for CI/deployment builds where those env vars
-// should come from the target environment instead of a local `.env`.
+// Enforce real production URLs only for actual deployment builds where those env
+// vars are baked into the JS bundle via --build-arg (deploy.yml).
+//
+// We deliberately skip this guard in CI smoke-test docker builds (ci.yml
+// docker-build-check job) which intentionally omit NEXT_PUBLIC_API_URL so that
+// the check stays fast without requiring production credentials.
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 const isDeploymentBuild =
   process.env.NODE_ENV === "production" &&
+  apiUrl.length > 0 && // only enforce when the URL was explicitly provided
   (process.env.CI === "true" ||
     process.env.GITHUB_ACTIONS === "true" ||
     process.env.VERCEL === "1");
