@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Emoji = ({ children }: { children: string }) => (
   <Text style={{ fontSize: 30 }}>{children}</Text>
 );
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../src/auth/auth-store";
 import api from "../src/lib/api";
+import { matchService } from "../src/lib/match-service";
 import { ServiceCard } from "../src/components/ServiceCard";
 import { GuestBarrierModal } from "../src/components/auth/GuestBarrierModal";
 import {
@@ -70,12 +71,34 @@ export default function Home() {
 
   const [recentGames, setRecentGames] = useState<any[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+  const [activeGame, setActiveGame] = useState<{ id: string; gameType: string } | null>(null);
 
-  React.useEffect(() => {
-    if (isAuthenticated && !isGuest) {
-      fetchRecentGames();
-    }
-  }, [isAuthenticated, isGuest]);
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const fetchActive = async () => {
+        try {
+          const game = await matchService.getActiveGame();
+          if (isActive) {
+            setActiveGame(game);
+          }
+        } catch (err) {
+          console.error("[Home] Failed to fetch active game:", err);
+          if (isActive) setActiveGame(null);
+        }
+      };
+
+      if (isAuthenticated && !isGuest) {
+        fetchRecentGames();
+        fetchActive();
+      }
+
+      return () => {
+        isActive = false;
+      };
+    }, [isAuthenticated, isGuest])
+  );
 
   const fetchRecentGames = async () => {
     setIsLoadingRecent(true);
@@ -104,6 +127,31 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {activeGame && (
+          <View style={styles.activeGameBanner}>
+            <View style={styles.activeGameBannerLeft}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.activeGameBannerTitle}>{t("home.matchInProgress", "Match in Progress")}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.rejoinButton}
+              onPress={() => {
+                const isOnline = activeGame.gameType === "RANKED" || activeGame.gameType === "CASUAL";
+                router.push({ 
+                  pathname: "/game/online-game", 
+                  params: { 
+                    gameId: activeGame.id, 
+                    isHost: "false",
+                    ...(isOnline ? { source: "lobby" } : {})
+                  } 
+                });
+              }}
+            >
+              <Text style={styles.rejoinButtonText}>{t("home.rejoinGame", "Rejoin Game")}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.section}>
           <ServiceCard
@@ -241,6 +289,45 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingTop: 4,
+  },
+  activeGameBanner: {
+    backgroundColor: colors.primaryAlpha15,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+    padding: 16,
+    marginBottom: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activeGameBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  pulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  activeGameBannerTitle: {
+    color: colors.foreground,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  rejoinButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  rejoinButtonText: {
+    color: "#000",
+    fontWeight: "900",
+    fontSize: 13,
+    textTransform: "uppercase",
   },
   section: {
     marginBottom: 24,
