@@ -11,8 +11,9 @@ export class GetActiveGameUseCase {
   ) {}
 
   async execute(userId: string): Promise<Game | null> {
-    const activeGames = await this.gameRepository.findActiveGamesByPlayer(userId);
-    
+    const activeGames =
+      await this.gameRepository.findActiveGamesByPlayer(userId);
+
     if (activeGames.length > 0) {
       const game = activeGames[0];
 
@@ -27,7 +28,7 @@ export class GetActiveGameUseCase {
 
       return game;
     }
-    
+
     return null;
   }
 }

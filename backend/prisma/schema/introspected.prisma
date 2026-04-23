@@ -1,0 +1,253 @@
+model disconnection_events {
+  id              String    @id
+  match_id        String
+  game_id         String
+  player_id       String
+  disconnected_at DateTime
+  reconnected_at  DateTime?
+  forfeited_at    DateTime?
+  duration        Int?
+
+  @@index([game_id])
+  @@index([match_id])
+}
+
+model friend_requests {
+  id           String              @id
+  requester_id String
+  requestee_id String
+  status       FriendRequestStatus @default(PENDING)
+  created_at   DateTime            @default(now())
+  responded_at DateTime?
+
+  @@unique([requester_id, requestee_id])
+  @@index([requestee_id])
+  @@index([requester_id])
+  @@index([status])
+}
+
+model friendly_matches {
+  id                String              @id
+  host_id           String
+  invited_friend_id String?
+  guest_id          String?
+  status            FriendlyMatchStatus @default(PENDING)
+  invite_token      String              @unique
+  game_id           String?
+  initial_time_ms   Int                 @default(600000)
+  expires_at        DateTime
+  accepted_at       DateTime?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime
+  allow_spectators  Boolean             @default(true)
+  host_color        String              @default("RANDOM")
+  rated             Boolean             @default(false)
+  room_type         String              @default("single")
+
+  @@index([host_id, status])
+  @@index([invite_token])
+  @@index([invited_friend_id, status])
+}
+
+model friendships {
+  id           String   @id
+  initiator_id String
+  recipient_id String
+  created_at   DateTime @default(now())
+
+  @@unique([initiator_id, recipient_id])
+  @@index([initiator_id])
+  @@index([recipient_id])
+}
+
+model game_analyses {
+  id                 String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  game_id            String   @unique
+  white_accuracy     Float?
+  black_accuracy     Float?
+  white_blunders     Int      @default(0)
+  white_mistakes     Int      @default(0)
+  white_inaccuracies Int      @default(0)
+  black_blunders     Int      @default(0)
+  black_mistakes     Int      @default(0)
+  black_inaccuracies Int      @default(0)
+  critical_move      Int?
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model league_games {
+  id              String           @id
+  match_id        String
+  league_id       String
+  game_number     Int
+  white_player_id String
+  black_player_id String
+  status          LeagueGameStatus @default(PENDING)
+  result          LeagueGameResult @default(PENDING)
+  forfeited_by    String?
+  completed_at    DateTime?
+
+  @@unique([match_id, game_number])
+}
+
+model league_matches {
+  id            String            @id
+  league_id     String
+  round_id      String
+  player1_id    String
+  player2_id    String
+  status        LeagueMatchStatus @default(SCHEDULED)
+  deadline      DateTime?
+  player1_goals Decimal           @default(0) @db.Decimal(3, 1)
+  player2_goals Decimal           @default(0) @db.Decimal(3, 1)
+  result        LeagueMatchResult @default(PENDING)
+  forfeited_by  String?
+  void_reason   String?
+  completed_at  DateTime?
+
+  @@index([league_id])
+  @@index([player1_id])
+  @@index([player2_id])
+  @@index([round_id])
+}
+
+model league_participants {
+  id                 String                  @id
+  league_id          String
+  user_id            String
+  status             LeagueParticipantStatus @default(ACTIVE)
+  match_points       Int                     @default(0)
+  match_wins         Int                     @default(0)
+  match_draws        Int                     @default(0)
+  match_losses       Int                     @default(0)
+  matches_played     Int                     @default(0)
+  consecutive_missed Int                     @default(0)
+  goals_for          Decimal                 @default(0) @db.Decimal(5, 1)
+  goals_against      Decimal                 @default(0) @db.Decimal(5, 1)
+  goal_difference    Decimal                 @default(0) @db.Decimal(5, 1)
+  registered_at      DateTime                @default(now())
+
+  @@unique([league_id, user_id])
+  @@index([league_id, match_points(sort: Desc)])
+}
+
+model league_prizes {
+  id        String        @id
+  league_id String
+  placement Int
+  amount    Decimal       @db.Decimal(12, 2)
+  currency  PrizeCurrency @default(TSH)
+  label     String?
+
+  @@unique([league_id, placement])
+}
+
+model league_rounds {
+  id           String            @id
+  league_id    String
+  round_number Int
+  status       LeagueRoundStatus @default(PENDING)
+  deadline     DateTime?
+
+  @@unique([league_id, round_number])
+}
+
+model leagues {
+  id                       String          @id
+  name                     String
+  status                   LeagueStatus    @default(REGISTRATION)
+  start_date               DateTime?
+  end_date                 DateTime?
+  max_players              Int             @default(12)
+  current_round            Int             @default(0)
+  round_duration_days      Int             @default(7)
+  created_by_id            String
+  created_at               DateTime        @default(now())
+  updated_at               DateTime
+  hidden                   Boolean         @default(false)
+  description_en           String          @default("")
+  description_sw           String          @default("")
+  rules_en                 String?
+  rules_sw                 String?
+  style                    TournamentStyle @default(RAPID)
+  scope                    TournamentScope @default(GLOBAL)
+  country                  String?
+  region                   String?
+  min_elo                  Int?
+  max_elo                  Int?
+  min_matchmaking_wins     Int?
+  min_ai_level_beaten      Int?
+  required_ai_level_played Int?
+  min_players              Int             @default(4)
+  scheduled_start_at       DateTime        @default(now())
+  registration_deadline    DateTime?
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum FriendlyMatchStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELED
+  EXPIRED
+}
+
+enum LeagueGameResult {
+  WHITE_WIN
+  BLACK_WIN
+  DRAW
+  PENDING
+}
+
+enum LeagueGameStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FORFEITED
+}
+
+enum LeagueMatchResult {
+  PLAYER1_WIN
+  PLAYER2_WIN
+  DRAW
+  PENDING
+}
+
+enum LeagueMatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FORFEITED
+  VOIDED
+}
+
+enum LeagueParticipantStatus {
+  ACTIVE
+  INACTIVE
+  DISQUALIFIED
+  WITHDRAWN
+}
+
+enum LeagueRoundStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum LeagueStatus {
+  REGISTRATION
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PuzzleStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

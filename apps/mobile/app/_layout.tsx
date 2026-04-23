@@ -200,6 +200,7 @@ export default function RootLayout() {
               <Stack.Screen name="game/studies" options={{ headerShown: false }} />
               <Stack.Screen name="game/study-replay" options={{ headerShown: false }} />
               <Stack.Screen name="game/tournaments" options={{ headerShown: false }} />
+              <Stack.Screen name="community/announcement/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="join/[code]" options={{ headerShown: false }} />
             </Stack>
             <SideMenu

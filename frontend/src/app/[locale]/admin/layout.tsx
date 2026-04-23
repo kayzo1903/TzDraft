@@ -3,7 +3,14 @@
 import { useEffect } from "react";
 import { useRouter, Link } from "@/i18n/routing";
 import { useAuthStore } from "@/lib/auth/auth-store";
-import { LayoutDashboard, Users, Activity, Trophy, Puzzle } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Activity,
+  Trophy,
+  Puzzle,
+  BellRing,
+} from "lucide-react";
 import Image from "next/image";
 
 export default function AdminLayout({
@@ -33,6 +40,7 @@ export default function AdminLayout({
 
   const nav = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/communication", label: "Campaigns", icon: BellRing },
     { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
 
     { href: "/admin/puzzles", label: "Puzzles", icon: Puzzle },

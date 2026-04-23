@@ -28,6 +28,37 @@
     "matchInProgress": "Match in Progress",
     "rejoinGame": "Rejoin Game"
   },
+  "community": {
+    "title": "Community",
+    "heroTitle": "Join the Elite",
+    "heroSubtitle": "Connect with players, compete in events, and climb the rankings.",
+    "discover": "Discover",
+    "tournaments": "Active Tournaments",
+    "tournamentsDesc": "Join official prize pools and special events",
+    "leaderboard": "Global Leaderboard",
+    "leaderboardDesc": "See where you stand among the world's best",
+    "announcements": {
+      "sectionTitle": "Announcements",
+      "sectionIntro": "Platform updates, promotions, and alerts published for mobile players.",
+      "openDetails": "Open details",
+      "detailTitle": "Announcement",
+      "notFoundTitle": "Announcement not found",
+      "notFoundSubtitle": "It may have expired or no longer be available on mobile.",
+      "schedule": "Schedule",
+      "audience": "Audience",
+      "fullDetails": "Full details",
+      "deliveryChannels": "Delivery channels"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAll": "Mark all as read",
+    "new": "New",
+    "earlier": "Earlier",
+    "emptyTitle": "All caught up",
+    "emptySubtitle": "Tournament updates, admin announcements, and reminder campaigns will appear here.",
+    "devPreviewHint": "Tap the lab button to preview each notification type."
+  },
   "game": {
     "playOnline": "Play Online 🌐",
     "onlineDescription": "Test your skills against players worldwide",

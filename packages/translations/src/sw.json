@@ -28,6 +28,37 @@
     "matchInProgress": "Mechi Inaendelea",
     "rejoinGame": "Rudi Kwenye Mechi"
   },
+  "community": {
+    "title": "Jamii",
+    "heroTitle": "Jiunge na Wababe",
+    "heroSubtitle": "Ungana na wachezaji, shiriki mashindano, na panda kwenye viwango.",
+    "discover": "Gundua",
+    "tournaments": "Mashindano Yanayoendelea",
+    "tournamentsDesc": "Jiunge na zawadi rasmi na matukio maalum",
+    "leaderboard": "Orodha ya Ubora ya Dunia",
+    "leaderboardDesc": "Angalia nafasi yako kati ya wachezaji bora zaidi",
+    "announcements": {
+      "sectionTitle": "Matangazo",
+      "sectionIntro": "Maboresho ya mfumo, promosheni, na tahadhari zilizochapishwa kwa wachezaji wa simu.",
+      "openDetails": "Fungua maelezo",
+      "detailTitle": "Tangazo",
+      "notFoundTitle": "Tangazo halijapatikana",
+      "notFoundSubtitle": "Huenda limeisha muda wake au halipo tena kwenye simu.",
+      "schedule": "Ratiba",
+      "audience": "Walengwa",
+      "fullDetails": "Maelezo kamili",
+      "deliveryChannels": "Njia za kutuma"
+    }
+  },
+  "notifications": {
+    "title": "Arifa",
+    "markAll": "Weka zote kuwa zimesomwa",
+    "new": "Mpya",
+    "earlier": "Za awali",
+    "emptyTitle": "Umeshafika mwisho",
+    "emptySubtitle": "Taarifa za mashindano, matangazo ya wasimamizi, na vikumbusho vitaonekana hapa.",
+    "devPreviewHint": "Bonyeza kitufe cha maabara kuona aina za arifa."
+  },
   "game": {
     "playOnline": "Cheza Mtandaoni 🌐",
     "onlineDescription": "Pima ujuzi wako dhidi ya wachezaji ulimwenguni kote",

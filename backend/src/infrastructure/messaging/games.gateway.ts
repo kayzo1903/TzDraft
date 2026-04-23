@@ -609,7 +609,6 @@ export class GamesGateway
     }
   }
 
-
   /* ── Rematch flow ────────────────────────────────────────────────────── */
 
   @SubscribeMessage('offerRematch')

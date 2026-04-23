@@ -9,6 +9,7 @@ import {
   RedisHealthIndicator,
 } from '../health/health.controller';
 import { AnalyticsService } from './analytics.service';
+import { CommunicationModule } from './communication.module';
 import { TasksModule } from '../infrastructure/tasks/tasks.module';
 
 @Module({
@@ -17,10 +18,15 @@ import { TasksModule } from '../infrastructure/tasks/tasks.module';
     PrismaModule,
     RedisModule,
     AuthModule,
+    CommunicationModule,
     forwardRef(() => TasksModule),
   ],
   controllers: [AdminController],
-  providers: [PrismaHealthIndicator, RedisHealthIndicator, AnalyticsService],
-  exports: [AnalyticsService],
+  providers: [
+    PrismaHealthIndicator,
+    RedisHealthIndicator,
+    AnalyticsService,
+  ],
+  exports: [AnalyticsService, CommunicationModule],
 })
 export class AdminModule {}

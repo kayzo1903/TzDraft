@@ -1,19 +1,19 @@
+
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  const counts = await prisma.game.groupBy({
-    by: ['gameType', 'status'],
-    _count: { id: true }
-  });
-  console.log('Game Counts:', JSON.stringify(counts, null, 2));
-
-  const aiUser = await prisma.user.findUnique({
-    where: { id: 'AI' }
-  });
-  console.log('AI User in DB:', JSON.stringify(aiUser, null, 2));
+  console.log('Testing connection to DATABASE_URL...');
+  try {
+    await prisma.$connect();
+    console.log('Successfully connected to DATABASE_URL!');
+    const userCount = await prisma.user.count();
+    console.log('User count:', userCount);
+  } catch (err) {
+    console.error('Failed to connect to DATABASE_URL:', err);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main()
-  .catch(e => console.error(e))
-  .finally(() => prisma.$disconnect());
+main();

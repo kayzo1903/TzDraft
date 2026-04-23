@@ -14,7 +14,9 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const CHUNK_SIZE = 100;
 
 async function sendWelcomeNotifications() {
-  console.log('🔔 Sending welcome notifications to all users (DB + Push + WS)...\n');
+  console.log(
+    '🔔 Sending welcome notifications to all users (DB + Push + WS)...\n',
+  );
 
   // Get all users with their push tokens
   const users = await prisma.user.findMany({
@@ -90,7 +92,9 @@ async function sendWelcomeNotifications() {
 
   // 3. Broadcast Push Notifications in chunks
   if (pushMessages.length > 0) {
-    console.log(`\n🚀 Sending ${pushMessages.length} Push Notifications via Expo...`);
+    console.log(
+      `\n🚀 Sending ${pushMessages.length} Push Notifications via Expo...`,
+    );
     for (let i = 0; i < pushMessages.length; i += CHUNK_SIZE) {
       const chunk = pushMessages.slice(i, i + CHUNK_SIZE);
       try {
@@ -103,9 +107,14 @@ async function sendWelcomeNotifications() {
           body: JSON.stringify(chunk),
         });
         if (res.ok) {
-          console.log(`   - Chunk ${Math.floor(i / CHUNK_SIZE) + 1} sent successfully.`);
+          console.log(
+            `   - Chunk ${Math.floor(i / CHUNK_SIZE) + 1} sent successfully.`,
+          );
         } else {
-          console.error(`   - Chunk ${Math.floor(i / CHUNK_SIZE) + 1} failed:`, await res.text());
+          console.error(
+            `   - Chunk ${Math.floor(i / CHUNK_SIZE) + 1} failed:`,
+            await res.text(),
+          );
         }
       } catch (err) {
         console.error(`   - Chunk error:`, err.message);

@@ -71,7 +71,11 @@ export class GetGameHistoryUseCase {
         result = 'LOSS';
       }
 
-      let opponent: { id: string; displayName: string; elo: number | null } | null = null;
+      let opponent: {
+        id: string;
+        displayName: string;
+        elo: number | null;
+      } | null = null;
       if (opponentId) {
         const user = opponentMap.get(opponentId);
         if (user) {
