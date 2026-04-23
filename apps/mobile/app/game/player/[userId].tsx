@@ -23,7 +23,11 @@ import {
   Cpu,
   Target,
   Swords,
+  UserPlus,
+  UserMinus,
+  UserCheck,
 } from "lucide-react-native";
+import { useSocial } from "../../../src/hooks/useSocial";
 import {
   historyService,
   PublicPlayerProfile,
@@ -37,6 +41,7 @@ const PAGE_SIZE = 20;
 export default function PlayerProfileScreen() {
   const router = useRouter();
   const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { follow, unfollow, loading: socialLoading } = useSocial();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,16 +50,33 @@ export default function PlayerProfileScreen() {
   const [games, setGames] = useState<GameHistoryItem[]>([]);
   const [totalGames, setTotalGames] = useState(0);
   const [page, setPage] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     if (!userId) return;
     try {
       const data = await historyService.getPlayerProfile(userId);
       setProfile(data);
+      setIsFollowing(data.relationship?.isFollowing ?? false);
     } catch (e) {
       console.error("[PlayerProfile] profile fetch failed:", e);
     }
   }, [userId]);
+
+  const handleFollowToggle = useCallback(async () => {
+    if (!profile?.username) return;
+    try {
+      if (isFollowing) {
+        await unfollow(profile.username);
+        setIsFollowing(false);
+      } else {
+        await follow(profile.username);
+        setIsFollowing(true);
+      }
+    } catch {
+      // error already logged in hook
+    }
+  }, [profile, isFollowing, follow, unfollow]);
 
   const fetchGames = useCallback(
     async (pageNum = 0) => {
@@ -193,6 +215,21 @@ export default function PlayerProfileScreen() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {profile?.displayName ?? "Player"}
         </Text>
+        {profile && (
+          <TouchableOpacity
+            style={[styles.followBtn, isFollowing && styles.followBtnActive]}
+            onPress={handleFollowToggle}
+            disabled={socialLoading}
+          >
+            {socialLoading ? (
+              <ActivityIndicator size="small" color={isFollowing ? colors.primary : "#000"} />
+            ) : isFollowing ? (
+              <UserCheck size={18} color={colors.primary} />
+            ) : (
+              <UserPlus size={18} color="#000" />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -240,6 +277,18 @@ export default function PlayerProfileScreen() {
                     </View>
                   )}
                 </View>
+                {profile.relationship?.isRival && (
+                  <View style={styles.rivalBadge}>
+                    <Swords size={12} color={colors.danger} />
+                    <Text style={styles.rivalBadgeText}>Rival</Text>
+                  </View>
+                )}
+                {!profile.relationship?.isRival && profile.relationship?.isFriend && (
+                  <View style={styles.friendBadge}>
+                    <UserCheck size={12} color={colors.win} />
+                    <Text style={styles.friendBadgeText}>Friend</Text>
+                  </View>
+                )}
               </View>
 
               {/* Stats — same layout as history screen */}
@@ -477,4 +526,43 @@ const styles = StyleSheet.create({
   footerText: { color: colors.surfaceElevated, fontSize: 12, fontWeight: "bold" },
   emptyState: { padding: 60, alignItems: "center", justifyContent: "center", gap: 16, marginTop: 40 },
   emptyTitle: { color: colors.foreground, fontSize: 18, fontWeight: "bold" },
+  followBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  followBtnActive: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+  },
+  rivalBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(239,68,68,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.25)",
+    marginTop: 8,
+  },
+  rivalBadgeText: { color: colors.danger, fontSize: 12, fontWeight: "900" },
+  friendBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(16,185,129,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(16,185,129,0.25)",
+    marginTop: 8,
+  },
+  friendBadgeText: { color: colors.win, fontSize: 12, fontWeight: "900" },
 });

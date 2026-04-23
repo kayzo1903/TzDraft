@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/auth-store";
 import { authClient } from "../src/lib/auth-client";
 import { useRouter } from "expo-router";
-import { User, LogOut, ChevronLeft, Settings as SettingsIcon, Shield, Bell, BookMarked, Camera, AlertCircle, ImageOff, Swords, Flame, Users } from "lucide-react-native";
+import { User, LogOut, ChevronLeft, Settings as SettingsIcon, Shield, Bell, BookMarked, Camera, AlertCircle, ImageOff, Swords, Flame, Users, Trophy, Globe } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { colors } from "../src/theme/colors";
 import * as ImagePicker from "expo-image-picker";
@@ -30,13 +30,15 @@ export default function ProfileScreen() {
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
 
   const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
-  const { getStats, getFriends } = useSocial();
+  const { getStats, getFriends, getMyRank } = useSocial();
   const [socialStats, setSocialStats] = useState({ followersCount: 0, followingCount: 0, friendsCount: 0 });
   const [friends, setFriends] = useState<any[]>([]);
+  const [rank, setRank] = useState<{ global: number | null; country: number | null; region: number | null; totalPlayers: number } | null>(null);
 
   React.useEffect(() => {
     getStats().then(setSocialStats);
     getFriends().then(setFriends);
+    getMyRank().then(setRank);
   }, []);
   const showError = (title: string, message: string) =>
     setErrorModal({ title, message });
@@ -172,6 +174,22 @@ export default function ProfileScreen() {
               {user?.rating !== undefined && (
                 <View style={styles.ratingBadge}>
                   <Text style={styles.ratingText}>Blitz ELO: {user.rating}</Text>
+                </View>
+              )}
+              {rank && (
+                <View style={styles.rankBadgeRow}>
+                  {rank.global !== null && (
+                    <View style={styles.rankBadge}>
+                      <Trophy size={11} color={colors.primary} />
+                      <Text style={styles.rankBadgeText}>#{rank.global} Global</Text>
+                    </View>
+                  )}
+                  {rank.country !== null && (
+                    <View style={styles.rankBadge}>
+                      <Globe size={11} color={colors.textSubtle} />
+                      <Text style={styles.rankBadgeText}>#{rank.country} Country</Text>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -395,6 +413,28 @@ const styles = StyleSheet.create({
   ratingText: {
     color: colors.primary,
     fontSize: 12,
+    fontWeight: "bold",
+  },
+  rankBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  },
+  rankBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rankBadgeText: {
+    color: colors.textSubtle,
+    fontSize: 11,
     fontWeight: "bold",
   },
   settingsButton: {

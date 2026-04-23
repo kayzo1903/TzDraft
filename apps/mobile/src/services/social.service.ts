@@ -54,6 +54,11 @@ class SocialService {
     const res = await api.get("/social/stats");
     return res.data;
   }
+
+  async getMyRank(): Promise<{ global: number | null; country: number | null; region: number | null; totalPlayers: number }> {
+    const res = await api.get("/auth/rank");
+    return res.data.data;
+  }
 }
 
 export const socialService = new SocialService();

@@ -101,16 +101,24 @@ export default function FriendsScreen() {
       </View>
       <View style={styles.actions}>
         {activeTab === "friends" ? (
-          <TouchableOpacity 
-            style={styles.challengeButton}
-            onPress={() => router.push(`/game/lobby?challenge=${item.username}` as any)}
-          >
-            <Swords color="#000" size={18} />
-          </TouchableOpacity>
+          <View style={styles.friendActions}>
+            <TouchableOpacity
+              style={styles.viewProfileButton}
+              onPress={() => router.push(`/game/player/${item.id}` as any)}
+            >
+              <Text style={styles.viewProfileText}>Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.challengeButton}
+              onPress={() => router.push(`/game/lobby?challenge=${item.username}` as any)}
+            >
+              <Swords color="#000" size={18} />
+            </TouchableOpacity>
+          </View>
         ) : (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.viewProfileButton}
-            onPress={() => router.push(`/profile?username=${item.username}` as any)}
+            onPress={() => router.push(`/game/player/${item.id}` as any)}
           >
             <Text style={styles.viewProfileText}>Profile</Text>
           </TouchableOpacity>
@@ -360,6 +368,11 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginLeft: 12,
+  },
+  friendActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   challengeButton: {
     backgroundColor: colors.primary,
