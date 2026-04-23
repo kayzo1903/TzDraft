@@ -21,17 +21,22 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Copy workspace manifests first for better layer caching.
+# Copy workspace manifests for layer caching
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
-COPY packages/shared-client/ ./packages/shared-client/
-COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
+COPY packages/shared-client/package.json ./packages/shared-client/
+COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 
-# Install only backend deps (including devDependencies used by build tools).
+# Install dependencies (filter ensures we only get what backend needs)
 RUN pnpm install --filter backend... --frozen-lockfile
 
-# Copy backend source and build it.
+# Copy source for dependencies and backend
+COPY packages/shared-client/ ./packages/shared-client/
+COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 COPY backend/ ./backend/
+
+# Build shared-client first so its types/output are available to backend
+RUN pnpm --filter @tzdraft/shared-client build
 
 WORKDIR /app/backend
 RUN pnpm build
