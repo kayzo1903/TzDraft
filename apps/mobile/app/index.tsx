@@ -5,21 +5,31 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const Emoji = ({ children }: { children: string }) => (
   <Text style={{ fontSize: 30 }}>{children}</Text>
 );
+
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../src/auth/auth-store";
 import api from "../src/lib/api";
 import { matchService } from "../src/lib/match-service";
 import { ServiceCard } from "../src/components/ServiceCard";
+import { MobileAnnouncementBanner } from "../src/components/communications/MobileAnnouncementBanner";
+import { AnnouncementModal } from "../src/components/communications/AnnouncementModal";
 import { GuestBarrierModal } from "../src/components/auth/GuestBarrierModal";
+import { useMobileCommunicationCenter } from "../src/hooks/useMobileCommunicationCenter";
 import {
   Zap,
   Timer,
   Clock,
   Layers,
+  Users,
+  Flame,
 } from "lucide-react-native";
+import { colors } from "../src/theme/colors";
+import { socialService, SocialUser } from "../src/services/social.service";
 
-// Non-brand card accent colors (chess.com style — each card has its own identity)
+const { width } = Dimensions.get("window");
+
+// Non-brand card accent colors
 const CARD_COLORS = {
   online:      "#3b82f6", // blue
   ai:          "#8b5cf6", // violet
@@ -30,11 +40,6 @@ const CARD_COLORS = {
   history:     "#6366f1", // indigo
   leaderboard: "#ec4899", // pink
 } as const;
-import { colors } from "../src/theme/colors";
-
-const { width } = Dimensions.get("window");
-
-
 
 const StatsGrid = ({ user }: { user: any }) => (
   <View style={styles.statsGrid}>
@@ -65,6 +70,15 @@ export default function Home() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
+  const {
+    featuredCampaign,
+    modalCampaign,
+    dismissBanner,
+    dismissPopupPermanently,
+    markCampaignRead,
+    trackInteraction,
+    getCampaignRoute,
+  } = useMobileCommunicationCenter();
   const isGuest = user?.accountType === "GUEST";
   const [showGuestPopup, setShowGuestPopup] = useState(isGuest);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
@@ -72,6 +86,8 @@ export default function Home() {
   const [recentGames, setRecentGames] = useState<any[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
   const [activeGame, setActiveGame] = useState<{ id: string; gameType: string } | null>(null);
+  const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [isFriendsLoading, setIsFriendsLoading] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -92,6 +108,7 @@ export default function Home() {
       if (isAuthenticated && !isGuest) {
         fetchRecentGames();
         fetchActive();
+        fetchFriends();
       }
 
       return () => {
@@ -112,6 +129,18 @@ export default function Home() {
     }
   };
 
+  const fetchFriends = async () => {
+    setIsFriendsLoading(true);
+    try {
+      const data = await socialService.getFriends();
+      setFriends(data);
+    } catch (err) {
+      console.error("[Home] Failed to fetch friends:", err);
+    } finally {
+      setIsFriendsLoading(false);
+    }
+  };
+
   const handlePlayOnline = () => {
     if (!isAuthenticated || isGuest) {
       router.push("/(auth)/login");
@@ -127,6 +156,35 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {featuredCampaign && (
+          <MobileAnnouncementBanner
+            campaign={featuredCampaign}
+            onDismiss={() => {
+              dismissBanner(featuredCampaign.id).catch(() => {});
+            }}
+            onPress={() => {
+              markCampaignRead(featuredCampaign.id).catch(() => {});
+              trackInteraction(featuredCampaign.id, "clicked").catch(() => {});
+              router.push(getCampaignRoute(featuredCampaign) as any);
+            }}
+          />
+        )}
+
+        <AnnouncementModal
+          campaign={modalCampaign ?? null}
+          isVisible={!!modalCampaign}
+          onClose={() => {
+            if (modalCampaign) dismissPopupPermanently(modalCampaign.id).catch(() => {});
+          }}
+          onAction={() => {
+            if (modalCampaign) {
+              markCampaignRead(modalCampaign.id).catch(() => {});
+              trackInteraction(modalCampaign.id, "clicked").catch(() => {});
+              dismissPopupPermanently(modalCampaign.id).catch(() => {});
+              router.push(getCampaignRoute(modalCampaign) as any);
+            }
+          }}
+        />
 
         {activeGame && (
           <View style={styles.activeGameBanner}>
@@ -375,105 +433,6 @@ const styles = StyleSheet.create({
   footerSpacer: {
     height: 40,
   },
-  // Leaderboard section (unused but retained for future use)
-  leaderboardSection: {
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  sectionHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  sectionTitleSmall: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  viewAllText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  leaderboardCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    borderRadius: 24,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.05)",
-  },
-  leaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  leaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  rankBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rankGold: { backgroundColor: colors.rankGold },
-  rankSilver: { backgroundColor: colors.rankSilver },
-  rankBronze: { backgroundColor: colors.rankBronze },
-  rankText: {
-    color: colors.textSubtle,
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  rankTextDark: {
-    color: colors.onPrimary,
-  },
-  leaderName: {
-    color: colors.foreground,
-    fontSize: 14,
-    fontWeight: "bold",
-    maxWidth: width * 0.4,
-  },
-  leaderRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  ratingText: {
-    color: colors.win,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  loaderContainer: {
-    padding: 20,
-    alignItems: "center",
-  },
-  emptyText: {
-    color: colors.textDisabled,
-    fontSize: 12,
-    textAlign: "center",
-    padding: 20,
-  },
-
-  // Recent results
   recentResultsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -531,5 +490,73 @@ const styles = StyleSheet.create({
     color: colors.textDisabled,
     fontSize: 12,
     fontStyle: "italic",
+  },
+  friendsSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionHeaderTitle: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  viewAllText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  friendsScroll: {
+    gap: 16,
+    paddingHorizontal: 4,
+  },
+  friendCard: {
+    alignItems: "center",
+    width: 64,
+  },
+  friendAvatarWrapper: {
+    position: "relative",
+    marginBottom: 6,
+  },
+  friendAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  friendAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  onlineDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  friendName: {
+    color: colors.foreground,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
   },
 });

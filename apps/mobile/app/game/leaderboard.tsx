@@ -21,8 +21,12 @@ import {
   X as XIcon,
   User,
   Globe,
+  UserPlus,
+  Check,
 } from "lucide-react-native";
+import { useSocial } from "../../src/hooks/useSocial";
 import { historyService, LeaderboardEntry } from "../../src/lib/history-service";
+import { useAuthStore } from "../../src/auth/auth-store";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import { colors } from "../../src/theme/colors";
 
@@ -31,6 +35,14 @@ const PAGE_SIZE = 20;
 export default function LeaderboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user: currentUser } = useAuthStore();
+  const { follow, getStats } = useSocial();
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Basic pre-fetch of who we follow to show correct icons
+    // In a real app, this would be part of the leaderboard data or a separate cache
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -160,6 +172,30 @@ export default function LeaderboardScreen() {
             <TrendingUp size={12} color={colors.win} />
             <Text style={styles.ratingValue}>{item.rating}</Text>
           </View>
+          
+          {item.userId !== currentUser?.id && (
+            <TouchableOpacity 
+              style={[
+                styles.followButton,
+                followingIds.has(item.userId) && styles.followButtonActive
+              ]}
+              onPress={async () => {
+                if (followingIds.has(item.userId)) return;
+                try {
+                  await follow(item.username);
+                  setFollowingIds(prev => new Set(prev).add(item.userId));
+                } catch (e) {
+                  console.error("Follow failed", e);
+                }
+              }}
+            >
+              {followingIds.has(item.userId) ? (
+                <Check size={14} color={colors.primary} />
+              ) : (
+                <UserPlus size={14} color={colors.textMuted} />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -383,6 +419,21 @@ const styles = StyleSheet.create({
     borderColor: "rgba(16, 185, 129, 0.2)",
   },
   ratingValue: { color: colors.win, fontSize: 13, fontWeight: "900" },
+  followButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  followButtonActive: {
+    backgroundColor: colors.primaryAlpha10,
+    borderColor: colors.primaryAlpha30,
+  },
   footerLoader: { paddingVertical: 20, alignItems: "center" },
   footerText: { color: colors.surfaceElevated, fontSize: 12, fontWeight: "bold" },
   filterSection: { marginBottom: 20 },

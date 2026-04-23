@@ -5,7 +5,7 @@ module.exports = {
   testMatch: ['**/*.spec.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', {
+    '^.+\\.(t|j)sx?$': ['ts-jest', {
       tsconfig: {
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,

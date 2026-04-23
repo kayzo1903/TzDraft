@@ -30,9 +30,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
   ) {
-    this.googleClient = new OAuth2Client(
-      this.config.get('GOOGLE_CLIENT_ID'),
-    );
+    this.googleClient = new OAuth2Client(this.config.get('GOOGLE_CLIENT_ID'));
   }
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -527,7 +525,7 @@ export class AuthService {
           role: user.role,
           isBanned: user.isBanned,
           accountType: user.accountType,
-          avatarUrl: (user as any).avatarUrl ?? undefined,
+          avatarUrl: user.avatarUrl ?? undefined,
         },
         accessToken,
         refreshToken,

@@ -1,0 +1,88 @@
+// ============================================
+// COMMUNICATION DOMAIN
+// ============================================
+
+model CommunicationCampaign {
+    id                 String   @id @default(uuid())
+    title              String
+    body               String
+    localized          Json     // Stores title, body, ctaLabel (en, sw)
+    type               CommunicationType
+    status             CommunicationStatus
+    priority           CommunicationPriority
+    audience           CommunicationAudienceSegment
+    channels           CommunicationChannel[]
+    cta                Json
+    schedule           Json
+    analytics          Json
+    mobilePresentation Json
+    createdBy          String   @map("created_by")
+    createdAt          DateTime @default(now()) @map("created_at")
+    lastUpdatedAt      DateTime @updatedAt @map("last_updated_at")
+    goal               String
+
+    history CommunicationMessageHistory[]
+
+    @@map("communication_campaigns")
+}
+
+model CommunicationMessageHistory {
+    id         String   @id @default(uuid())
+    campaignId String   @map("campaign_id")
+    label      String
+    channel    CommunicationChannel
+    happenedAt DateTime @default(now()) @map("happened_at")
+    status     CommunicationMessageStatus
+    details    String
+
+    campaign CommunicationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+    @@index([campaignId])
+    @@map("communication_message_history")
+}
+
+enum CommunicationType {
+    ANNOUNCEMENT
+    PROMOTION
+    ALERT
+    ENGAGEMENT
+}
+
+enum CommunicationStatus {
+    DRAFT
+    SCHEDULED
+    LIVE
+    SENT
+    PAUSED
+}
+
+enum CommunicationPriority {
+    LOW
+    NORMAL
+    HIGH
+    CRITICAL
+}
+
+enum CommunicationAudienceSegment {
+    ALL_USERS
+    NEW_USERS
+    ACTIVE_USERS
+    INACTIVE_USERS
+    GAME_CREATORS
+    NEVER_JOINED_GAME
+}
+
+enum CommunicationChannel {
+    MOBILE_IN_APP
+    MOBILE_PUSH
+    MOBILE_HOME_BANNER
+    EMAIL
+}
+
+enum CommunicationMessageStatus {
+    QUEUED
+    SENT
+    SUPPRESSED
+    CLICKED
+    CONVERTED
+}

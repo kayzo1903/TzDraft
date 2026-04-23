@@ -7,7 +7,7 @@ export interface GameHistoryItem {
   gameType: "AI" | "RANKED" | "CASUAL";
   result: "WIN" | "LOSS" | "DRAW";
   endReason: string | null;
-  opponent: { id: string; displayName: string; elo: number | null } | null;
+  opponent: { id: string; displayName: string; username: string; elo: number | null } | null;
   myElo: number | null;
   moveCount: number;
   durationMs: number | null;

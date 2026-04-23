@@ -22,6 +22,10 @@ import {
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
 import { UserModule } from '../../domain/user/user.module';
+import { CommunicationModule } from '../../admin/communication.module';
+import { CommunicationController } from './controllers/communication.controller';
+import { SocialController } from './controllers/social.controller';
+import { SocialModule } from '../../domain/social/social.module';
 
 /**
  * HTTP Module
@@ -36,6 +40,8 @@ import { UserModule } from '../../domain/user/user.module';
     PrismaModule,
     AuthModule,
     UserModule,
+    CommunicationModule,
+    SocialModule,
   ],
   controllers: [
     GameController,
@@ -48,6 +54,8 @@ import { UserModule } from '../../domain/user/user.module';
     AdminPuzzleController,
     StudyController,
     AdminStudyController,
+    CommunicationController,
+    SocialController,
   ],
   providers: [GetAiMoveUseCase, PuzzleMinerService],
 })

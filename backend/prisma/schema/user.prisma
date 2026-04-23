@@ -56,6 +56,8 @@ model User {
     notifications          Notification[]         @relation("UserNotifications")
     puzzleAttempts         PuzzleAttempt[]
     savedStudies           SavedStudy[]
+    followers              Follow[]               @relation("Followers")
+    following              Follow[]               @relation("Following")
 
     @@index([country])
     @@index([country, region])

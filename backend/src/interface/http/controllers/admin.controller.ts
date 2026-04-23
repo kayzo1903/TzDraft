@@ -32,6 +32,7 @@ import {
   UpdateUserRoleDto,
 } from '../dtos/admin.dto';
 import { AnalyticsService } from '../../../admin/analytics.service';
+import { CommunicationService } from '../../../admin/communication.service';
 import { ReportService } from '../../../infrastructure/tasks/report.service';
 
 @Controller('admin')
@@ -45,6 +46,7 @@ export class AdminController {
     private readonly prismaIndicator: PrismaHealthIndicator,
     private readonly redisIndicator: RedisHealthIndicator,
     private readonly analyticsService: AnalyticsService,
+    private readonly communicationService: CommunicationService,
     @Inject(forwardRef(() => ReportService))
     private readonly reportService: ReportService,
   ) {}
@@ -413,5 +415,51 @@ export class AdminController {
     }
 
     return winners;
+  }
+
+  // ─── Communication Center ────────────────────────────────────────────────
+
+  @Get('communication/snapshot')
+  async getCommunicationSnapshot() {
+    return this.communicationService.getSnapshot();
+  }
+
+  @Post('communication/campaigns')
+  async createCampaign(@Body() dto: any, @CurrentUser() admin: any) {
+    return this.communicationService.createCampaign(dto, admin.id);
+  }
+
+  @Post('communication/campaigns/draft')
+  async saveDraftCampaign(@Body() dto: any, @CurrentUser() admin: any) {
+    return this.communicationService.saveDraftCampaign(dto, admin.id);
+  }
+
+  @Patch('communication/campaigns/:id')
+  async updateCampaign(@Param('id') id: string, @Body() dto: any) {
+    return this.communicationService.updateCampaign(id, dto);
+  }
+
+  @Patch('communication/campaigns/:id/pause')
+  async pauseCampaign(@Param('id') id: string) {
+    return this.communicationService.pauseCampaign(id);
+  }
+
+  @Delete('communication/campaigns/:id')
+  async deleteCampaign(@Param('id') id: string) {
+    return this.communicationService.deleteCampaign(id);
+  }
+
+  @Post('communication/campaigns/:id/push')
+  async sendCampaignPush(@Param('id') id: string) {
+    const campaign = await this.communicationService.getActiveCampaigns();
+    const found = campaign.find((c) => c.id === id);
+    if (!found) return { sent: 0 };
+    await this.communicationService.sendCampaignPush(
+      id,
+      found.audience,
+      found.title,
+      found.body,
+    );
+    return { sent: true };
   }
 }

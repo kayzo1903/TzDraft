@@ -21,15 +21,25 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Copy workspace manifests first for better layer caching.
+# Copy workspace manifests for layer caching
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
+COPY packages/shared-client/package.json ./packages/shared-client/
+COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
+COPY packages/translations/package.json ./packages/translations/
+COPY frontend/package.json ./frontend/
+COPY apps/mobile/package.json ./apps/mobile/
 
-# Install only backend deps (including devDependencies used by build tools).
-RUN pnpm install --filter backend... --frozen-lockfile
+# Install all workspace dependencies
+RUN pnpm install --frozen-lockfile
 
-# Copy backend source and build it.
+# Copy source for dependencies and backend
+COPY packages/shared-client/ ./packages/shared-client/
+COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 COPY backend/ ./backend/
+
+# Build shared-client first so its types/output are available to backend
+RUN pnpm --filter @tzdraft/shared-client build
 
 WORKDIR /app/backend
 RUN pnpm build
@@ -47,9 +57,18 @@ WORKDIR /app
 # Workspace manifests for dependency resolution.
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
+COPY packages/shared-client/package.json ./packages/shared-client/
+COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
+COPY packages/translations/package.json ./packages/translations/
+COPY frontend/package.json ./frontend/
+COPY apps/mobile/package.json ./apps/mobile/
 
-# Install backend deps including devDependencies (prisma CLI is needed at startup).
-RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts
+# Install backend production deps
+RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts --prod
+
+# Copy source for dependencies (needed because node_modules links to them)
+COPY packages/shared-client/ ./packages/shared-client/
+COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 
 # Copy compiled backend output.
 COPY --from=builder /app/backend/dist ./backend/dist

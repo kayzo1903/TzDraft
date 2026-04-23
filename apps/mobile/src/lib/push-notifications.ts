@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import api from "./api";
+import { getCampaignRouteFromData } from "./communication-center";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -68,9 +69,16 @@ export function getNotificationRoute(
   data: Record<string, any> | undefined
 ): string | null {
   if (!data) return null;
+  const communicationRoute = getCampaignRouteFromData(data);
+  if (communicationRoute) return communicationRoute;
   const screen = data.screen as string | undefined;
   if (screen === "tournament" && data.tournamentId) {
     return `/game/tournament/${data.tournamentId}`;
+  }
+  if (screen === "profile") {
+    if (data.followerId) return `/game/player/${data.followerId}`;
+    if (data.friendId) return `/game/player/${data.friendId}`;
+    return "/profile";
   }
   if (data.type === "WELCOME") {
     return "/";
@@ -128,6 +136,16 @@ const PREVIEW_SAMPLES = [
     title: "Summer Cup 2026 was cancelled",
     body: "The tournament has been cancelled by an admin.",
   },
+  {
+    type: "ADMIN_PROMOTION",
+    title: "Weekend Tournament Live!",
+    body: "Mobile players can join the blitz bracket right now.",
+  },
+  {
+    type: "ADMIN_ALERT",
+    title: "Maintenance at midnight",
+    body: "Queues pause briefly tonight while we ship a stability hotfix.",
+  },
 ] as const;
 
 let previewIndex = 0;
@@ -147,7 +165,12 @@ export async function sendPreviewNotification(): Promise<{
         title: sample.title,
         body: sample.body,
         sound: true,
-        data: { type: sample.type, screen: "tournament", tournamentId: "preview" },
+        data:
+          sample.type === "ADMIN_PROMOTION"
+            ? { type: sample.type, href: "/game/tournaments", screen: "notifications" }
+            : sample.type === "ADMIN_ALERT"
+            ? { type: sample.type, href: "/support", screen: "support" }
+            : { type: sample.type, screen: "tournament", tournamentId: "preview" },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 },
     });
