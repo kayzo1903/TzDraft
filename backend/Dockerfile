@@ -27,7 +27,6 @@ COPY backend/package.json ./backend/
 COPY packages/shared-client/package.json ./packages/shared-client/
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY packages/translations/package.json ./packages/translations/
-COPY packages/official-engine/package.json ./packages/official-engine/
 COPY frontend/package.json ./frontend/
 COPY apps/mobile/package.json ./apps/mobile/
 
@@ -61,7 +60,6 @@ COPY backend/package.json ./backend/
 COPY packages/shared-client/package.json ./packages/shared-client/
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY packages/translations/package.json ./packages/translations/
-COPY packages/official-engine/package.json ./packages/official-engine/
 COPY frontend/package.json ./frontend/
 COPY apps/mobile/package.json ./apps/mobile/
 
