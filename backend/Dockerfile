@@ -24,6 +24,8 @@ WORKDIR /app
 # Copy workspace manifests first for better layer caching.
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
+COPY packages/shared-client/ ./packages/shared-client/
+COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 
 # Install only backend deps (including devDependencies used by build tools).
 RUN pnpm install --filter backend... --frozen-lockfile
@@ -47,6 +49,8 @@ WORKDIR /app
 # Workspace manifests for dependency resolution.
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
+COPY packages/shared-client/ ./packages/shared-client/
+COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 
 # Install backend deps including devDependencies (prisma CLI is needed at startup).
 RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts
