@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { SocialNotificationService } from '../../application/services/social-notification.service';
 

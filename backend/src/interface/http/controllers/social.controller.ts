@@ -38,11 +38,13 @@ export class SocialController {
   ) {
     // We need the target user ID, so we might need to fetch the user first
     // or modify the service to accept username. For now, let's assume we need to fetch.
-    const targetUser = await (this.socialService as any).prisma.user.findUnique({
-      where: { username },
-    });
+    const targetUser = await (this.socialService as any).prisma.user.findUnique(
+      {
+        where: { username },
+      },
+    );
     if (!targetUser) return { error: 'User not found' };
-    
+
     return this.socialService.getRelationshipState(user.id, targetUser.id);
   }
 

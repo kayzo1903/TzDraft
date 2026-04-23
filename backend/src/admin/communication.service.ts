@@ -147,20 +147,20 @@ export class CommunicationService {
     adminId: string,
   ): Promise<CommunicationCampaign> {
     const channels = dto.channels as string[];
-    const isInstant = dto.scheduleMode === "instant";
-    
+    const isInstant = dto.scheduleMode === 'instant';
+
     // A campaign is LIVE if it needs to be visible on the mobile home screen/modals.
     // This includes any campaign with a home banner OR any high-priority campaign that should "pop".
-    const needsHomePresence = 
-      channels.includes("MOBILE_HOME_BANNER") || 
-      dto.priority === "HIGH" || 
-      dto.priority === "CRITICAL";
+    const needsHomePresence =
+      channels.includes('MOBILE_HOME_BANNER') ||
+      dto.priority === 'HIGH' ||
+      dto.priority === 'CRITICAL';
 
     const status = isInstant
       ? needsHomePresence
-        ? "LIVE"
-        : "SENT"
-      : "SCHEDULED";
+        ? 'LIVE'
+        : 'SENT'
+      : 'SCHEDULED';
 
     const campaign = await this.prisma.communicationCampaign.create({
       data: {
@@ -172,10 +172,10 @@ export class CommunicationService {
           ctaLabel: dto.ctaLabel,
           scheduleLocalLabel: {
             en: isInstant
-              ? "Sent immediately"
+              ? 'Sent immediately'
               : `Scheduled for ${dto.scheduleDate}`,
             sw: isInstant
-              ? "Imetumwa sasa hivi"
+              ? 'Imetumwa sasa hivi'
               : `Imepangwa kwa ${dto.scheduleDate}`,
           },
         },
@@ -191,38 +191,36 @@ export class CommunicationService {
         },
         schedule: {
           mode: dto.scheduleMode,
-          timezone: dto.timezone || "Africa/Nairobi",
+          timezone: dto.timezone || 'Africa/Nairobi',
           sendAt: isInstant
             ? new Date().toISOString()
-            : new Date(
-                `${dto.scheduleDate}T${dto.scheduleTime}`,
-              ).toISOString(),
+            : new Date(`${dto.scheduleDate}T${dto.scheduleTime}`).toISOString(),
           localLabel: isInstant
-            ? "Sent immediately"
+            ? 'Sent immediately'
             : `${dto.scheduleDate} at ${dto.scheduleTime}`,
         },
         analytics: this.emptyAnalytics(),
         mobilePresentation: {
           badge:
-            dto.type === "PROMOTION"
-              ? "Promosheni"
-              : dto.type === "ALERT"
-                ? "Tahadhari"
-                : "Tangazo",
+            dto.type === 'PROMOTION'
+              ? 'Promosheni'
+              : dto.type === 'ALERT'
+                ? 'Tahadhari'
+                : 'Tangazo',
           eyebrow:
-            dto.priority === "HIGH" || dto.priority === "CRITICAL"
-              ? "KIPAUMBELE CHA JUU"
-              : "TAARIFA MPYA",
+            dto.priority === 'HIGH' || dto.priority === 'CRITICAL'
+              ? 'KIPAUMBELE CHA JUU'
+              : 'TAARIFA MPYA',
           tone:
-            dto.type === "ALERT"
-              ? "ember"
-              : dto.type === "PROMOTION"
-                ? "sunrise"
-                : "ocean",
+            dto.type === 'ALERT'
+              ? 'ember'
+              : dto.type === 'PROMOTION'
+                ? 'sunrise'
+                : 'ocean',
           bannerBody: dto.body.sw || dto.body.en,
         },
         createdBy: adminId,
-        goal: "GENERAL_ENGAGEMENT",
+        goal: 'GENERAL_ENGAGEMENT',
       },
     });
 
@@ -230,14 +228,14 @@ export class CommunicationService {
     await this.prisma.communicationMessageHistory.create({
       data: {
         campaignId: campaign.id,
-        label: isInstant ? "Campaign launched" : "Campaign scheduled",
-        channel: dto.channels[0] || "MOBILE_IN_APP",
-        status: "SENT",
+        label: isInstant ? 'Campaign launched' : 'Campaign scheduled',
+        channel: dto.channels[0] || 'MOBILE_IN_APP',
+        status: 'SENT',
         details: `Created by admin ${adminId}`,
       },
     });
 
-    if (isInstant && channels.includes("MOBILE_PUSH")) {
+    if (isInstant && channels.includes('MOBILE_PUSH')) {
       await this.sendCampaignPush(
         campaign.id,
         campaign.audience,
@@ -285,7 +283,11 @@ export class CommunicationService {
         priority: dto.priority ?? 'NORMAL',
         audience: dto.audience ?? 'ACTIVE_USERS',
         channels: dto.channels ?? [],
-        cta: { label: dto.ctaLabel?.en ?? '', href: dto.ctaHref ?? '', deepLink: `drafti://${dto.ctaHref ?? ''}` },
+        cta: {
+          label: dto.ctaLabel?.en ?? '',
+          href: dto.ctaHref ?? '',
+          deepLink: `drafti://${dto.ctaHref ?? ''}`,
+        },
         schedule: {
           mode: 'instant',
           timezone: dto.timezone ?? 'Africa/Nairobi',
@@ -293,7 +295,12 @@ export class CommunicationService {
           localLabel: 'Draft — not scheduled',
         },
         analytics: this.emptyAnalytics(),
-        mobilePresentation: { badge: 'New', eyebrow: 'Campaign', tone: 'sunrise', bannerBody: dto.body?.en ?? '' },
+        mobilePresentation: {
+          badge: 'New',
+          eyebrow: 'Campaign',
+          tone: 'sunrise',
+          bannerBody: dto.body?.en ?? '',
+        },
         createdBy: adminId,
         goal: 'GENERAL_ENGAGEMENT',
       },
@@ -336,7 +343,12 @@ export class CommunicationService {
         campaignId,
         label: `User interaction: ${event.toUpperCase()}`,
         channel: 'MOBILE_IN_APP',
-        status: event === 'conversions' ? 'CONVERTED' : event === 'clicked' ? 'CLICKED' : 'SENT',
+        status:
+          event === 'conversions'
+            ? 'CONVERTED'
+            : event === 'clicked'
+              ? 'CLICKED'
+              : 'SENT',
         details: `User interacted with campaign in ${locale.toUpperCase()}`,
       },
     });
@@ -362,9 +374,13 @@ export class CommunicationService {
         ...(dto.channels && { channels: dto.channels }),
         ...(dto.status && { status: dto.status }),
         // Auto-promote to LIVE if we now have home presence requirements
-        ...((existing.status === 'SENT' || existing.status === 'DRAFT') && 
-            ((dto.channels?.includes('MOBILE_HOME_BANNER') || existing.channels.includes('MOBILE_HOME_BANNER')) ||
-             (dto.priority === 'HIGH' || dto.priority === 'CRITICAL' || existing.priority === 'HIGH' || existing.priority === 'CRITICAL'))
+        ...((existing.status === 'SENT' || existing.status === 'DRAFT') &&
+        (dto.channels?.includes('MOBILE_HOME_BANNER') ||
+          existing.channels.includes('MOBILE_HOME_BANNER') ||
+          dto.priority === 'HIGH' ||
+          dto.priority === 'CRITICAL' ||
+          existing.priority === 'HIGH' ||
+          existing.priority === 'CRITICAL')
           ? { status: 'LIVE' }
           : {}),
         ...(dto.title || dto.body || dto.ctaLabel
@@ -384,7 +400,7 @@ export class CommunicationService {
       data: {
         campaignId,
         label: 'Campaign updated',
-        channel: (existing.channels as string[])[0] as any || 'MOBILE_IN_APP',
+        channel: ((existing.channels as string[])[0] as any) || 'MOBILE_IN_APP',
         status: 'SENT',
         details: `Updated fields: ${Object.keys(dto).join(', ')}`,
       },
@@ -408,7 +424,7 @@ export class CommunicationService {
       data: {
         campaignId,
         label: 'Campaign paused',
-        channel: (existing.channels as string[])[0] as any || 'MOBILE_IN_APP',
+        channel: ((existing.channels as string[])[0] as any) || 'MOBILE_IN_APP',
         status: 'SUPPRESSED',
         details: 'Manually paused by admin',
       },
@@ -423,7 +439,9 @@ export class CommunicationService {
     });
     if (!existing) throw new NotFoundException('Campaign not found');
 
-    await this.prisma.communicationCampaign.delete({ where: { id: campaignId } });
+    await this.prisma.communicationCampaign.delete({
+      where: { id: campaignId },
+    });
     return { id: campaignId };
   }
 
@@ -445,9 +463,9 @@ export class CommunicationService {
       if (!sendAt || sendAt > now) continue;
 
       const channels = campaign.channels as string[];
-      const needsHomePresence = 
-        channels.includes('MOBILE_HOME_BANNER') || 
-        campaign.priority === 'HIGH' || 
+      const needsHomePresence =
+        channels.includes('MOBILE_HOME_BANNER') ||
+        campaign.priority === 'HIGH' ||
         campaign.priority === 'CRITICAL';
       const newStatus = needsHomePresence ? 'LIVE' : 'SENT';
 
@@ -461,7 +479,12 @@ export class CommunicationService {
       );
 
       if (channels.includes('MOBILE_PUSH')) {
-        await this.sendCampaignPush(campaign.id, campaign.audience, campaign.title, campaign.body);
+        await this.sendCampaignPush(
+          campaign.id,
+          campaign.audience,
+          campaign.title,
+          campaign.body,
+        );
       }
 
       await this.prisma.communicationMessageHistory.create({
@@ -533,16 +556,16 @@ export class CommunicationService {
       id: c.id,
       title: c.title,
       body: c.body,
-      localized: c.localized as any,
+      localized: c.localized,
       type: c.type as CommunicationType,
       status: c.status as CommunicationStatus,
       priority: c.priority as CommunicationPriority,
       audience: c.audience as CommunicationAudienceSegment,
       channels: c.channels as CommunicationChannel[],
-      cta: c.cta as any,
-      schedule: c.schedule as any,
-      analytics: c.analytics as any,
-      mobilePresentation: c.mobilePresentation as any,
+      cta: c.cta,
+      schedule: c.schedule,
+      analytics: c.analytics,
+      mobilePresentation: c.mobilePresentation,
       createdBy: c.createdBy,
       createdAt: c.createdAt.toISOString(),
       lastUpdatedAt: c.lastUpdatedAt.toISOString(),
@@ -551,10 +574,21 @@ export class CommunicationService {
   }
 
   private emptyAnalytics() {
-    const locale = { eligibleUsers: 0, delivered: 0, opened: 0, clicked: 0, conversions: 0 };
+    const locale = {
+      eligibleUsers: 0,
+      delivered: 0,
+      opened: 0,
+      clicked: 0,
+      conversions: 0,
+    };
     return {
-      eligibleUsers: 0, delivered: 0, opened: 0, clicked: 0,
-      conversions: 0, suppressedByCap: 0, failed: 0,
+      eligibleUsers: 0,
+      delivered: 0,
+      opened: 0,
+      clicked: 0,
+      conversions: 0,
+      suppressedByCap: 0,
+      failed: 0,
       byLocale: { en: { ...locale }, sw: { ...locale } },
     };
   }
