@@ -103,7 +103,8 @@
       "Bash(grep -v \"import\\\\|//\")",
       "Bash(grep \"@nestjs/throttler\" node_modules/.pnpm/*/package.json)",
       "Bash(node -e \"console.log\\(require\\('./node_modules/@nestjs/throttler/package.json'\\).version\\)\")",
-      "Bash(Start-Process powershell *)"
+      "Bash(Start-Process powershell *)",
+      "Bash(find /c/Users/Admin/Desktop/TzDraft/frontend/src/app/[locale]/admin/communication -type f)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\.claude\\projects\\c--Users-Admin-Desktop-TzDraft\\memory\\",

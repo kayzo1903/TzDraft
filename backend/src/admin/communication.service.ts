@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../infrastructure/database/prisma/prisma.service';
+import { PushCampaignQueue } from '../infrastructure/push/push-campaign.queue';
 import { ExpoPushService } from '../infrastructure/push/expo-push.service';
 import {
   CommunicationCenterSnapshot,
@@ -35,6 +36,7 @@ export class CommunicationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly expoPush: ExpoPushService,
+    private readonly pushQueue: PushCampaignQueue,
   ) {}
 
   async getSnapshot(): Promise<CommunicationCenterSnapshot> {
@@ -236,12 +238,7 @@ export class CommunicationService {
     });
 
     if (isInstant && channels.includes('MOBILE_PUSH')) {
-      await this.sendCampaignPush(
-        campaign.id,
-        campaign.audience,
-        campaign.title,
-        campaign.body,
-      );
+      await this.enqueuePush(campaign.id, campaign.audience, campaign.title, campaign.body);
     }
 
     return this.mapCampaign(campaign);
@@ -479,12 +476,7 @@ export class CommunicationService {
       );
 
       if (channels.includes('MOBILE_PUSH')) {
-        await this.sendCampaignPush(
-          campaign.id,
-          campaign.audience,
-          campaign.title,
-          campaign.body,
-        );
+        await this.enqueuePush(campaign.id, campaign.audience, campaign.title, campaign.body);
       }
 
       await this.prisma.communicationMessageHistory.create({
@@ -499,40 +491,54 @@ export class CommunicationService {
     }
   }
 
-  async sendCampaignPush(
+  /**
+   * Enqueues a paginated push delivery job via BullMQ.
+   * Falls back to a single synchronous page if Redis is unavailable.
+   */
+  async enqueuePush(
     campaignId: string,
     audience: string,
     title: string,
     body: string,
   ): Promise<void> {
+    if (this.pushQueue.isAvailable) {
+      await this.pushQueue.enqueueSendCampaign({
+        campaignId,
+        audience,
+        title,
+        body,
+        cursor: null,
+        totalDelivered: 0,
+      });
+      this.logger.log(`[Push] Campaign ${campaignId} enqueued for async delivery`);
+      return;
+    }
+
+    // Fallback: Redis unavailable — deliver synchronously (dev/small installs).
     try {
       const where = this.audienceWhere(audience);
       const users = await this.prisma.user.findMany({
         where: { ...where, pushToken: { not: null } },
         select: { id: true },
       });
-
       const userIds = users.map((u) => u.id);
       if (userIds.length === 0) return;
 
-      await this.expoPush.sendToUsers(userIds, title, body, {
+      const ticketIds = await this.expoPush.sendToUsers(userIds, title, body, {
         type: 'ADMIN_ANNOUNCEMENT',
         campaignId,
         href: `/community/announcement/${campaignId}`,
         screen: 'notifications',
       });
 
-      this.logger.log(
-        `[Push] Campaign ${campaignId} pushed to ${userIds.length} users`,
-      );
+      this.logger.log(`[Push] Campaign ${campaignId} sync-delivered to ${userIds.length} users`);
 
-      // Approximate delivered count update
-      const analytics = await this.prisma.communicationCampaign.findUnique({
+      const row = await this.prisma.communicationCampaign.findUnique({
         where: { id: campaignId },
         select: { analytics: true },
       });
-      if (analytics) {
-        const current = analytics.analytics as any;
+      if (row) {
+        const current = row.analytics as any;
         await this.prisma.communicationCampaign.update({
           where: { id: campaignId },
           data: {
@@ -544,8 +550,10 @@ export class CommunicationService {
           },
         });
       }
+
+      void ticketIds; // receipt check not available without queue
     } catch (err: any) {
-      this.logger.error(`[Push] Campaign push failed: ${err?.message}`);
+      this.logger.error(`[Push] Campaign sync push failed: ${err?.message}`);
     }
   }
 
