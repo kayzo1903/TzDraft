@@ -12,12 +12,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/auth-store";
 import { authClient } from "../src/lib/auth-client";
 import { useRouter } from "expo-router";
-import { User, LogOut, ChevronLeft, Settings, Shield, Bell, BookMarked, Camera, AlertCircle, ImageOff } from "lucide-react-native";
+import { User, LogOut, ChevronLeft, Settings as SettingsIcon, Shield, Bell, BookMarked, Camera, AlertCircle, ImageOff, Swords, Flame, Users } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { colors } from "../src/theme/colors";
 import * as ImagePicker from "expo-image-picker";
 import api, { API_URL } from "../src/lib/api";
 import { ThemedModal } from "../src/components/ui/ThemedModal";
+import { useSocial } from "../src/hooks/useSocial";
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -29,7 +30,14 @@ export default function ProfileScreen() {
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
 
   const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
+  const { getStats, getFriends } = useSocial();
+  const [socialStats, setSocialStats] = useState({ followersCount: 0, followingCount: 0, friendsCount: 0 });
+  const [friends, setFriends] = useState<any[]>([]);
 
+  React.useEffect(() => {
+    getStats().then(setSocialStats);
+    getFriends().then(setFriends);
+  }, []);
   const showError = (title: string, message: string) =>
     setErrorModal({ title, message });
 
@@ -111,30 +119,63 @@ export default function ProfileScreen() {
           <ChevronLeft color={colors.textMuted} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("nav.profile", "Profile")}</Text>
-        <View style={{ width: 44 }} />
+        <TouchableOpacity onPress={() => router.push("/settings")} style={styles.settingsButton}>
+          <SettingsIcon color={colors.textMuted} size={24} />
+        </TouchableOpacity>
       </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileCard}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handleAvatarPress}
-            disabled={uploading}
-            activeOpacity={0.8}
-          >
-            {avatarSource ? (
-              <Image source={{ uri: avatarSource }} style={styles.avatarImage} />
-            ) : (
-              <User color={colors.primary} size={48} />
-            )}
-            <View style={styles.cameraBadge}>
-              {uploading ? (
-                <ActivityIndicator size="small" color="#fff" />
+          <View style={styles.profileMainRow}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={handleAvatarPress}
+              disabled={uploading}
+              activeOpacity={0.8}
+            >
+              {avatarSource ? (
+                <Image source={{ uri: avatarSource }} style={styles.avatarImage} />
               ) : (
-                <Camera size={14} color="#fff" />
+                <User color={colors.primary} size={40} />
+              )}
+              <View style={styles.cameraBadge}>
+                {uploading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Camera size={12} color="#fff" />
+                )}
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.profileRightColumn}>
+              <View style={styles.profileDetails}>
+                <Text style={styles.displayName}>
+                  {user?.displayName || "Guest"}{" "}
+                  <Text style={styles.username}>@{user?.username || "guest"}</Text>
+                </Text>
+              </View>
+
+              <View style={styles.statsContainer}>
+                <TouchableOpacity style={styles.statItem} onPress={() => router.push("/community/friends")}>
+                  <Text style={styles.statValue}>{socialStats.friendsCount}</Text>
+                  <Text style={styles.statLabel}>Friends</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.statItem} onPress={() => router.push("/community/friends")}>
+                  <Text style={styles.statValue}>{socialStats.followersCount}</Text>
+                  <Text style={styles.statLabel}>Followers</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.statItem} onPress={() => router.push("/community/friends")}>
+                  <Text style={styles.statValue}>{socialStats.followingCount}</Text>
+                  <Text style={styles.statLabel}>Following</Text>
+                </TouchableOpacity>
+              </View>
+
+              {user?.rating !== undefined && (
+                <View style={styles.ratingBadge}>
+                  <Text style={styles.ratingText}>Blitz ELO: {user.rating}</Text>
+                </View>
               )}
             </View>
-          </TouchableOpacity>
+          </View>
 
           {/* Save / Cancel pending avatar */}
           {pendingAvatar && (
@@ -159,54 +200,58 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           )}
+        </View>
 
-          <Text style={styles.avatarHint}>
-            Tap your photo to choose a new one. Changes are only applied after you save.
-          </Text>
-
-          <Text style={styles.username}>{user?.displayName || user?.username || "Guest User"}</Text>
-          <Text style={styles.email}>{user?.email || "No email provided"}</Text>
-          {user?.rating !== undefined && (
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>ELO: {user.rating}</Text>
+        <View style={styles.friendsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Friends</Text>
+            <TouchableOpacity onPress={() => router.push("/community/friends")}>
+              <Text style={styles.viewAllText}>Manage</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {friends.length > 0 ? (
+            friends.map((friend) => (
+              <TouchableOpacity 
+                key={friend.id} 
+                style={styles.friendItem}
+                onPress={() => router.push(`/game/lobby?challenge=${friend.username}` as any)}
+              >
+                <View style={styles.friendInfo}>
+                  <View style={styles.friendAvatarWrapper}>
+                    {friend.avatarUrl ? (
+                      <Image source={{ uri: friend.avatarUrl }} style={styles.friendAvatar} />
+                    ) : (
+                      <View style={styles.friendAvatarPlaceholder}>
+                        <User color={colors.textDisabled} size={20} />
+                      </View>
+                    )}
+                    <View style={styles.onlineDot} />
+                  </View>
+                  <View>
+                    <Text style={styles.friendName}>{friend.displayName}</Text>
+                    <Text style={styles.friendHandle}>@{friend.username}</Text>
+                  </View>
+                </View>
+                <View style={styles.friendActions}>
+                  {friend.isRival && <Flame size={16} color={colors.primary} fill={colors.primary} />}
+                  <Swords size={20} color={colors.primary} />
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyFriends}>
+              <Users color={colors.textDisabled} size={48} strokeWidth={1} />
+              <Text style={styles.emptyFriendsText}>Your social circle is quiet...</Text>
+              <TouchableOpacity 
+                style={styles.findBtn}
+                onPress={() => router.push("/game/leaderboard")}
+              >
+                <Text style={styles.findBtnText}>Find Rivals</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
-
-        <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/settings")}>
-            <View style={styles.menuIconWrapper}>
-              <Settings color={colors.textMuted} size={20} />
-            </View>
-            <Text style={styles.menuText}>Account Settings</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/notifications")}>
-            <View style={styles.menuIconWrapper}>
-              <Bell color={colors.textMuted} size={20} />
-            </View>
-            <Text style={styles.menuText}>Notifications</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/game/studies")}>
-            <View style={styles.menuIconWrapper}>
-              <BookMarked color={colors.textMuted} size={20} />
-            </View>
-            <Text style={styles.menuText}>{t("studies.title", "My Studies")}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/support")}>
-            <View style={styles.menuIconWrapper}>
-              <Shield color={colors.textMuted} size={20} />
-            </View>
-            <Text style={styles.menuText}>Privacy &amp; Security</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut color={colors.danger} size={20} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Error modal — replaces native Alert */}
@@ -262,112 +307,242 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   profileCard: {
-    alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 24,
     backgroundColor: colors.surface,
-    padding: 24,
+    padding: 16,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  profileMainRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  profileRightColumn: {
+    flex: 1,
+    marginLeft: 20,
+  },
   avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     backgroundColor: colors.primaryAlpha10,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
     borderWidth: 2,
     borderColor: colors.primaryAlpha15,
-    overflow: "visible",
   },
   avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
   },
   cameraBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: colors.surface,
   },
-  pendingActions: {
-    width: "100%",
+  statsContainer: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 14,
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 8,
   },
-  cancelBtn: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
+  statItem: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
   },
-  cancelBtnText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontWeight: "700",
+  statValue: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "900",
   },
-  saveBtn: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
+  statLabel: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
   },
-  saveBtnText: {
-    color: colors.onPrimary,
-    fontSize: 15,
-    fontWeight: "700",
+  profileDetails: {
+    marginTop: 0,
   },
-  avatarHint: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: "center",
-    marginBottom: 16,
+  displayName: {
+    color: colors.foreground,
+    fontSize: 16,
+    fontWeight: "bold",
   },
   username: {
-    color: colors.foreground,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  email: {
     color: colors.textSubtle,
     fontSize: 14,
-    marginBottom: 8,
   },
   ratingBadge: {
     backgroundColor: colors.primaryAlpha15,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 4,
+    borderRadius: 8,
+    alignSelf: "flex-start",
     borderWidth: 1,
     borderColor: colors.primaryAlpha30,
   },
   ratingText: {
     color: colors.primary,
     fontSize: 12,
+    fontWeight: "bold",
+  },
+  settingsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  friendsSection: {
+    marginTop: 8,
+  },
+  sectionTitle: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 2,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  viewAllText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  friendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  friendInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  friendAvatarWrapper: {
+    position: "relative",
+    marginRight: 12,
+  },
+  friendAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  friendAvatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  onlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  friendName: {
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  friendHandle: {
+    color: colors.textSubtle,
+    fontSize: 12,
+  },
+  friendActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  emptyFriends: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+  },
+  emptyFriendsText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: "center",
+  },
+  findBtn: {
+    marginTop: 16,
+    backgroundColor: colors.primaryAlpha15,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  findBtnText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  pendingActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelBtnText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  saveBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveBtnText: {
+    color: colors.onPrimary,
+    fontSize: 14,
     fontWeight: "bold",
   },
   menuSection: {
@@ -414,5 +589,37 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 16,
     fontWeight: "bold",
+  },
+  socialStatsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  socialStat: {
+    flex: 1,
+    alignItems: "center",
+  },
+  socialStatValue: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  socialStatLabel: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  socialStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.border,
   },
 });

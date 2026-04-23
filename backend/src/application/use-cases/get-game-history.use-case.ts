@@ -11,7 +11,7 @@ export interface GameHistoryItem {
   gameType: string;
   result: 'WIN' | 'LOSS' | 'DRAW';
   endReason: string | null;
-  opponent: { id: string; displayName: string; elo: number | null } | null;
+  opponent: { id: string; displayName: string; username: string; elo: number | null } | null;
   myElo: number | null;
   moveCount: number;
   durationMs: number | null;
@@ -71,9 +71,9 @@ export class GetGameHistoryUseCase {
         result = 'LOSS';
       }
 
-      let opponent: {
         id: string;
         displayName: string;
+        username: string;
         elo: number | null;
       } | null = null;
       if (opponentId) {
@@ -82,6 +82,7 @@ export class GetGameHistoryUseCase {
           opponent = {
             id: user.id,
             displayName: user.displayName,
+            username: user.username,
             elo: opponentElo ?? (user as any).rating?.rating ?? null,
           };
         }
