@@ -27,7 +27,6 @@ COPY backend/package.json ./backend/
 COPY packages/shared-client/package.json ./packages/shared-client/
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY packages/translations/package.json ./packages/translations/
-COPY packages/official-engine/package.json ./packages/official-engine/
 COPY frontend/package.json ./frontend/
 COPY apps/mobile/package.json ./apps/mobile/
 
@@ -38,6 +37,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared-client/ ./packages/shared-client/
 COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
 COPY backend/ ./backend/
+
+# Ensure workspace links are fully resolved after copying source
+RUN pnpm install --frozen-lockfile
 
 # Build shared-client first so its types/output are available to backend
 RUN pnpm --filter @tzdraft/shared-client build
@@ -61,16 +63,15 @@ COPY backend/package.json ./backend/
 COPY packages/shared-client/package.json ./packages/shared-client/
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
 COPY packages/translations/package.json ./packages/translations/
-COPY packages/official-engine/package.json ./packages/official-engine/
 COPY frontend/package.json ./frontend/
 COPY apps/mobile/package.json ./apps/mobile/
-
-# Install backend production deps
-RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts --prod
 
 # Copy source for dependencies (needed because node_modules links to them)
 COPY packages/shared-client/ ./packages/shared-client/
 COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
+
+# Install backend production deps
+RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts --prod
 
 # Copy compiled backend output.
 COPY --from=builder /app/backend/dist ./backend/dist
