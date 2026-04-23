@@ -31,6 +31,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @tzdraft/shared-client build
 
 WORKDIR /app/backend
+RUN pnpm exec prisma generate
 RUN pnpm build
 
 # Stage 2: Production
@@ -52,11 +53,12 @@ RUN pnpm install --frozen-lockfile --ignore-scripts --prod
 # Copy compiled backend output.
 COPY --from=builder /app/backend/dist ./backend/dist
 
-# Prisma schema files are needed by migrate deploy and prisma generate.
+# Prisma schema files are needed by migrate deploy.
 COPY --from=builder /app/backend/prisma ./backend/prisma
 
-# Generate Prisma client in this stage to avoid virtual-store path issues.
-RUN cd /app/backend && pnpm exec prisma generate
+# Copy the generated Prisma client from the builder stage (avoids re-running
+# prisma generate against a frozen-lockfile prod install).
+COPY --from=builder /app/node_modules/.pnpm /app/node_modules/.pnpm
 
 # Copy the Mkaguzi native binary to the path the adapter probes by default.
 RUN mkdir -p ./engines/core/build/Release
