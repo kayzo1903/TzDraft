@@ -27,8 +27,11 @@ import {
   Target,
   Swords,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  UserPlus,
+  Check,
 } from "lucide-react-native";
+import { useSocial } from "../../src/hooks/useSocial";
 import { historyService, GameHistoryItem, PlayerStats, HistoryFilters } from "../../src/lib/history-service";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
 import { colors } from "../../src/theme/colors";
@@ -39,6 +42,8 @@ export default function GameHistoryScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const locale = i18n.language;
+  const { follow } = useSocial();
+  const [followedUsernames, setFollowedUsernames] = useState<Set<string>>(new Set());
 
   // State
   const [loading, setLoading] = useState(true);
@@ -190,6 +195,32 @@ export default function GameHistoryScreen() {
       
       <View style={styles.gameCardRight}>
          {renderResultBadge(item.result)}
+         
+         {item.opponent && item.gameType !== "AI" && (
+           <TouchableOpacity 
+             style={[
+               styles.followButton,
+               followedUsernames.has(item.opponent.username) && styles.followButtonActive
+             ]}
+             onPress={async (e) => {
+               // Prevent navigation to replay when clicking follow
+               if (followedUsernames.has(item.opponent!.username)) return;
+               try {
+                 await follow(item.opponent!.username);
+                 setFollowedUsernames(prev => new Set(prev).add(item.opponent!.username));
+               } catch (err) {
+                 console.error("Follow failed", err);
+               }
+             }}
+           >
+             {followedUsernames.has(item.opponent.username) ? (
+               <Check size={14} color={colors.primary} />
+             ) : (
+               <UserPlus size={14} color={colors.textMuted} />
+             )}
+           </TouchableOpacity>
+         )}
+         
          <ChevronRight size={16} color={colors.textDisabled} />
       </View>
     </TouchableOpacity>
@@ -544,6 +575,20 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
+  },
+  followButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  followButtonActive: {
+    backgroundColor: colors.primaryAlpha10,
+    borderColor: colors.primaryAlpha30,
   },
   resultText: {
     fontSize: 10,

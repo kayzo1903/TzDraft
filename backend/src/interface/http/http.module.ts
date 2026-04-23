@@ -24,6 +24,8 @@ import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.servic
 import { UserModule } from '../../domain/user/user.module';
 import { CommunicationModule } from '../../admin/communication.module';
 import { CommunicationController } from './controllers/communication.controller';
+import { SocialController } from './controllers/social.controller';
+import { SocialModule } from '../../domain/social/social.module';
 
 /**
  * HTTP Module
@@ -39,6 +41,7 @@ import { CommunicationController } from './controllers/communication.controller'
     AuthModule,
     UserModule,
     CommunicationModule,
+    SocialModule,
   ],
   controllers: [
     GameController,
@@ -52,6 +55,7 @@ import { CommunicationController } from './controllers/communication.controller'
     StudyController,
     AdminStudyController,
     CommunicationController,
+    SocialController,
   ],
   providers: [GetAiMoveUseCase, PuzzleMinerService],
 })

@@ -75,6 +75,11 @@ export function getNotificationRoute(
   if (screen === "tournament" && data.tournamentId) {
     return `/game/tournament/${data.tournamentId}`;
   }
+  if (screen === "profile") {
+    if (data.followerId) return `/game/player/${data.followerId}`;
+    if (data.friendId) return `/game/player/${data.friendId}`;
+    return "/profile";
+  }
   if (data.type === "WELCOME") {
     return "/";
   }

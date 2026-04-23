@@ -21,8 +21,11 @@ import {
   Timer,
   Clock,
   Layers,
+  Users,
+  Flame,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
+import { socialService, SocialUser } from "../src/services/social.service";
 
 const { width } = Dimensions.get("window");
 
@@ -83,6 +86,8 @@ export default function Home() {
   const [recentGames, setRecentGames] = useState<any[]>([]);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
   const [activeGame, setActiveGame] = useState<{ id: string; gameType: string } | null>(null);
+  const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [isFriendsLoading, setIsFriendsLoading] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -103,6 +108,7 @@ export default function Home() {
       if (isAuthenticated && !isGuest) {
         fetchRecentGames();
         fetchActive();
+        fetchFriends();
       }
 
       return () => {
@@ -120,6 +126,18 @@ export default function Home() {
       console.error("[Home] Failed to fetch recent games:", err);
     } finally {
       setIsLoadingRecent(false);
+    }
+  };
+
+  const fetchFriends = async () => {
+    setIsFriendsLoading(true);
+    try {
+      const data = await socialService.getFriends();
+      setFriends(data);
+    } catch (err) {
+      console.error("[Home] Failed to fetch friends:", err);
+    } finally {
+      setIsFriendsLoading(false);
     }
   };
 
@@ -472,5 +490,73 @@ const styles = StyleSheet.create({
     color: colors.textDisabled,
     fontSize: 12,
     fontStyle: "italic",
+  },
+  friendsSection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionHeaderTitle: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  viewAllText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  friendsScroll: {
+    gap: 16,
+    paddingHorizontal: 4,
+  },
+  friendCard: {
+    alignItems: "center",
+    width: 64,
+  },
+  friendAvatarWrapper: {
+    position: "relative",
+    marginBottom: 6,
+  },
+  friendAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  friendAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  onlineDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  friendName: {
+    color: colors.foreground,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
   },
 });

@@ -17,6 +17,7 @@ import {
   BellRing,
   ShieldAlert,
   Sparkles,
+  Users,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { useMobileCommunicationCenter } from "../src/hooks/useMobileCommunicationCenter";
@@ -119,6 +120,13 @@ export default function CommunityHub() {
             subtitle={t("community.leaderboardDesc")}
             onPress={() => router.push("/game/leaderboard")}
             color="#ec4899"
+          />
+          <CommunityCard
+            icon={Users}
+            title={t("community.social", "Social Hub")}
+            subtitle={t("community.socialDesc", "Connect with rivals and follow Grand Masters")}
+            onPress={() => router.push("/community/friends")}
+            color="#06b6d4"
           />
         </View>
 
