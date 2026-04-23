@@ -7,8 +7,11 @@ import { ExpoPushService } from '../infrastructure/push/expo-push.service';
 
 @Module({
   imports: [PrismaModule, ScheduleModule.forRoot()],
-  providers: [CommunicationService, CommunicationSchedulerService, ExpoPushService],
+  providers: [
+    CommunicationService,
+    CommunicationSchedulerService,
+    ExpoPushService,
+  ],
   exports: [CommunicationService],
 })
 export class CommunicationModule {}
-

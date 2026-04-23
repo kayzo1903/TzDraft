@@ -28,11 +28,15 @@ export class SocialNotificationService {
     });
     if (!follower) return;
 
-    const notif = await this.persist(followingId, NotificationType.SOCIAL_FOLLOW, {
-      title: 'New Follower',
-      body: `${follower.displayName} (@${follower.username}) started following you!`,
-      meta: { followerId: follower.id, username: follower.username },
-    });
+    const notif = await this.persist(
+      followingId,
+      NotificationType.SOCIAL_FOLLOW,
+      {
+        title: 'New Follower',
+        body: `${follower.displayName} (@${follower.username}) started following you!`,
+        meta: { followerId: follower.id, username: follower.username },
+      },
+    );
 
     this.gateway.emitNotification(followingId, notif);
     void this.expoPush.sendToUser(followingId, notif.title, notif.body, {
@@ -50,11 +54,15 @@ export class SocialNotificationService {
     if (!userA || !userB) return;
 
     // Notify User A
-    const notifA = await this.persist(userAId, NotificationType.FRIENDSHIP_ESTABLISHED, {
-      title: 'New Friend!',
-      body: `You and ${userB.displayName} are now friends. Challenge them to a game!`,
-      meta: { friendId: userB.id, username: userB.username },
-    });
+    const notifA = await this.persist(
+      userAId,
+      NotificationType.FRIENDSHIP_ESTABLISHED,
+      {
+        title: 'New Friend!',
+        body: `You and ${userB.displayName} are now friends. Challenge them to a game!`,
+        meta: { friendId: userB.id, username: userB.username },
+      },
+    );
     this.gateway.emitNotification(userAId, notifA);
     void this.expoPush.sendToUser(userAId, notifA.title, notifA.body, {
       friendId: userB.id,
@@ -62,11 +70,15 @@ export class SocialNotificationService {
     });
 
     // Notify User B
-    const notifB = await this.persist(userBId, NotificationType.FRIENDSHIP_ESTABLISHED, {
-      title: 'New Friend!',
-      body: `You and ${userA.displayName} are now friends. Challenge them to a game!`,
-      meta: { friendId: userA.id, username: userA.username },
-    });
+    const notifB = await this.persist(
+      userBId,
+      NotificationType.FRIENDSHIP_ESTABLISHED,
+      {
+        title: 'New Friend!',
+        body: `You and ${userA.displayName} are now friends. Challenge them to a game!`,
+        meta: { friendId: userA.id, username: userA.username },
+      },
+    );
     this.gateway.emitNotification(userBId, notifB);
     void this.expoPush.sendToUser(userBId, notifB.title, notifB.body, {
       friendId: userA.id,

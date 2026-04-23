@@ -22,11 +22,7 @@ import { TasksModule } from '../infrastructure/tasks/tasks.module';
     forwardRef(() => TasksModule),
   ],
   controllers: [AdminController],
-  providers: [
-    PrismaHealthIndicator,
-    RedisHealthIndicator,
-    AnalyticsService,
-  ],
+  providers: [PrismaHealthIndicator, RedisHealthIndicator, AnalyticsService],
   exports: [AnalyticsService, CommunicationModule],
 })
 export class AdminModule {}

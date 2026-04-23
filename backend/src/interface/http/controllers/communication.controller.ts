@@ -20,6 +20,10 @@ export class CommunicationController {
     @Query('event') event: 'opened' | 'clicked' | 'conversions',
     @Query('locale') locale: 'en' | 'sw' = 'en',
   ) {
-    return this.communicationService.trackCampaignInteraction(id, event, locale);
+    return this.communicationService.trackCampaignInteraction(
+      id,
+      event,
+      locale,
+    );
   }
 }
