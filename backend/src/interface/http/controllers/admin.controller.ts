@@ -454,12 +454,12 @@ export class AdminController {
     const campaign = await this.communicationService.getActiveCampaigns();
     const found = campaign.find((c) => c.id === id);
     if (!found) return { sent: 0 };
-    await this.communicationService.sendCampaignPush(
+    await this.communicationService.enqueuePush(
       id,
       found.audience,
       found.title,
       found.body,
     );
-    return { sent: true };
+    return { enqueued: true };
   }
 }
