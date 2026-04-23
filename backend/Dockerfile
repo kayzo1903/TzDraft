@@ -26,9 +26,13 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
 COPY packages/shared-client/package.json ./packages/shared-client/
 COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
+COPY packages/translations/package.json ./packages/translations/
+COPY packages/official-engine/package.json ./packages/official-engine/
+COPY frontend/package.json ./frontend/
+COPY apps/mobile/package.json ./apps/mobile/
 
-# Install dependencies (filter ensures we only get what backend needs)
-RUN pnpm install --filter backend... --frozen-lockfile
+# Install all workspace dependencies
+RUN pnpm install --frozen-lockfile
 
 # Copy source for dependencies and backend
 COPY packages/shared-client/ ./packages/shared-client/
@@ -54,11 +58,19 @@ WORKDIR /app
 # Workspace manifests for dependency resolution.
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
+COPY packages/shared-client/package.json ./packages/shared-client/
+COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
+COPY packages/translations/package.json ./packages/translations/
+COPY packages/official-engine/package.json ./packages/official-engine/
+COPY frontend/package.json ./frontend/
+COPY apps/mobile/package.json ./apps/mobile/
+
+# Install backend production deps
+RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts --prod
+
+# Copy source for dependencies (needed because node_modules links to them)
 COPY packages/shared-client/ ./packages/shared-client/
 COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
-
-# Install backend deps including devDependencies (prisma CLI is needed at startup).
-RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts
 
 # Copy compiled backend output.
 COPY --from=builder /app/backend/dist ./backend/dist
