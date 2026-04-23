@@ -88,7 +88,11 @@ export class UserService {
     };
 
     // Update cache
-    await this.redis.setex(this.getCacheKey(userId), 3600, JSON.stringify(result));
+    await this.redis.setex(
+      this.getCacheKey(userId),
+      3600,
+      JSON.stringify(result),
+    );
 
     return result;
   }
@@ -118,11 +122,20 @@ export class UserService {
       return { global: null, country: null, region: null, totalPlayers: 0 };
 
     const myUser = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!myUser || myUser.accountType === AccountType.GUEST || myUser.role === UserRole.ADMIN) {
+    if (
+      !myUser ||
+      myUser.accountType === AccountType.GUEST ||
+      myUser.role === UserRole.ADMIN
+    ) {
       return { global: null, country: null, region: null, totalPlayers: 0 };
     }
 
-    const registeredWhere = { user: { accountType: { notIn: [AccountType.GUEST] }, role: UserRole.USER } };
+    const registeredWhere = {
+      user: {
+        accountType: { notIn: [AccountType.GUEST] },
+        role: UserRole.USER,
+      },
+    };
 
     const [globalRank, totalPlayers] = await Promise.all([
       this.prisma.rating.count({
@@ -302,7 +315,11 @@ export class UserService {
 
       for (const user of dbUsers) {
         results.push(user);
-        await this.redis.setex(this.getCacheKey(user.id), 3600, JSON.stringify(user));
+        await this.redis.setex(
+          this.getCacheKey(user.id),
+          3600,
+          JSON.stringify(user),
+        );
       }
     }
 

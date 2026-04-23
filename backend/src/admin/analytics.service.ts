@@ -4,6 +4,31 @@ import { PrismaService } from '../infrastructure/database/prisma/prisma.service'
 
 type WindowCountsRow = Record<string, bigint>;
 type DailyCountRow = { date: string; count: bigint };
+type CommunicationTotalsRow = {
+  sent: bigint;
+  read: bigint;
+  unread: bigint;
+  uniqueRecipients: bigint;
+  sentLast7Days: bigint;
+  readLast7Days: bigint;
+  uniqueRecipientsLast7Days: bigint;
+  sentLast30Days: bigint;
+  readLast30Days: bigint;
+  uniqueRecipientsLast30Days: bigint;
+};
+type CommunicationTypeRow = {
+  type: string;
+  sent: bigint;
+  read: bigint;
+  unread: bigint;
+  uniqueRecipients: bigint;
+};
+type CommunicationDailyTrendRow = {
+  date: string;
+  sent: bigint;
+  read: bigint;
+  uniqueRecipients: bigint;
+};
 
 const ANALYTICS_WINDOWS = [1, 3, 7, 30, 90, 365] as const;
 

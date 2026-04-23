@@ -285,8 +285,15 @@ export class AuthController {
       storage: memoryStorage(),
       limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
       fileFilter: (_req, file, cb) => {
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
-          return cb(new BadRequestException('Only JPEG, PNG or WebP images are allowed'), false);
+        if (
+          !['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)
+        ) {
+          return cb(
+            new BadRequestException(
+              'Only JPEG, PNG or WebP images are allowed',
+            ),
+            false,
+          );
         }
         cb(null, true);
       },
@@ -299,9 +306,13 @@ export class AuthController {
     if (!file) throw new BadRequestException('No file uploaded');
 
     const current = await this.userService.findById(user.id);
-    const existingAvatar = (current as any)?.avatarUrl as string | undefined;
+    const existingAvatar = current?.avatarUrl as string | undefined;
 
-    const avatarUrl = await this.r2.uploadAvatar(file.buffer, file.mimetype, user.id);
+    const avatarUrl = await this.r2.uploadAvatar(
+      file.buffer,
+      file.mimetype,
+      user.id,
+    );
     await this.userService.updateProfile(user.id, { avatarUrl });
 
     // Only remove the old object after the new upload and DB update succeed.

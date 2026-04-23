@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { LoadingScreen } from "../src/components/ui/LoadingScreen";
+import { MobileAnnouncementBanner } from "../src/components/communications/MobileAnnouncementBanner";
 import {
   ArrowLeft,
   Bell,
@@ -26,11 +27,13 @@ import {
   Flag,
   Users,
   FlaskConical,
+  Megaphone,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { useNotifications } from "../src/hooks/useNotifications";
 import type { AppNotification } from "../src/hooks/useNotifications";
-import { sendPreviewNotification } from "../src/lib/push-notifications";
+import { useMobileCommunicationCenter } from "../src/hooks/useMobileCommunicationCenter";
+import { getNotificationRoute, sendPreviewNotification } from "../src/lib/push-notifications";
 
 const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
   TOURNAMENT_REGISTERED: { icon: Trophy,       color: "#f97316" },
@@ -42,6 +45,10 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
   MATCH_RESULT:          { icon: Trophy,        color: "#10b981" },
   ROUND_ADVANCED:        { icon: ChevronRight,  color: "#f97316" },
   ELIMINATED:            { icon: Flag,          color: "#ef4444" },
+  ADMIN_ANNOUNCEMENT:    { icon: Megaphone,     color: "#38bdf8" },
+  ADMIN_PROMOTION:       { icon: Bell,          color: "#f97316" },
+  ADMIN_ALERT:           { icon: CircleAlert,   color: "#ef4444" },
+  ADMIN_ENGAGEMENT:      { icon: Users,         color: "#10b981" },
 };
 
 function timeAgo(dateStr: string): string {
@@ -92,16 +99,42 @@ export default function NotificationsScreen() {
     markAllRead,
     injectPreview,
   } = useNotifications();
+  const {
+    featuredCampaign,
+    inboxItems: campaignInboxItems,
+    unreadCount: campaignUnreadCount,
+    markCampaignRead,
+    trackInteraction,
+    dismissBanner,
+    getCampaignRoute,
+  } = useMobileCommunicationCenter();
 
   const [markingAll, setMarkingAll] = React.useState(false);
   const [previewing, setPreviewing] = React.useState(false);
   const [toastLabel, setToastLabel] = React.useState("");
   const [toastKey, setToastKey] = React.useState(0);
+  const combinedUnreadCount = unreadCount + campaignUnreadCount;
+  const combinedNotifications = React.useMemo<AppNotification[]>(
+    () =>
+      [...campaignInboxItems, ...notifications].sort(
+        (left, right) =>
+          new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+      ),
+    [campaignInboxItems, notifications],
+  );
 
   const handleMarkAllRead = async () => {
     setMarkingAll(true);
-    await markAllRead();
-    setMarkingAll(false);
+    try {
+      await Promise.all([
+        markAllRead(),
+        ...campaignInboxItems
+          .filter((item) => !item.read)
+          .map((item) => markCampaignRead(item.campaignId)),
+      ]);
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
   const handlePreview = async () => {
@@ -118,9 +151,23 @@ export default function NotificationsScreen() {
   };
 
   const handlePress = (n: AppNotification) => {
-    if (!n.read) markRead(n.id);
-    if (n.metadata?.tournamentId) {
-      router.push(`/game/tournament/${n.metadata.tournamentId}` as any);
+    const isCampaign = n.metadata?.source === "ADMIN_CAMPAIGN";
+
+    if (isCampaign) {
+      markCampaignRead(String(n.metadata?.campaignId ?? n.id)).catch(() => {});
+      trackInteraction(String(n.metadata?.campaignId ?? n.id), "clicked").catch(() => {});
+    } else if (!n.read) {
+      markRead(n.id).catch(() => {});
+    }
+
+    const route = getNotificationRoute(n.metadata);
+    if (route) {
+      router.push(route as any);
+      return;
+    }
+
+    if (isCampaign && featuredCampaign?.id === n.id) {
+      router.push(getCampaignRoute(featuredCampaign) as any);
     }
   };
 
@@ -168,9 +215,9 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>
-          {t("nav.notifications", "Notifications")}
-          {unreadCount > 0 && (
-            <Text style={styles.headerBadge}> · {unreadCount}</Text>
+          {t("notifications.title")}
+          {combinedUnreadCount > 0 && (
+            <Text style={styles.headerBadge}> · {combinedUnreadCount}</Text>
           )}
         </Text>
 
@@ -181,7 +228,7 @@ export default function NotificationsScreen() {
               style={[styles.iconBtn, styles.previewBtn]}
               onPress={handlePreview}
               disabled={previewing}
-              accessibilityLabel="Send preview notification"
+              accessibilityLabel={t("notifications.devPreviewHint")}
             >
               {previewing ? (
                 <ActivityIndicator size="small" color={colors.primary} />
@@ -191,7 +238,7 @@ export default function NotificationsScreen() {
             </TouchableOpacity>
           )}
 
-          {unreadCount > 0 ? (
+          {combinedUnreadCount > 0 ? (
             <TouchableOpacity
               style={[styles.iconBtn, styles.markAllBtn]}
               onPress={handleMarkAllRead}
@@ -217,7 +264,7 @@ export default function NotificationsScreen() {
         <ScrollView
           style={styles.list}
           contentContainerStyle={
-            notifications.length === 0
+            combinedNotifications.length === 0
               ? styles.emptyContainer
               : styles.listContent
           }
@@ -229,28 +276,49 @@ export default function NotificationsScreen() {
             />
           }
         >
-          {notifications.length === 0 ? (
+          {featuredCampaign && (
+            <View style={styles.featuredBannerWrap}>
+              <MobileAnnouncementBanner
+                campaign={featuredCampaign}
+                onDismiss={() => {
+                  dismissBanner(featuredCampaign.id).catch(() => {});
+                }}
+                onPress={() => {
+                  markCampaignRead(featuredCampaign.id).catch(() => {});
+                  trackInteraction(featuredCampaign.id, "clicked").catch(() => {});
+                  router.push(getCampaignRoute(featuredCampaign) as any);
+                }}
+              />
+            </View>
+          )}
+
+          {combinedNotifications.length === 0 ? (
             <View style={styles.empty}>
               <BellOff size={48} color={colors.surfaceElevated} />
-              <Text style={styles.emptyTitle}>All caught up</Text>
+              <Text style={styles.emptyTitle}>
+                {t("notifications.emptyTitle", "All caught up")}
+              </Text>
               <Text style={styles.emptySub}>
-                Tournament updates, match results, and round changes will appear
-                here.
-                {__DEV__ && "\n\nTap 🧪 to preview each notification type."}
+                {t(
+                  "notifications.emptySub",
+                  "Tournament updates, admin announcements, and reminder campaigns will appear here.",
+                )}
+                {__DEV__ &&
+                  `\n\n${t("notifications.devPreviewHint", "Tap 🧪 to preview each notification type.")}`}
               </Text>
             </View>
           ) : (
             <>
-              {notifications.filter((n) => !n.read).length > 0 && (
+              {combinedNotifications.filter((n) => !n.read).length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>New</Text>
-                  {notifications.filter((n) => !n.read).map(renderItem)}
+                  {combinedNotifications.filter((n) => !n.read).map(renderItem)}
                 </View>
               )}
-              {notifications.filter((n) => n.read).length > 0 && (
+              {combinedNotifications.filter((n) => n.read).length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>Earlier</Text>
-                  {notifications.filter((n) => n.read).map(renderItem)}
+                  {combinedNotifications.filter((n) => n.read).map(renderItem)}
                 </View>
               )}
             </>
@@ -322,6 +390,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 32,
+  },
+  featuredBannerWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   emptyContainer: {
     flex: 1,

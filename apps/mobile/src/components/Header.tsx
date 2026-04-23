@@ -7,6 +7,7 @@ import { useAuthStore } from "../auth/auth-store";
 import { colors } from "../theme/colors";
 import { useEffect, useState, useCallback } from "react";
 import api from "../lib/api";
+import { useMobileCommunicationCenter } from "../hooks/useMobileCommunicationCenter";
 
 interface HeaderProps {
   onMenuPress: () => void;
@@ -17,8 +18,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isAuthenticated, user, status } = useAuthStore();
+  const { unreadCount: campaignUnreadCount } = useMobileCommunicationCenter();
   const isGuest = user?.accountType === "GUEST";
   const [unreadCount, setUnreadCount] = useState(0);
+  const totalUnreadCount = unreadCount + campaignUnreadCount;
 
   const fetchUnreadCount = useCallback(async () => {
     if (status !== "authenticated") return;
@@ -83,10 +86,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuPress }) => {
             }}
           >
             <Bell color={colors.primary} size={24} />
-            {unreadCount > 0 && (
+            {totalUnreadCount > 0 && (
               <View style={styles.notificationBadge}>
-                {unreadCount <= 9 ? (
-                  <Text style={styles.badgeText}>{unreadCount}</Text>
+                {totalUnreadCount <= 9 ? (
+                  <Text style={styles.badgeText}>{totalUnreadCount}</Text>
                 ) : (
                   <Text style={styles.badgeText}>9+</Text>
                 )}
