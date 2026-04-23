@@ -859,12 +859,15 @@ export function useOnlineGame(gameId: string) {
   }, [socket, gameId, result]);
 
   // ── Abort (before first move) ──────────────────────────────────────────────
-  const abort = useCallback(() => {
-    if (!socket || moveCount > 0) {
-      if (!socket) setError("Not connected — please wait.");
-      return;
-    }
-    socket.emit("abort", { gameId });
+  const abort = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      if (!socket || moveCount > 0) {
+        if (!socket) setError("Not connected — please wait.");
+        resolve();
+        return;
+      }
+      socket.emit("abort", { gameId }, () => resolve());
+    });
   }, [socket, gameId, moveCount]);
 
   // ── Rematch actions ────────────────────────────────────────────────────────

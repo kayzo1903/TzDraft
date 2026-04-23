@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { SocialService } from './social.service';
 import { UseCasesModule } from '../../application/use-cases/use-cases.module';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
+import { MessagingModule } from '../../infrastructure/messaging/messaging.module';
 
 @Module({
-  imports: [PrismaModule, UseCasesModule],
+  imports: [PrismaModule, UseCasesModule, MessagingModule],
   providers: [SocialService],
   exports: [SocialService],
 })

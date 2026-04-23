@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { colors } from "../../src/theme/colors";
 import { useSocial } from "../../src/hooks/useSocial";
 import { SocialUser } from "../../src/services/social.service";
+import { PulseDot } from "../../src/components/ui/PulseDot";
 
 type Tab = "friends" | "following" | "followers";
 
@@ -81,6 +82,9 @@ export default function FriendsScreen() {
               <Flame color="#fff" size={12} fill="#fff" />
             </View>
           )}
+          <View style={styles.onlineDotContainer}>
+            <PulseDot online={!!item.isOnline} size={12} />
+          </View>
         </View>
         <View style={styles.userDetails}>
           <Text style={styles.displayName}>{item.displayName}</Text>
@@ -312,15 +316,20 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     position: "relative",
   },
+  onlineDotContainer: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+  },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   placeholderAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",

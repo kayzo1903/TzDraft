@@ -1289,7 +1289,8 @@ export default function OnlineGameScreen() {
   const { gameId, inviteCode = "", isHost: isHostParam, source } = params;
   const isHost = isHostParam === "true";
   const isLobbyGame = source === "lobby"; // matchmaking — never shows WaitingRoom
-  const exitRoute = isLobbyGame ? "/game/lobby" : "/game/setup-friend";
+  const isChallengeGame = source === "challenge"; // friend challenge — auto-starts when both present
+  const exitRoute = isLobbyGame || isChallengeGame ? "/" : "/game/setup-friend";
 
   const game = useOnlineGame(gameId);
   const audio = useGameAudio();
@@ -1385,6 +1386,15 @@ export default function OnlineGameScreen() {
     }
   }, [isLobbyGame, game.isWaiting, game.bothPlayersPresent, game.isSubmitting, game.startGame]);
 
+  // ── Auto-start for friend challenge games ─────────────────────────────────
+  // Once the recipient accepts and joins, the host side auto-starts immediately
+  // so neither player has to tap a Start button.
+  useEffect(() => {
+    if (isChallengeGame && isHost && game.isWaiting && game.bothPlayersPresent && !game.isSubmitting) {
+      game.startGame();
+    }
+  }, [isChallengeGame, isHost, game.isWaiting, game.bothPlayersPresent, game.isSubmitting, game.startGame]);
+
   // ── History scrubbing ─────────────────────────────────────────────────────
   const liveIndex = game.moveHistory.length;
   const activeIndex = viewingMoveIndex !== null ? viewingMoveIndex : liveIndex;
@@ -1415,7 +1425,7 @@ export default function OnlineGameScreen() {
 
   // ── Board highlights ───────────────────────────────────────────────────────
   const highlights: Record<number, HighlightType> = {};
-  const showingBoard = !game.result && (!game.isWaiting || isLobbyGame);
+  const showingBoard = !game.result && (!game.isWaiting || isLobbyGame || isChallengeGame);
   if (showingBoard) {
     if (game.selectedSquare != null) highlights[game.selectedSquare] = "selected";
     for (const dest of game.validDestinations) highlights[dest] = "destination";
@@ -1479,9 +1489,9 @@ export default function OnlineGameScreen() {
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => {
+          onPress={async () => {
             if (game.isWaiting && isHost) {
-              game.abort();
+              await game.abort();
             }
             if (game.result || game.isWaiting) router.replace(exitRoute as any);
             else router.back();
@@ -1513,15 +1523,15 @@ export default function OnlineGameScreen() {
       ) : null}
 
       {/* ── Waiting room — invite games only, never for matchmaking ────── */}
-      {game.isWaiting && !isLobbyGame ? (
+      {game.isWaiting && !isLobbyGame && !isChallengeGame ? (
         <WaitingRoom
           isHost={isHost}
           inviteCode={inviteCode}
           bothPlayersPresent={game.bothPlayersPresent}
           onStartGame={game.startGame}
-          onLeave={() => {
+          onLeave={async () => {
             if (isHost && game.isWaiting) {
-              game.abort();
+              await game.abort();
             }
             router.replace(exitRoute as any);
           }}

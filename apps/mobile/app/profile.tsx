@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import api, { API_URL } from "../src/lib/api";
 import { ThemedModal } from "../src/components/ui/ThemedModal";
 import { useSocial } from "../src/hooks/useSocial";
+import { PulseDot } from "../src/components/ui/PulseDot";
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -244,7 +245,9 @@ export default function ProfileScreen() {
                         <User color={colors.textDisabled} size={20} />
                       </View>
                     )}
-                    <View style={styles.onlineDot} />
+                    <View style={styles.onlineDotContainer}>
+                      <PulseDot online={friend.isOnline} size={10} />
+                    </View>
                   </View>
                   <View>
                     <Text style={styles.friendName}>{friend.displayName}</Text>
@@ -488,22 +491,19 @@ const styles = StyleSheet.create({
     position: "relative",
     marginRight: 12,
   },
+  onlineDotContainer: {
+    position: "absolute",
+    bottom: -1,
+    right: -1,
+  },
   friendAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
   friendAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surfaceElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  onlineDot: {
-    position: "absolute",
-    bottom: 0,
     right: 0,
     width: 10,
     height: 10,

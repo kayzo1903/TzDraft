@@ -237,7 +237,16 @@ export class GameController {
       user.id,
     );
 
-    // Notify host (and any other clients in the room) that opponent joined
+    // Identify the challenger (the player who created the game, not the joiner)
+    const challengerId =
+      game.whitePlayerId === user.id ? game.blackPlayerId : game.whitePlayerId;
+
+    // Notify the challenger their challenge was accepted so they navigate to the game
+    if (challengerId) {
+      this.gamesGateway.emitChallengeAccepted(challengerId, game.id);
+    }
+
+    // Broadcast full state update to the game room
     this.gamesGateway.emitGameStateUpdate(game.id, { gameId: game.id });
 
     return {
@@ -415,14 +424,27 @@ export class GameController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Abort a game before it starts' })
   async abortGame(@CurrentUser() user: any, @Param('id') id: string) {
+    // Capture game state before aborting so we can notify the other player
+    const game = await this.createGameUseCase.findGameById(id);
+    const wasWaiting = game.status === 'WAITING';
+
     await this.endGameUseCase.abort(id, user.id);
-    // Emit gameOver (not just gameStateUpdate) so the result card appears
-    // on both players' screens with the "Game Aborted" state.
-    this.gamesGateway.emitGameOver(id, {
-      gameId: id,
-      winner: null,
-      reason: 'aborted',
-    });
+
+    if (wasWaiting) {
+      // Notify the other player (challenger) that the challenge was cancelled
+      const otherId =
+        game.whitePlayerId === user.id ? game.blackPlayerId : game.whitePlayerId;
+      if (otherId) {
+        this.gamesGateway.emitChallengeCancelled(otherId, id);
+      }
+    } else {
+      // Emit gameOver so the result card appears on both players' screens
+      this.gamesGateway.emitGameOver(id, {
+        gameId: id,
+        winner: null,
+        reason: 'aborted',
+      });
+    }
     return { success: true };
   }
 
