@@ -208,6 +208,16 @@ export class UserService {
   }> {
     const { skip = 0, take = 50, country, region, search } = options;
 
+    const cacheKey = `leaderboard:${skip}:${take}:${country ?? ''}:${region ?? ''}:${search ?? ''}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        /* invalid cache — fall through to DB */
+      }
+    }
+
     const EXCLUDED_USERNAMES = ['admin', 'teste', 'tester01'];
 
     const userFilter: Record<string, any> = {
@@ -247,7 +257,7 @@ export class UserService {
       this.prisma.rating.count({ where }),
     ]);
 
-    return {
+    const result = {
       items: entries.map((e, idx) => ({
         rank: skip + idx + 1,
         userId: e.userId,
@@ -261,6 +271,10 @@ export class UserService {
       })),
       total,
     };
+
+    await this.redis.setex(cacheKey, 60, JSON.stringify(result));
+
+    return result;
   }
 
   async findById(id: string) {
