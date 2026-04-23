@@ -12,13 +12,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/auth/auth-store";
 import { authClient } from "../src/lib/auth-client";
 import { useRouter } from "expo-router";
-import { User, LogOut, ChevronLeft, Settings as SettingsIcon, Shield, Bell, BookMarked, Camera, AlertCircle, ImageOff, Swords, Flame, Users } from "lucide-react-native";
+import { User, LogOut, ChevronLeft, Settings as SettingsIcon, Shield, Bell, BookMarked, Camera, AlertCircle, ImageOff, Swords, Flame, Users, Trophy, Globe } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { colors } from "../src/theme/colors";
 import * as ImagePicker from "expo-image-picker";
 import api, { API_URL } from "../src/lib/api";
 import { ThemedModal } from "../src/components/ui/ThemedModal";
 import { useSocial } from "../src/hooks/useSocial";
+import { PulseDot } from "../src/components/ui/PulseDot";
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -30,13 +31,15 @@ export default function ProfileScreen() {
   const [pendingAvatar, setPendingAvatar] = useState<{ uri: string; mimeType: string } | null>(null);
 
   const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
-  const { getStats, getFriends } = useSocial();
+  const { getStats, getFriends, getMyRank } = useSocial();
   const [socialStats, setSocialStats] = useState({ followersCount: 0, followingCount: 0, friendsCount: 0 });
   const [friends, setFriends] = useState<any[]>([]);
+  const [rank, setRank] = useState<{ global: number | null; country: number | null; region: number | null; totalPlayers: number } | null>(null);
 
   React.useEffect(() => {
     getStats().then(setSocialStats);
     getFriends().then(setFriends);
+    getMyRank().then(setRank);
   }, []);
   const showError = (title: string, message: string) =>
     setErrorModal({ title, message });
@@ -174,6 +177,22 @@ export default function ProfileScreen() {
                   <Text style={styles.ratingText}>Blitz ELO: {user.rating}</Text>
                 </View>
               )}
+              {rank && (
+                <View style={styles.rankBadgeRow}>
+                  {rank.global !== null && (
+                    <View style={styles.rankBadge}>
+                      <Trophy size={11} color={colors.primary} />
+                      <Text style={styles.rankBadgeText}>#{rank.global} Global</Text>
+                    </View>
+                  )}
+                  {rank.country !== null && (
+                    <View style={styles.rankBadge}>
+                      <Globe size={11} color={colors.textSubtle} />
+                      <Text style={styles.rankBadgeText}>#{rank.country} Country</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </View>
 
@@ -226,7 +245,9 @@ export default function ProfileScreen() {
                         <User color={colors.textDisabled} size={20} />
                       </View>
                     )}
-                    <View style={styles.onlineDot} />
+                    <View style={styles.onlineDotContainer}>
+                      <PulseDot online={friend.isOnline} size={10} />
+                    </View>
                   </View>
                   <View>
                     <Text style={styles.friendName}>{friend.displayName}</Text>
@@ -397,6 +418,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
+  rankBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  },
+  rankBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rankBadgeText: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: "bold",
+  },
   settingsButton: {
     width: 44,
     height: 44,
@@ -448,22 +491,19 @@ const styles = StyleSheet.create({
     position: "relative",
     marginRight: 12,
   },
+  onlineDotContainer: {
+    position: "absolute",
+    bottom: -1,
+    right: -1,
+  },
   friendAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
   friendAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surfaceElevated,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  onlineDot: {
-    position: "absolute",
-    bottom: 0,
     right: 0,
     width: 10,
     height: 10,

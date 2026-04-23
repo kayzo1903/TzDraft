@@ -253,9 +253,28 @@ export class GamesGateway
 
     if (
       !gameSnapshot ||
-      gameSnapshot.status !== GameStatus.ACTIVE ||
+      (gameSnapshot.status !== GameStatus.ACTIVE &&
+        gameSnapshot.status !== GameStatus.WAITING) ||
       gameSnapshot.gameType === GameType.AI
     ) {
+      return;
+    }
+
+    // WAITING game: abort immediately if the host (white) disconnects — no countdown needed
+    if (gameSnapshot.status === GameStatus.WAITING) {
+      if (gameSnapshot.whitePlayerId !== userId) return;
+      try {
+        const endGameUseCase = this.moduleRef.get(EndGameUseCase, {
+          strict: false,
+        });
+        await endGameUseCase.forceAbort(gameId, 'host_disconnected');
+        this.emitGameOver(gameId, { gameId, winner: null, reason: 'aborted' });
+        this.logger.log(
+          `Auto-aborted WAITING game ${gameId} — host ${userId} disconnected`,
+        );
+      } catch {
+        // Already ended — ignore
+      }
       return;
     }
 
@@ -1062,6 +1081,39 @@ export class GamesGateway
   /** Push a persisted notification to a user's personal room. */
   emitNotification(userId: string, notification: any) {
     this.server.to(`user:${userId}`).emit('notification', notification);
+  }
+
+  /** Returns true when the user has at least one live socket connected. */
+  async isUserOnline(userId: string): Promise<boolean> {
+    if (this.pubClient) {
+      return (await this.pubClient.sismember(K_ONLINE_USERS, userId)) === 1;
+    }
+    return this.localOnlineUsers.has(userId);
+  }
+
+  /** Emit a direct challenge request to the target user's personal room. */
+  emitChallengeRequest(
+    targetUserId: string,
+    payload: {
+      challengerId: string;
+      challengerName: string;
+      challengerAvatarUrl?: string | null;
+      challengerRating?: number;
+      inviteCode: string;
+      gameId: string;
+    },
+  ) {
+    this.server.to(`user:${targetUserId}`).emit('challenge_request', payload);
+  }
+
+  /** Emit challenge cancellation (challenger navigated away / timed out). */
+  emitChallengeCancelled(targetUserId: string, gameId: string) {
+    this.server.to(`user:${targetUserId}`).emit('challenge_cancelled', { gameId });
+  }
+
+  /** Emit to challenger that their challenge was accepted — redirect both players. */
+  emitChallengeAccepted(challengerId: string, gameId: string) {
+    this.server.to(`user:${challengerId}`).emit('challenge_accepted', { gameId });
   }
 
   /* ── League events ───────────────────────────────────────────────────── */

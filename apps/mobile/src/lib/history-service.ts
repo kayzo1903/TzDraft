@@ -59,6 +59,14 @@ export interface PublicPlayerProfile {
   winRate: number;
   rank: number | null;
   totalPlayers: number;
+  relationship: {
+    isFollowing: boolean;
+    isFollower: boolean;
+    isMutual: boolean;
+    isFriend: boolean;
+    isRival: boolean;
+    gameCount: number;
+  } | null;
 }
 
 export interface LeaderboardFilters {

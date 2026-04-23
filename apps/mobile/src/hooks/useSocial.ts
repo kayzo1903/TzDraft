@@ -91,6 +91,15 @@ export function useSocial() {
     }
   }, []);
 
+  const getMyRank = useCallback(async () => {
+    try {
+      return await socialService.getMyRank();
+    } catch (err: any) {
+      console.error("Failed to get rank", err);
+      return null;
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -101,5 +110,6 @@ export function useSocial() {
     getFollowing,
     getFollowers,
     getStats,
+    getMyRank,
   };
 }

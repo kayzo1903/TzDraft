@@ -10,6 +10,7 @@ export interface SocialUser {
   };
   isRival?: boolean;
   gameCount?: number;
+  isOnline?: boolean;
 }
 
 export interface RelationshipState {
@@ -52,6 +53,16 @@ class SocialService {
 
   async getStats(): Promise<{ followingCount: number; followersCount: number; friendsCount: number }> {
     const res = await api.get("/social/stats");
+    return res.data;
+  }
+
+  async getMyRank(): Promise<{ global: number | null; country: number | null; region: number | null; totalPlayers: number }> {
+    const res = await api.get("/auth/rank");
+    return res.data.data;
+  }
+
+  async challenge(username: string): Promise<{ inviteCode: string; gameId: string }> {
+    const res = await api.post(`/social/challenge/${username}`);
     return res.data;
   }
 }

@@ -124,21 +124,13 @@ export class SocialService {
   }
 
   async getFriendsList(userId: string) {
-    // A Friend is a mutual follow who has played at least one game
+    // 1. Fetch all mutual follows in one query
     const mutuals = await this.prisma.follow.findMany({
       where: {
         followerId: userId,
         following: {
-          followers: {
-            some: {
-              followerId: userId,
-            },
-          },
-          following: {
-            some: {
-              followingId: userId,
-            },
-          },
+          followers: { some: { followerId: userId } },
+          following: { some: { followingId: userId } },
         },
       },
       include: {
@@ -148,42 +140,42 @@ export class SocialService {
             username: true,
             displayName: true,
             avatarUrl: true,
-            rating: {
-              select: {
-                rating: true,
-              },
-            },
+            rating: { select: { rating: true } },
           },
         },
       },
     });
 
-    // Filtering for those who have played at least one game
-    // Note: For performance with many followers, we might want to cache this status
-    // or use a more complex query. Given the 100 friend cap, this is manageable.
-    const friends = await Promise.all(
-      mutuals.map(async (m) => {
-        const gameCount = await this.prisma.game.count({
-          where: {
-            OR: [
-              { whitePlayerId: userId, blackPlayerId: m.followingId },
-              { whitePlayerId: m.followingId, blackPlayerId: userId },
-            ],
-            status: 'FINISHED',
-          },
-        });
-        if (gameCount > 0) {
-          return {
-            ...m.following,
-            isRival: gameCount >= 10,
-            gameCount,
-          };
-        }
-        return null;
-      }),
-    );
+    if (mutuals.length === 0) return [];
 
-    return friends.filter((f) => f !== null);
+    const mutualIds = mutuals.map((m) => m.followingId);
+
+    // 2. Single query for all finished games between userId and any mutual
+    const games = await this.prisma.game.findMany({
+      where: {
+        status: 'FINISHED',
+        OR: [
+          { whitePlayerId: userId, blackPlayerId: { in: mutualIds } },
+          { blackPlayerId: userId, whitePlayerId: { in: mutualIds } },
+        ],
+      },
+      select: { whitePlayerId: true, blackPlayerId: true },
+    });
+
+    // 3. Build opponentId → gameCount map in JS
+    const gameCountMap = new Map<string, number>();
+    for (const g of games) {
+      const opponentId = g.whitePlayerId === userId ? g.blackPlayerId! : g.whitePlayerId!;
+      gameCountMap.set(opponentId, (gameCountMap.get(opponentId) ?? 0) + 1);
+    }
+
+    // 4. Filter to those with ≥1 game and attach counts
+    return mutuals
+      .filter((m) => (gameCountMap.get(m.followingId) ?? 0) > 0)
+      .map((m) => {
+        const count = gameCountMap.get(m.followingId)!;
+        return { ...m.following, isRival: count >= 10, gameCount: count };
+      });
   }
 
   async getFollowingList(userId: string) {

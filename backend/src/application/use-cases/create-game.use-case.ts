@@ -138,7 +138,9 @@ export class CreateGameUseCase {
   }
 
   /**
-   * Join an invite game via code
+   * Join an invite game via code.
+   * Automatically starts the game once both slots are filled so neither
+   * player has to tap a separate "Start" button (challenge flow).
    */
   async joinInviteGame(code: string, joinerId: string): Promise<Game> {
     const game = await this.gameRepository.findByInviteCode(code);
@@ -151,7 +153,8 @@ export class CreateGameUseCase {
     if (game.whitePlayerId === joinerId || game.blackPlayerId === joinerId) {
       throw new BadRequestException('You cannot join your own game');
     }
-    return this.gameRepository.joinInvite(game.id, joinerId);
+    const joined = await this.gameRepository.joinInvite(game.id, joinerId);
+    return this.gameRepository.startGame(joined.id);
   }
 
   /**
