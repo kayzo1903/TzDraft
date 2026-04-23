@@ -71,6 +71,7 @@ export class GetGameHistoryUseCase {
         result = 'LOSS';
       }
 
+      let opponent: {
         id: string;
         displayName: string;
         username: string;
