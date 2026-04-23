@@ -21,27 +21,17 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Copy workspace manifests for layer caching
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY backend/package.json ./backend/
-COPY packages/shared-client/package.json ./packages/shared-client/
-COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
-COPY packages/translations/package.json ./packages/translations/
-COPY frontend/package.json ./frontend/
-COPY apps/mobile/package.json ./apps/mobile/
+# Copy the entire workspace to ensure all dependencies and links are present
+COPY . .
 
-# Install all workspace dependencies
+# Install all dependencies
 RUN pnpm install --frozen-lockfile
-
-# Copy source for dependencies and backend
-COPY packages/shared-client/ ./packages/shared-client/
-COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
-COPY backend/ ./backend/
 
 # Build shared-client first so its types/output are available to backend
 RUN pnpm --filter @tzdraft/shared-client build
 
 WORKDIR /app/backend
+RUN pnpm exec prisma generate
 RUN pnpm build
 
 # Stage 2: Production
@@ -54,30 +44,21 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Workspace manifests for dependency resolution.
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY backend/package.json ./backend/
-COPY packages/shared-client/package.json ./packages/shared-client/
-COPY packages/mkaguzi-engine/package.json ./packages/mkaguzi-engine/
-COPY packages/translations/package.json ./packages/translations/
-COPY frontend/package.json ./frontend/
-COPY apps/mobile/package.json ./apps/mobile/
+# Copy the entire workspace
+COPY . .
 
-# Install backend production deps
-RUN pnpm install --filter backend... --frozen-lockfile --ignore-scripts --prod
-
-# Copy source for dependencies (needed because node_modules links to them)
-COPY packages/shared-client/ ./packages/shared-client/
-COPY packages/mkaguzi-engine/ ./packages/mkaguzi-engine/
+# Install production dependencies
+RUN pnpm install --frozen-lockfile --ignore-scripts --prod
 
 # Copy compiled backend output.
 COPY --from=builder /app/backend/dist ./backend/dist
 
-# Prisma schema files are needed by migrate deploy and prisma generate.
+# Prisma schema files are needed by migrate deploy.
 COPY --from=builder /app/backend/prisma ./backend/prisma
 
-# Generate Prisma client in this stage to avoid virtual-store path issues.
-RUN cd /app/backend && pnpm exec prisma generate
+# Copy the generated Prisma client from the builder stage (avoids re-running
+# prisma generate against a frozen-lockfile prod install).
+COPY --from=builder /app/node_modules/.pnpm /app/node_modules/.pnpm
 
 # Copy the Mkaguzi native binary to the path the adapter probes by default.
 RUN mkdir -p ./engines/core/build/Release

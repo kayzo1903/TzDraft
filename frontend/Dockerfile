@@ -23,7 +23,11 @@ COPY packages/shared-client/ ./packages/shared-client/
 COPY packages/translations/ ./packages/translations/
 COPY frontend/ ./frontend/
 
-# Build Mkaguzi engine TypeScript package first (frontend imports it via webpack alias)
+# Build shared-client first so its dist/ is available to the frontend
+WORKDIR /app/packages/shared-client
+RUN pnpm build
+
+# Build Mkaguzi engine TypeScript package (frontend imports it via webpack alias)
 WORKDIR /app/packages/mkaguzi-engine
 RUN pnpm build
 
@@ -67,7 +71,8 @@ COPY apps/mobile/package.json ./apps/mobile/
 # Production deps only; --ignore-scripts prevents mkaguzi-engine from rebuilding
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# Mkaguzi engine dist (symlinked via pnpm workspace — copy resolves it)
+# Package dist outputs (symlinked via pnpm workspace — copy resolves them)
+COPY --from=builder /app/packages/shared-client/dist ./packages/shared-client/dist
 COPY --from=builder /app/packages/mkaguzi-engine/dist ./packages/mkaguzi-engine/dist
 
 # Next.js build output and public assets (includes /wasm/*.js/.wasm artifacts)
