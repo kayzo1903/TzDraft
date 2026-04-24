@@ -22,7 +22,7 @@ const initI18n = async () => {
         en: { translation: messages.en },
         sw: { translation: messages.sw },
       },
-      lng: savedLanguage || "en",
+      lng: savedLanguage || "sw",
       fallbackLng: "en",
       interpolation: {
         escapeValue: false,
