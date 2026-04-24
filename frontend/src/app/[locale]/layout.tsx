@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { EngineInit } from "@/components/engine/EngineInit";
 import { AuthInitializer } from "@/components/auth/AuthInitializer";
+import { TermsAcceptanceBanner } from "@/components/legal/TermsAcceptanceBanner";
 import type { Metadata } from "next";
 import {
   getCanonicalUrl,
@@ -173,6 +174,7 @@ export default async function LocaleLayout({
       <Navbar />
       {children}
       <Footer />
+      <TermsAcceptanceBanner />
     </NextIntlClientProvider>
   );
 }

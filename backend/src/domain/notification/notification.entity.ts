@@ -10,6 +10,7 @@ export enum NotificationType {
   ELIMINATED = 'ELIMINATED',
   SOCIAL_FOLLOW = 'SOCIAL_FOLLOW',
   FRIENDSHIP_ESTABLISHED = 'FRIENDSHIP_ESTABLISHED',
+  POLICY_UPDATE = 'POLICY_UPDATE',
 }
 
 export class Notification {
