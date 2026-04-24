@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue, ConnectionOptions } from 'bullmq';
 
@@ -12,7 +17,8 @@ function urlToConnectionOptions(url: string): ConnectionOptions {
     port: Number(parsed.port) || 6379,
     maxRetriesPerRequest: null,
   } as ConnectionOptions;
-  if (parsed.password) (opts as any).password = decodeURIComponent(parsed.password);
+  if (parsed.password)
+    (opts as any).password = decodeURIComponent(parsed.password);
   if (parsed.protocol === 'rediss:') (opts as any).tls = {};
   return opts;
 }
