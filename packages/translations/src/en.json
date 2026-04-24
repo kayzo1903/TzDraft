@@ -13,6 +13,7 @@
     "sw": "Swahili",
     "rules": "Game Rules",
     "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
     "website": "Official Website",
     "learn": "Learn Playbook"
   },
@@ -470,7 +471,8 @@
   },
   "footer": {
     "rules": "Rules",
-    "privacyPolicy": "Policy & Privacy",
+    "privacyPolicy": "Privacy Policy",
+    "terms": "Terms of Service",
     "rights": "All rights reserved.",
     "madeWith": "Made with",
     "by": "by",
@@ -803,8 +805,9 @@
       }
     },
     "legal": {
-      "policy": "Privacy & policy",
-      "rules": "Game rules"
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "rules": "Game Rules"
     }
   },
   "leaderboard": {

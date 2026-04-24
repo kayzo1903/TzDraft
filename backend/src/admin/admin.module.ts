@@ -12,6 +12,7 @@ import { AnalyticsService } from './analytics.service';
 import { CommunicationModule } from './communication.module';
 import { TasksModule } from '../infrastructure/tasks/tasks.module';
 import { EmailModule } from '../infrastructure/email/email.module';
+import { PushCampaignModule } from '../infrastructure/push/push-campaign.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EmailModule } from '../infrastructure/email/email.module';
     AuthModule,
     CommunicationModule,
     EmailModule,
+    PushCampaignModule,
     forwardRef(() => TasksModule),
   ],
   controllers: [AdminController],

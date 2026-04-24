@@ -227,10 +227,16 @@ export default function SettingsPage() {
 
           <SectionCard title={t('sections.legal')} icon={<FileText className="h-5 w-5 text-neutral-300" />}>
             <div className="grid gap-3">
-              <Link href="/policy">
+              <Link href="/privacy">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  {t('legal.privacy')}
+                </Button>
+              </Link>
+              <Link href="/terms">
                 <Button variant="outline" className="w-full justify-start gap-2">
                   <FileText className="h-4 w-4" />
-                  {t('legal.policy')}
+                  {t('legal.terms')}
                 </Button>
               </Link>
               <Link href="/rules">

@@ -13,6 +13,7 @@
     "sw": "Kiswahili",
     "rules": "Sheria za Mchezo",
     "privacy": "Sera ya Faragha",
+    "terms": "Masharti ya Huduma",
     "website": "Tovuti Rasmi",
     "learn": "Jifunze Kopi"
   },
@@ -470,7 +471,8 @@
   },
   "footer": {
     "rules": "Sheria",
-    "privacyPolicy": "Sera na Faragha",
+    "privacyPolicy": "Sera ya Faragha",
+    "terms": "Masharti ya Huduma",
     "rights": "Haki zote zimehifadhiwa.",
     "madeWith": "Imetengenezwa kwa",
     "by": "na",
@@ -803,8 +805,9 @@
       }
     },
     "legal": {
-      "policy": "Faragha na sera",
-      "rules": "Sheria za mchezo"
+      "privacy": "Sera ya Faragha",
+      "terms": "Masharti ya Huduma",
+      "rules": "Sheria za Mchezo"
     }
   },
   "leaderboard": {
