@@ -65,8 +65,9 @@ export const TournamentRulesSection: React.FC<TournamentRulesProps> = ({ locale 
       icon: <ShieldCheck className="w-5 h-5 text-primary" />,
       content: [
         "All matches follow the Official Tanzania Draughts Standards.",
-        "Mandatory captures (Ula ni Lazima).",
+        "Mandatory captures (Ula ni Lazima) and Free Choice apply.",
         "Flying King (Kingi Huruka) rules apply.",
+        "1-King vs 1-King is an immediate draw (v2.4).",
         "30-Move and Three-Kings draw rules are strictly enforced.",
       ]
     }
@@ -114,8 +115,9 @@ export const TournamentRulesSection: React.FC<TournamentRulesProps> = ({ locale 
       icon: <ShieldCheck className="w-5 h-5 text-primary" />,
       content: [
         "Mechi zote zinafuata Sheria Rasmi za Tanzania Draughts.",
-        "Ula ni Lazima (Mandatory capture).",
+        "Ula ni Lazima (Mandatory capture) na Chaguo Huria.",
         "Kingi Huruka (Flying King) inatumika.",
+        "Mfalme mmoja dhidi ya mmoja ni sare (v2.4).",
         "Sheria za sare (Hatua 30 na Wafalme Watatu) zinatekelezwa.",
       ]
     }

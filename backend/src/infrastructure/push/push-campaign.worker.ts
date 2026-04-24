@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Worker, Job, ConnectionOptions } from 'bullmq';
 import { PrismaService } from '../database/prisma/prisma.service';
@@ -17,7 +22,8 @@ function urlToConnectionOptions(url: string): ConnectionOptions {
     port: Number(parsed.port) || 6379,
     maxRetriesPerRequest: null,
   } as ConnectionOptions;
-  if (parsed.password) (opts as any).password = decodeURIComponent(parsed.password);
+  if (parsed.password)
+    (opts as any).password = decodeURIComponent(parsed.password);
   if (parsed.protocol === 'rediss:') (opts as any).tls = {};
   return opts;
 }
@@ -48,9 +54,7 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
     );
 
     this.worker.on('failed', (job, err) => {
-      this.logger.error(
-        `Job ${job?.id} (${job?.name}) failed: ${err.message}`,
-      );
+      this.logger.error(`Job ${job?.id} (${job?.name}) failed: ${err.message}`);
     });
 
     this.logger.log('Push campaign worker started');
@@ -101,7 +105,10 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
     await this.bumpAnalytics(campaignId, users.length, newTotal);
 
     if (ticketIds.length > 0) {
-      await this.queue.enqueueCheckReceipts({ campaignId, receiptIds: ticketIds });
+      await this.queue.enqueueCheckReceipts({
+        campaignId,
+        receiptIds: ticketIds,
+      });
     }
 
     if (users.length === PAGE_SIZE) {

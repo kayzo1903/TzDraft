@@ -12,7 +12,7 @@ import {
   Easing,
   Image,
 } from "react-native";
-import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink, BookOpen, BookMarked } from "lucide-react-native";
+import { X, LogOut, User, Home, Play, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, ExternalLink, BookOpen, BookMarked, ScrollText } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
 import { authClient } from "../lib/auth-client";
@@ -240,6 +240,11 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
                 icon={ShieldCheck}
                 label={t("nav.privacy", "Privacy Policy")}
                 onPress={() => openWebPage(SUPPORT_URLS.privacy)}
+              />
+              <NavItem
+                icon={ScrollText}
+                label={t("nav.terms", "Terms of Service")}
+                onPress={() => openWebPage(SUPPORT_URLS.terms)}
               />
               <NavItem
                 icon={ExternalLink}

@@ -238,7 +238,12 @@ export class CommunicationService {
     });
 
     if (isInstant && channels.includes('MOBILE_PUSH')) {
-      await this.enqueuePush(campaign.id, campaign.audience, campaign.title, campaign.body);
+      await this.enqueuePush(
+        campaign.id,
+        campaign.audience,
+        campaign.title,
+        campaign.body,
+      );
     }
 
     return this.mapCampaign(campaign);
@@ -476,7 +481,12 @@ export class CommunicationService {
       );
 
       if (channels.includes('MOBILE_PUSH')) {
-        await this.enqueuePush(campaign.id, campaign.audience, campaign.title, campaign.body);
+        await this.enqueuePush(
+          campaign.id,
+          campaign.audience,
+          campaign.title,
+          campaign.body,
+        );
       }
 
       await this.prisma.communicationMessageHistory.create({
@@ -510,7 +520,9 @@ export class CommunicationService {
         cursor: null,
         totalDelivered: 0,
       });
-      this.logger.log(`[Push] Campaign ${campaignId} enqueued for async delivery`);
+      this.logger.log(
+        `[Push] Campaign ${campaignId} enqueued for async delivery`,
+      );
       return;
     }
 
@@ -531,7 +543,9 @@ export class CommunicationService {
         screen: 'notifications',
       });
 
-      this.logger.log(`[Push] Campaign ${campaignId} sync-delivered to ${userIds.length} users`);
+      this.logger.log(
+        `[Push] Campaign ${campaignId} sync-delivered to ${userIds.length} users`,
+      );
 
       const row = await this.prisma.communicationCampaign.findUnique({
         where: { id: campaignId },

@@ -1108,12 +1108,16 @@ export class GamesGateway
 
   /** Emit challenge cancellation (challenger navigated away / timed out). */
   emitChallengeCancelled(targetUserId: string, gameId: string) {
-    this.server.to(`user:${targetUserId}`).emit('challenge_cancelled', { gameId });
+    this.server
+      .to(`user:${targetUserId}`)
+      .emit('challenge_cancelled', { gameId });
   }
 
   /** Emit to challenger that their challenge was accepted — redirect both players. */
   emitChallengeAccepted(challengerId: string, gameId: string) {
-    this.server.to(`user:${challengerId}`).emit('challenge_accepted', { gameId });
+    this.server
+      .to(`user:${challengerId}`)
+      .emit('challenge_accepted', { gameId });
   }
 
   /* ── League events ───────────────────────────────────────────────────── */

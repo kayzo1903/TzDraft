@@ -80,8 +80,8 @@ export default async function RulesPage({
             </h2>
             
             {section.content && (
-              <div className="bg-[#1c1917] p-5 rounded-lg border border-[#44403c] mb-6 shadow-inner">
-                <ul className="list-disc list-inside space-y-1 text-sm">
+              <div className="bg-secondary/40 p-5 rounded-lg border border-white/5 mb-6 shadow-inner">
+                <ul className="list-disc list-inside space-y-1 text-sm text-foreground/80">
                   {section.content.map((item, i) => (
                     <li key={i}>{item}</li>
                   ))}
@@ -92,11 +92,11 @@ export default async function RulesPage({
             {section.subsections && (
               <div className="grid md:grid-cols-2 gap-6">
                 {section.subsections.map((sub) => (
-                  <div key={sub._key} className="bg-[#1c1917] p-5 rounded-lg border border-[#44403c] transition-colors hover:border-[var(--primary)]/30">
-                    <h3 className="font-bold text-white mb-2">
+                  <div key={sub._key} className="bg-secondary/40 p-5 rounded-lg border border-white/5 transition-colors hover:border-primary/30">
+                    <h3 className="font-bold text-foreground mb-2">
                       {isSw ? sub.title.sw : sub.title.en}
                     </h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
+                    <ul className="list-disc list-inside space-y-1 text-sm text-foreground/80">
                       {sub.content.map((item, i) => (
                         <li key={i}>{item}</li>
                       ))}
@@ -107,7 +107,7 @@ export default async function RulesPage({
             )}
           </section>
           {idx < page.sections.length - 1 && (
-            <div className="h-px bg-[#44403c]" />
+            <div className="h-px bg-white/5" />
           )}
         </React.Fragment>
       ))}
@@ -125,41 +125,49 @@ export default async function RulesPage({
             name: "Kete za kawaida husonga vipi katika Drafti ya Tanzania?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Kete za kawaida husonga sanduku moja mbele kwa ulalo na haziruhusiwi kurudi nyuma.",
+              text: "Kete za kawaida husonga sanduku moja mbele kwa ulalo pekee. Haziruhusiwi kurudi nyuma wala kula nyuma.",
             },
           },
           {
             "@type": "Question",
-            name: "Kingi husonga vipi katika Drafti ya Tanzania?",
+            name: "Kingi vs Kingi ni sare katika Drafti ya Tanzania?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Kingi ni 'kingi huruka': husonga kwa ulalo umbali wowote na hula mbele au nyuma.",
+              text: "Ndiyo, katika toleo la v2.4, mchezo wa Kingi mmoja dhidi ya Kingi mmoja ni sare ya papo hapo (insufficient material).",
             },
           },
           {
             "@type": "Question",
-            name: "Mfumo wa mtoano ni nini katika TzDraft?",
+            name: "Je, ninaweza kuchagua kula kete chache badala ya nyingi?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Katika mfumo wa mtoano (knockout), ukipoteza mechi moja unatolewa kwenye mashindano.",
+              text: "Ndiyo, Drafti ya Tanzania hutumia mfumo wa 'Free Choice'. Unaweza kuchagua ula wowote halali bila kujali idadi ya kete.",
             },
           },
         ]
       : [
           {
             "@type": "Question",
-            name: "How do men move in Tanzania Drafti?",
+            name: "How do men move and capture in Tanzania Drafti?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "Men move one square diagonally forward and cannot move backward.",
+              text: "Men move one square diagonally forward only. They can NEVER move or capture backward under any circumstances.",
             },
           },
           {
             "@type": "Question",
-            name: "What is the knockout format in TzDraft tournaments?",
+            name: "Is King vs King a draw in TzDraft?",
             acceptedAnswer: {
               "@type": "Answer",
-              text: "In a single elimination (knockout) format, a match loss results in immediate disqualification from the tournament.",
+              text: "Yes, per official TZD v2.4 rules, a 1-King vs 1-King position is an immediate draw due to insufficient material.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "What is the 'Free Choice' capture rule?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "In Tanzania Drafti, if multiple capture sequences are available, you may choose any legal sequence regardless of the number or quality of pieces captured.",
             },
           },
         ],
@@ -196,10 +204,10 @@ export default async function RulesPage({
     <>
       <JsonLd data={faqSchema} />
       <JsonLd data={howToSchema} />
-      <div className="min-h-screen bg-[var(--background)] py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto bg-[#292524] rounded-2xl shadow-2xl overflow-hidden border border-[#44403c]">
+      <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto bg-secondary rounded-2xl shadow-2xl overflow-hidden border border-white/5">
           {/* Page Header */}
-          <div className="bg-[#1c1917] px-8 py-10 border-b border-[#44403c] relative overflow-hidden">
+          <div className="bg-secondary/50 px-8 py-10 border-b border-white/5 relative overflow-hidden">
             {/* Subtle savanna accent glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
             
@@ -214,12 +222,12 @@ export default async function RulesPage({
               </div>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight relative z-10">
+            <h1 className="text-4xl sm:text-5xl font-black text-foreground uppercase tracking-tight relative z-10">
               {isSw ? "Sheria na" : "Rules &"}{" "}
-              <span className="text-[var(--primary)]">{isSw ? "Viwango" : "Standards"}</span>
+              <span className="text-primary">{isSw ? "Viwango" : "Standards"}</span>
             </h1>
             {lastUpdated && (
-              <p className="mt-3 text-neutral-500 font-medium relative z-10 text-sm italic">
+              <p className="mt-3 text-foreground/40 font-medium relative z-10 text-sm italic">
                 {lastUpdated}
               </p>
             )}
