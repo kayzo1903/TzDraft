@@ -281,11 +281,18 @@ export default function SupportPageClient() {
                     <div className="mt-3 text-sm font-semibold text-[var(--primary)]">{SUPPORT_EMAIL}</div>
                   </a>
                   <Link
-                    href="/policy"
+                    href="/privacy"
                     className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/8"
                   >
-                    <div className="text-sm font-black text-white">{t("contactMethods.policy")}</div>
-                    <p className="mt-1 text-sm leading-6 text-neutral-400">{t("contactMethods.policyHint")}</p>
+                    <div className="text-sm font-black text-white">{t("privacy")}</div>
+                    <p className="mt-1 text-sm leading-6 text-neutral-400">{t("privacyDesc")}</p>
+                  </Link>
+                  <Link
+                    href="/terms"
+                    className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/8"
+                  >
+                    <div className="text-sm font-black text-white">{t("terms")}</div>
+                    <p className="mt-1 text-sm leading-6 text-neutral-400">{t("policyHint")}</p>
                   </Link>
                 </div>
               </section>

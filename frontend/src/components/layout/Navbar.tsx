@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard, Trophy, Bell } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard, Trophy, Bell, FileText, Shield } from 'lucide-react';
 import Image from 'next/image';
 import { useTournamentNotifications } from '@/hooks/useTournamentNotifications';
 
@@ -504,6 +504,25 @@ export const Navbar: React.FC = () => {
                                     </Link>
                                 </div>
                             )}
+                            <div className="border-t border-white/10 pt-4 space-y-1">
+                                <p className="px-4 text-xs uppercase tracking-[0.4em] text-neutral-500 mb-2">Legal</p>
+                                <Link
+                                    href="/terms"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                                >
+                                    <FileText className="w-4 h-4 shrink-0" />
+                                    Terms of Service
+                                </Link>
+                                <Link
+                                    href="/privacy"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                                >
+                                    <Shield className="w-4 h-4 shrink-0" />
+                                    Privacy Policy
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
