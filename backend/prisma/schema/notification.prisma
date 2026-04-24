@@ -32,4 +32,5 @@ enum NotificationType {
     WELCOME
     SOCIAL_FOLLOW
     FRIENDSHIP_ESTABLISHED
+    POLICY_UPDATE
 }

@@ -696,6 +696,15 @@ export class AuthService {
     }
   }
 
+  async acceptTerms(userId: string): Promise<{ termsAcceptedAt: Date }> {
+    const now = new Date();
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { termsAcceptedAt: now },
+    });
+    return { termsAcceptedAt: now };
+  }
+
   /**
    * Bump last_login_at for visit analytics.
    * Called on GET /auth/me (every page load) — fire-and-forget so it never
