@@ -22,7 +22,8 @@ interface ExpoPushTicket {
 interface ExpoReceiptResponse {
   data: Record<
     string,
-    { status: 'ok' } | { status: 'error'; message: string; details?: { error?: string } }
+    | { status: 'ok' }
+    | { status: 'error'; message: string; details?: { error?: string } }
   >;
 }
 

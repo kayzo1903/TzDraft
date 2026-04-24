@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   Body,
   Controller,
@@ -462,18 +463,22 @@ export class AdminController {
 
     const appUrl = 'https://tzdraft.zetutech.co.tz';
     const title = 'Masharti Yamesasishwa';
-    const body = 'Masharti ya Matumizi na Sera ya Faragha ya TzDraft imesasishwa. Bonyeza kusoma.';
+    const body =
+      'Masharti ya Matumizi na Sera ya Faragha ya TzDraft imesasishwa. Bonyeza kusoma.';
 
     // In-app notifications (bulk insert)
     const now = new Date();
     await this.prisma.notification.createMany({
       data: users.map((u) => ({
-        id: require('crypto').randomUUID(),
+        id: randomUUID(),
         userId: u.id,
         type: 'POLICY_UPDATE' as any,
         title,
         body,
-        metadata: { termsUrl: `${appUrl}/terms`, privacyUrl: `${appUrl}/privacy` },
+        metadata: {
+          termsUrl: `${appUrl}/terms`,
+          privacyUrl: `${appUrl}/privacy`,
+        },
         read: false,
         createdAt: now,
       })),
@@ -481,20 +486,27 @@ export class AdminController {
     });
 
     // Push notifications (to users with push tokens)
-    const tokens = users.map((u) => u.pushToken).filter((t): t is string => !!t);
+    const tokens = users
+      .map((u) => u.pushToken)
+      .filter((t): t is string => !!t);
     if (tokens.length > 0) {
-      this.expoPush.sendToTokens(tokens, title, body, {
-        type: 'POLICY_UPDATE',
-        url: `${appUrl}/terms`,
-      }).catch((err) => this.logger.error('Push broadcast failed:', err));
+      this.expoPush
+        .sendToTokens(tokens, title, body, {
+          type: 'POLICY_UPDATE',
+          url: `${appUrl}/terms`,
+        })
+        .catch((err) => this.logger.error('Push broadcast failed:', err));
     }
 
     // Emails (fire-and-forget per user)
     let emailsSent = 0;
     for (const user of users) {
       if (!user.email) continue;
-      this.emailService.sendPolicyUpdate(user.email, user.displayName)
-        .catch((err) => this.logger.warn(`Email failed for ${user.id}: ${err}`));
+      this.emailService
+        .sendPolicyUpdate(user.email, user.displayName)
+        .catch((err) =>
+          this.logger.warn(`Email failed for ${user.id}: ${err}`),
+        );
       emailsSent++;
     }
 

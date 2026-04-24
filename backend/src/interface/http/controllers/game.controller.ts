@@ -433,7 +433,9 @@ export class GameController {
     if (wasWaiting) {
       // Notify the other player (challenger) that the challenge was cancelled
       const otherId =
-        game.whitePlayerId === user.id ? game.blackPlayerId : game.whitePlayerId;
+        game.whitePlayerId === user.id
+          ? game.blackPlayerId
+          : game.whitePlayerId;
       if (otherId) {
         this.gamesGateway.emitChallengeCancelled(otherId, id);
       }

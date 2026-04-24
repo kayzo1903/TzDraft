@@ -165,7 +165,8 @@ export class SocialService {
     // 3. Build opponentId → gameCount map in JS
     const gameCountMap = new Map<string, number>();
     for (const g of games) {
-      const opponentId = g.whitePlayerId === userId ? g.blackPlayerId! : g.whitePlayerId!;
+      const opponentId =
+        g.whitePlayerId === userId ? g.blackPlayerId! : g.whitePlayerId!;
       gameCountMap.set(opponentId, (gameCountMap.get(opponentId) ?? 0) + 1);
     }
 

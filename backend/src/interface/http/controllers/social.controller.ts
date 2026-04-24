@@ -110,7 +110,8 @@ export class SocialController {
     });
 
     const elo = challenger?.rating?.rating ?? 1200;
-    const challengerColor = Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
+    const challengerColor =
+      Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
     const { game, inviteCode } = await this.createGameUseCase.createInviteGame(
       user.id,
       challengerColor,
@@ -120,7 +121,7 @@ export class SocialController {
 
     this.gateway.emitChallengeRequest(target.id, {
       challengerId: user.id,
-      challengerName: challenger?.displayName ?? "Someone",
+      challengerName: challenger?.displayName ?? 'Someone',
       challengerAvatarUrl: challenger?.avatarUrl,
       challengerRating: elo,
       inviteCode,
