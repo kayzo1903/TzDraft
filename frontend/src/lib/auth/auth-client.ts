@@ -135,6 +135,12 @@ export const authClient = {
     return response.data;
   },
 
+  async acceptTerms(): Promise<{ termsAcceptedAt: string }> {
+    const response = await axiosInstance.patch('/auth/accept-terms');
+    useAuthStore.getState().updateUser({ termsAcceptedAt: response.data.termsAcceptedAt });
+    return response.data;
+  },
+
   async resetPasswordPhone(
     phoneNumber: string,
     code: string,

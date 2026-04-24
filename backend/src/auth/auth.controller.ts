@@ -324,6 +324,13 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('accept-terms')
+  @HttpCode(HttpStatus.OK)
+  async acceptTerms(@CurrentUser() user: any) {
+    return this.authService.acceptTerms(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('push-token')
   @HttpCode(HttpStatus.NO_CONTENT)
   async savePushToken(@CurrentUser() user: any, @Body('token') token: string) {

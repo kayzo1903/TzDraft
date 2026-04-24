@@ -13,6 +13,7 @@ export class AuthResponseDto {
     isBanned?: boolean;
     accountType?: 'REGISTERED' | 'GUEST' | 'OAUTH_PENDING';
     avatarUrl?: string;
+    termsAcceptedAt?: Date | null;
   };
   accessToken: string;
   refreshToken: string;

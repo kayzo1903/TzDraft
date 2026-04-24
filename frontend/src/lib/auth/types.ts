@@ -21,6 +21,7 @@ export interface User {
   isBanned?: boolean;
   country?: string | null;
   region?: string | null;
+  termsAcceptedAt?: string | null;
 }
 
 export interface AuthState {
