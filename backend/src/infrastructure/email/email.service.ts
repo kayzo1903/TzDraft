@@ -8,6 +8,7 @@ import { TournamentRegistered } from './templates/tournament-registered';
 import { TournamentStarted } from './templates/tournament-started';
 import { MatchAssigned } from './templates/match-assigned';
 import { TournamentResult } from './templates/tournament-result';
+import { PolicyUpdate } from './templates/policy-update';
 
 @Injectable()
 export class EmailService {
@@ -229,6 +230,22 @@ export class EmailService {
     await this.sendQuiet(
       userEmail,
       `${tournamentName} is over — see the results!`,
+      html,
+    );
+  }
+
+  async sendPolicyUpdate(userEmail: string, name: string): Promise<void> {
+    const appUrl = 'https://tzdraft.zetutech.co.tz';
+    const html = await render(
+      PolicyUpdate({
+        name,
+        termsUrl: `${appUrl}/terms`,
+        privacyUrl: `${appUrl}/privacy`,
+      }),
+    );
+    await this.sendQuiet(
+      userEmail,
+      'TzDraft — Masharti ya Matumizi Yamesasishwa / Terms of Service Updated',
       html,
     );
   }

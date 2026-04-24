@@ -43,6 +43,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         accountType: true,
         country: true,
         region: true,
+        termsAcceptedAt: true,
         rating: {
           select: {
             rating: true,
@@ -87,6 +88,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       accountType: user.accountType,
       country: user.country,
       region: user.region,
+      termsAcceptedAt: user.termsAcceptedAt ?? null,
     };
   }
 }

@@ -11,6 +11,7 @@ import {
 import { AnalyticsService } from './analytics.service';
 import { CommunicationModule } from './communication.module';
 import { TasksModule } from '../infrastructure/tasks/tasks.module';
+import { EmailModule } from '../infrastructure/email/email.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TasksModule } from '../infrastructure/tasks/tasks.module';
     RedisModule,
     AuthModule,
     CommunicationModule,
+    EmailModule,
     forwardRef(() => TasksModule),
   ],
   controllers: [AdminController],

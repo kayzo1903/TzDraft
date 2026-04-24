@@ -34,6 +34,8 @@ import {
 import { AnalyticsService } from '../../../admin/analytics.service';
 import { CommunicationService } from '../../../admin/communication.service';
 import { ReportService } from '../../../infrastructure/tasks/report.service';
+import { EmailService } from '../../../infrastructure/email/email.service';
+import { ExpoPushService } from '../../../infrastructure/push/expo-push.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -49,6 +51,8 @@ export class AdminController {
     private readonly communicationService: CommunicationService,
     @Inject(forwardRef(() => ReportService))
     private readonly reportService: ReportService,
+    private readonly emailService: EmailService,
+    private readonly expoPush: ExpoPushService,
   ) {}
 
   @Post('analytics/trigger-report')
@@ -447,6 +451,59 @@ export class AdminController {
   @Delete('communication/campaigns/:id')
   async deleteCampaign(@Param('id') id: string) {
     return this.communicationService.deleteCampaign(id);
+  }
+
+  @Post('broadcast/policy-update')
+  async broadcastPolicyUpdate() {
+    const users = await this.prisma.user.findMany({
+      where: { accountType: { not: AccountType.GUEST } },
+      select: { id: true, displayName: true, email: true, pushToken: true },
+    });
+
+    const appUrl = 'https://tzdraft.zetutech.co.tz';
+    const title = 'Masharti Yamesasishwa';
+    const body = 'Masharti ya Matumizi na Sera ya Faragha ya TzDraft imesasishwa. Bonyeza kusoma.';
+
+    // In-app notifications (bulk insert)
+    const now = new Date();
+    await this.prisma.notification.createMany({
+      data: users.map((u) => ({
+        id: require('crypto').randomUUID(),
+        userId: u.id,
+        type: 'POLICY_UPDATE' as any,
+        title,
+        body,
+        metadata: { termsUrl: `${appUrl}/terms`, privacyUrl: `${appUrl}/privacy` },
+        read: false,
+        createdAt: now,
+      })),
+      skipDuplicates: true,
+    });
+
+    // Push notifications (to users with push tokens)
+    const tokens = users.map((u) => u.pushToken).filter((t): t is string => !!t);
+    if (tokens.length > 0) {
+      this.expoPush.sendToTokens(tokens, title, body, {
+        type: 'POLICY_UPDATE',
+        url: `${appUrl}/terms`,
+      }).catch((err) => this.logger.error('Push broadcast failed:', err));
+    }
+
+    // Emails (fire-and-forget per user)
+    let emailsSent = 0;
+    for (const user of users) {
+      if (!user.email) continue;
+      this.emailService.sendPolicyUpdate(user.email, user.displayName)
+        .catch((err) => this.logger.warn(`Email failed for ${user.id}: ${err}`));
+      emailsSent++;
+    }
+
+    return {
+      success: true,
+      notified: users.length,
+      pushTokens: tokens.length,
+      emailsQueued: emailsSent,
+    };
   }
 
   @Post('communication/campaigns/:id/push')
