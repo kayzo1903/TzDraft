@@ -21,6 +21,14 @@ import { colors } from "../../src/theme/colors";
 
 type Step = "phone" | "otp" | "reset" | "success";
 
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\s+/g, "").trim();
+  if (digits.startsWith("+255")) return digits;
+  if (digits.startsWith("255")) return `+${digits}`;
+  if (digits.startsWith("0")) return `+255${digits.slice(1)}`;
+  return `+255${digits}`;
+}
+
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -38,7 +46,7 @@ export default function ForgotPasswordScreen() {
   }, []);
 
   const startCooldown = () => {
-    setResendCooldown(60);
+    setResendCooldown(180);
     cooldownRef.current = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev <= 1) {
@@ -204,7 +212,7 @@ export default function ForgotPasswordScreen() {
               </Text>
               <Text style={styles.subtitle}>
                 {step === "phone" && t("auth.forgotPassword.steps.phone.subtitle", "We'll send you a verification code")}
-                {step === "otp" && t("auth.forgotPassword.steps.otp.subtitle", "Enter the code sent to {phone}").replace("{phone}", phoneNumber.trim())}
+                {step === "otp" && t("auth.forgotPassword.steps.otp.subtitle", "Code sent to {phone}", { phone: normalizePhone(phoneNumber.trim()) })}
                 {step === "reset" && t("auth.resetPassword.subtitle", "Enter your new password")}
               </Text>
             </View>

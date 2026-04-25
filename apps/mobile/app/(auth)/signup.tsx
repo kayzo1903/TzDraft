@@ -101,7 +101,7 @@ export default function SignupScreen() {
   }, []);
 
   const startCooldown = () => {
-    setResendCooldown(60);
+    setResendCooldown(180);
     cooldownRef.current = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev <= 1) {
@@ -267,7 +267,7 @@ export default function SignupScreen() {
                 {step === "phone"
                   ? t("auth.signup.steps.phone.subtitle", "Start your journey with your phone number")
                   : step === "otp"
-                  ? t("auth.signup.steps.otp.subtitle", "Enter the 6-digit code sent to your device")
+                  ? t("auth.signup.steps.otp.subtitle", "Code sent to {phone}", { phone: normalizePhone(phoneNumber.trim()) })
                   : t("auth.signup.steps.details.subtitle", "Choose your username and secure password")}
               </Text>
             </View>

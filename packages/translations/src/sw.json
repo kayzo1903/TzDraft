@@ -116,6 +116,7 @@
   },
   "common": {
     "cancel": "Ghairi",
+    "continue": "Endelea",
     "optional": "si lazima",
     "error": "Hitilafu",
     "done": "Imekamilika",
@@ -258,6 +259,7 @@
           "hint": "Msimbo utaisha baada ya dakika 5",
           "button": "Thibitisha Msimbo",
           "buttonLoading": "Inathibitisha...",
+          "resend": "Tuma Msimbo Tena",
           "changePhone": "Badilisha Nambari ya Simu"
         },
         "details": {

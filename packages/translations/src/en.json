@@ -116,6 +116,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "continue": "Continue",
     "optional": "optional",
     "error": "Error",
     "done": "Done",
@@ -258,6 +259,7 @@
           "hint": "Code expires in 5 minutes",
           "button": "Verify Code",
           "buttonLoading": "Verifying...",
+          "resend": "Resend Code",
           "changePhone": "Change Phone Number"
         },
         "details": {
