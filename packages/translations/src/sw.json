@@ -43,7 +43,8 @@
     "accept": "Kubali",
     "waitingForAccept": "Inasubiri…",
     "waitingDesc": "Ombi limetumwa kwa",
-    "cancelChallenge": "Ghairi"
+    "cancelChallenge": "Ghairi",
+    "challengeExpiresIn": "Inaisha baada ya"
   },
   "community": {
     "title": "Jamii",
@@ -652,7 +653,12 @@
       "confirmTitle": "Jiondoe kwenye mechi?",
       "confirmQuestion": "Utapoteza mchezo huu na mpinzani wako atashinda.",
       "confirmCta": "Jiondoe",
-      "cancel": "Ghairi"
+      "cancel": "Ghairi",
+      "opponentTag": "MPINZANI",
+      "returnToSetup": "Jiondoe na urudi kuchagua bot?",
+      "progressLost": "Maendeleo ya mchezo yatapotea. Hakuna maendeleo yatakayohifadhiwa.",
+      "changeBot": "Badilisha Bot",
+      "botAction": "Bot"
     },
     "gameOver": {
       "title": "Mchezo Umeisha",

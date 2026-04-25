@@ -726,7 +726,7 @@ export default function FreePlayScreen() {
         visible={showOptionsModal}
         isMuted={audio.isMuted}
         onToggleMute={audio.toggleMute}
-        onHome={() => { setShowOptionsModal(false); router.back(); }}
+        onHome={() => { setShowOptionsModal(false); router.replace("/"); }}
         onStudies={() => { setShowOptionsModal(false); router.push("/game/studies"); }}
         onClose={() => setShowOptionsModal(false)}
         showStudies={hasSession}
@@ -773,7 +773,7 @@ export default function FreePlayScreen() {
           reason={game.result.reason}
           moveCount={game.moveCount}
           onReset={game.reset}
-          onHome={() => router.back()}
+          onHome={() => router.replace("/")}
         />
       )}
     </SafeAreaView>

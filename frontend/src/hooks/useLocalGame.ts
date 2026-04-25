@@ -67,6 +67,7 @@ const STORAGE_KEY = "tzdraft:local-game";
 type SavedGame = {
   playerColor: PlayerColor;
   aiLevel: number;
+  timeSeconds: number;
   currentPlayer: PlayerColor;
   moveCount: number;
   timeLeft: { WHITE: number; BLACK: number };
@@ -300,7 +301,7 @@ const loadSavedGame = (
   }
 };
 
-/** Returns the persisted player color for an in-progress game at this level, or null. */
+/** Returns the persisted player color for a saved game at this level (any state), or null. */
 export const getSavedGamePlayerColor = (level: number): PlayerColor | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -309,6 +310,33 @@ export const getSavedGamePlayerColor = (level: number): PlayerColor | null => {
     const parsed = JSON.parse(raw) as SavedGame;
     if (parsed.aiLevel !== level) return null;
     return parsed.playerColor;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Returns info about the currently saved in-progress AI game (no result yet),
+ * or null if there is no game or the game has already finished.
+ * Used to smart-route "Play with AI" directly back into the active game.
+ */
+export const getSavedGameInfo = (): {
+  level: number;
+  playerColor: PlayerColor;
+  timeSeconds: number;
+} | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedGame;
+    // Only resume if the game is still in progress (no result yet).
+    if (parsed.result !== null && parsed.result !== undefined) return null;
+    return {
+      level: parsed.aiLevel,
+      playerColor: parsed.playerColor,
+      timeSeconds: parsed.timeSeconds ?? 600,
+    };
   } catch {
     return null;
   }
@@ -330,6 +358,7 @@ const saveGame = (
   },
   aiLevel: number,
   playerColor: PlayerColor,
+  timeSeconds: number,
 ) => {
   if (typeof window === "undefined") return;
   const pieces = state.board.getAllPieces().map((p) => ({
@@ -354,6 +383,7 @@ const saveGame = (
   const payload: SavedGame = {
     playerColor,
     aiLevel,
+    timeSeconds,
     currentPlayer: state.currentPlayer,
     moveCount: state.moveCount,
     moves,
@@ -1146,6 +1176,13 @@ export const useLocalGame = (
     return () => window.clearInterval(interval);
   }, [board, currentPlayer, moveCount, result, timeSeconds]);
   useEffect(() => {
+    if (result) {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+      return;
+    }
+
     saveGame(
       {
         board,
@@ -1162,6 +1199,7 @@ export const useLocalGame = (
       },
       aiLevel,
       playerColor,
+      timeSeconds,
     );
   }, [
     board,
@@ -1177,6 +1215,7 @@ export const useLocalGame = (
     hintUsed,
     aiLevel,
     playerColor,
+    timeSeconds,
   ]);
 
   return {

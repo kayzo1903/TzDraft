@@ -15,6 +15,9 @@
     "ios": {
       "bundleIdentifier": "com.tzdraft.mobile",
       "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:tzdraft.co.tz"
+      ],
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -32,6 +35,21 @@
           "data": [
             {
               "scheme": "tzdraft-mobile"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "tzdraft.co.tz",
+              "pathPattern": "/.*"
             }
           ],
           "category": [

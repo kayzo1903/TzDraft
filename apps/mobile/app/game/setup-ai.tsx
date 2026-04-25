@@ -102,7 +102,7 @@ export default function SetupAiScreen() {
 
   const handleStartGame = () => {
     const timeSeconds = selectedTC.type === "none" ? 0 : (selectedTC as any).seconds;
-    router.push(
+    router.replace(
       `/game/vs-ai?botLevel=${selectedBot.level}&playerColor=${selectedColor}&timeControlType=${selectedTC.type}&timeSeconds=${timeSeconds}` as any,
     );
   };

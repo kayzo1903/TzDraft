@@ -31,24 +31,26 @@ import {
   X,
   Home,
 } from "lucide-react";
+import { isMobileApp } from "@/lib/game/platform";
 import clsx from "clsx";
 import { GameControls } from "@/components/game/GameControls";
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
 const parseColor = (value: string | null, level?: number): PlayerColor => {
+  // If there is an in-progress saved game for this level, always resume with
+  // its color — regardless of what the setup page sent.  This prevents a
+  // color mismatch (WHITE vs BLACK, or a fresh random roll) from wiping the
+  // saved game when the player navigates back and re-selects the same bot.
+  if (level !== undefined) {
+    const saved = getSavedGamePlayerColor(level);
+    if (saved !== null) return saved;
+  }
   if (!value) return PlayerColor.WHITE;
   const upper = value.toUpperCase();
   if (upper === "BLACK") return PlayerColor.BLACK;
   if (upper === "WHITE") return PlayerColor.WHITE;
-  if (upper === "RANDOM") {
-    // Preserve the color from a saved game so resuming works correctly.
-    if (level !== undefined) {
-      const saved = getSavedGamePlayerColor(level);
-      if (saved !== null) return saved;
-    }
-    return Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
-  }
+  if (upper === "RANDOM") return Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
   return PlayerColor.WHITE;
 };
 
@@ -201,6 +203,35 @@ function ResignCard({ botName, onConfirm, onCancel, t }: ResignCardProps) {
           </Button>
           <Button variant="secondary" onClick={onCancel} className="w-full">
             {t("resign.cancel")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeaveGameCard({ botName, onConfirm, onCancel }: { botName: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onCancel}>
+      <div className="w-full max-w-sm animate-result-enter rounded-2xl overflow-hidden border border-neutral-700/80 bg-neutral-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-800 bg-rose-500/8">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-rose-500/15 border border-rose-500/30">
+            <X className="w-5 h-5 text-rose-400" />
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-[0.2em] text-rose-400/80 font-semibold">Leave game</div>
+            <div className="text-base font-bold text-neutral-100 mt-0.5">Resign and exit?</div>
+          </div>
+        </div>
+        <div className="px-5 py-4 text-sm text-neutral-400">
+          Leaving will count as a resignation against <span className="font-semibold text-neutral-200">{botName}</span>. Your progress in this game will be lost.
+        </div>
+        <div className="px-5 pb-5 flex flex-col gap-2">
+          <Button onClick={onConfirm} className="w-full bg-rose-600 hover:bg-rose-500 border-rose-700">
+            Resign and leave
+          </Button>
+          <Button variant="secondary" onClick={onCancel} className="w-full">
+            Stay in game
           </Button>
         </div>
       </div>
@@ -580,6 +611,7 @@ export default function LocalGamePage() {
   } = useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
   const [showResign, setShowResign] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
@@ -771,6 +803,22 @@ export default function LocalGamePage() {
   const timeFor = (color: PlayerColor) =>
     formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
 
+  const handleLeaveOrBack = () => {
+    // On mobile app, we always prompt to resign if a game is in progress.
+    // On desktop, we follow standard navigation back to setup.
+    const isMobile = isMobileApp();
+    
+    if (isMobile && !state.result) {
+      setShowLeave(true);
+    } else {
+      if (isMobile) {
+        router.replace(setupAiPath);
+      } else {
+        router.push(setupAiPath);
+      }
+    }
+  };
+
   return (
     <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-4 sm:gap-8">
       <div className="flex flex-col md:flex-row gap-4 sm:gap-8 w-full max-w-6xl items-stretch md:items-start justify-center">
@@ -795,8 +843,16 @@ export default function LocalGamePage() {
         {/* Board column */}
         <div className="flex-1 max-w-[650px] w-full mx-auto">
           {/* Mobile top player bar */}
-          <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center gap-2">
+            {/* Back / leave button */}
+            <button
+              onClick={handleLeaveOrBack}
+              className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-neutral-700/60 transition-colors text-neutral-400 hover:text-neutral-100"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            {/* Bot info */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="w-9 h-9 rounded-full bg-neutral-700 overflow-hidden shrink-0">
                 <div className="relative w-full h-full">
                   <Image src={topPlayer.avatarSrc} alt={topPlayer.name} fill sizes="36px" className="object-cover object-top" />
@@ -807,6 +863,7 @@ export default function LocalGamePage() {
                 <div className="text-xs text-neutral-500">{topPlayer.elo}</div>
               </div>
             </div>
+            {/* Timer */}
             <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
               {timeFor(botColor)}
             </div>
@@ -976,6 +1033,23 @@ export default function LocalGamePage() {
           onConfirm={() => { setShowResign(false); resign(); }}
           onCancel={() => setShowResign(false)}
           t={t}
+        />
+      )}
+
+      {/* Leave game confirmation (in-app back button) */}
+      {showLeave && (
+        <LeaveGameCard
+          botName={bot.name}
+          onConfirm={() => {
+            setShowLeave(false);
+            resign();
+            if (isMobileApp()) {
+              router.replace(setupAiPath);
+            } else {
+              router.push(setupAiPath);
+            }
+          }}
+          onCancel={() => setShowLeave(false)}
         />
       )}
 

@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BoardState, PlayerColor } from "@tzdraft/mkaguzi-engine";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMkaguzi } from "../lib/game/mkaguzi-mobile";
 import { getBestMove } from "../lib/game/ai-search";
 import { markLevelCompletedLocally } from "../lib/game/bot-progression";
@@ -23,6 +24,57 @@ import {
 // ─── Initial FEN (app convention: WHITE at PDN 1-12, BLACK at PDN 21-32) ──────
 const INITIAL_FEN =
   "W:W1,2,3,4,5,6,7,8,9,10,11,12:B21,22,23,24,25,26,27,28,29,30,31,32";
+
+// ─── Persistence ──────────────────────────────────────────────────────────────
+const GAME_SAVE_KEY = "tzdraft:ai-game-save";
+
+type SavedAiGame = {
+  botLevel: number;
+  resolvedColor: "WHITE" | "BLACK";
+  timeControlType: "none" | "total" | "per_move";
+  timeSeconds: number;
+  fen: string;
+  fenHistory: string[];
+  moveHistory: MoveRecord[];
+  capturedBy: { WHITE: number; BLACK: number };
+  currentPlayer: "WHITE" | "BLACK";
+  moveCount: number;
+  timeLeft: { WHITE: number; BLACK: number };
+  undoUsed: boolean;
+  hintUsed: boolean;
+  reversibleMoveCount: number;
+  thirtyMoveCount: number;
+  endgameCountdown: EndgameCountdown | null;
+  result: GameResult | null;
+};
+
+/** Wipes the saved AI game from AsyncStorage (call on resign/abandon). */
+export async function clearSavedAiGame(): Promise<void> {
+  await AsyncStorage.removeItem(GAME_SAVE_KEY);
+}
+
+/** Returns info about an in-progress saved AI game, or null if none exists. */
+export async function getSavedAiGameInfo(): Promise<{
+  botLevel: number;
+  resolvedColor: "WHITE" | "BLACK";
+  timeControlType: "none" | "total" | "per_move";
+  timeSeconds: number;
+} | null> {
+  try {
+    const raw = await AsyncStorage.getItem(GAME_SAVE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as SavedAiGame;
+    if (saved.result !== null && saved.result !== undefined) return null;
+    return {
+      botLevel: saved.botLevel,
+      resolvedColor: saved.resolvedColor,
+      timeControlType: saved.timeControlType,
+      timeSeconds: saved.timeSeconds,
+    };
+  } catch {
+    return null;
+  }
+}
 
 // ─── Notation helper ──────────────────────────────────────────────────────────
 function buildNotation(move: RawMove): string {
@@ -93,6 +145,8 @@ export interface AiGameState {
   invalidMoveSignal: number;
   /** True if undo was used at least once — reported to backend on session complete */
   undoUsed: boolean;
+  /** True if hint was used at least once — blocks level unlock */
+  hintUsed: boolean;
   /**
    * Whether the board should be rendered flipped (rotated 180°).
    *
@@ -173,9 +227,43 @@ export function useAiGame(
   const aiThinkingRef = useRef(false);
   const resultRef = useRef<GameResult | null>(null);
   const undoUsedRef = useRef(false);
+  const hintUsedRef = useRef(false);
+  // Incremented every time the game is restored from AsyncStorage.
+  // AI getBestMove calls capture this at start; stale results are discarded.
+  const restoreGenerationRef = useRef(0);
 
   // Sync ref to state
   useEffect(() => { endgameCountdownRef.current = endgameCountdown; }, [endgameCountdown]);
+
+  // ── Persistence: save game state to AsyncStorage on every move ──────────────
+  useEffect(() => {
+    if (moveCount === 0 && !result) return; // nothing to save yet
+    const color = resolvedColor === PlayerColor.WHITE ? "WHITE" : "BLACK";
+    const cur = currentPlayer === PlayerColor.WHITE ? "WHITE" : "BLACK";
+    const tcType = timeControl.type;
+    const tcSec = timeControl.type === "none" ? 0 : (timeControl as { type: string; seconds: number }).seconds;
+    const save: SavedAiGame = {
+      botLevel,
+      resolvedColor: color,
+      timeControlType: tcType,
+      timeSeconds: tcSec,
+      fen,
+      fenHistory: fenHistory.current,
+      moveHistory,
+      capturedBy,
+      currentPlayer: cur,
+      moveCount,
+      timeLeft,
+      undoUsed: undoUsedRef.current,
+      hintUsed: hintUsedRef.current,
+      reversibleMoveCount: reversibleMoveCount.current,
+      thirtyMoveCount: thirtyMoveCount.current,
+      endgameCountdown,
+      result,
+    };
+    AsyncStorage.setItem(GAME_SAVE_KEY, JSON.stringify(save)).catch(() => {});
+  }, [fen, moveHistory, capturedBy, currentPlayer, moveCount, timeLeft, endgameCountdown, result]);
+  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Total-time timer (human only — AI has no clock) ───────────────────────
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -348,6 +436,8 @@ export function useAiGame(
         if (
           gameResult.winner !== "DRAW" &&
           gameResult.winner !== null &&
+          !undoUsedRef.current &&
+          !hintUsedRef.current &&
           ((gameResult.winner === "WHITE" && resolvedColor === PlayerColor.WHITE) ||
             (gameResult.winner === "BLACK" && resolvedColor === PlayerColor.BLACK))
         ) {
@@ -390,11 +480,12 @@ export function useAiGame(
       }
 
       if (nextPlayer !== resolvedColor) {
+        const capturedGeneration = restoreGenerationRef.current;
         aiThinkingRef.current = true;
         setIsAiThinking(true);
         try {
           const best = await getBestMove(newFen, botLevel, fenHistory.current, bridge);
-          if (best && !resultRef.current) {
+          if (best && !resultRef.current && restoreGenerationRef.current === capturedGeneration) {
             await submitMove(best, newFen, nextPlayer);
           }
         } finally {
@@ -414,6 +505,22 @@ export function useAiGame(
     if (!bridge.isReady) return;
     let cancelled = false;
     (async () => {
+      // If a valid saved game exists for this session, let the load effect handle init.
+      try {
+        const raw = await AsyncStorage.getItem(GAME_SAVE_KEY);
+        if (raw && !cancelled) {
+          const saved = JSON.parse(raw) as SavedAiGame;
+          const color = resolvedColor === PlayerColor.WHITE ? "WHITE" : "BLACK";
+          if (
+            saved.botLevel === botLevel &&
+            saved.resolvedColor === color &&
+            saved.result === null
+          ) {
+            return; // load effect handles restore + AI trigger
+          }
+        }
+      } catch {}
+
       const moves = await bridge.generateMoves(INITIAL_FEN);
       if (cancelled) return;
       setLegalMoves(moves);
@@ -425,11 +532,14 @@ export function useAiGame(
         if (isPerMove) startMoveTimer();
       } else {
         // AI goes first — no timer needed until AI finishes its first move
+        const capturedGeneration = restoreGenerationRef.current;
         aiThinkingRef.current = true;
         setIsAiThinking(true);
         try {
           const best = await getBestMove(INITIAL_FEN, botLevel, fenHistory.current, bridge);
-          if (best && !cancelled) await submitMove(best, INITIAL_FEN, PlayerColor.WHITE);
+          if (best && !cancelled && restoreGenerationRef.current === capturedGeneration) {
+            await submitMove(best, INITIAL_FEN, PlayerColor.WHITE);
+          }
         } finally {
           aiThinkingRef.current = false;
           setIsAiThinking(false);
@@ -484,12 +594,12 @@ export function useAiGame(
   // ── hint ──────────────────────────────────────────────────────────────────
   const hint = useCallback(async () => {
     if (result || isAiThinking || currentPlayer !== resolvedColor) return;
-    
+
+    hintUsedRef.current = true;
     setIsAiThinking(true);
     aiThinkingRef.current = true;
     try {
-      // Use a mid-level fast search for the hint (e.g. level 6 is ~1s)
-      const best = await getBestMove(fen, 6, fenHistory.current, bridge);
+      const best = await getBestMove(fen, Math.min(botLevel + 2, 10), fenHistory.current, bridge);
       if (best) {
         setSelectedSquare(best.from);
         setValidDestinations([best.to]);
@@ -498,7 +608,7 @@ export function useAiGame(
       aiThinkingRef.current = false;
       setIsAiThinking(false);
     }
-  }, [result, isAiThinking, currentPlayer, resolvedColor, fen, bridge]);
+  }, [result, isAiThinking, currentPlayer, resolvedColor, fen, bridge, botLevel]);
 
   // ── undo ──────────────────────────────────────────────────────────────────
   const undo = useCallback(() => {
@@ -570,6 +680,65 @@ export function useAiGame(
     });
   }, [result, resolvedColor, bridge, computeCapturables, stopTimer, stopMoveTimer, startTimer, isPerMove, startMoveTimer, moveSeconds]);
 
+  // ── Persistence: load saved game state on mount (once bridge is ready) ───────
+  useEffect(() => {
+    if (!bridge.isReady) return;
+    AsyncStorage.getItem(GAME_SAVE_KEY).then(async (raw) => {
+      if (!raw) return;
+      let saved: SavedAiGame;
+      try { saved = JSON.parse(raw) as SavedAiGame; } catch { return; }
+      const color = resolvedColor === PlayerColor.WHITE ? "WHITE" : "BLACK";
+      if (saved.botLevel !== botLevel || saved.resolvedColor !== color || saved.result !== null) return;
+
+      fenHistory.current = saved.fenHistory;
+      reversibleMoveCount.current = saved.reversibleMoveCount;
+      thirtyMoveCount.current = saved.thirtyMoveCount;
+      endgameCountdownRef.current = saved.endgameCountdown;
+      undoUsedRef.current = saved.undoUsed;
+      hintUsedRef.current = saved.hintUsed;
+
+      const savedCurrentPlayer = saved.currentPlayer === "WHITE" ? PlayerColor.WHITE : PlayerColor.BLACK;
+
+      setFen(saved.fen);
+      setBoard(BoardState.fromFen(saved.fen));
+      setCurrentPlayer(savedCurrentPlayer);
+      setMoveHistory(saved.moveHistory);
+      setCapturedBy(saved.capturedBy);
+      setMoveCount(saved.moveCount);
+      setTimeLeft(saved.timeLeft);
+      setEndgameCountdown(saved.endgameCountdown);
+
+      // Any in-flight AI promise from a previous session is now stale.
+      restoreGenerationRef.current += 1;
+      const capturedGeneration = restoreGenerationRef.current;
+
+      try {
+        const moves = await bridge.generateMoves(saved.fen);
+        setLegalMoves(moves);
+        setCapturablePieces(computeCapturables(moves));
+
+        if (savedCurrentPlayer !== resolvedColor && !resultRef.current) {
+          // It's the AI's turn — start thinking immediately on resume.
+          aiThinkingRef.current = true;
+          setIsAiThinking(true);
+          try {
+            const best = await getBestMove(saved.fen, botLevel, fenHistory.current, bridge);
+            if (best && !resultRef.current && restoreGenerationRef.current === capturedGeneration) {
+              await submitMove(best, saved.fen, savedCurrentPlayer);
+            }
+          } finally {
+            aiThinkingRef.current = false;
+            setIsAiThinking(false);
+          }
+        } else if (savedCurrentPlayer === resolvedColor) {
+          // It's the human's turn — restart timers.
+          startTimer(savedCurrentPlayer);
+          if (isPerMove) startMoveTimer();
+        }
+      } catch {}
+    }).catch(() => {});
+  }, [bridge.isReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── reset ─────────────────────────────────────────────────────────────────
   const reset = useCallback(() => {
     stopTimer();
@@ -591,7 +760,9 @@ export function useAiGame(
     setMoveCount(0);
     setInvalidMoveSignal(0);
     undoUsedRef.current = false;
+    hintUsedRef.current = false;
     fenHistory.current = [INITIAL_FEN];
+    AsyncStorage.removeItem(GAME_SAVE_KEY).catch(() => {});
     reversibleMoveCount.current = 0;
     thirtyMoveCount.current = 0;
     setEndgameCountdown(null);
@@ -620,6 +791,7 @@ export function useAiGame(
     moveCount,
     invalidMoveSignal,
     undoUsed: undoUsedRef.current,
+    hintUsed: hintUsedRef.current,
     flipBoard: resolvedColor === PlayerColor.BLACK,
     fenHistory: fenHistory.current,
     endgameCountdown,
