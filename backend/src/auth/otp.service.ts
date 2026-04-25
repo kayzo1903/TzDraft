@@ -53,19 +53,19 @@ export class OtpService {
       throw new BadRequestException('Unable to send OTP. Please try again.');
     }
 
-    // Enforce 1-minute cooldown between sends for the same phone + purpose
+    // Enforce 3-minute cooldown between sends for the same phone + purpose
     const recentOtp = await this.prisma.otpCode.findFirst({
       where: {
         phoneNumber: normalized,
         purpose,
-        createdAt: { gte: new Date(Date.now() - 60 * 1000) },
+        createdAt: { gte: new Date(Date.now() - 3 * 60 * 1000) },
       },
       orderBy: { createdAt: 'desc' },
     });
 
     if (recentOtp) {
       const secondsLeft = Math.ceil(
-        (recentOtp.createdAt.getTime() + 60 * 1000 - Date.now()) / 1000,
+        (recentOtp.createdAt.getTime() + 3 * 60 * 1000 - Date.now()) / 1000,
       );
       throw new BadRequestException(
         `Please wait ${secondsLeft} second${secondsLeft !== 1 ? 's' : ''} before requesting a new code.`,

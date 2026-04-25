@@ -19,6 +19,8 @@ import * as SecureStore from "expo-secure-store";
 import { authClient } from "../../src/lib/auth-client";
 import { GoogleIcon } from "../../src/components/icons/GoogleIcon";
 import { colors } from "../../src/theme/colors";
+import { LanguageSwitcher } from "../../src/components/LanguageSwitcher";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -93,9 +95,23 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root}>
       <StatusBar barStyle="light-content" />
       
+      {/* Absolute Header elements (Symmetric with Welcome page) */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <ChevronLeft size={24} color={colors.foreground} />
+        </TouchableOpacity>
+
+        <View style={styles.langWrapper}>
+          <LanguageSwitcher />
+        </View>
+      </View>
+
       {/* Background Glows (Faked) */}
       <View style={styles.glowTop} />
       
@@ -105,13 +121,6 @@ export default function LoginScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.container}>
-            {/* Header / Back */}
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-            >
-              <ChevronLeft size={24} color={colors.textMuted} />
-            </TouchableOpacity>
 
             <View style={styles.welcomeSection}>
               <Text style={styles.stationLabel}>
@@ -182,7 +191,7 @@ export default function LoginScreen() {
                   <Text style={styles.rememberMeText}>{t("auth.login.rememberMe", "Remember Me")}</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.forgotPass}>
+                <TouchableOpacity style={styles.forgotPass} onPress={() => router.push("/(auth)/forgot-password")}>
                   <Text style={styles.forgotPassText}>
                     {t("auth.login.forgotPassword", "Forgot Password?")}
                   </Text>
@@ -240,7 +249,7 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -265,16 +274,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 12,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
+    paddingTop: 10,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingTop: 20,
+    zIndex: 10,
+  },
+  langWrapper: {
+    marginTop: 0,
   },
   backButton: {
-    height: 44,
-    width: 44,
+    height: 48,
+    width: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: colors.surface,
-    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   welcomeSection: {
     marginBottom: 32,

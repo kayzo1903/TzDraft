@@ -43,7 +43,8 @@
     "accept": "Accept",
     "waitingForAccept": "Waiting…",
     "waitingDesc": "Challenge sent to",
-    "cancelChallenge": "Cancel"
+    "cancelChallenge": "Cancel",
+    "challengeExpiresIn": "Expires in"
   },
   "community": {
     "title": "Community",
@@ -115,6 +116,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "continue": "Continue",
     "optional": "optional",
     "error": "Error",
     "done": "Done",
@@ -257,6 +259,7 @@
           "hint": "Code expires in 5 minutes",
           "button": "Verify Code",
           "buttonLoading": "Verifying...",
+          "resend": "Resend Code",
           "changePhone": "Change Phone Number"
         },
         "details": {
@@ -652,7 +655,12 @@
       "confirmTitle": "Confirm End a Game",
       "confirmQuestion": "Are you sure you want to end the game?",
       "confirmCta": "Yes, End Game",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "opponentTag": "OPPONENT",
+      "returnToSetup": "Resign and return to bot selection?",
+      "progressLost": "Game progress will be lost. No progression will be earned.",
+      "changeBot": "Change Bot",
+      "botAction": "Bot"
     },
     "gameOver": {
       "title": "Game Over",

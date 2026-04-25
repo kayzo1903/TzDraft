@@ -40,10 +40,12 @@ class AiChallengeService {
     sessionId: string,
     result: "WIN" | "LOSS" | "DRAW",
     undoUsed: boolean,
+    hintUsed = false,
   ): Promise<AiProgressionSummary> {
     const res = await api.post(`/games/ai/sessions/${sessionId}/complete`, {
       result,
       undoUsed,
+      hintUsed,
     });
     const progression = res.data.data as AiProgressionSummary;
     // Refresh cache with the server's updated progression so the next

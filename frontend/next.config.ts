@@ -89,6 +89,12 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
       },
+      {
+        // apple-app-site-association has no .json extension but must be served
+        // as application/json for iOS Universal Links verification to pass.
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
     ];
   },
   images: {

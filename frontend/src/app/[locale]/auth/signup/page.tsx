@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
@@ -56,6 +56,27 @@ export default function SignupPage() {
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  const startCooldown = () => {
+    setResendCooldown(180);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
@@ -78,6 +99,7 @@ export default function SignupPage() {
 
     try {
       await authClient.sendOTP(formData.phoneNumber, "signup");
+      startCooldown();
       setStep("otp");
     } catch (err: any) {
       const message = err.response?.data?.message;
@@ -316,6 +338,27 @@ export default function SignupPage() {
                         </span>
                       )}
                     </Button>
+                    <button
+                      type="button"
+                      className="w-full py-3 rounded-2xl border border-white/10 text-sm text-neutral-300 disabled:opacity-40"
+                      disabled={loading || resendCooldown > 0}
+                      onClick={async () => {
+                        setError("");
+                        setLoading(true);
+                        try {
+                          await authClient.sendOTP(formData.phoneNumber, "signup");
+                          startCooldown();
+                        } catch (err: any) {
+                          setError(err.response?.data?.message || t("errors.otpFailed"));
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      {resendCooldown > 0
+                        ? `${t("signup.steps.otp.resend")} (${resendCooldown}s)`
+                        : t("signup.steps.otp.resend")}
+                    </button>
                     <button
                       type="button"
                       className="w-full py-3 rounded-2xl border border-white/10 text-sm text-neutral-300"

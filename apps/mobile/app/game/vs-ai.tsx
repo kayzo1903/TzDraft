@@ -35,10 +35,11 @@ import {
   Volume2,
   VolumeX,
   User as UserIcon,
+  Bot,
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
 import { DraughtsBoard, HighlightType } from "../../src/components/game/DraughtsBoard";
-import { useAiGame, type PlayerColorParam, type TimeControl } from "../../src/hooks/useAiGame";
+import { useAiGame, clearSavedAiGame, type PlayerColorParam, type TimeControl } from "../../src/hooks/useAiGame";
 import { getBotByLevel, getTierForLevel, BOT_IMAGES, TIERS } from "../../src/lib/game/bots";
 import { getEndgameReasonLabel } from "../../src/lib/game/rules";
 import { useMkaguzi } from "../../src/lib/game/mkaguzi-mobile";
@@ -166,11 +167,13 @@ const capturedStyles = StyleSheet.create({
 // ─── Leave Modal ──────────────────────────────────────────────────────────────
 function LeaveModal({
   botName,
+  botImageKey,
   visible,
   onConfirm,
   onCancel,
 }: {
   botName: string;
+  botImageKey: string;
   visible: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -185,21 +188,35 @@ function LeaveModal({
       >
         <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={modalStyles.resignCard}>
-            {/* Warning header stripe */}
-            <View style={modalStyles.resignHeader}>
-              <View style={modalStyles.resignIconWrap}>
-                <AlertTriangle color={colors.primary} size={20} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={modalStyles.resignTitleSmall}>{t("gameArena.resign.confirmTitle")}</Text>
-                <Text style={modalStyles.resignTitle}>{t("gameArena.resign.confirmQuestion")}</Text>
+            {/* Bot portrait strip */}
+            <View style={modalStyles.resignBotStrip}>
+              <Image
+                source={BOT_IMAGES[botImageKey as keyof typeof BOT_IMAGES]}
+                style={modalStyles.resignBotAvatar}
+                resizeMode="cover"
+              />
+              <View style={modalStyles.resignBotMeta}>
+                <View style={modalStyles.resignBotIconRow}>
+                  <Bot color={colors.danger} size={14} />
+                  <Text style={modalStyles.resignBotTag}>{t("gameArena.resign.opponentTag")}</Text>
+                </View>
+                <Text style={modalStyles.resignBotName}>{botName}</Text>
+                <Text style={modalStyles.resignSubtext}>
+                  {t("gameArena.resign.returnToSetup")}
+                </Text>
               </View>
             </View>
 
-            <Text style={modalStyles.resignBody}>
-              Leaving your game against <Text style={{ color: colors.foreground, fontWeight: "bold" }}>{botName}</Text>?
-              {"\n"}You won't earn progression from this game.
-            </Text>
+            {/* Divider */}
+            <View style={modalStyles.resignDivider} />
+
+            {/* Warning note */}
+            <View style={modalStyles.resignNote}>
+              <AlertTriangle color="#f59e0b" size={13} />
+              <Text style={modalStyles.resignNoteText}>
+                {t("gameArena.resign.progressLost")}
+              </Text>
+            </View>
 
             <View style={modalStyles.resignBtns}>
               <TouchableOpacity
@@ -212,7 +229,8 @@ function LeaveModal({
                 style={[modalStyles.resignBtn, modalStyles.resignBtnDanger]}
                 onPress={onConfirm}
               >
-                <Text style={modalStyles.resignBtnText}>{t("gameArena.actions.resign")}</Text>
+                <Bot color="#fff" size={14} />
+                <Text style={modalStyles.resignBtnText}>{t("gameArena.resign.changeBot")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -338,6 +356,8 @@ function ResultModal({
   onBack,
   onNextOpponent,
   didUnlockNext,
+  hintUsed,
+  undoUsed,
 }: {
   visible: boolean;
   isPlayerWin: boolean;
@@ -351,6 +371,8 @@ function ResultModal({
   onBack: () => void;
   onNextOpponent?: () => void;
   didUnlockNext: boolean;
+  hintUsed: boolean;
+  undoUsed: boolean;
 }) {
   const { t } = useTranslation();
   const outcome: GameOutcome = isPlayerWin ? "win" : isDraw ? "draw" : "loss";
@@ -451,6 +473,15 @@ function ResultModal({
             ))}
           </View>
 
+          {/* ── Progress blocked notice ── */}
+          {(hintUsed || undoUsed) && (
+            <View style={{ marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}>
+              <Text style={{ color: "#9ca3af", fontSize: 12, textAlign: "center" }}>
+                {hintUsed ? "Progress not saved — Hint was used this game." : "Progress not saved — Undo was used this game."}
+              </Text>
+            </View>
+          )}
+
           {/* ── Action buttons ── */}
           <View style={[resultStyles.actions, { flexDirection: "column" }]}>
             {isPlayerWin && onNextOpponent && (
@@ -508,7 +539,7 @@ export default function VsAiScreen() {
 
   const initialMaxLevelRef = useRef(getCachedMaxUnlockedLevel());
   const isPlayerWinRaw = game.result?.winner === (game.playerColor as unknown as string);
-  const didUnlockNext = isPlayerWinRaw && botLevel >= initialMaxLevelRef.current && botLevel < 19;
+  const didUnlockNext = isPlayerWinRaw && !game.hintUsed && !game.undoUsed && botLevel >= initialMaxLevelRef.current && botLevel < 19;
 
   // ── Session tracking (registered users only) ──────────────────────────────
   const sessionIdRef = useRef<string | null>(null);
@@ -621,7 +652,7 @@ export default function VsAiScreen() {
         sessionCompletedRef.current = true;
         const backendResult = isPlayerWin ? "WIN" : outcome === "draw" ? "DRAW" : "LOSS";
         aiChallengeService
-          .completeSession(sessionIdRef.current, backendResult, game.undoUsed)
+          .completeSession(sessionIdRef.current, backendResult, game.undoUsed, game.hintUsed)
           .then((progression: AiProgressionSummary) => {
             applyServerProgression(progression).catch(() => {});
           })
@@ -630,10 +661,12 @@ export default function VsAiScreen() {
 
       if (isPlayerWin) {
         Vibration.vibrate([0, 400, 200, 400]); // Double pulse vibration on win
-        const nextLevel = botLevel + 1;
-        const tierData = TIER_UNLOCK_DATA[nextLevel];
-        if (tierData) {
-          setTimeout(() => setTierUnlock(tierData), 600);
+        if (!game.hintUsed && !game.undoUsed) {
+          const nextLevel = botLevel + 1;
+          const tierData = TIER_UNLOCK_DATA[nextLevel];
+          if (tierData) {
+            setTimeout(() => setTierUnlock(tierData), 600);
+          }
         }
       }
     }
@@ -690,6 +723,7 @@ export default function VsAiScreen() {
           style={styles.iconBtn}
           onPress={() => {
             if (game.result) {
+              clearSavedAiGame().catch(() => {});
               router.replace("/game/setup-ai");
             } else {
               setShowLeaveModal(true);
@@ -858,13 +892,22 @@ export default function VsAiScreen() {
 
       {/* ── Bottom action bar (web-style icon strip) ───────────────────────── */}
       <View style={styles.actionBar}>
-        {/* Settings */}
+        {/* Bot / Resign → setup-ai */}
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={() => setShowOptionsModal(true)}
+          onPress={() => {
+            if (game.result) {
+              clearSavedAiGame().catch(() => {});
+              router.replace("/game/setup-ai");
+            } else {
+              setShowLeaveModal(true);
+            }
+          }}
         >
-          <Settings color={colors.foreground} size={22} />
-          <Text style={styles.actionBtnLabel}>{t("gameArena.actions.settings")}</Text>
+          <View style={styles.botIconWrap}>
+            <Bot color={colors.foreground} size={20} />
+          </View>
+          <Text style={styles.actionBtnLabel}>{t("gameArena.resign.botAction")}</Text>
         </TouchableOpacity>
 
         {/* Hint */}
@@ -922,9 +965,11 @@ export default function VsAiScreen() {
       {/* ── Leave modal ── */}
       <LeaveModal
         botName={bot.name}
+        botImageKey={bot.imageKey}
         visible={showLeaveModal}
         onConfirm={() => {
           setShowLeaveModal(false);
+          clearSavedAiGame().catch(() => {});
           router.replace("/game/setup-ai");
         }}
         onCancel={() => { setShowLeaveModal(false); }}
@@ -935,7 +980,7 @@ export default function VsAiScreen() {
         visible={showOptionsModal}
         isMuted={audio.isMuted}
         onToggleMute={audio.toggleMute}
-        onHome={() => { setShowOptionsModal(false); router.back(); }}
+        onHome={() => { setShowOptionsModal(false); router.replace("/"); }}
         onClose={() => setShowOptionsModal(false)}
       />
 
@@ -980,8 +1025,10 @@ export default function VsAiScreen() {
         botImageKey={bot.imageKey}
         moveCount={game.moveCount}
         didUnlockNext={didUnlockNext}
+        hintUsed={game.hintUsed}
+        undoUsed={game.undoUsed}
         onRematch={game.reset}
-        onBack={() => router.back()}
+        onBack={() => { clearSavedAiGame().catch(() => {}); router.replace("/game/setup-ai"); }}
         onNextOpponent={
           botLevel < 19
             ? () => router.replace({ pathname: "/game/vs-ai", params: { ...params, botLevel: (botLevel + 1).toString() } })
@@ -1189,6 +1236,16 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
+  botIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
 
 // ─── Modal Styles ──────────────────────────────────────────────────────────────
@@ -1210,37 +1267,6 @@ const modalStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  resignHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: "rgba(249,115,22,0.07)",
-  },
-  resignIconWrap: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: "rgba(249,115,22,0.12)",
-    borderWidth: 1, borderColor: "rgba(249,115,22,0.30)",
-    alignItems: "center", justifyContent: "center",
-  },
-  resignTitleSmall: {
-    color: "rgba(249,115,22,0.75)",
-    fontSize: 9, fontWeight: "bold", letterSpacing: 1.5,
-  },
-  resignTitle: {
-    color: colors.foreground,
-    fontSize: 15, fontWeight: "bold", marginTop: 1,
-  },
-  resignBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-  },
   resignBtns: {
     flexDirection: "row",
     gap: 10,
@@ -1255,8 +1281,73 @@ const modalStyles = StyleSheet.create({
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1, borderColor: colors.border,
   },
-  resignBtnDanger: { backgroundColor: colors.danger },
+  resignBtnDanger: {
+    backgroundColor: colors.danger,
+    flexDirection: "row" as const,
+    gap: 6,
+  },
   resignBtnText: { color: colors.foreground, fontSize: 14, fontWeight: "bold" },
+
+  // Bot portrait strip
+  resignBotStrip: {
+    flexDirection: "row" as const,
+    alignItems: "center",
+    gap: 14,
+    padding: 18,
+    paddingBottom: 14,
+  },
+  resignBotAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surfaceElevated,
+  },
+  resignBotMeta: { flex: 1 },
+  resignBotIconRow: {
+    flexDirection: "row" as const,
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 3,
+  },
+  resignBotTag: {
+    color: colors.danger,
+    fontSize: 9,
+    fontWeight: "900" as const,
+    letterSpacing: 1.5,
+  },
+  resignBotName: {
+    color: colors.foreground,
+    fontSize: 17,
+    fontWeight: "bold" as const,
+    marginBottom: 2,
+  },
+  resignSubtext: {
+    color: colors.textMuted,
+    fontSize: 12,
+  },
+  resignDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 18,
+  },
+  resignNote: {
+    flexDirection: "row" as const,
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 18,
+    marginVertical: 14,
+    padding: 12,
+    backgroundColor: "rgba(245,158,11,0.08)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.25)",
+  },
+  resignNoteText: {
+    color: "#fbbf24",
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 17,
+  },
 });
 
 // ─── Options Card Styles ───────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import clsx from "clsx";
+import { isMobileApp } from "@/lib/game/platform";
 
 type ModeCard = {
   id: string;
@@ -153,7 +154,7 @@ export default function PlayPage() {
       id: "ai",
       title: t("modes.ai.title"),
       description: t("modes.ai.description"),
-      href: "/game/setup-ai",
+      href: isMobileApp() ? "/game/play-ai" : "/game/setup-ai",
       enabled: true,
       action: t("modes.ai.action"),
       badge: isSw ? "Mazoezi" : "Training",

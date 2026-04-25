@@ -9,6 +9,7 @@ import {
   getLocalBotProgressSnapshot,
   applyServerProgression,
   clearLocalBotProgress,
+  initBotProgression,
 } from "./game/bot-progression";
 
 // Lazy load GoogleSignin to prevent crashes in Expo Go or older builds
@@ -92,7 +93,7 @@ class AuthClient {
       if (refreshToken) {
         await SecureStore.setItemAsync("refreshToken", refreshToken);
       }
-      
+      initBotProgression(user.id);
       // Update status to authenticated
       useAuthStore.getState().setStatus("authenticated");
       this.syncLocalAiProgressIfNeeded();
@@ -114,7 +115,7 @@ class AuthClient {
       if (refreshToken) {
         await SecureStore.setItemAsync("refreshToken", refreshToken);
       }
-
+      initBotProgression(user.id);
       useAuthStore.getState().setStatus("authenticated");
       this.syncLocalAiProgressIfNeeded();
       return response.data;
@@ -131,6 +132,10 @@ class AuthClient {
   async verifyOTP(phoneNumber: string, code: string, purpose: string) {
     return api.post("/auth/verify-otp", { phoneNumber, code, purpose });
   }
+
+  async resetPasswordPhone(phoneNumber: string, code: string, newPassword: string) {
+    return api.post("/auth/reset-password-phone", { phoneNumber, code, newPassword });
+  }
   
   /**
    * Enter guest mode entirely locally — no network call, no DB row.
@@ -145,6 +150,8 @@ class AuthClient {
       displayName: "Guest",
       accountType: "GUEST",
     });
+    // Ensure bot progress cache is reset to guest scope.
+    initBotProgression(null);
     // token stays null — axios interceptor attaches no Authorization header
     store.setStatus("guest");
   }
@@ -197,7 +204,7 @@ class AuthClient {
       if (refreshToken) {
         await SecureStore.setItemAsync("refreshToken", refreshToken);
       }
-      
+      initBotProgression(user.id);
       useAuthStore.getState().setStatus("authenticated");
       this.syncLocalAiProgressIfNeeded();
       return { accessToken, user };
@@ -223,6 +230,14 @@ class AuthClient {
 
   async logout() {
     const store = useAuthStore.getState();
+    // Capture the outgoing user's id before any state is cleared so we can
+    // erase their scoped AsyncStorage keys in the finally block.
+    const outgoingUserId = store.user?.id ?? undefined;
+
+    // Reset the bot-progress cache synchronously RIGHT NOW so that if the UI
+    // re-renders during the async work below it never shows stale unlock state.
+    initBotProgression(null);
+
     const refreshToken = await SecureStore.getItemAsync("refreshToken");
 
     // Clear the in-memory token BEFORE the API call.
@@ -255,7 +270,9 @@ class AuthClient {
       console.error("[AuthClient] Logout failed partially:", error);
     } finally {
       await SecureStore.deleteItemAsync("refreshToken");
-      await clearLocalBotProgress();
+      // Pass the captured userId so the right scoped keys are erased even
+      // though _activeUserId has already been switched to null above.
+      await clearLocalBotProgress(outgoingUserId);
     }
   }
 }

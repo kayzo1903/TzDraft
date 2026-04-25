@@ -19,6 +19,7 @@ interface BoardProps extends React.HTMLAttributes<HTMLDivElement> {
   lastMove?: LastMoveState;
   capturedGhosts?: CaptureGhost[];
   flipped?: boolean;
+  hintSquares?: { from: number; to: number } | null;
 }
 
 /* ─── Drag state ─────────────────────────────────────────────────────────── */
@@ -68,6 +69,7 @@ export const Board: React.FC<BoardProps> = ({
   lastMove = null,
   capturedGhosts = [],
   flipped = false,
+  hintSquares = null,
   className,
   ...props
 }) => {
@@ -310,6 +312,8 @@ export const Board: React.FC<BoardProps> = ({
     const piece = getPiece(index);
     const isSelected = selectedSquare === index;
     const isForcedPiece = forcedPieces.includes(index);
+    const isHintFrom = hintSquares !== null && hintSquares.from === index;
+    const isHintTo = hintSquares !== null && hintSquares.to === index;
     const isLegalTarget =
       selectedSquare !== null &&
       isDark &&
@@ -374,6 +378,16 @@ export const Board: React.FC<BoardProps> = ({
               isLastMoveToSquare ? "bg-amber-400/20" : "bg-amber-300/12",
             )}
           />
+        )}
+
+        {/* Hint from-square glow */}
+        {isHintFrom && isDark && (
+          <div className="absolute inset-0 bg-cyan-400/30 pointer-events-none animate-pulse" />
+        )}
+
+        {/* Hint to-square arrow/glow */}
+        {isHintTo && isDark && (
+          <div className="absolute inset-0 bg-cyan-400/50 pointer-events-none animate-pulse" />
         )}
 
         {/* Forced-piece pulse */}

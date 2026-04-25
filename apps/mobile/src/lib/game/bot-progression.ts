@@ -2,34 +2,50 @@
  * bot-progression.ts
  *
  * Local AI level progress — AsyncStorage layer.
- * Matches the web version's key names and logic so local state can be synced
- * to the backend via aiChallengeService.syncLocalProgress() after login.
  *
- * Keys (aligned with web localStorage keys):
- *   tzdraft:bot-completed-levels  → number[]
- *   tzdraft:bot-max-level         → number
+ * Keys are scoped by userId so progress from one user can never bleed into
+ * another user's session (registered or guest).  Guest sessions share the
+ * "guest" scope because they are ephemeral and device-local.
+ *
+ *   tzdraft:bot-completed-levels:<scope>  → number[]
+ *   tzdraft:bot-max-level:<scope>         → number
+ *
+ * Call initBotProgression(userId) immediately after login / on guest start,
+ * and initBotProgression(null) at the very beginning of logout so the
+ * in-memory cache is reset synchronously before any UI re-render.
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const KEY_COMPLETED = "tzdraft:bot-completed-levels";
-const KEY_MAX       = "tzdraft:bot-max-level";
+// Scope that is active for the current session.  null → "guest" scope.
+let _activeUserId: string | null = null;
+
+const KEY_COMPLETED = (uid: string | null) =>
+  `tzdraft:bot-completed-levels:${uid ?? "guest"}`;
+const KEY_MAX = (uid: string | null) =>
+  `tzdraft:bot-max-level:${uid ?? "guest"}`;
 
 export const INITIAL_FREE_LEVELS = 3; // matches backend default
 export const MAX_LEVEL = 19;
 
 // ─── In-memory cache ─────────────────────────────────────────────────────────
-// Populated on the first AsyncStorage read so subsequent synchronous reads
-// (e.g. useState initial value in setup-ai) return instantly without a flash.
 
 let _cachedMax: number = INITIAL_FREE_LEVELS;
-let _cacheReady = false; // true once we've done at least one real read
+
+/**
+ * Must be called immediately after login (with the real userId) and
+ * immediately before logout (with null).  The synchronous cache reset
+ * prevents any UI flash of the previous user's unlock state.
+ */
+export function initBotProgression(userId: string | null): void {
+  // Normalise guest-* ids to the shared guest scope.
+  _activeUserId = userId && !userId.startsWith("guest-") ? userId : null;
+  _cachedMax = INITIAL_FREE_LEVELS;
+}
 
 /**
  * Synchronous read from the in-memory cache.
  * Returns INITIAL_FREE_LEVELS until the first async read has completed.
- * Use this as the useState initial value so the screen renders correctly
- * on revisits without waiting for AsyncStorage.
  */
 export function getCachedMaxUnlockedLevel(): number {
   return _cachedMax;
@@ -39,7 +55,7 @@ export function getCachedMaxUnlockedLevel(): number {
 
 async function getCompletedLevels(): Promise<number[]> {
   try {
-    const raw = await AsyncStorage.getItem(KEY_COMPLETED);
+    const raw = await AsyncStorage.getItem(KEY_COMPLETED(_activeUserId));
     if (raw) return JSON.parse(raw) as number[];
   } catch {}
   return [];
@@ -47,33 +63,27 @@ async function getCompletedLevels(): Promise<number[]> {
 
 async function getMaxUnlockedLevel(): Promise<number> {
   try {
-    const raw = await AsyncStorage.getItem(KEY_MAX);
+    const raw = await AsyncStorage.getItem(KEY_MAX(_activeUserId));
     if (raw) {
       const parsed = parseInt(raw, 10);
       _cachedMax = parsed;
-      _cacheReady = true;
       return parsed;
     }
   } catch {}
-  _cacheReady = true;
   return INITIAL_FREE_LEVELS;
 }
 
 async function setCompletedLevels(levels: number[]): Promise<void> {
-  await AsyncStorage.setItem(KEY_COMPLETED, JSON.stringify(levels));
+  await AsyncStorage.setItem(KEY_COMPLETED(_activeUserId), JSON.stringify(levels));
 }
 
 async function setMaxUnlockedLevel(level: number): Promise<void> {
-  _cachedMax = level; // update cache immediately so next sync read is correct
-  await AsyncStorage.setItem(KEY_MAX, String(level));
+  _cachedMax = level;
+  await AsyncStorage.setItem(KEY_MAX(_activeUserId), String(level));
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * Returns the locally-stored progress snapshot — used when the backend
- * is unavailable or the user is a guest.
- */
 export async function getLocalBotProgressSnapshot(): Promise<{
   completedLevels: number[];
   maxUnlockedAiLevel: number;
@@ -85,31 +95,17 @@ export async function getLocalBotProgressSnapshot(): Promise<{
   return { completedLevels, maxUnlockedAiLevel };
 }
 
-/**
- * True if the player has beaten any levels beyond the initial 3 free ones —
- * i.e. there is meaningful offline progress worth syncing to the server.
- */
 export async function hasLocalBotProgressToSync(): Promise<boolean> {
   const { completedLevels, maxUnlockedAiLevel } = await getLocalBotProgressSnapshot();
   return completedLevels.length > 0 || maxUnlockedAiLevel > INITIAL_FREE_LEVELS;
 }
 
-/**
- * Check whether the given bot level is accessible locally.
- * The authoritative unlock state comes from the backend for registered users;
- * use this only for guests or as an offline fallback.
- */
 export async function isLevelUnlocked(level: number): Promise<boolean> {
   if (level < 1 || level > MAX_LEVEL) return false;
   const max = await getMaxUnlockedLevel();
   return level <= max;
 }
 
-/**
- * Mark a level as completed locally.
- * Also advances maxUnlockedLevel if this beats the current ceiling.
- * Returns the new maxUnlockedLevel so the caller can detect a tier crossing.
- */
 export async function markLevelCompletedLocally(
   level: number,
 ): Promise<{ newMaxUnlocked: number }> {
@@ -131,10 +127,6 @@ export async function markLevelCompletedLocally(
   return { newMaxUnlocked: newMax };
 }
 
-/**
- * Overwrite local progress with data received from the server.
- * Called after a successful completeSession() or syncLocalProgress() response.
- */
 export async function applyServerProgression(progression: {
   completedLevels: number[];
   highestUnlockedAiLevel: number;
@@ -146,21 +138,23 @@ export async function applyServerProgression(progression: {
 }
 
 /**
- * Clears local AI progress entirely. Used during logout to prevent
- * the next user from inheriting the previous user's local state.
+ * Clears bot progress for a specific user (pass the userId captured before
+ * calling initBotProgression(null) during logout) or for the active scope
+ * if no userId is provided.  Also wipes the legacy unscoped keys so old
+ * installs are cleaned up on the first logout.
  */
-export async function clearLocalBotProgress(): Promise<void> {
+export async function clearLocalBotProgress(userId?: string): Promise<void> {
+  const scope = userId && !userId.startsWith("guest-") ? userId : _activeUserId;
   await Promise.all([
-    AsyncStorage.removeItem(KEY_COMPLETED),
-    AsyncStorage.removeItem(KEY_MAX),
+    AsyncStorage.removeItem(KEY_COMPLETED(scope)),
+    AsyncStorage.removeItem(KEY_MAX(scope)),
+    // Clean up legacy unscoped keys from before per-user scoping was added.
+    AsyncStorage.removeItem("tzdraft:bot-completed-levels"),
+    AsyncStorage.removeItem("tzdraft:bot-max-level"),
   ]);
   _cachedMax = INITIAL_FREE_LEVELS;
 }
 
-/**
- * Returns a sync snapshot of progress from a pre-loaded object — avoids
- * repeated AsyncStorage reads when building the full bot list.
- */
 export function makeProgressChecker(maxUnlockedAiLevel: number) {
   return function isUnlocked(level: number): boolean {
     if (level < 1 || level > MAX_LEVEL) return false;
