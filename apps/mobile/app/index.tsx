@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Image,
   Modal,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -31,22 +32,15 @@ import { useMobileCommunicationCenter } from "../src/hooks/useMobileCommunicatio
 import {
   User,
   Swords,
-  Bell,
-  Settings,
-  Circle,
-  Activity,
   Check,
   X,
-  Zap,
-  Timer,
   Clock,
-  Layers,
-  Flame,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { socialService, SocialUser } from "../src/services/social.service";
 import { useSocket } from "../src/hooks/useSocket";
 import { matchService } from "../src/lib/match-service";
+import { getSavedAiGameInfo } from "../src/hooks/useAiGame";
 
 const { width } = Dimensions.get("window");
 
@@ -62,30 +56,6 @@ const CARD_COLORS = {
   leaderboard: "#ec4899", // pink
 } as const;
 
-const StatsGrid = ({ user }: { user: any }) => (
-  <View style={styles.statsGrid}>
-    <View style={styles.statItem}>
-      <Zap size={20} color={colors.primary} style={styles.statIcon} />
-      <Text style={styles.statLabel}>Blitz</Text>
-      <Text style={styles.statValue}>{user?.rating || 1200}</Text>
-    </View>
-    <View style={styles.statItem}>
-      <Timer size={20} color={colors.primary} style={styles.statIcon} />
-      <Text style={styles.statLabel}>Rapid</Text>
-      <Text style={styles.statValue}>-</Text>
-    </View>
-    <View style={styles.statItem}>
-      <Clock size={20} color={colors.primary} style={styles.statIcon} />
-      <Text style={styles.statLabel}>Classic</Text>
-      <Text style={styles.statValue}>-</Text>
-    </View>
-    <View style={styles.statItem}>
-      <Layers size={20} color={colors.primary} style={styles.statIcon} />
-      <Text style={styles.statLabel}>All</Text>
-      <Text style={styles.statValue}>0</Text>
-    </View>
-  </View>
-);
 
 export default function Home() {
   const { t } = useTranslation();
@@ -347,7 +317,17 @@ export default function Home() {
           <ServiceCard
             title={t("game.playAI", "Play vs AI")}
             subtitle={t("game.aiDescription", "Challenge our top-tier neural engine")}
-            onPress={() => router.push("/game/setup-ai")}
+            onPress={() => {
+              getSavedAiGameInfo().then((saved) => {
+                if (saved) {
+                  router.push(
+                    `/game/vs-ai?botLevel=${saved.botLevel}&playerColor=${saved.resolvedColor}&timeControlType=${saved.timeControlType}&timeSeconds=${saved.timeSeconds}` as any,
+                  );
+                } else {
+                  router.push("/game/setup-ai");
+                }
+              });
+            }}
             iconColor={CARD_COLORS.ai}
             icon={<Emoji>🤖</Emoji>}
           />
@@ -452,13 +432,6 @@ export default function Home() {
           />
         </View>
 
-        {!isGuest && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t("home.stats", "Your Stats")}</Text>
-            <StatsGrid user={user} />
-          </View>
-        )}
-
         <View style={styles.section}>
           <ServiceCard
             title={t("home.tournaments", "Tournaments")}
@@ -543,24 +516,51 @@ export default function Home() {
       <Modal visible={!!incomingChallenge} transparent animationType="fade" onRequestClose={dismissIncomingChallenge}>
         <View style={styles.challengeOverlay}>
           <View style={styles.challengeModal}>
-            <View style={styles.challengeIconRow}>
+
+            {/* ── Challenger portrait strip ── */}
+            <View style={styles.challengeStrip}>
               {incomingChallenge?.challengerAvatarUrl ? (
-                <Image source={{ uri: incomingChallenge.challengerAvatarUrl }} style={styles.challengeAvatar} />
+                <Image
+                  source={{ uri: incomingChallenge.challengerAvatarUrl }}
+                  style={styles.challengeAvatar}
+                />
               ) : (
-                <Swords size={32} color={colors.primary} />
+                <View style={styles.challengeAvatarPlaceholder}>
+                  <User color={colors.textDisabled} size={28} />
+                </View>
               )}
+              <View style={styles.challengeMeta}>
+                <View style={styles.challengeTagRow}>
+                  <Swords color={colors.primary} size={12} />
+                  <Text style={styles.challengeTag}>{t("home.challengeTitle")}</Text>
+                </View>
+                <Text style={styles.challengeName} numberOfLines={1}>
+                  {incomingChallenge?.challengerName ?? "Someone"}
+                </Text>
+                {incomingChallenge?.challengerRating ? (
+                  <Text style={styles.challengeRating}>
+                    ELO {incomingChallenge.challengerRating}
+                  </Text>
+                ) : null}
+                <Text style={styles.challengeSubtext}>{t("home.challengeSuffix")}</Text>
+              </View>
             </View>
-            <Text style={styles.challengeTitle}>
-              {t("home.challengeTitle", "Ombi la Mchezo")}
-            </Text>
-            <Text style={styles.challengeFrom}>
-              {incomingChallenge?.challengerName ?? "Someone"}{" "}
-              {incomingChallenge?.challengerRating ? `(${incomingChallenge.challengerRating}) ` : ""}
-              {t("home.challengeSuffix", "anataka kucheza")}
-            </Text>
-            <View style={styles.challengeCountdownRow}>
-              <Text style={styles.challengeCountdownText}>{challengeCountdown}s</Text>
+
+            {/* ── Divider ── */}
+            <View style={styles.challengeDivider} />
+
+            {/* ── Countdown note ── */}
+            <View style={styles.challengeCountdownNote}>
+              <Clock color={colors.primary} size={13} />
+              <Text style={styles.challengeCountdownNoteText}>
+                {t("home.challengeExpiresIn")}{" "}
+                <Text style={{ fontWeight: "900", color: colors.foreground }}>
+                  {challengeCountdown}s
+                </Text>
+              </Text>
             </View>
+
+            {/* ── X / ✓ action buttons ── */}
             <View style={styles.challengeActions}>
               <TouchableOpacity
                 style={styles.challengeDeclineBtn}
@@ -572,12 +572,13 @@ export default function Home() {
                   }
                 }}
               >
-                <X color="#fff" size={24} />
+                <X color="#fff" size={26} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.challengeAcceptBtn} onPress={handleAcceptChallenge}>
-                <Check color="#000" size={24} />
+                <Check color="#000" size={26} />
               </TouchableOpacity>
             </View>
+
           </View>
         </View>
       </Modal>
@@ -645,37 +646,6 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     textTransform: "uppercase",
     letterSpacing: 2,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  statItem: {
-    flex: 1,
-    minWidth: "45%",
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  statIcon: {
-    marginBottom: 8,
-  },
-  statLabel: {
-    color: colors.textSubtle,
-    fontSize: 12,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  statValue: {
-    color: colors.foreground,
-    fontSize: 24,
-    fontWeight: "900",
-    marginTop: 4,
   },
   footerSpacer: {
     height: 40,
@@ -861,64 +831,113 @@ const styles = StyleSheet.create({
   },
   challengeModal: {
     backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 28,
+    borderRadius: 20,
+    overflow: "hidden",
     width: "100%",
     maxWidth: 360,
-    alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
   },
-  challengeIconRow: {
-    marginBottom: 16,
+  // Portrait strip
+  challengeStrip: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 14,
+    padding: 18,
+    paddingBottom: 14,
   },
   challengeAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: colors.primaryAlpha30,
   },
-  challengeTitle: {
-    color: colors.foreground,
-    fontSize: 20,
-    fontWeight: "900",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  challengeFrom: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  challengeCountdownRow: {
-    marginBottom: 24,
-  },
-  challengeCountdownText: {
-    color: colors.primary,
-    fontSize: 32,
-    fontWeight: "900",
-  },
-  challengeActions: {
-    flexDirection: "row",
-    gap: 30,
-    width: "100%",
+  challengeAvatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
     justifyContent: "center",
   },
+  challengeMeta: { flex: 1 },
+  challengeTagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 3,
+  },
+  challengeTag: {
+    color: colors.primary,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+  challengeName: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  challengeRating: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+    marginBottom: 1,
+  },
+  challengeSubtext: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  // Divider
+  challengeDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 18,
+  },
+  // Countdown note
+  challengeCountdownNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 18,
+    marginVertical: 14,
+    padding: 12,
+    backgroundColor: colors.primaryAlpha10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+  },
+  challengeCountdownNoteText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    flex: 1,
+  },
+  // Action buttons
+  challengeActions: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+  },
   challengeDeclineBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    flex: 1,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: colors.danger,
     alignItems: "center",
     justifyContent: "center",
   },
   challengeAcceptBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    flex: 1,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",

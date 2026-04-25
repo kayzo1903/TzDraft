@@ -377,7 +377,7 @@ export default async function Home({
             </Link>
 
             {/* AI */}
-            <Link href="/game/setup-ai" className="group">
+            <Link href="/game/play-ai" className="group">
               <article className="relative h-full overflow-hidden rounded-[2rem] border border-emerald-500/20 bg-[var(--secondary)]/55 p-5 transition-all duration-300 hover:border-emerald-400/35 hover:bg-[var(--secondary)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.25)]">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(52,211,153,0.08),transparent_55%)]" />
                 <div className="relative flex h-full flex-col">
@@ -488,7 +488,7 @@ export default async function Home({
               body={isSw
                 ? "Panda ngazi za ugumu kutoka rahisi hadi AI ngumu. Jiandae vizuri kabla ya kupanda ngazi."
                 : "Climb difficulty from beginner to hard AI. Get battle-ready before you face real players."}
-              href="/game/setup-ai"
+              href="/game/play-ai"
               icon={<Target className="h-4 w-4" />}
               cta={isSw ? "Anza mazoezi" : "Start training"}
             />

@@ -5,7 +5,7 @@ import { useSearchParams, useParams } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { Board } from "@/components/game/Board";
 import { Button } from "@/components/ui/Button";
-import { useLocalGame } from "@/hooks/useLocalGame";
+import { useLocalGame, getSavedGamePlayerColor } from "@/hooks/useLocalGame";
 import { getBotByLevel, type BotProfile } from "@/lib/game/bots";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor, Winner } from "@tzdraft/mkaguzi-engine";
@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Crown,
   Handshake,
+  Lightbulb,
   RotateCcw,
   Skull,
   Trophy,
@@ -30,12 +31,21 @@ import {
   X,
   Home,
 } from "lucide-react";
+import { isMobileApp } from "@/lib/game/platform";
 import clsx from "clsx";
 import { GameControls } from "@/components/game/GameControls";
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
-const parseColor = (value: string | null): PlayerColor => {
+const parseColor = (value: string | null, level?: number): PlayerColor => {
+  // If there is an in-progress saved game for this level, always resume with
+  // its color — regardless of what the setup page sent.  This prevents a
+  // color mismatch (WHITE vs BLACK, or a fresh random roll) from wiping the
+  // saved game when the player navigates back and re-selects the same bot.
+  if (level !== undefined) {
+    const saved = getSavedGamePlayerColor(level);
+    if (saved !== null) return saved;
+  }
   if (!value) return PlayerColor.WHITE;
   const upper = value.toUpperCase();
   if (upper === "BLACK") return PlayerColor.BLACK;
@@ -200,6 +210,35 @@ function ResignCard({ botName, onConfirm, onCancel, t }: ResignCardProps) {
   );
 }
 
+function LeaveGameCard({ botName, onConfirm, onCancel }: { botName: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={onCancel}>
+      <div className="w-full max-w-sm animate-result-enter rounded-2xl overflow-hidden border border-neutral-700/80 bg-neutral-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-800 bg-rose-500/8">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-rose-500/15 border border-rose-500/30">
+            <X className="w-5 h-5 text-rose-400" />
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-[0.2em] text-rose-400/80 font-semibold">Leave game</div>
+            <div className="text-base font-bold text-neutral-100 mt-0.5">Resign and exit?</div>
+          </div>
+        </div>
+        <div className="px-5 py-4 text-sm text-neutral-400">
+          Leaving will count as a resignation against <span className="font-semibold text-neutral-200">{botName}</span>. Your progress in this game will be lost.
+        </div>
+        <div className="px-5 pb-5 flex flex-col gap-2">
+          <Button onClick={onConfirm} className="w-full bg-rose-600 hover:bg-rose-500 border-rose-700">
+            Resign and leave
+          </Button>
+          <Button variant="secondary" onClick={onCancel} className="w-full">
+            Stay in game
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface OptionsCardProps {
   onHome: () => void;
   isMuted: boolean;
@@ -302,6 +341,7 @@ interface GameResultCardProps {
   locale: string;
   timeSeconds: number;
   undoUsed: boolean;
+  hintUsed: boolean;
   onPlayAgain: () => void;
   onNextBot: () => void;
   onChangeBots: () => void;
@@ -331,6 +371,7 @@ function GameResultCard({
   nextBotLevel,
   nextBot,
   undoUsed,
+  hintUsed,
   onPlayAgain,
   onNextBot,
   onChangeBots,
@@ -453,6 +494,14 @@ function GameResultCard({
           </div>
         )}
 
+        {/* ── Hint notice ── */}
+        {hintUsed && !undoUsed && (
+          <div className="mx-4 mt-4 flex items-center gap-2 rounded-lg border border-neutral-700/60 bg-neutral-800/40 px-3 py-2 text-xs text-neutral-400">
+            <Lightbulb className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+            Progress not saved — Hint was used this game.
+          </div>
+        )}
+
         {/* ── Progression notice ── */}
         {canOfferNextBot && isNewUnlock && (
           // First win: celebratory "you unlocked level X" banner
@@ -534,7 +583,7 @@ export default function LocalGamePage() {
   const params = useSearchParams();
   const level = useMemo(() => parseLevel(params.get("level")), [params]);
   const playerColorParam = useMemo(() => params.get("color"), [params]);
-  const playerColor = useMemo(() => parseColor(playerColorParam), [playerColorParam]);
+  const playerColor = useMemo(() => parseColor(playerColorParam, level), [playerColorParam, level]);
   const timeSeconds = useMemo(() => parseTime(params.get("time")), [params]);
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const nextBot = useMemo(() => getBotByLevel(Math.min(level + 1, TOTAL_BOT_LEVELS)), [level]);
@@ -555,13 +604,14 @@ export default function LocalGamePage() {
   const [gameRunKey, setGameRunKey] = useState(0);
 
   const {
-    state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning,
-    undo, resign, makeMove, reset,
+    state, pieces, lastMove, capturedGhosts, hintMove, legalMoves, forcedPieces, flipBoard, engineReady, playWarning,
+    undo, resign, makeMove, reset, getHint,
     goBack, goForward, goToStart, goToEnd, goToMove,
     isMuted, toggleMute
   } = useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
   const [showResign, setShowResign] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
@@ -649,7 +699,7 @@ export default function LocalGamePage() {
     }
     const newMax = getMaxUnlockedBotLevel();
     setMaxUnlockedNow(newMax);
-    if (newMax > maxUnlockedAtStart) {
+    if (!state.hintUsed && newMax > maxUnlockedAtStart) {
       setIsNewUnlock(true);
       setMaxUnlockedAtStart(newMax);
       // Only show the tier overlay when newMax is actually the start of a new tier
@@ -683,11 +733,12 @@ export default function LocalGamePage() {
         const progression = await aiChallengeService.completeSession(sessionId, {
           result,
           undoUsed: state.undoUsed,
+          hintUsed: state.hintUsed,
         });
         if (cancelled) return;
         setSessionReported(true);
         setMaxUnlockedNow(progression.highestUnlockedAiLevel);
-        if (progression.highestUnlockedAiLevel > maxUnlockedAtStart) {
+        if (!state.hintUsed && progression.highestUnlockedAiLevel > maxUnlockedAtStart) {
           setIsNewUnlock(true);
           setMaxUnlockedAtStart(progression.highestUnlockedAiLevel);
           const isTierStart = BOT_TIERS.some(([start]) => start === progression.highestUnlockedAiLevel);
@@ -744,12 +795,29 @@ export default function LocalGamePage() {
     Boolean(state.result) &&
     didHumanWin &&
     !state.undoUsed &&
+    !state.hintUsed &&
     level < TOTAL_BOT_LEVELS &&
     nextBotLevel <= maxUnlockedNow &&
     (maxUnlockedNow > maxUnlockedAtStart || nextBotLevel <= maxUnlockedAtStart);
 
   const timeFor = (color: PlayerColor) =>
     formatTime(color === PlayerColor.WHITE ? state.timeLeft.WHITE : state.timeLeft.BLACK);
+
+  const handleLeaveOrBack = () => {
+    // On mobile app, we always prompt to resign if a game is in progress.
+    // On desktop, we follow standard navigation back to setup.
+    const isMobile = isMobileApp();
+    
+    if (isMobile && !state.result) {
+      setShowLeave(true);
+    } else {
+      if (isMobile) {
+        router.replace(setupAiPath);
+      } else {
+        router.push(setupAiPath);
+      }
+    }
+  };
 
   return (
     <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-4 sm:gap-8">
@@ -775,8 +843,16 @@ export default function LocalGamePage() {
         {/* Board column */}
         <div className="flex-1 max-w-[650px] w-full mx-auto">
           {/* Mobile top player bar */}
-          <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="md:hidden mb-2 rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center gap-2">
+            {/* Back / leave button */}
+            <button
+              onClick={handleLeaveOrBack}
+              className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-neutral-700/60 transition-colors text-neutral-400 hover:text-neutral-100"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            {/* Bot info */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="w-9 h-9 rounded-full bg-neutral-700 overflow-hidden shrink-0">
                 <div className="relative w-full h-full">
                   <Image src={topPlayer.avatarSrc} alt={topPlayer.name} fill sizes="36px" className="object-cover object-top" />
@@ -787,6 +863,7 @@ export default function LocalGamePage() {
                 <div className="text-xs text-neutral-500">{topPlayer.elo}</div>
               </div>
             </div>
+            {/* Timer */}
             <div className="shrink-0 bg-neutral-950/60 rounded-md px-2 py-1 text-center font-mono text-base text-neutral-100 border border-neutral-700/60">
               {timeFor(botColor)}
             </div>
@@ -803,6 +880,7 @@ export default function LocalGamePage() {
               flipped={flipBoard}
               onInvalidSelect={playWarning}
               readOnly={state.isAiThinking}
+              hintSquares={hintMove}
             />
             {!engineReady && (
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
@@ -922,6 +1000,18 @@ export default function LocalGamePage() {
               {t("actions.undo")}
             </span>
           </button>
+
+          {/* Hint */}
+          <button
+            onClick={() => { void getHint(); }}
+            disabled={!!state.result || state.currentPlayer !== playerColor || state.isAiThinking}
+            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <Lightbulb className={clsx("w-6 h-6 group-hover:text-cyan-400", state.hintUsed ? "text-cyan-500" : "text-neutral-500")} />
+            <span className={clsx("text-[9px] font-bold uppercase tracking-wider group-hover:text-cyan-400", state.hintUsed ? "text-cyan-600" : "text-neutral-500")}>
+              Hint
+            </span>
+          </button>
         </div>
       </div>
 
@@ -943,6 +1033,23 @@ export default function LocalGamePage() {
           onConfirm={() => { setShowResign(false); resign(); }}
           onCancel={() => setShowResign(false)}
           t={t}
+        />
+      )}
+
+      {/* Leave game confirmation (in-app back button) */}
+      {showLeave && (
+        <LeaveGameCard
+          botName={bot.name}
+          onConfirm={() => {
+            setShowLeave(false);
+            resign();
+            if (isMobileApp()) {
+              router.replace(setupAiPath);
+            } else {
+              router.push(setupAiPath);
+            }
+          }}
+          onCancel={() => setShowLeave(false)}
         />
       )}
 
@@ -972,6 +1079,7 @@ export default function LocalGamePage() {
             locale={locale}
             timeSeconds={timeSeconds}
             undoUsed={state.undoUsed}
+            hintUsed={state.hintUsed}
             onPlayAgain={handleResetGame}
             onNextBot={() => { reset(); router.push(`/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
             onChangeBots={() => router.push(setupAiPath)}

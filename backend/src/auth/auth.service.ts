@@ -65,7 +65,6 @@ export class AuthService {
         phoneNumber,
         purpose: 'signup',
         verified: true,
-        expiresAt: { gt: new Date() },
         createdAt: {
           gt: new Date(Date.now() - 15 * 60 * 1000),
         },

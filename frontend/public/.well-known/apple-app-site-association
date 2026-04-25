@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.com.tzdraft.mobile"],
+        "components": [
+          {
+            "/": "/*/join/*",
+            "comment": "Match invite join links"
+          },
+          {
+            "/": "/*/game/*",
+            "comment": "Match game links"
+          }
+        ]
+      }
+    ]
+  }
+}

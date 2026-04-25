@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import {
   Check,
@@ -313,6 +313,7 @@ function OnlineTab() {
   const locale = useLocale();
   const router = useRouter();
   const { locale: routeLocale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const [view, setView] = useState<OnlineView>("choose");
   const [color, setColor] = useState<ColorChoice>("WHITE");
@@ -324,11 +325,20 @@ function OnlineTab() {
   const [copied, setCopied] = useState(false);
   const [ensuringGuest, setEnsuringGuest] = useState(false);
 
+  // Pre-fill join code when arriving from a deep link redirect (?join=CODE)
+  useEffect(() => {
+    const code = searchParams.get("join");
+    if (code) {
+      setJoinCode(code.toUpperCase());
+      setView("joining");
+    }
+  }, [searchParams]);
+
   const isSw = locale === "sw";
   const shareUrl = useMemo(
     () =>
-      `${typeof window !== "undefined" ? window.location.origin : ""}/${routeLocale}/game/${gameId}?code=${inviteCode}`,
-    [routeLocale, gameId, inviteCode],
+      `${typeof window !== "undefined" ? window.location.origin : ""}/${routeLocale}/join/${inviteCode}`,
+    [routeLocale, inviteCode],
   );
 
   const ensureGuestSession = async () => {

@@ -7,6 +7,7 @@ import i18n from "../src/i18n";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
+import * as Linking from "expo-linking";
 import { useAuthInitializer } from "../src/hooks/useAuthInitializer";
 import { Header } from "../src/components/Header";
 import { SideMenu } from "../src/components/SideMenu";
@@ -21,6 +22,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { syncPushToken, getNotificationRoute } from "../src/lib/push-notifications";
 import { NotificationPermissionModal } from "../src/components/auth/NotificationPermissionModal";
 import { QueryProvider } from "../src/providers/QueryProvider";
+
+// Extract invite code from any tzdraft.co.tz URL (universal links / App Links)
+// Matches: https://tzdraft.co.tz/<locale>/join/<CODE>
+function extractInviteCode(url: string): string | null {
+  const match = url.match(/tzdraft\.co\.tz\/[^/?]+\/join\/([A-Za-z0-9]+)/i);
+  return match ? match[1].toUpperCase() : null;
+}
 
 const PENDING_INVITE_KEY = "pendingInviteCode";
 
@@ -45,6 +53,34 @@ export default function RootLayout() {
   const isRedirecting = useRef(false);
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const pendingDeepLinkUrl = useRef<string | null>(null);
+
+  // Capture initial URL before navigation is ready (app opened from a killed state)
+  useEffect(() => {
+    Linking.getInitialURL().then((url) => {
+      if (url) pendingDeepLinkUrl.current = url;
+    });
+  }, []);
+
+  // Process incoming https://tzdraft.co.tz URLs once the navigator is mounted
+  useEffect(() => {
+    if (!rootNavState?.key) return;
+
+    const routeFromUrl = (url: string) => {
+      const code = extractInviteCode(url);
+      if (code) router.push(`/join/${code}`);
+    };
+
+    // Handle any URL stashed before navigation was ready
+    if (pendingDeepLinkUrl.current) {
+      routeFromUrl(pendingDeepLinkUrl.current);
+      pendingDeepLinkUrl.current = null;
+    }
+
+    // Handle URLs that arrive while the app is running
+    const sub = Linking.addEventListener("url", ({ url }) => routeFromUrl(url));
+    return () => sub.remove();
+  }, [rootNavState?.key]);
 
   useEffect(() => {
     // rootNavState.key is undefined until the navigation container is fully mounted.

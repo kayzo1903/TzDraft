@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   ActivityIndicator,
   StyleSheet,
   StatusBar,
-  Image,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "../../src/components/LanguageSwitcher";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ChevronLeft,
   Smartphone,
@@ -21,12 +22,59 @@ import {
   UserCircle,
   ArrowRight,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from "lucide-react-native";
 import { authClient } from "../../src/lib/auth-client";
 import { GoogleIcon } from "../../src/components/icons/GoogleIcon";
 import { colors } from "../../src/theme/colors";
 
 type Step = "phone" | "otp" | "details";
+
+/** Normalise any Tanzanian format to +255XXXXXXXXX for the register endpoint */
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\s+/g, "").trim();
+  if (digits.startsWith("+255")) return digits;
+  if (digits.startsWith("255")) return `+${digits}`;
+  if (digits.startsWith("0")) return `+255${digits.slice(1)}`;
+  return digits;
+}
+
+const PHONE_REGEX = /^(0|255|\+255)?[67]\d{8}$/;
+
+// Defined outside the component so it is never recreated on re-renders,
+// keeping the hidden TextInput stable and preventing keyboard dismissal.
+function OTPBoxes({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const inputRef = useRef<TextInput>(null);
+  return (
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={() => inputRef.current?.focus()}
+      style={styles.otpGrid}
+    >
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <View key={i} style={[styles.otpBox, value[i] ? styles.otpBoxFilled : null]}>
+          <Text style={styles.otpChar}>{value[i] || ""}</Text>
+        </View>
+      ))}
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={onChange}
+        keyboardType="number-pad"
+        maxLength={6}
+        style={styles.hiddenInput}
+        autoFocus
+      />
+    </TouchableOpacity>
+  );
+}
 
 export default function SignupScreen() {
   const { t } = useTranslation();
@@ -37,9 +85,33 @@ export default function SignupScreen() {
   const [otpCode, setOtpCode] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  const startCooldown = () => {
+    setResendCooldown(180);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
@@ -49,52 +121,93 @@ export default function SignupScreen() {
     } catch (err: any) {
       const msg = err?.message ?? "";
       if (!msg.includes("cancelled") && !msg.includes("dismissed")) {
-        setError("Google sign-in failed. Please try again.");
+        setError(t("auth.errors.google_failed", "Google sign-in failed. Please try again."));
       }
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
-  const handleNextStep = async () => {
+  const handleSendOtp = async () => {
+    const trimmed = phoneNumber.trim();
+    if (!PHONE_REGEX.test(trimmed)) {
+      setError(t("auth.errors.invalid_phone", "Please enter a valid Tanzanian phone number"));
+      return;
+    }
     setIsLoading(true);
     setError(null);
-
     try {
-      if (step === "phone") {
-        if (phoneNumber.length >= 10) {
-          await authClient.sendOTP(phoneNumber, "signup");
-          setStep("otp");
-        } else {
-          setError(t("auth.errors.invalid_phone", "Please enter a valid phone number"));
-        }
-      } else if (step === "otp") {
-        if (otpCode.length === 6) {
-          await authClient.verifyOTP(phoneNumber, otpCode, "signup");
-          setStep("details");
-        } else {
-          setError(t("auth.errors.invalid_otp", "Invalid verification code"));
-        }
-      } else if (step === "details") {
-        if (username && password.length >= 8) {
-          await authClient.register({
-            phoneNumber,
-            username,
-            password,
-            confirmPassword: password,
-          });
-          return;
-        } else {
-          setError(t("auth.errors.invalid_details", "Please complete all fields correctly"));
-        }
-      }
-      setIsLoading(false);
+      await authClient.sendOTP(trimmed, "signup");
+      startCooldown();
+      setStep("otp");
     } catch (err: any) {
-      console.error("[Signup] Error:", err);
-      const backendMessage = err.response?.data?.message;
-      setError(backendMessage || t("auth.errors.unexpected", "An unexpected error occurred"));
+      const msg = err?.response?.data?.message;
+      setError(msg || t("auth.errors.unexpected", "An unexpected error occurred"));
+    } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) {
+      setError(t("auth.errors.invalid_otp", "Please enter the 6-digit code"));
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      await authClient.verifyOTP(phoneNumber.trim(), otpCode, "signup");
+      setStep("details");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      setError(msg || t("auth.signup.errors.otpInvalid", "Invalid OTP code. Please try again."));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!username || username.length < 3) {
+      setError(t("auth.errors.invalid_details", "Username must be at least 3 characters"));
+      return;
+    }
+    if (password.length < 8) {
+      setError(t("auth.signup.errors.passwordTooShort", "Password must be at least 8 characters"));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t("auth.signup.errors.passwordMismatch", "Passwords do not match"));
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      await authClient.register({
+        phoneNumber: normalizePhone(phoneNumber.trim()),
+        username,
+        password,
+        confirmPassword,
+      });
+      // Navigation handled by the root auth guard on status change
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      setError(msg || t("auth.errors.unexpected", "An unexpected error occurred"));
+      setIsLoading(false);
+    }
+  };
+
+  const handleNextStep = () => {
+    setError(null);
+    if (step === "phone") handleSendOtp();
+    else if (step === "otp") handleVerifyOtp();
+    else handleRegister();
+  };
+
+  const handleBack = () => {
+    setError(null);
+    if (step === "phone") router.back();
+    else if (step === "otp") setStep("phone");
+    else setStep("otp");
   };
 
   const renderStepIndicator = () => (
@@ -104,67 +217,47 @@ export default function SignupScreen() {
       </Text>
       <View style={styles.stepBadge}>
         <Text style={styles.stepText}>
-          {t("auth.signup.step", "Step")} {step === "phone" ? "01" : step === "otp" ? "02" : "03"}
+          {t("auth.signup.step", "Step")}{" "}
+          {step === "phone" ? "01" : step === "otp" ? "02" : "03"}
         </Text>
       </View>
     </View>
   );
 
-  const OTPInput = () => {
-    // Custom split OTP boxes
-    const boxes = [0, 1, 2, 3, 4, 5];
-    return (
-      <View style={styles.otpGrid}>
-        {boxes.map((i) => (
-          <View key={i} style={[styles.otpBox, otpCode[i] ? styles.otpBoxFilled : null]}>
-            <Text style={styles.otpChar}>{otpCode[i] || ""}</Text>
-          </View>
-        ))}
-        {/* Hidden Input for handling typing */}
-        <TextInput
-          value={otpCode}
-          onChangeText={setOtpCode}
-          keyboardType="number-pad"
-          maxLength={6}
-          style={styles.hiddenInput}
-          autoFocus
-        />
-      </View>
-    );
-  };
-
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root}>
       <StatusBar barStyle="light-content" />
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ChevronLeft size={24} color={colors.foreground} />
+        </TouchableOpacity>
+        <View style={styles.langWrapper}>
+          <LanguageSwitcher />
+        </View>
+      </View>
+
       <View style={styles.glowTop} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.container}>
-            {/* Nav Header */}
-            <View style={styles.navHeader}>
-              <TouchableOpacity
-                onPress={() => step === "phone" ? router.back() : setStep(step === "otp" ? "phone" : "otp")}
-                style={styles.backButton}
-              >
-                <ChevronLeft size={24} color={colors.textMuted} />
-              </TouchableOpacity>
-              
-              <View style={styles.stepIcon}>
-                {step === "phone" && <Smartphone size={24} color={colors.primary} />}
-                {step === "otp" && <Lock size={24} color={colors.primary} />}
-                {step === "details" && <UserCircle size={24} color={colors.primary} />}
-              </View>
+            <View style={styles.stepIcon}>
+              {step === "phone" && <Smartphone size={24} color={colors.primary} />}
+              {step === "otp" && <Lock size={24} color={colors.primary} />}
+              {step === "details" && <UserCircle size={24} color={colors.primary} />}
             </View>
 
             {renderStepIndicator()}
 
             <View style={styles.welcomeSection}>
               <Text style={styles.title}>
-                {step === "phone" 
+                {step === "phone"
                   ? t("auth.signup.steps.phone.title", "Join the Academy")
                   : step === "otp"
                   ? t("auth.signup.steps.otp.title", "Identity Check")
@@ -174,7 +267,7 @@ export default function SignupScreen() {
                 {step === "phone"
                   ? t("auth.signup.steps.phone.subtitle", "Start your journey with your phone number")
                   : step === "otp"
-                  ? t("auth.signup.steps.otp.subtitle", "Enter the 6-digit code sent to your device")
+                  ? t("auth.signup.steps.otp.subtitle", "Code sent to {phone}", { phone: normalizePhone(phoneNumber.trim()) })
                   : t("auth.signup.steps.details.subtitle", "Choose your username and secure password")}
               </Text>
             </View>
@@ -185,22 +278,24 @@ export default function SignupScreen() {
               </View>
             )}
 
-            {/* Form Content */}
             <View style={styles.content}>
               {step === "phone" && (
                 <View style={styles.inputCard}>
                   <TextInput
-                    placeholder={t("auth.fields.phonePlaceholder", "+255 ...")}
+                    placeholder={t("auth.fields.phonePlaceholder", "07** *** ***")}
                     placeholderTextColor="#525252"
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
+                    autoComplete="tel"
                     style={styles.phoneInput}
                   />
                 </View>
               )}
 
-              {step === "otp" && <OTPInput />}
+              {step === "otp" && (
+                <OTPBoxes value={otpCode} onChange={setOtpCode} />
+              )}
 
               {step === "details" && (
                 <View style={styles.form}>
@@ -210,18 +305,50 @@ export default function SignupScreen() {
                       placeholderTextColor="#525252"
                       value={username}
                       onChangeText={setUsername}
+                      autoCapitalize="none"
+                      autoCorrect={false}
                       style={styles.input}
                     />
                   </View>
-                  <View style={styles.inputContainer}>
+                  <View style={styles.inputContainerRow}>
                     <TextInput
                       placeholder={t("auth.fields.password", "Password")}
                       placeholderTextColor="#525252"
                       value={password}
                       onChangeText={setPassword}
-                      secureTextEntry
+                      secureTextEntry={!showPassword}
                       style={styles.input}
                     />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeIcon}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={20} color={colors.textDisabled} />
+                      ) : (
+                        <Eye size={20} color={colors.textDisabled} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.inputContainerRow}>
+                    <TextInput
+                      placeholder={t("auth.resetPassword.confirmPasswordLabel", "Confirm Password")}
+                      placeholderTextColor="#525252"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirm}
+                      style={styles.input}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowConfirm(!showConfirm)}
+                      style={styles.eyeIcon}
+                    >
+                      {showConfirm ? (
+                        <EyeOff size={20} color={colors.textDisabled} />
+                      ) : (
+                        <Eye size={20} color={colors.textDisabled} />
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}
@@ -236,8 +363,8 @@ export default function SignupScreen() {
                 ) : (
                   <View style={styles.btnRow}>
                     <Text style={styles.actionBtnText}>
-                      {step === "details" 
-                        ? t("auth.signup.steps.details.button", "Complete") 
+                      {step === "details"
+                        ? t("auth.signup.steps.details.button", "Complete")
                         : t("common.continue", "Continue")}
                     </Text>
                     {step !== "details" ? (
@@ -248,6 +375,20 @@ export default function SignupScreen() {
                   </View>
                 )}
               </TouchableOpacity>
+
+              {step === "otp" && (
+                <TouchableOpacity
+                  onPress={handleSendOtp}
+                  disabled={isLoading || resendCooldown > 0}
+                  style={styles.resendBtn}
+                >
+                  <Text style={[styles.resendText, resendCooldown > 0 && styles.resendTextDisabled]}>
+                    {resendCooldown > 0
+                      ? t("auth.forgotPassword.steps.otp.resend", "Resend OTP") + ` (${resendCooldown}s)`
+                      : t("auth.forgotPassword.steps.otp.resend", "Resend OTP")}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {step === "phone" && (
                 <>
@@ -290,7 +431,7 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -315,21 +456,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 12,
-    paddingTop: Platform.OS === "ios" ? 40 : 20,
+    paddingTop: 10,
   },
-  navHeader: {
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 32,
+    paddingHorizontal: 12,
+    paddingTop: 20,
+    zIndex: 10,
+  },
+  langWrapper: {
+    marginTop: 0,
   },
   backButton: {
-    height: 44,
-    width: 44,
+    height: 48,
+    width: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   stepIcon: {
     height: 60,
@@ -340,6 +488,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryAlpha05,
     borderWidth: 1,
     borderColor: colors.primaryAlpha15,
+    marginBottom: 24,
   },
   indicatorContainer: {
     flexDirection: "row",
@@ -394,7 +543,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   content: {
-    gap: 24,
+    gap: 16,
   },
   inputCard: {
     backgroundColor: colors.surface,
@@ -452,9 +601,25 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: "center",
   },
+  inputContainerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    paddingLeft: 16,
+    height: 60,
+  },
   input: {
+    flex: 1,
     color: colors.foreground,
     fontSize: 16,
+  },
+  eyeIcon: {
+    width: 52,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionBtn: {
     backgroundColor: colors.primary,
@@ -479,6 +644,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 2,
   },
+  resendBtn: {
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  resendText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  resendTextDisabled: {
+    color: colors.textDisabled,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -498,7 +675,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 8,
   },
   dividerLine: {
     flex: 1,

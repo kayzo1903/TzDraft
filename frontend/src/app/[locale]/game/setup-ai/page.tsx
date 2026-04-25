@@ -435,7 +435,7 @@ export default function SetupAiPage() {
       let finalColor = selectedColor;
       if (finalColor === "RANDOM") finalColor = Math.random() < 0.5 ? "WHITE" : "BLACK";
       const timeSeconds = selectedTime === 0 ? 0 : selectedTime * 60;
-      router.push(`/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`);
+      router.replace(`/game/local?level=${selectedBot.level}&color=${finalColor}&time=${timeSeconds}`);
     } catch (error) {
       console.error("Failed to create game:", error);
     } finally {
