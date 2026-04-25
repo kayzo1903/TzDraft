@@ -36,7 +36,7 @@ export const aiChallengeService = {
 
   async completeSession(
     sessionId: string,
-    input: { result: AiChallengeResult; undoUsed: boolean },
+    input: { result: AiChallengeResult; undoUsed: boolean; hintUsed: boolean },
   ): Promise<AiProgression> {
     const response = await axiosInstance.post(`/games/ai/sessions/${sessionId}/complete`, input);
     return response.data.data;

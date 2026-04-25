@@ -58,6 +58,7 @@ export interface LocalGameState {
   endgameCountdown: { favored: PlayerColor | null; remaining: number } | null;
   mustContinueFrom: number | null;
   undoUsed: boolean;
+  hintUsed: boolean;
   viewingMoveIndex: number;
 }
 
@@ -73,6 +74,7 @@ type SavedGame = {
   thirtyMoveCount: number;
   mustContinueFrom: number | null;
   undoUsed: boolean;
+  hintUsed?: boolean;
   moves: {
     id: string;
     gameId: string;
@@ -244,6 +246,7 @@ const loadSavedGame = (
   thirtyMoveCount: number;
   mustContinueFrom: Position | null;
   undoUsed: boolean;
+  hintUsed: boolean;
 } | null => {
   if (typeof window === "undefined") return null;
   try {
@@ -290,7 +293,22 @@ const loadSavedGame = (
           ? new Position(parsed.mustContinueFrom)
           : null,
       undoUsed: Boolean(parsed.undoUsed),
+      hintUsed: Boolean(parsed.hintUsed),
     };
+  } catch {
+    return null;
+  }
+};
+
+/** Returns the persisted player color for an in-progress game at this level, or null. */
+export const getSavedGamePlayerColor = (level: number): PlayerColor | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedGame;
+    if (parsed.aiLevel !== level) return null;
+    return parsed.playerColor;
   } catch {
     return null;
   }
@@ -308,6 +326,7 @@ const saveGame = (
     thirtyMoveCount: number;
     mustContinueFrom: Position | null;
     undoUsed: boolean;
+    hintUsed: boolean;
   },
   aiLevel: number,
   playerColor: PlayerColor,
@@ -345,6 +364,7 @@ const saveGame = (
     result: state.result,
     mustContinueFrom: state.mustContinueFrom?.value ?? null,
     undoUsed: state.undoUsed,
+    hintUsed: state.hintUsed,
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -371,6 +391,8 @@ export const useLocalGame = (
     loaded ? loaded.result : null,
   );
   const [undoUsed, setUndoUsed] = useState<boolean>(loaded?.undoUsed ?? false);
+  const [hintUsed, setHintUsed] = useState<boolean>(loaded?.hintUsed ?? false);
+  const [hintMove, setHintMove] = useState<{ from: number; to: number } | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ WHITE: number; BLACK: number }>(
     loaded?.timeLeft ?? { WHITE: timeSeconds, BLACK: timeSeconds },
@@ -588,6 +610,7 @@ export const useLocalGame = (
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
       setLastMove({ from: fromIndex, to: toIndex });
+      setHintMove(null);
 
       const moveCaptures = move.capturedSquares.reduce<CaptureGhost[]>(
         (accumulator, capturedPosition) => {
@@ -714,6 +737,8 @@ export const useLocalGame = (
     setResult(null);
     setIsAiThinking(false);
     setUndoUsed(false);
+    setHintUsed(false);
+    setHintMove(null);
     setTimeLeft({ WHITE: timeSeconds, BLACK: timeSeconds });
     setEndgameCountdown(null);
     endgameCountdownRef.current = null;
@@ -790,6 +815,22 @@ export const useLocalGame = (
     }
     captureCleanupTimeoutsRef.current = [];
   }, [moves, playerColor]);
+
+  const getHint = useCallback(async () => {
+    if (result || currentPlayer !== playerColor || isAiThinking) return;
+    setHintUsed(true);
+    try {
+      const hintLevel = Math.min(aiLevel + 2, 10);
+      const move = await getBestMove(board, playerColor, hintLevel, fenHistoryRef.current);
+      if (!move) return;
+      setHintMove({
+        from: positionToIndex(move.from, flipForPlayer),
+        to: positionToIndex(move.to, flipForPlayer),
+      });
+    } catch {
+      // ignore hint errors silently
+    }
+  }, [result, currentPlayer, playerColor, isAiThinking, aiLevel, board, flipForPlayer]);
 
   const goBack = useCallback(() => {
     setViewingMoveIndex((prev) => Math.max(0, prev - 1));
@@ -884,11 +925,11 @@ export const useLocalGame = (
     if (!result) return;
     if (!shouldPersistGuestProgress) return;
     if (undoUsed) return;
+    if (hintUsed) return;
     if (!didHumanWin(result.winner, playerColor)) return;
 
-    // Unlock next bot level only if the user didn't use Undo in this game.
     unlockNextBotLevel(aiLevel);
-  }, [aiLevel, playerColor, result, shouldPersistGuestProgress, undoUsed]);
+  }, [aiLevel, hintUsed, playerColor, result, shouldPersistGuestProgress, undoUsed]);
 
   const playWarning = useCallback(() => {
     if (!isMuted && warningAudioRef.current) {
@@ -1117,6 +1158,7 @@ export const useLocalGame = (
         thirtyMoveCount,
         mustContinueFrom,
         undoUsed,
+        hintUsed,
       },
       aiLevel,
       playerColor,
@@ -1132,6 +1174,7 @@ export const useLocalGame = (
     thirtyMoveCount,
     mustContinueFrom,
     undoUsed,
+    hintUsed,
     aiLevel,
     playerColor,
   ]);
@@ -1150,11 +1193,13 @@ export const useLocalGame = (
         ? positionToIndex(mustContinueFrom, flipForPlayer)
         : null,
         undoUsed,
+        hintUsed,
         viewingMoveIndex,
       } as LocalGameState,
       pieces,
       lastMove: visibleLastMove,
       capturedGhosts,
+      hintMove,
       legalMoves,
       forcedPieces,
       flipBoard: flipForPlayer,
@@ -1164,6 +1209,7 @@ export const useLocalGame = (
       resign,
       makeMove,
       reset,
+      getHint,
       goBack,
       goForward,
       goToStart,

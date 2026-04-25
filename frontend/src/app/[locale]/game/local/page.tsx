@@ -5,7 +5,7 @@ import { useSearchParams, useParams } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { Board } from "@/components/game/Board";
 import { Button } from "@/components/ui/Button";
-import { useLocalGame } from "@/hooks/useLocalGame";
+import { useLocalGame, getSavedGamePlayerColor } from "@/hooks/useLocalGame";
 import { getBotByLevel, type BotProfile } from "@/lib/game/bots";
 import { useAuthStore } from "@/lib/auth/auth-store";
 import { PlayerColor, Winner } from "@tzdraft/mkaguzi-engine";
@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Crown,
   Handshake,
+  Lightbulb,
   RotateCcw,
   Skull,
   Trophy,
@@ -35,12 +36,19 @@ import { GameControls } from "@/components/game/GameControls";
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
-const parseColor = (value: string | null): PlayerColor => {
+const parseColor = (value: string | null, level?: number): PlayerColor => {
   if (!value) return PlayerColor.WHITE;
   const upper = value.toUpperCase();
   if (upper === "BLACK") return PlayerColor.BLACK;
   if (upper === "WHITE") return PlayerColor.WHITE;
-  if (upper === "RANDOM") return Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
+  if (upper === "RANDOM") {
+    // Preserve the color from a saved game so resuming works correctly.
+    if (level !== undefined) {
+      const saved = getSavedGamePlayerColor(level);
+      if (saved !== null) return saved;
+    }
+    return Math.random() < 0.5 ? PlayerColor.WHITE : PlayerColor.BLACK;
+  }
   return PlayerColor.WHITE;
 };
 
@@ -302,6 +310,7 @@ interface GameResultCardProps {
   locale: string;
   timeSeconds: number;
   undoUsed: boolean;
+  hintUsed: boolean;
   onPlayAgain: () => void;
   onNextBot: () => void;
   onChangeBots: () => void;
@@ -331,6 +340,7 @@ function GameResultCard({
   nextBotLevel,
   nextBot,
   undoUsed,
+  hintUsed,
   onPlayAgain,
   onNextBot,
   onChangeBots,
@@ -453,6 +463,14 @@ function GameResultCard({
           </div>
         )}
 
+        {/* ── Hint notice ── */}
+        {hintUsed && !undoUsed && (
+          <div className="mx-4 mt-4 flex items-center gap-2 rounded-lg border border-neutral-700/60 bg-neutral-800/40 px-3 py-2 text-xs text-neutral-400">
+            <Lightbulb className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+            Progress not saved — Hint was used this game.
+          </div>
+        )}
+
         {/* ── Progression notice ── */}
         {canOfferNextBot && isNewUnlock && (
           // First win: celebratory "you unlocked level X" banner
@@ -534,7 +552,7 @@ export default function LocalGamePage() {
   const params = useSearchParams();
   const level = useMemo(() => parseLevel(params.get("level")), [params]);
   const playerColorParam = useMemo(() => params.get("color"), [params]);
-  const playerColor = useMemo(() => parseColor(playerColorParam), [playerColorParam]);
+  const playerColor = useMemo(() => parseColor(playerColorParam, level), [playerColorParam, level]);
   const timeSeconds = useMemo(() => parseTime(params.get("time")), [params]);
   const bot = useMemo(() => getBotByLevel(level), [level]);
   const nextBot = useMemo(() => getBotByLevel(Math.min(level + 1, TOTAL_BOT_LEVELS)), [level]);
@@ -555,8 +573,8 @@ export default function LocalGamePage() {
   const [gameRunKey, setGameRunKey] = useState(0);
 
   const {
-    state, pieces, lastMove, capturedGhosts, legalMoves, forcedPieces, flipBoard, engineReady, playWarning,
-    undo, resign, makeMove, reset,
+    state, pieces, lastMove, capturedGhosts, hintMove, legalMoves, forcedPieces, flipBoard, engineReady, playWarning,
+    undo, resign, makeMove, reset, getHint,
     goBack, goForward, goToStart, goToEnd, goToMove,
     isMuted, toggleMute
   } = useLocalGame(level, playerColor, timeSeconds, !isRegisteredUser);
@@ -649,7 +667,7 @@ export default function LocalGamePage() {
     }
     const newMax = getMaxUnlockedBotLevel();
     setMaxUnlockedNow(newMax);
-    if (newMax > maxUnlockedAtStart) {
+    if (!state.hintUsed && newMax > maxUnlockedAtStart) {
       setIsNewUnlock(true);
       setMaxUnlockedAtStart(newMax);
       // Only show the tier overlay when newMax is actually the start of a new tier
@@ -683,11 +701,12 @@ export default function LocalGamePage() {
         const progression = await aiChallengeService.completeSession(sessionId, {
           result,
           undoUsed: state.undoUsed,
+          hintUsed: state.hintUsed,
         });
         if (cancelled) return;
         setSessionReported(true);
         setMaxUnlockedNow(progression.highestUnlockedAiLevel);
-        if (progression.highestUnlockedAiLevel > maxUnlockedAtStart) {
+        if (!state.hintUsed && progression.highestUnlockedAiLevel > maxUnlockedAtStart) {
           setIsNewUnlock(true);
           setMaxUnlockedAtStart(progression.highestUnlockedAiLevel);
           const isTierStart = BOT_TIERS.some(([start]) => start === progression.highestUnlockedAiLevel);
@@ -744,6 +763,7 @@ export default function LocalGamePage() {
     Boolean(state.result) &&
     didHumanWin &&
     !state.undoUsed &&
+    !state.hintUsed &&
     level < TOTAL_BOT_LEVELS &&
     nextBotLevel <= maxUnlockedNow &&
     (maxUnlockedNow > maxUnlockedAtStart || nextBotLevel <= maxUnlockedAtStart);
@@ -803,6 +823,7 @@ export default function LocalGamePage() {
               flipped={flipBoard}
               onInvalidSelect={playWarning}
               readOnly={state.isAiThinking}
+              hintSquares={hintMove}
             />
             {!engineReady && (
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
@@ -922,6 +943,18 @@ export default function LocalGamePage() {
               {t("actions.undo")}
             </span>
           </button>
+
+          {/* Hint */}
+          <button
+            onClick={() => { void getHint(); }}
+            disabled={!!state.result || state.currentPlayer !== playerColor || state.isAiThinking}
+            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <Lightbulb className={clsx("w-6 h-6 group-hover:text-cyan-400", state.hintUsed ? "text-cyan-500" : "text-neutral-500")} />
+            <span className={clsx("text-[9px] font-bold uppercase tracking-wider group-hover:text-cyan-400", state.hintUsed ? "text-cyan-600" : "text-neutral-500")}>
+              Hint
+            </span>
+          </button>
         </div>
       </div>
 
@@ -972,6 +1005,7 @@ export default function LocalGamePage() {
             locale={locale}
             timeSeconds={timeSeconds}
             undoUsed={state.undoUsed}
+            hintUsed={state.hintUsed}
             onPlayAgain={handleResetGame}
             onNextBot={() => { reset(); router.push(`/game/local?level=${nextBotLevel}&color=${playerColor}&time=${timeSeconds}`); }}
             onChangeBots={() => router.push(setupAiPath)}
