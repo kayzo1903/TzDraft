@@ -21,6 +21,7 @@ export interface ModalAction {
   onPress: () => void | Promise<void>;
   type?: "primary" | "secondary" | "destructive";
   loading?: boolean;
+  icon?: LucideIcon;
 }
 
 interface ThemedModalProps {
@@ -119,7 +120,10 @@ export const ThemedModal: React.FC<ThemedModalProps> = ({
                           {action.loading ? (
                             <ActivityIndicator size="small" color={isPrimary ? "#000" : colors.textMuted} />
                           ) : (
-                            <Text style={textStyle}>{action.label}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              {action.icon && <action.icon color={isPrimary ? "#000" : isDestructive ? "#fff" : colors.textMuted} size={18} />}
+                              <Text style={textStyle}>{action.label}</Text>
+                            </View>
                           )}
                         </TouchableOpacity>
                       );

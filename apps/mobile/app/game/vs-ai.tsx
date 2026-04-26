@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  SafeAreaView,
   Platform,
   Image,
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
   Switch,
   Vibration,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -515,6 +515,7 @@ function ResultModal({
 
 // ─── Main Screen ────────────────────────────────────────────────────────────────
 export default function VsAiScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams() as unknown as VsAiParams;
@@ -891,7 +892,7 @@ export default function VsAiScreen() {
       </View>
 
       {/* ── Bottom action bar (web-style icon strip) ───────────────────────── */}
-      <View style={styles.actionBar}>
+      <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         {/* Bot / Resign → setup-ai */}
         <TouchableOpacity
           style={styles.actionBtn}
@@ -1219,7 +1220,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface + "66",
-    paddingBottom: Platform.OS === "ios" ? 4 : 0,
+    paddingBottom: 0, // Handled by insets in component
     justifyContent: "space-around",
   },
   actionBtn: {

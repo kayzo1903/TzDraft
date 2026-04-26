@@ -148,11 +148,24 @@ export class PrismaGameRepository implements IGameRepository {
   }
 
   async findActiveGamesByPlayer(playerId: string): Promise<Game[]> {
+    const now = new Date();
+    const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    const twoHoursAgo = new Date(now.getTime() - 120 * 60 * 1000);
+
     const games = await this.prisma.game.findMany({
       where: {
         OR: [{ whitePlayerId: playerId }, { blackPlayerId: playerId }],
         status: {
           in: [GameStatus.WAITING, GameStatus.ACTIVE],
+        },
+        // Auto-filter stale games:
+        // 1. WAITING games created > 30 mins ago
+        // 2. ACTIVE games created > 2 hours ago (safety buffer for abandoned matches)
+        NOT: {
+          OR: [
+            { status: GameStatus.WAITING, createdAt: { lt: thirtyMinsAgo } },
+            { status: GameStatus.ACTIVE, createdAt: { lt: twoHoursAgo } },
+          ],
         },
       },
       include: {

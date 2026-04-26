@@ -377,26 +377,17 @@ export function useAiGame(
 
       const newBoard = BoardState.fromFen(newFen);
 
-      // Draw rules (Art. 8)
-      if (move.captures.length > 0 || move.promote) {
-        reversibleMoveCount.current = 0;
-      } else {
-        reversibleMoveCount.current += 1;
-      }
-      const { reason: drawReason, nextCountdown, nextThirtyCount } = evaluateEndgameCountdown(
-        newBoard,
-        player,
-        move.captures.length > 0,
-        endgameCountdownRef.current,
-        thirtyMoveCount.current,
-      );
-      thirtyMoveCount.current = nextThirtyCount;
-      setEndgameCountdown(nextCountdown);
-      fenHistory.current.push(newFen);
-
-      // Update last-move, captures, and history
+      // ── Optimistic UI update: move the piece immediately ──────────────────
+      // This runs after the first bridge call so the board visually updates
+      // right away, instead of waiting for checkResult + generateMoves below.
       const playerKey = player === PlayerColor.WHITE ? "WHITE" : "BLACK";
+      const nextPlayer =
+        player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+      setFen(newFen);
+      setBoard(newBoard);
       setLastMove({ from: move.from, to: move.to });
+      setSelectedSquare(null);
+      setValidDestinations([]);
       if (move.captures.length > 0) {
         setCapturedBy((prev) => ({
           ...prev,
@@ -414,8 +405,22 @@ export function useAiGame(
         },
       ]);
 
-      const nextPlayer =
-        player === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE;
+      // Draw rules (Art. 8)
+      if (move.captures.length > 0 || move.promote) {
+        reversibleMoveCount.current = 0;
+      } else {
+        reversibleMoveCount.current += 1;
+      }
+      const { reason: drawReason, nextCountdown, nextThirtyCount } = evaluateEndgameCountdown(
+        newBoard,
+        player,
+        move.captures.length > 0,
+        endgameCountdownRef.current,
+        thirtyMoveCount.current,
+      );
+      thirtyMoveCount.current = nextThirtyCount;
+      setEndgameCountdown(nextCountdown);
+      fenHistory.current.push(newFen);
 
       // Check result
       const gameResult =
@@ -424,11 +429,7 @@ export function useAiGame(
       if (gameResult) {
         stopTimer();
         stopMoveTimer();
-        setFen(newFen);
-        setBoard(newBoard);
         setLegalMoves([]);
-        setSelectedSquare(null);
-        setValidDestinations([]);
         setCapturablePieces([]);
         setResult(gameResult);
         resultRef.current = gameResult;
@@ -447,12 +448,8 @@ export function useAiGame(
       }
 
       const nextMoves = await bridge.generateMoves(newFen);
-      setFen(newFen);
-      setBoard(newBoard);
       setCurrentPlayer(nextPlayer);
       setLegalMoves(nextMoves);
-      setSelectedSquare(null);
-      setValidDestinations([]);
       setCapturablePieces(computeCapturables(nextMoves));
       setMoveCount((c) => c + 1);
 
@@ -556,8 +553,7 @@ export function useAiGame(
     (pdn: number) => {
       if (result || isAiThinking || currentPlayer !== resolvedColor) return;
 
-      const board_ = BoardState.fromFen(fen);
-      const piece = board_.getPieceAt({ value: pdn } as never);
+      const piece = board.getPieceAt({ value: pdn } as never);
       const ownPieceMoves = legalMoves.filter((m) => m.from === pdn);
 
       if (piece && piece.color === currentPlayer && ownPieceMoves.length > 0) {
@@ -586,7 +582,7 @@ export function useAiGame(
       setValidDestinations([]);
     },
     [
-      result, isAiThinking, currentPlayer, resolvedColor, fen,
+      result, isAiThinking, currentPlayer, resolvedColor, fen, board,
       legalMoves, selectedSquare, validDestinations, submitMove,
     ],
   );

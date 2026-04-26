@@ -229,4 +229,30 @@ export class CreateGameUseCase {
 
     return game;
   }
+
+  /**
+   * Look up a game by invite code without joining it.
+   * Used by the controller for pre-join validation.
+   */
+  async findByInviteCode(code: string): Promise<Game | null> {
+    return this.gameRepository.findByInviteCode(code);
+  }
+
+  /**
+   * Return the first ACTIVE (non-WAITING) game for a player, or null.
+   * Used by join-invite checks where the creator having a WAITING game is expected and must not block.
+   */
+  async findActiveNonWaitingGame(playerId: string): Promise<Game | null> {
+    const games = await this.gameRepository.findActiveGamesByPlayer(playerId);
+    return games.find((g) => g.status === GameStatus.ACTIVE) ?? null;
+  }
+
+  /**
+   * Return the first ACTIVE or WAITING game for a player, or null.
+   * Used for challenge/busy checks — a player in a WAITING invite room is considered occupied.
+   */
+  async findActiveOrWaitingGame(playerId: string): Promise<Game | null> {
+    const games = await this.gameRepository.findActiveGamesByPlayer(playerId);
+    return games[0] ?? null;
+  }
 }

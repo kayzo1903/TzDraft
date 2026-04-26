@@ -22,7 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -545,7 +545,7 @@ const modalStyles = StyleSheet.create({
     borderRadius: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    paddingBottom: 24, // Default base; overridden by insets in components
     paddingTop: 20,
     gap: 16,
     borderWidth: 0,
@@ -563,6 +563,7 @@ const modalStyles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
+    alignItems: "center",
   },
 });
 
@@ -573,26 +574,28 @@ function OnlineDrawOfferModal({
   opponentName,
   onAccept,
   onDecline,
+  insets,
 }: {
   visible: boolean;
   opponentName: string;
   onAccept: () => void;
   onDecline: () => void;
+  insets: any;
 }) {
   const { t } = useTranslation();
   if (!visible) return null;
   return (
     <View style={modalStyles.absoluteBottom}>
-      <View style={[modalStyles.card, modalStyles.bottomCard, { elevation: 8, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 8 }]}>
+      <View style={[modalStyles.card, { marginBottom: Math.max(insets.bottom, 16) + 120, width: SCREEN_WIDTH * 0.9, paddingBottom: 16, elevation: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 }]}>
         <View style={modalStyles.headerRow}>
-          <View style={[modalStyles.iconWrap, { marginBottom: 0, width: 44, height: 44, borderRadius: 12 }]}>
-            <Handshake color="#38bdf8" size={22} />
+          <View style={[modalStyles.iconWrap, { marginBottom: 0, width: 36, height: 36, borderRadius: 10 }]}>
+            <Handshake color="#38bdf8" size={18} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>
               {t("gameArena.gameOver.drawOffer.title")}
             </Text>
-            <Text style={[modalStyles.body, { textAlign: "left" }]}>
+            <Text style={[modalStyles.body, { textAlign: "left", fontSize: 12 }]}>
               {t("gameArena.gameOver.drawOffer.description", { name: opponentName })}
             </Text>
           </View>
@@ -615,19 +618,21 @@ function OnlineDrawConfirmModal({
   visible,
   onConfirm,
   onCancel,
+  insets,
 }: {
   visible: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  insets: any;
 }) {
   const { t } = useTranslation();
   if (!visible) return null;
   return (
     <View style={modalStyles.absoluteBottom}>
-      <View style={[modalStyles.card, modalStyles.bottomCard, { elevation: 8, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 8 }]}>
+      <View style={[modalStyles.card, { marginBottom: Math.max(insets.bottom, 16) + 120, width: SCREEN_WIDTH * 0.9, paddingBottom: 16, elevation: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 }]}>
          <View style={modalStyles.headerRow}>
-          <View style={[modalStyles.iconWrap, { marginBottom: 0, width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primaryAlpha15, borderColor: colors.primaryAlpha30 }]}>
-            <Handshake color={colors.primary} size={22} />
+          <View style={[modalStyles.iconWrap, { marginBottom: 0, width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primaryAlpha15, borderColor: colors.primaryAlpha30 }]}>
+            <Handshake color={colors.primary} size={18} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[modalStyles.title, { textAlign: "left", fontSize: 16 }]}>
@@ -787,17 +792,19 @@ function ReactionPicker({
   visible,
   onSelect,
   onClose,
+  insets,
 }: {
   visible: boolean;
   onSelect: (emoji: string) => void;
   onClose: () => void;
+  insets: any;
 }) {
   if (!visible) return null;
 
   return (
     <View style={reactionStyles.pickerContainer}>
       <TouchableOpacity style={reactionStyles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={reactionStyles.pickerCard}>
+      <View style={[reactionStyles.pickerCard, { marginBottom: Math.max(insets.bottom, 16) + 70 }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={reactionStyles.pickerContent}>
           {REACTION_LIST.map((emoji) => (
             <TouchableOpacity
@@ -811,6 +818,12 @@ function ReactionPicker({
               <Text style={reactionStyles.emojiPickerText}>{emoji}</Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={[reactionStyles.emojiBtn, reactionStyles.closeEmojiBtn]}
+            onPress={onClose}
+          >
+            <X color={colors.textMuted} size={20} />
+          </TouchableOpacity>
         </ScrollView>
       </View>
     </View>
@@ -833,17 +846,16 @@ const reactionStyles = StyleSheet.create({
   },
   pickerCard: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 24,
+    marginHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
   },
   pickerContent: {
     gap: 8,
@@ -859,6 +871,12 @@ const reactionStyles = StyleSheet.create({
   },
   emojiPickerText: {
     fontSize: 24,
+  },
+  closeEmojiBtn: {
+    marginLeft: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   floatingContainer: {
     position: "absolute",
@@ -902,8 +920,8 @@ const optionsStyles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerIconWrap: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 8,
     backgroundColor: colors.surfaceElevated,
     alignItems: "center",
@@ -1284,6 +1302,7 @@ const resStyles = StyleSheet.create({
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
 export default function OnlineGameScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams() as unknown as OnlineGameParams;
   const { gameId, inviteCode = "", isHost: isHostParam, source } = params;
@@ -1483,7 +1502,7 @@ export default function OnlineGameScreen() {
     game.timeLeft[side] <= 30_000;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
 
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <View style={styles.topBar}>
@@ -1760,7 +1779,7 @@ export default function OnlineGameScreen() {
           </View>
 
           {/* ── Action bar ────────────────────────────────────────────── */}
-          <View style={styles.actionBar}>
+          <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
             {/* Abort — only before first move */}
             {game.moveCount === 0 && !game.result && (
               <TouchableOpacity style={styles.actionBtn} onPress={() => game.abort()}>
@@ -1814,6 +1833,7 @@ export default function OnlineGameScreen() {
         visible={showReactionPicker}
         onSelect={game.sendReaction}
         onClose={() => setShowReactionPicker(false)}
+        insets={insets}
       />
 
       <OptionsModal
@@ -1867,6 +1887,7 @@ export default function OnlineGameScreen() {
         opponentName={playerDisplayName(topColor === game.myColorStr ? bottomPlayer : topPlayer)}
         onAccept={game.acceptDraw}
         onDecline={game.declineDraw}
+        insets={insets}
       />
 
       <OnlineDrawConfirmModal
@@ -1876,6 +1897,7 @@ export default function OnlineGameScreen() {
           setShowDrawConfirmModal(false);
           game.offerDraw();
         }}
+        insets={insets}
       />
     </SafeAreaView>
   );
@@ -1892,7 +1914,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingTop: 0,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -2069,7 +2092,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
+    marginTop: 4,
     marginHorizontal: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -2098,7 +2121,7 @@ const styles = StyleSheet.create({
   },
   // ── History bar ───────────────────────────────────────────────────────────────
   historyBar: {
-    height: 46,
+    height: 38,
     flexDirection: "row",
     alignItems: "center",
     borderTopWidth: 1,
@@ -2159,13 +2182,13 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.surface + "66",
     justifyContent: "space-around",
-    paddingBottom: Platform.OS === "ios" ? 4 : 0,
+    paddingBottom: 0, // Handled by insets in component
   },
   actionBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 4,
   },
   actionBtnLabel: {
