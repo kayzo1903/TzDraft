@@ -229,7 +229,7 @@ function DrawOfferModal({
   if (phase === "confirm") {
     return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-        <TouchableOpacity style={modalStyles.backdrop} activeOpacity={1} onPress={onCancel}>
+        <TouchableOpacity style={modalStyles.drawBackdrop} activeOpacity={1} onPress={onCancel}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={modalStyles.card}>
               <View style={[modalStyles.header, { backgroundColor: "rgba(56,189,248,0.07)" }]}>
@@ -265,7 +265,7 @@ function DrawOfferModal({
   // phase === "respond"
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <View style={[modalStyles.backdrop, { justifyContent: "center" }]}>
+      <View style={modalStyles.drawBackdrop}>
         <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <View style={modalStyles.card}>
             <View style={[modalStyles.header, { backgroundColor: "rgba(56,189,248,0.07)" }]}>
@@ -1053,6 +1053,14 @@ const modalStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+  },
+  drawBackdrop: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 120,
+    paddingHorizontal: 24,
   },
   card: {
     backgroundColor: colors.surface,

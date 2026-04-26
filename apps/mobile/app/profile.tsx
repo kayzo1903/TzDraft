@@ -234,7 +234,7 @@ export default function ProfileScreen() {
               <TouchableOpacity 
                 key={friend.id} 
                 style={styles.friendItem}
-                onPress={() => router.push(`/game/lobby?challenge=${friend.username}` as any)}
+                onPress={() => router.push(`/?challenge=${friend.username}` as any)}
               >
                 <View style={styles.friendInfo}>
                   <View style={styles.friendAvatarWrapper}>

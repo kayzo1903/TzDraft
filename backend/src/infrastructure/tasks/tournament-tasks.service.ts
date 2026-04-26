@@ -13,6 +13,10 @@ import {
 } from '../../domain/tournament/entities/tournament-match.entity';
 import { ParticipantStatus } from '../../domain/tournament/entities/tournament-participant.entity';
 import { AdvanceRoundUseCase } from '../../application/use-cases/tournament/advance-round.use-case';
+import { TournamentNotificationService } from '../../application/services/tournament-notification.service';
+
+// Minutes before deadline at which reminders fire
+const REMINDER_THRESHOLDS_MINUTES = [240, 120, 60, 30, 15, 5, 3, 1] as const;
 
 @Injectable()
 export class TournamentTasksService {
@@ -23,6 +27,7 @@ export class TournamentTasksService {
     @Inject('ITournamentRepository')
     private readonly repo: ITournamentRepository,
     private readonly advanceRound: AdvanceRoundUseCase,
+    private readonly tournamentNotification: TournamentNotificationService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -57,6 +62,70 @@ export class TournamentTasksService {
         await this.resolveExpiredRound(round);
       }
     }
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleRoundDeadlineReminders() {
+    const activeRounds = await this.prisma.tournamentRound.findMany({
+      where: {
+        status: RoundStatus.ACTIVE,
+        startedAt: { not: null },
+        tournament: { status: TournamentStatus.ACTIVE },
+      },
+      include: { tournament: true },
+    });
+
+    if (activeRounds.length === 0) return;
+
+    const now = Date.now();
+
+    for (const round of activeRounds) {
+      const startedAt = new Date(round.startedAt!).getTime();
+      const durationMs = (round.tournament.roundDurationMinutes ?? 10080) * 60_000;
+      const deadlineMs = startedAt + durationMs;
+
+      for (const threshold of REMINDER_THRESHOLDS_MINUTES) {
+        const reminderMs = deadlineMs - threshold * 60_000;
+
+        // Fire only within the 60-second window that matches this cron interval,
+        // ensuring each threshold fires at most once per round.
+        if (now >= reminderMs && now < reminderMs + 60_000) {
+          await this.sendDeadlineRemindersForRound(round, threshold);
+        }
+      }
+    }
+  }
+
+  private async sendDeadlineRemindersForRound(
+    round: any,
+    minutesRemaining: number,
+  ): Promise<void> {
+    // Collect userIds with a non-completed, non-bye match in this round
+    const matches = await this.repo.findMatchesByRound(round.id);
+    const userIds = new Set<string>();
+
+    for (const match of matches) {
+      if (
+        match.status === MatchStatus.COMPLETED ||
+        match.status === MatchStatus.BYE
+      ) continue;
+      if (match.player1Id) userIds.add(match.player1Id);
+      if (match.player2Id) userIds.add(match.player2Id);
+    }
+
+    if (userIds.size === 0) return;
+
+    this.logger.log(
+      `Sending ${minutesRemaining}m deadline reminder for round ${round.roundNumber} ` +
+      `of tournament ${round.tournamentId} to ${userIds.size} player(s)`,
+    );
+
+    await this.tournamentNotification.notifyMatchDeadlineReminder(
+      [...userIds],
+      round.tournament,
+      round.roundNumber,
+      minutesRemaining,
+    );
   }
 
   private async resolveExpiredRound(round: any) {

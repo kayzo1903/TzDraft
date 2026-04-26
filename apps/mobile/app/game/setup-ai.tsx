@@ -10,7 +10,7 @@ import {
   Modal,
   Platform
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -69,6 +69,7 @@ export default function SetupAiScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   const [selectedBot, setSelectedBot] = useState(BOTS[0]);
   const [selectedColor, setSelectedColor] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
@@ -199,7 +200,7 @@ export default function SetupAiScreen() {
       </ScrollView>
 
       {/* Sticky Bottom Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
         {/* Controls Row */}
         <View style={styles.controlsRow}>
           {/* Time Selector */}
@@ -480,7 +481,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 16,
+    paddingBottom: 16, // Default base; overridden by insets in component
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },

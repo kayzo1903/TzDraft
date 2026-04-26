@@ -314,6 +314,54 @@ export class TournamentNotificationService {
     );
   }
 
+  // ── Match Deadline Reminder ───────────────────────────────────────────────
+
+  async notifyMatchDeadlineReminder(
+    userIds: string[],
+    tournament: Tournament,
+    roundNumber: number,
+    minutesRemaining: number,
+  ): Promise<void> {
+    if (userIds.length === 0) return;
+
+    const label = minutesRemaining >= 60
+      ? `${minutesRemaining / 60} hour${minutesRemaining / 60 === 1 ? '' : 's'}`
+      : `${minutesRemaining} minute${minutesRemaining === 1 ? '' : 's'}`;
+
+    const isUrgent = minutesRemaining <= 5;
+
+    const title = isUrgent
+      ? `${minutesRemaining === 1 ? '⚠️ 1 MINUTE LEFT' : `⚠️ ${label} left!`}`
+      : `⏱ ${label} remaining`;
+
+    const body = `Your Round ${roundNumber} match in "${tournament.name}" expires in ${label}. Open the app to play.`;
+
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const notif = await this.persist(
+          userId,
+          NotificationType.MATCH_DEADLINE_REMINDER,
+          {
+            title,
+            body,
+            meta: {
+              tournamentId: tournament.id,
+              tournamentName: tournament.name,
+              roundNumber,
+              minutesRemaining,
+            },
+          },
+        );
+        this.gateway.emitNotification(userId, notif);
+        void this.expoPush.sendToUser(userId, notif.title, notif.body, {
+          screen: 'tournament',
+          tournamentId: tournament.id,
+          minutesRemaining,
+        });
+      }),
+    );
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private async persist(

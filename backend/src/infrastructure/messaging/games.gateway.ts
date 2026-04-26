@@ -1106,11 +1106,15 @@ export class GamesGateway
     this.server.to(`user:${targetUserId}`).emit('challenge_request', payload);
   }
 
-  /** Emit challenge cancellation (challenger navigated away / timed out). */
-  emitChallengeCancelled(targetUserId: string, gameId: string) {
+  /** Emit challenge cancellation. reason='declined' means the recipient rejected it; 'cancelled' means the challenger pulled it. */
+  emitChallengeCancelled(
+    targetUserId: string,
+    gameId: string,
+    reason: 'declined' | 'cancelled',
+  ) {
     this.server
       .to(`user:${targetUserId}`)
-      .emit('challenge_cancelled', { gameId });
+      .emit('challenge_cancelled', { gameId, reason });
   }
 
   /** Emit to challenger that their challenge was accepted — redirect both players. */

@@ -10,6 +10,7 @@ import {
   Image,
   Modal,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -17,7 +18,7 @@ const Emoji = ({ children }: { children: string }) => (
   <Text style={{ fontSize: 30 }}>{children}</Text>
 );
 
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../src/auth/auth-store";
 import { API_URL } from "../src/lib/api";
@@ -35,6 +36,7 @@ import {
   Check,
   X,
   Clock,
+  AlertCircle,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { socialService, SocialUser } from "../src/services/social.service";
@@ -60,6 +62,7 @@ const CARD_COLORS = {
 export default function Home() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { challenge } = useLocalSearchParams<{ challenge: string }>();
   const { isAuthenticated, user } = useAuthStore();
   const {
     featuredCampaign,
@@ -82,6 +85,26 @@ export default function Home() {
   // Loading state on the challenge button — stays set until accepted or cancelled
   const [challengingUsername, setChallengingUsername] = useState<string | null>(null);
   const pendingGameIdRef = useRef<string | null>(null);
+  const activeGameRef = useRef<any>(null);
+  const challengingUsernameRef = useRef<string | null>(null);
+  const friendsRef = useRef<SocialUser[]>([]);
+  const sentCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const challengeCancelledRef = useRef(false);
+
+  // Sync activeGame to ref for use in socket listeners
+  useEffect(() => {
+    activeGameRef.current = activeGame;
+  }, [activeGame]);
+
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState("");
+
+  // Auto-dismiss error modal after 3 seconds
+  useEffect(() => {
+    if (!errorModalVisible) return;
+    const t = setTimeout(() => setErrorModalVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, [errorModalVisible]);
 
   // Incoming challenge — recipient sees this modal
   type IncomingChallenge = {
@@ -95,6 +118,8 @@ export default function Home() {
   const [incomingChallenge, setIncomingChallenge] = useState<IncomingChallenge | null>(null);
   const [challengeCountdown, setChallengeCountdown] = useState(30);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const challengeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { socket } = useSocket();
 
@@ -126,11 +151,39 @@ export default function Home() {
     }, [isAuthenticated, isGuest])
   );
 
+  // Auto-challenge if coming from profile with ?challenge=username
+  useEffect(() => {
+    if (challenge && friends.length > 0 && isAuthenticated) {
+      const friend = friends.find(f => f.username === challenge);
+      if (friend) {
+        handleSendChallenge(friend);
+        // Clear param so we don't re-challenge on every mount/focus
+        router.setParams({ challenge: undefined } as any);
+      }
+    }
+  }, [challenge, friends, isAuthenticated]);
+
   // WS: incoming challenge request (recipient side)
   useEffect(() => {
     if (!socket) return;
 
-    const handleChallengeRequest = (data: IncomingChallenge) => {
+    const handleChallengeRequest = async (data: IncomingChallenge) => {
+      // Fast path: ref is already populated
+      if (activeGameRef.current) return;
+
+      // Re-verify with backend to catch the race where the player just joined a
+      // game between the server's busy-check and the WS emit arriving here.
+      try {
+        const fresh = await matchService.getActiveGame();
+        if (fresh) {
+          setActiveGame(fresh);
+          activeGameRef.current = fresh;
+          return;
+        }
+      } catch {
+        // If the check fails, fall through and show the challenge
+      }
+
       setIncomingChallenge(data);
       setChallengeCountdown(30);
       if (countdownRef.current) clearInterval(countdownRef.current);
@@ -150,18 +203,49 @@ export default function Home() {
     // WS: challenge accepted — clear loading and navigate to the started game
     const handleChallengeAccepted = ({ gameId }: { gameId: string }) => {
       setChallengingUsername(null);
+      challengingUsernameRef.current = null;
+      setSentCountdown(30);
+      if (sentCountdownIntervalRef.current) {
+        clearInterval(sentCountdownIntervalRef.current);
+        sentCountdownIntervalRef.current = null;
+      }
       pendingGameIdRef.current = null;
+      if (challengeTimeoutRef.current) {
+        clearTimeout(challengeTimeoutRef.current);
+        challengeTimeoutRef.current = null;
+      }
       router.push({
         pathname: "/game/online-game",
         params: { gameId, isHost: "true", source: "challenge" },
       });
     };
 
-    // WS: recipient declined — stop loading on challenger's button
-    const handleChallengeCancelled = () => {
-      setChallengingUsername(null);
-      pendingGameIdRef.current = null;
-      dismissIncomingChallenge();
+    // WS: challenge cancelled or declined — clear loading state and show the right message
+    const handleChallengeCancelled = (data: { gameId: string; reason?: 'declined' | 'cancelled' }) => {
+      if (pendingGameIdRef.current === data.gameId) {
+        const displayName =
+          friendsRef.current.find(f => f.username === challengingUsernameRef.current)?.displayName ||
+          challengingUsernameRef.current ||
+          t("common.player", "The player");
+        setChallengingUsername(null);
+        challengingUsernameRef.current = null;
+        setSentCountdown(30);
+        if (sentCountdownIntervalRef.current) {
+          clearInterval(sentCountdownIntervalRef.current);
+          sentCountdownIntervalRef.current = null;
+        }
+        pendingGameIdRef.current = null;
+        if (challengeTimeoutRef.current) {
+          clearTimeout(challengeTimeoutRef.current);
+          challengeTimeoutRef.current = null;
+        }
+        const msg = t("home.deniedBusy", { name: displayName });
+        setErrorModalMessage(msg);
+        setErrorModalVisible(true);
+      }
+      if (incomingChallenge?.gameId === data.gameId) {
+        setIncomingChallenge(null);
+      }
     };
 
     socket.on("challenge_request", handleChallengeRequest);
@@ -191,6 +275,7 @@ export default function Home() {
     try {
       const data = await socialService.getFriends();
       setFriends(data);
+      friendsRef.current = data;
     } catch (err) {
       console.error("[Home] Failed to fetch friends:", err);
     } finally {
@@ -223,16 +308,92 @@ export default function Home() {
     }
   };
 
+  const [sentCountdown, setSentCountdown] = useState(30);
+
+  const handleCancelChallenge = async () => {
+    const gameId = pendingGameIdRef.current;
+    challengeCancelledRef.current = true;
+    setChallengingUsername(null);
+    challengingUsernameRef.current = null;
+    pendingGameIdRef.current = null;
+    setSentCountdown(30);
+    if (sentCountdownIntervalRef.current) {
+      clearInterval(sentCountdownIntervalRef.current);
+      sentCountdownIntervalRef.current = null;
+    }
+    if (challengeTimeoutRef.current) {
+      clearTimeout(challengeTimeoutRef.current);
+      challengeTimeoutRef.current = null;
+    }
+    if (gameId) {
+      try { await api.post(`/games/${gameId}/abort`); } catch {}
+    }
+  };
+
   const handleSendChallenge = async (friend: SocialUser) => {
-    if (challengingUsername) return;
+    if (challengingUsernameRef.current !== null) return;
+    challengeCancelledRef.current = false;
+
+    if (activeGameRef.current) {
+      setErrorModalMessage(t("home.requesterBusy"));
+      setErrorModalVisible(true);
+      return;
+    }
+
+    challengingUsernameRef.current = friend.username;
     setChallengingUsername(friend.username);
+    setSentCountdown(30);
+
+    if (sentCountdownIntervalRef.current) clearInterval(sentCountdownIntervalRef.current);
+    sentCountdownIntervalRef.current = setInterval(() => {
+      setSentCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(sentCountdownIntervalRef.current!);
+          sentCountdownIntervalRef.current = null;
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    if (challengeTimeoutRef.current) clearTimeout(challengeTimeoutRef.current);
+    challengeTimeoutRef.current = setTimeout(() => {
+      setChallengingUsername(null);
+      challengingUsernameRef.current = null;
+      pendingGameIdRef.current = null;
+      if (sentCountdownIntervalRef.current) {
+        clearInterval(sentCountdownIntervalRef.current);
+        sentCountdownIntervalRef.current = null;
+      }
+      setSentCountdown(30);
+      challengeTimeoutRef.current = null;
+    }, 30000);
+
     try {
       const { gameId } = await socialService.challenge(friend.username);
-      // Keep button loading — WS challenge_accepted/challenge_cancelled will clear it
+      if (challengeCancelledRef.current) {
+        // User cancelled while the request was in flight — abort immediately
+        try { await api.post(`/games/${gameId}/abort`); } catch {}
+        return;
+      }
       pendingGameIdRef.current = gameId;
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Challenge] Failed to send:", err);
       setChallengingUsername(null);
+      challengingUsernameRef.current = null;
+      setSentCountdown(30);
+      if (sentCountdownIntervalRef.current) {
+        clearInterval(sentCountdownIntervalRef.current);
+        sentCountdownIntervalRef.current = null;
+      }
+      if (challengeTimeoutRef.current) {
+        clearTimeout(challengeTimeoutRef.current);
+        challengeTimeoutRef.current = null;
+      }
+      const backendKey = err.response?.data?.message;
+      const msg = backendKey ? t(backendKey, { name: friend.displayName }) : t("home.failed", "Failed to send challenge");
+      setErrorModalMessage(msg);
+      setErrorModalVisible(true);
     }
   };
 
@@ -512,58 +673,95 @@ export default function Home() {
         <View style={styles.footerSpacer} />
       </ScrollView>
 
-      {/* ── Incoming Challenge Modal (recipient) ── */}
-      <Modal visible={!!incomingChallenge} transparent animationType="fade" onRequestClose={dismissIncomingChallenge}>
-        <View style={styles.challengeOverlay}>
-          <View style={styles.challengeModal}>
+      {/* ── Outgoing Challenge Bottom Sheet ── */}
+      <Modal
+        visible={!!challengingUsername}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCancelChallenge}
+      >
+        <View style={styles.challengeSheetOverlay}>
+          <View style={styles.challengeSheetContent}>
+            <View style={styles.challengeSheetHandle} />
 
-            {/* ── Challenger portrait strip ── */}
-            <View style={styles.challengeStrip}>
-              {incomingChallenge?.challengerAvatarUrl ? (
-                <Image
-                  source={{ uri: incomingChallenge.challengerAvatarUrl }}
-                  style={styles.challengeAvatar}
-                />
-              ) : (
-                <View style={styles.challengeAvatarPlaceholder}>
-                  <User color={colors.textDisabled} size={28} />
-                </View>
-              )}
-              <View style={styles.challengeMeta}>
-                <View style={styles.challengeTagRow}>
-                  <Swords color={colors.primary} size={12} />
-                  <Text style={styles.challengeTag}>{t("home.challengeTitle")}</Text>
-                </View>
-                <Text style={styles.challengeName} numberOfLines={1}>
-                  {incomingChallenge?.challengerName ?? "Someone"}
-                </Text>
-                {incomingChallenge?.challengerRating ? (
-                  <Text style={styles.challengeRating}>
-                    ELO {incomingChallenge.challengerRating}
-                  </Text>
-                ) : null}
-                <Text style={styles.challengeSubtext}>{t("home.challengeSuffix")}</Text>
-              </View>
+            <View style={styles.challengeSheetTitleRow}>
+              <Swords color={colors.primary} size={18} />
+              <Text style={styles.challengeSheetTitle}>{t("home.challengeSent", "Challenge Sent")}</Text>
             </View>
 
-            {/* ── Divider ── */}
-            <View style={styles.challengeDivider} />
+            {(() => {
+              const f = friends.find(fr => fr.username === challengingUsername);
+              return (
+                <View style={styles.challengeSheetProfile}>
+                  {f?.avatarUrl ? (
+                    <Image source={{ uri: f.avatarUrl }} style={styles.challengeSheetAvatar} />
+                  ) : (
+                    <View style={styles.challengeSheetAvatarPlaceholder}>
+                      <User color={colors.textDisabled} size={32} />
+                    </View>
+                  )}
+                  <Text style={styles.challengeSheetName}>{f?.displayName || challengingUsername}</Text>
+                  <Text style={styles.challengeSheetElo}>ELO {f?.rating?.rating ?? 1200}</Text>
+                </View>
+              );
+            })()}
 
-            {/* ── Countdown note ── */}
-            <View style={styles.challengeCountdownNote}>
-              <Clock color={colors.primary} size={13} />
-              <Text style={styles.challengeCountdownNoteText}>
-                {t("home.challengeExpiresIn")}{" "}
-                <Text style={{ fontWeight: "900", color: colors.foreground }}>
-                  {challengeCountdown}s
-                </Text>
+            <View style={styles.challengeSheetWaiting}>
+              <ActivityIndicator color={colors.primary} size="large" />
+              <Text style={styles.challengeSheetWaitingText}>{t("home.waitingForAccept", "Waiting…")}</Text>
+              <Text style={styles.challengeSheetCountdown}>
+                {t("home.challengeExpiresIn", "Expires in")} {sentCountdown}s
               </Text>
             </View>
 
-            {/* ── X / ✓ action buttons ── */}
-            <View style={styles.challengeActions}>
+            <View style={styles.challengeSheetCancelRow}>
+              <TouchableOpacity style={styles.challengeCancelBtn} onPress={handleCancelChallenge} activeOpacity={0.8}>
+                <X color={colors.foreground} size={22} />
+              </TouchableOpacity>
+              <Text style={styles.challengeCancelLabel}>{t("home.cancelChallenge", "Cancel")}</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Incoming Challenge Bottom Sheet ── */}
+      <Modal
+        visible={!!incomingChallenge}
+        transparent
+        animationType="slide"
+        onRequestClose={undefined}
+      >
+        <View style={styles.challengeSheetOverlay}>
+          <View style={styles.challengeSheetContent}>
+            <View style={styles.challengeSheetHandle} />
+
+            <View style={styles.challengeSheetTitleRow}>
+              <Swords color={colors.primary} size={18} />
+              <Text style={styles.challengeSheetTitle}>{t("home.challengeTitle", "You've Been Challenged!")}</Text>
+            </View>
+
+            <View style={styles.challengeSheetProfile}>
+              {incomingChallenge?.challengerAvatarUrl ? (
+                <Image source={{ uri: incomingChallenge.challengerAvatarUrl }} style={styles.challengeSheetAvatar} />
+              ) : (
+                <View style={styles.challengeSheetAvatarPlaceholder}>
+                  <User color={colors.textDisabled} size={32} />
+                </View>
+              )}
+              <Text style={styles.challengeSheetName}>{incomingChallenge?.challengerName}</Text>
+              {incomingChallenge?.challengerRating && (
+                <Text style={styles.challengeSheetElo}>ELO {incomingChallenge.challengerRating}</Text>
+              )}
+              <Text style={styles.challengeSheetSubtitle}>{t("home.challengeSuffix", "wants to play")}</Text>
+            </View>
+
+            <Text style={styles.challengeSheetCountdown}>
+              {t("home.challengeExpiresIn", "Expires in")} {challengeCountdown}s
+            </Text>
+
+            <View style={styles.challengeSheetActions}>
               <TouchableOpacity
-                style={styles.challengeDeclineBtn}
+                style={[styles.challengeSheetBtn, styles.challengeSheetBtnDecline]}
                 onPress={async () => {
                   const gameId = incomingChallenge?.gameId;
                   dismissIncomingChallenge();
@@ -571,17 +769,44 @@ export default function Home() {
                     try { await api.post(`/games/${gameId}/abort`); } catch {}
                   }
                 }}
+                activeOpacity={0.8}
               >
-                <X color="#fff" size={26} />
+                <X color="#fff" size={18} />
+                <Text style={styles.challengeSheetBtnText}>{t("common.decline", "Decline")}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.challengeAcceptBtn} onPress={handleAcceptChallenge}>
-                <Check color="#000" size={26} />
+
+              <TouchableOpacity
+                style={[styles.challengeSheetBtn, styles.challengeSheetBtnAccept]}
+                onPress={handleAcceptChallenge}
+                activeOpacity={0.8}
+              >
+                <Check color="#000" size={18} />
+                <Text style={[styles.challengeSheetBtnText, { color: "#000" }]}>
+                  {t("common.accept", "Accept")} ({challengeCountdown}s)
+                </Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </View>
       </Modal>
+
+      <ThemedModal
+        visible={errorModalVisible}
+        onClose={() => setErrorModalVisible(false)}
+        title={t("home.error", "Challenge Error")}
+        icon={AlertCircle}
+        iconBg={colors.dangerAlpha20}
+        iconColor={colors.danger}
+        actions={[
+          {
+            label: t("common.ok", "OK"),
+            type: "primary",
+            onPress: () => setErrorModalVisible(false)
+          }
+        ]}
+      >
+        <Text style={styles.errorModalText}>{errorModalMessage}</Text>
+      </ThemedModal>
 
     </SafeAreaView>
   );
@@ -776,6 +1001,39 @@ const styles = StyleSheet.create({
     bottom: 2,
     right: 2,
   },
+  modalBodyWithAvatar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 4,
+  },
+  modalAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: colors.primaryAlpha30,
+  },
+  modalAvatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  challengeRating: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "900",
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  },
   friendName: {
     color: colors.foreground,
     fontSize: 12,
@@ -821,125 +1079,153 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     paddingHorizontal: 4,
   },
-  // Incoming challenge modal
-  challengeOverlay: {
+  errorModalText: {
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  modalBodyContent: {
+    alignItems: "center",
+    gap: 8,
+  },
+  challengeCountdownNoteText: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  challengeSheetOverlay: {
     flex: 1,
     backgroundColor: colors.overlay,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
+    justifyContent: "flex-end",
   },
-  challengeModal: {
+  challengeSheetContent: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    overflow: "hidden",
-    width: "100%",
-    maxWidth: 360,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: "center",
   },
-  // Portrait strip
-  challengeStrip: {
+  challengeSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 2,
+    marginBottom: 20,
+  },
+  challengeSheetTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    padding: 18,
-    paddingBottom: 14,
+    gap: 8,
+    marginBottom: 20,
   },
-  challengeAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.surfaceElevated,
+  challengeSheetTitle: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  challengeSheetProfile: {
+    alignItems: "center",
+    marginBottom: 20,
+    width: "100%",
+  },
+  challengeSheetAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 2,
     borderColor: colors.primaryAlpha30,
+    marginBottom: 10,
   },
-  challengeAvatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  challengeSheetAvatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 10,
   },
-  challengeMeta: { flex: 1 },
-  challengeTagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginBottom: 3,
-  },
-  challengeTag: {
-    color: colors.primary,
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-  },
-  challengeName: {
+  challengeSheetName: {
     color: colors.foreground,
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 2,
   },
-  challengeRating: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
+  challengeSheetElo: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "900",
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
-    marginBottom: 1,
+    marginBottom: 4,
   },
-  challengeSubtext: {
+  challengeSheetSubtitle: {
     color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 1,
+    fontSize: 14,
+    marginTop: 4,
   },
-  // Divider
-  challengeDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: 18,
-  },
-  // Countdown note
-  challengeCountdownNote: {
-    flexDirection: "row",
+  challengeSheetWaiting: {
     alignItems: "center",
     gap: 8,
-    marginHorizontal: 18,
-    marginVertical: 14,
-    padding: 12,
-    backgroundColor: colors.primaryAlpha10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.primaryAlpha30,
+    marginBottom: 20,
   },
-  challengeCountdownNoteText: {
+  challengeSheetWaitingText: {
     color: colors.textMuted,
-    fontSize: 13,
-    flex: 1,
+    fontSize: 14,
   },
-  // Action buttons
-  challengeActions: {
+  challengeSheetCountdown: {
+    color: colors.textDisabled,
+    fontSize: 12,
+    marginBottom: 24,
+  },
+  challengeSheetCancelRow: {
+    alignItems: "center",
+    gap: 8,
+  },
+  challengeCancelBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  challengeCancelLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  challengeSheetActions: {
     flexDirection: "row",
     gap: 12,
-    paddingHorizontal: 18,
-    paddingBottom: 18,
+    width: "100%",
   },
-  challengeDeclineBtn: {
+  challengeSheetBtn: {
     flex: 1,
-    height: 56,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  challengeSheetBtnDecline: {
     backgroundColor: colors.danger,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  challengeAcceptBtn: {
-    flex: 1,
-    height: 56,
-    borderRadius: 14,
+  challengeSheetBtnAccept: {
     backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
+  },
+  challengeSheetBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });
