@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { SocialService } from '../../../domain/social/social.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -13,7 +14,7 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { GamesGateway } from '../../../infrastructure/messaging/games.gateway';
 import { CreateGameUseCase } from '../../../application/use-cases/create-game.use-case';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { PlayerColor } from '../../../shared/constants/game.constants';
+import { PlayerColor, GameStatus } from '../../../shared/constants/game.constants';
 
 const DEFAULT_TIME_MS = 5 * 60 * 1000; // 5-minute blitz
 
@@ -99,6 +100,46 @@ export class SocialController {
       select: { id: true, displayName: true },
     });
     if (!target) throw new NotFoundException('User not found');
+    
+    const requesterId = user.id;
+    const targetId = target.id;
+
+    // 1. Check if user is challenging themselves
+    if (requesterId === targetId) {
+      throw new BadRequestException('home.selfChallenge');
+    }
+
+    // 2. Check if requester is already in a game (ACTIVE or WAITING invite room)
+    const requesterActiveGame =
+      await this.createGameUseCase.findActiveOrWaitingGame(requesterId);
+    if (requesterActiveGame) {
+      throw new BadRequestException('home.requesterBusy');
+    }
+
+    // 3. Check if target is already in a game (ACTIVE or WAITING invite room)
+    const targetActiveGame =
+      await this.createGameUseCase.findActiveOrWaitingGame(targetId);
+    if (targetActiveGame) {
+      throw new BadRequestException('home.deniedBusy');
+    }
+
+    // 4. Check if there's already a pending challenge between these two
+    // If so, just return success with the existing gameId to avoid redundant notifications/errors
+    const existingPending = await this.prisma.game.findFirst({
+      where: {
+        status: GameStatus.WAITING,
+        OR: [
+          { whitePlayerId: requesterId, blackPlayerId: targetId },
+          { whitePlayerId: targetId, blackPlayerId: requesterId },
+        ],
+      },
+    });
+    if (existingPending) {
+      return {
+        inviteCode: existingPending.inviteCode,
+        gameId: existingPending.id,
+      };
+    }
 
     const challenger = await this.prisma.user.findUnique({
       where: { id: user.id },

@@ -10,6 +10,7 @@ import {
   UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -232,8 +233,46 @@ export class GameController {
   @ApiOperation({ summary: 'Join an invite game using its code' })
   @ApiResponse({ status: 200, description: 'Joined game successfully' })
   async joinInviteGame(@CurrentUser() user: any, @Param('code') code: string) {
+    const upperCode = code.toUpperCase();
+
+    // Pre-join checks: verify neither player is already in an active match.
+    const pendingGame =
+      await this.createGameUseCase.findByInviteCode(upperCode);
+
+    if (pendingGame && pendingGame.status === GameStatus.WAITING) {
+      // Resolve who created this invite
+      const creatorId =
+        pendingGame.creatorColor === PlayerColor.WHITE
+          ? pendingGame.whitePlayerId
+          : pendingGame.blackPlayerId;
+
+      // Check if the creator is already in a different active match
+      if (creatorId && creatorId !== user.id) {
+        const creatorBusy =
+          await this.createGameUseCase.findActiveNonWaitingGame(creatorId);
+        if (creatorBusy) {
+          const creator = await this.userService.findById(creatorId);
+          const name =
+            creator?.displayName || creator?.username || 'That player';
+          throw new BadRequestException(
+            `${name} is already in another match. Try again later.`,
+          );
+        }
+      }
+
+      // Check if the joiner themselves is already in an active match
+      const joinerBusy = await this.createGameUseCase.findActiveNonWaitingGame(
+        user.id,
+      );
+      if (joinerBusy) {
+        throw new BadRequestException(
+          'You are already in an active match. Finish it first.',
+        );
+      }
+    }
+
     const game = await this.createGameUseCase.joinInviteGame(
-      code.toUpperCase(),
+      upperCode,
       user.id,
     );
 
@@ -426,18 +465,37 @@ export class GameController {
   async abortGame(@CurrentUser() user: any, @Param('id') id: string) {
     // Capture game state before aborting so we can notify the other player
     const game = await this.createGameUseCase.findGameById(id);
-    const wasWaiting = game.status === 'WAITING';
+    const wasWaiting = game.status === GameStatus.WAITING;
 
-    await this.endGameUseCase.abort(id, user.id);
+    // Track whether the recipient explicitly declined vs the challenger cancelling.
+    let cancelReason: 'declined' | 'cancelled' = 'cancelled';
+
+    try {
+      await this.endGameUseCase.abort(id, user.id);
+    } catch (err) {
+      // If it's a WAITING invite game, allow the "invitee" (who isn't a participant yet) to decline it.
+      // They have the ID because it was sent to them via WebSocket.
+      if (
+        wasWaiting &&
+        game.inviteCode &&
+        err instanceof BadRequestException &&
+        err.message === 'Player not in this game'
+      ) {
+        await this.endGameUseCase.forceAbort(id, 'declined');
+        cancelReason = 'declined';
+      } else {
+        throw err;
+      }
+    }
 
     if (wasWaiting) {
-      // Notify the other player (challenger) that the challenge was cancelled
-      const otherId =
-        game.whitePlayerId === user.id
-          ? game.blackPlayerId
-          : game.whitePlayerId;
+      // Notify the other player that the challenge was cancelled/declined.
+      // We search for any participant that is NOT the current user.
+      const otherId = [game.whitePlayerId, game.blackPlayerId].find(
+        (pid) => pid && pid !== user.id,
+      );
       if (otherId) {
-        this.gamesGateway.emitChallengeCancelled(otherId, id);
+        this.gamesGateway.emitChallengeCancelled(otherId, id, cancelReason);
       }
     } else {
       // Emit gameOver so the result card appears on both players' screens

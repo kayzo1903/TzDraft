@@ -44,7 +44,15 @@
     "waitingForAccept": "Inasubiri…",
     "waitingDesc": "Ombi limetumwa kwa",
     "cancelChallenge": "Ghairi",
-    "challengeExpiresIn": "Inaisha baada ya"
+    "challengeExpiresIn": "Inaisha baada ya",
+    "error": "Hitilafu ya Changamoto",
+    "failed": "Imeshindwa kutuma changamoto",
+    "busy": "Mchezaji huyu yuko kwenye mechi kwa sasa na hawezi kupokea changamoto.",
+    "selfChallenge": "Huwezi kujichangamoto mwenyewe",
+    "requesterBusy": "Tayari uko kwenye mechi. Imalize kwanza.",
+    "deniedBusy": "{name} yuko kwenye mechi nyingine kwa sasa. Tafadhali jaribu tena baadaye.",
+    "declined": "Changamoto yako ilikataliwa.",
+    "challengeSent": "Changamoto Imetumwa"
   },
   "community": {
     "title": "Jamii",

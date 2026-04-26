@@ -44,7 +44,15 @@
     "waitingForAccept": "Waiting…",
     "waitingDesc": "Challenge sent to",
     "cancelChallenge": "Cancel",
-    "challengeExpiresIn": "Expires in"
+    "challengeExpiresIn": "Expires in",
+    "error": "Challenge Error",
+    "failed": "Failed to send challenge",
+    "busy": "The player is currently in a match and cannot be challenged right now.",
+    "selfChallenge": "You cannot challenge yourself",
+    "requesterBusy": "You are already in an active match. Finish it first.",
+    "deniedBusy": "{name} is currently in another match. Please try again later.",
+    "declined": "Your challenge was declined.",
+    "challengeSent": "Challenge Sent"
   },
   "community": {
     "title": "Community",
