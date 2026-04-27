@@ -28,27 +28,32 @@ import {
   Users,
   FlaskConical,
   Megaphone,
+  UserPlus,
+  Heart,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { useNotifications } from "../src/hooks/useNotifications";
 import type { AppNotification } from "../src/hooks/useNotifications";
+import { socialService } from "../src/services/social.service";
 import { useMobileCommunicationCenter } from "../src/hooks/useMobileCommunicationCenter";
 import { getNotificationRoute, sendPreviewNotification } from "../src/lib/push-notifications";
 
 const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
-  TOURNAMENT_REGISTERED: { icon: Trophy,       color: "#f97316" },
-  TOURNAMENT_STARTED:    { icon: Flag,          color: "#38bdf8" },
-  TOURNAMENT_CANCELLED:  { icon: CircleAlert,   color: "#ef4444" },
-  TOURNAMENT_COMPLETED:  { icon: Medal,         color: "#fbbf24" },
-  MATCH_ASSIGNED:        { icon: Users,         color: "#a78bfa" },
-  MATCH_STARTED:        { icon: Swords,        color: "#38bdf8" },
-  MATCH_RESULT:          { icon: Trophy,        color: "#10b981" },
-  ROUND_ADVANCED:        { icon: ChevronRight,  color: "#f97316" },
-  ELIMINATED:            { icon: Flag,          color: "#ef4444" },
-  ADMIN_ANNOUNCEMENT:    { icon: Megaphone,     color: "#38bdf8" },
-  ADMIN_PROMOTION:       { icon: Bell,          color: "#f97316" },
-  ADMIN_ALERT:           { icon: CircleAlert,   color: "#ef4444" },
-  ADMIN_ENGAGEMENT:      { icon: Users,         color: "#10b981" },
+  TOURNAMENT_REGISTERED:   { icon: Trophy,       color: "#f97316" },
+  TOURNAMENT_STARTED:      { icon: Flag,          color: "#38bdf8" },
+  TOURNAMENT_CANCELLED:    { icon: CircleAlert,   color: "#ef4444" },
+  TOURNAMENT_COMPLETED:    { icon: Medal,         color: "#fbbf24" },
+  MATCH_ASSIGNED:          { icon: Users,         color: "#a78bfa" },
+  MATCH_STARTED:           { icon: Swords,        color: "#38bdf8" },
+  MATCH_RESULT:            { icon: Trophy,        color: "#10b981" },
+  ROUND_ADVANCED:          { icon: ChevronRight,  color: "#f97316" },
+  ELIMINATED:              { icon: Flag,          color: "#ef4444" },
+  SOCIAL_FOLLOW:           { icon: UserPlus,      color: "#6366f1" },
+  FRIENDSHIP_ESTABLISHED:  { icon: Heart,         color: "#ec4899" },
+  ADMIN_ANNOUNCEMENT:      { icon: Megaphone,     color: "#38bdf8" },
+  ADMIN_PROMOTION:         { icon: Bell,          color: "#f97316" },
+  ADMIN_ALERT:             { icon: CircleAlert,   color: "#ef4444" },
+  ADMIN_ENGAGEMENT:        { icon: Users,         color: "#10b981" },
 };
 
 function timeAgo(dateStr: string): string {
@@ -113,6 +118,8 @@ export default function NotificationsScreen() {
   const [previewing, setPreviewing] = React.useState(false);
   const [toastLabel, setToastLabel] = React.useState("");
   const [toastKey, setToastKey] = React.useState(0);
+  const [followedBack, setFollowedBack] = React.useState<Set<string>>(new Set());
+  const [followingBack, setFollowingBack] = React.useState<Set<string>>(new Set());
   const combinedUnreadCount = unreadCount + campaignUnreadCount;
   const combinedNotifications = React.useMemo<AppNotification[]>(
     () =>
@@ -171,9 +178,33 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleFollowBack = async (notifId: string, username: string) => {
+    if (followedBack.has(notifId) || followingBack.has(notifId)) return;
+    setFollowingBack((prev) => new Set(prev).add(notifId));
+    try {
+      await socialService.follow(username);
+      setFollowedBack((prev) => new Set(prev).add(notifId));
+    } catch {
+      // silently ignore — user can retry by tapping again
+    } finally {
+      setFollowingBack((prev) => {
+        const next = new Set(prev);
+        next.delete(notifId);
+        return next;
+      });
+    }
+  };
+
   const renderItem = (n: AppNotification) => {
     const meta = TYPE_META[n.type] ?? { icon: Bell, color: colors.primary };
     const Icon = meta.icon;
+
+    const showFollowBack =
+      n.type === "SOCIAL_FOLLOW" &&
+      n.metadata?.hasPlayedTogether === true &&
+      !!n.metadata?.username;
+    const alreadyFollowed = followedBack.has(n.id);
+    const isFollowingBack = followingBack.has(n.id);
 
     return (
       <TouchableOpacity
@@ -199,6 +230,40 @@ export default function NotificationsScreen() {
           <Text style={styles.itemBody} numberOfLines={2}>
             {n.body}
           </Text>
+          {showFollowBack && (
+            <TouchableOpacity
+              style={[
+                styles.followBackBtn,
+                alreadyFollowed && styles.followBackBtnDone,
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+                if (!alreadyFollowed) {
+                  handleFollowBack(n.id, n.metadata!.username);
+                }
+              }}
+              disabled={alreadyFollowed || isFollowingBack}
+              activeOpacity={0.7}
+            >
+              {isFollowingBack ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <UserPlus size={13} color={alreadyFollowed ? colors.textSubtle : colors.primary} />
+                  <Text
+                    style={[
+                      styles.followBackText,
+                      alreadyFollowed && styles.followBackTextDone,
+                    ]}
+                  >
+                    {alreadyFollowed
+                      ? t("notifications.following", "Following")
+                      : t("notifications.followBack", "Follow Back")}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {!n.read && <View style={styles.unreadDot} />}
@@ -489,6 +554,33 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.primary,
     flexShrink: 0,
+  },
+  followBackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+    backgroundColor: colors.primaryAlpha05,
+    minWidth: 36,
+    justifyContent: "center",
+  },
+  followBackBtnDone: {
+    borderColor: colors.border,
+    backgroundColor: "transparent",
+  },
+  followBackText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  followBackTextDone: {
+    color: colors.textSubtle,
   },
   toast: {
     position: "absolute",

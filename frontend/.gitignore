@@ -43,3 +43,6 @@ next-env.d.ts
 
 # WASM artifacts — generated from packages/mkaguzi-engine/wasm/ at build time
 /public/wasm/
+
+# Sentry Config File
+.env.sentry-build-plugin

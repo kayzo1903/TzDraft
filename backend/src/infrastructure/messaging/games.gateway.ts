@@ -440,7 +440,9 @@ export class GamesGateway
       await makeMoveUseCase.execute(data.gameId, userId, data.from, data.to);
       return {};
     } catch (err: any) {
-      const message = err?.response?.message || err?.message || 'Invalid move';
+      const raw: string = err?.response?.message || err?.message || '';
+      // Never expose Prisma internals to the client
+      const message = raw && !raw.includes('prisma.') ? raw : 'Invalid move';
       return { error: message };
     }
   }
@@ -598,7 +600,8 @@ export class GamesGateway
       this.logger.log(`User ${userId} resigned from game ${data.gameId}`);
       return {};
     } catch (err: any) {
-      return { error: err?.message || 'Resignation failed' };
+      const msg: string = err?.message || '';
+      return { error: msg && !msg.includes('prisma.') ? msg : 'Resignation failed' };
     }
   }
 
@@ -624,7 +627,8 @@ export class GamesGateway
       this.logger.log(`User ${userId} aborted game ${data.gameId}`);
       return {};
     } catch (err: any) {
-      return { error: err?.message || 'Abortion failed' };
+      const msg: string = err?.message || '';
+      return { error: msg && !msg.includes('prisma.') ? msg : 'Abortion failed' };
     }
   }
 
@@ -709,7 +713,8 @@ export class GamesGateway
       );
       return {};
     } catch (err: any) {
-      return { error: err?.message || 'Failed to create rematch' };
+      const msg: string = err?.message || '';
+      return { error: msg && !msg.includes('prisma.') ? msg : 'Failed to create rematch' };
     }
   }
 
@@ -962,7 +967,8 @@ export class GamesGateway
       return {};
     } catch (err: any) {
       this.logger.error(`claimTimeout failed for game ${data.gameId}`, err);
-      return { error: err?.message || 'Claim failed' };
+      const msg: string = err?.message || '';
+      return { error: msg && !msg.includes('prisma.') ? msg : 'Claim failed' };
     }
   }
 

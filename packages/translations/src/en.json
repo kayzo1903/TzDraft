@@ -83,7 +83,9 @@
     "earlier": "Earlier",
     "emptyTitle": "All caught up",
     "emptySubtitle": "Tournament updates, admin announcements, and reminder campaigns will appear here.",
-    "devPreviewHint": "Tap the lab button to preview each notification type."
+    "devPreviewHint": "Tap the lab button to preview each notification type.",
+    "followBack": "Follow Back",
+    "following": "Following"
   },
   "game": {
     "playOnline": "Play Online 🌐",
@@ -635,6 +637,8 @@
       "onlineMatch": "ONLINE MATCH",
       "offlineTitle": "You're Offline",
       "offlineBody": "Trying to reconnect...",
+      "opponentDisconnected": "Opponent disconnected",
+      "opponentForfeit": "Opponent disconnected — forfeits in {{seconds}}s",
       "moveTimeout": "Move timed out — check your connection."
     },
     "endgameCountdown": "Endgame countdown: {remaining} moves remaining for {favored}",

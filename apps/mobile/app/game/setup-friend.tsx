@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
@@ -47,6 +48,7 @@ export default function SetupFriendScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const isGuest = user?.accountType === "GUEST";
 
   const [activeTab, setActiveTab] = useState<SetupTab>(isGuest ? "local" : "online");
@@ -308,7 +310,7 @@ export default function SetupFriendScreen() {
       </KeyboardAvoidingView>
 
       {/* Sticky Bottom Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
         <View style={styles.controlsRow}>
           {/* Time Selector — locked to 5 min for online; freely choosable for local */}
           <TouchableOpacity
@@ -369,11 +371,13 @@ export default function SetupFriendScreen() {
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.startButtonText}>
-              {activeTab === "local"
-                ? t("setupFriend.local.playNow", "Play Now")
-                : joinCode.length > 0
-                ? t("setupFriend.online.joinGame", "Join Game")
-                : t("setupFriend.online.createGame", "Create Game")}
+              {`${t("setupAi.start.cta", "Start Game")} — ${
+                activeTab === "local"
+                  ? t("setupFriend.tabs.local", "Local")
+                  : joinCode.length > 0
+                  ? t("setupFriend.online.joinGame", "Join")
+                  : t("setupFriend.online.createGame", "Invite")
+              }`}
             </Text>
           )}
         </TouchableOpacity>
@@ -720,7 +724,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 16,
+    paddingBottom: 16, // Base padding; overridden by insets in component
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },

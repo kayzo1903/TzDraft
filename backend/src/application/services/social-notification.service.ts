@@ -28,13 +28,32 @@ export class SocialNotificationService {
     });
     if (!follower) return;
 
+    const gamesPlayed = await this.prisma.game.count({
+      where: {
+        OR: [
+          { whitePlayerId: followerId, blackPlayerId: followingId },
+          { whitePlayerId: followingId, blackPlayerId: followerId },
+        ],
+        status: 'FINISHED',
+      },
+    });
+    const hasPlayedTogether = gamesPlayed > 0;
+
+    const body = hasPlayedTogether
+      ? `${follower.displayName} (@${follower.username}) started following you! You've played together before.`
+      : `${follower.displayName} (@${follower.username}) started following you!`;
+
     const notif = await this.persist(
       followingId,
       NotificationType.SOCIAL_FOLLOW,
       {
         title: 'New Follower',
-        body: `${follower.displayName} (@${follower.username}) started following you!`,
-        meta: { followerId: follower.id, username: follower.username },
+        body,
+        meta: {
+          followerId: follower.id,
+          username: follower.username,
+          hasPlayedTogether,
+        },
       },
     );
 
@@ -42,6 +61,7 @@ export class SocialNotificationService {
     void this.expoPush.sendToUser(followingId, notif.title, notif.body, {
       followerId: follower.id,
       screen: 'profile',
+      hasPlayedTogether,
     });
   }
 
