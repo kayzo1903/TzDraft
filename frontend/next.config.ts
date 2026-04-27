@@ -150,7 +150,6 @@ function withOptionalSentry(config: NextConfig): NextConfig {
       silent: !process.env.CI,
       widenClientFileUpload: true,
       hideSourceMaps: true,
-      disableLogger: true,
     });
   } catch {
     // eslint-disable-next-line no-console

@@ -30,6 +30,7 @@ import {
   Timer,
   Zap,
   BookOpen,
+  Lock,
 } from "lucide-react-native";
 import {
   tournamentService,
@@ -102,7 +103,7 @@ export default function TournamentDetailScreen() {
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
-  const { user } = useAuthStore();
+  const [guestBarrierVisible, setGuestBarrierVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const { socket } = useSocket();
 
@@ -671,7 +672,7 @@ export default function TournamentDetailScreen() {
         {tournament.status === "REGISTRATION" ? (
           isRegistered ? (
             <TouchableOpacity
-              style={[styles.startButton, { backgroundColor: colors.surface, borderColor: colors.winAlpha20, borderWidth: 1 }]}
+              style={[styles.startButton, { backgroundColor: colors.surface, borderColor: "rgba(16,185,129,0.2)", borderWidth: 1 }]}
               onPress={() => setWithdrawModalVisible(true)}
               disabled={actionLoading}
             >
