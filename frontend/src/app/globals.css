@@ -36,23 +36,42 @@
 }
 
 :root {
-  /* Drafti Design System Colors */
+  /* Drafti Design System Colors - Normalized with Mobile App */
   --background: #1c1917; /* Stone 900 - Deep Warm Dark */
   --foreground: #fafaf9; /* Stone 50 */
-
+  
+  /* Surfaces */
+  --surface: #292524; /* Stone 800 */
+  --surface-elevated: #44403c; /* Stone 700 */
+  
   /* Savanna Orange Theme */
   --primary: #f97316; /* Orange 500 */
   --primary-hover: #ea580c; /* Orange 600 */
   --primary-border: #c2410c; /* Orange 700 */
 
-  --secondary: #292524; /* Stone 800 */
-  --secondary-hover: #44403c; /* Stone 700 */
-  --secondary-border: #1c1917; /* Stone 900 */
+  /* Text Variants */
+  --text-secondary: #d6d3d1; /* Stone 300 */
+  --text-muted: #a8a29e; /* Stone 400 */
+  --text-subtle: #78716c; /* Stone 500 */
+  --text-disabled: #57534e; /* Stone 600 */
 
+  /* Borders */
+  --border: #44403c; /* Stone 700 */
+  --border-strong: #57534e; /* Stone 600 */
+
+  /* Board (exact match with mobile) */
   --board-light: #fdba74; /* Orange 300 */
   --board-dark: #9a3412; /* Orange 800 */
+  --piece-black: #141210;
+  --piece-white: #fafaf9;
 
-  /* Alert/State Colors */
+  /* Semantic / State Colors */
+  --danger: #ef4444;
+  --win: #10b981;
+  --success: #22c55e;
+  --warning: #f59e0b;
+
+  /* Legacy / Specific */
   --timer-normal: #ededed;
   --timer-warning: #ffa500;
   --timer-critical: #ff0000;
@@ -61,14 +80,32 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-board-light: var(--board-light);
-  --color-board-dark: var(--board-dark);
+  
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-border: var(--primary-border);
-  --color-secondary: var(--secondary);
-  --color-secondary-hover: var(--secondary-hover);
-  --color-secondary-border: var(--secondary-border);
+
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-board-light: var(--board-light);
+  --color-board-dark: var(--board-dark);
+  --color-piece-black: var(--piece-black);
+  --color-piece-white: var(--piece-white);
+
+  --color-danger: var(--danger);
+  --color-win: var(--win);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
   --color-timer-normal: var(--timer-normal);
   --color-timer-warning: var(--timer-warning);
   --color-timer-critical: var(--timer-critical);

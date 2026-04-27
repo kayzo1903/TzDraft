@@ -142,9 +142,9 @@ export default function PlayPage() {
       enabled: true,
       action: t("modes.online.action"),
       badge: isSw ? "Inawaka" : "Most Active",
-      tone: "border-sky-500/20",
-      glow: "bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_40%)]",
-      iconWrap: "border-sky-400/25 bg-sky-400/10 text-sky-300",
+      tone: "border-blue-500/20",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_40%)]",
+      iconWrap: "border-blue-400/25 bg-blue-400/10 text-blue-300",
       icon: <Globe className="h-7 w-7" />,
       highlights: isSw
         ? ["Ranked", "Casual", "Haraka kuunganishwa"]
@@ -158,9 +158,9 @@ export default function PlayPage() {
       enabled: true,
       action: t("modes.ai.action"),
       badge: isSw ? "Mazoezi" : "Training",
-      tone: "border-emerald-500/20",
-      glow: "bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_40%)]",
-      iconWrap: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+      tone: "border-violet-500/20",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.18),transparent_40%)]",
+      iconWrap: "border-violet-400/25 bg-violet-400/10 text-violet-300",
       icon: <Bot className="h-7 w-7" />,
       highlights: isSw
         ? ["Ngazi 19", "Fungua hatua", "Cheza muda wowote"]
@@ -174,9 +174,9 @@ export default function PlayPage() {
       enabled: true,
       action: t("modes.friend.action"),
       badge: isSw ? "Binafsi" : "Private",
-      tone: "border-[rgba(196,122,44,0.35)]",
-      glow: "bg-[radial-gradient(circle_at_top_right,rgba(196,122,44,0.18),transparent_40%)]",
-      iconWrap: "border-[rgba(196,122,44,0.35)] bg-[rgba(196,122,44,0.12)] text-[#e7b172]",
+      tone: "border-emerald-500/20",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_40%)]",
+      iconWrap: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
       icon: <Users className="h-7 w-7" />,
       highlights: isSw
         ? ["Link ya mwaliko", "Code ya haraka", "Cheza na rafiki"]
@@ -191,7 +191,7 @@ export default function PlayPage() {
       action: isSw ? "Fungua Mashindano" : "Open Tournaments",
       badge: isSw ? "Jamii" : "Community",
       tone: "border-amber-500/20",
-      glow: "bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.16),transparent_40%)]",
+      glow: "bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_40%)]",
       iconWrap: "border-amber-400/25 bg-amber-400/10 text-amber-300",
       icon: <Trophy className="h-7 w-7" />,
       highlights: isSw

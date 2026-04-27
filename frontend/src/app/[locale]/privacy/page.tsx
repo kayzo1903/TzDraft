@@ -1,9 +1,27 @@
-"use client";
-
+import type { Metadata } from "next";
+import { buildPageMetadata, isAppLocale } from "@/lib/seo";
 import Link from "next/link";
 import { Shield } from "lucide-react";
 
 const EFFECTIVE_DATE = "24 April 2026";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isSw = locale === "sw";
+  
+  return buildPageMetadata({
+    locale: isAppLocale(locale) ? locale : "en",
+    path: "/privacy",
+    title: isSw ? "Sera ya Faragha | TzDraft" : "Privacy Policy | TzDraft",
+    description: isSw 
+      ? "Sera ya faragha ya TzDraft inayoelezea jinsi tunavyokusanya, kutumia, na kulinda taarifa zako unapocheza Drafti mtandaoni."
+      : "Privacy Policy for TzDraft, detailing how we collect, use, and protect your information while playing Drafti online.",
+  });
+}
 
 export default function PrivacyPolicyPage() {
   return (

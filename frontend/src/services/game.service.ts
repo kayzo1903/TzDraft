@@ -73,4 +73,9 @@ export const gameService = {
   async cancelQueue() {
     await axiosInstance.post("/games/queue/cancel");
   },
+
+  async getActiveGame(): Promise<{ id: string; gameType: string } | null> {
+    const response = await axiosInstance.get("/games/active");
+    return response.data.data;
+  },
 };

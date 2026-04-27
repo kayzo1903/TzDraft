@@ -1,9 +1,27 @@
-"use client";
-
+import type { Metadata } from "next";
+import { buildPageMetadata, isAppLocale } from "@/lib/seo";
 import Link from "next/link";
 import { Scale } from "lucide-react";
 
 const EFFECTIVE_DATE = "24 April 2026";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isSw = locale === "sw";
+  
+  return buildPageMetadata({
+    locale: isAppLocale(locale) ? locale : "en",
+    path: "/terms",
+    title: isSw ? "Masharti ya Huduma | TzDraft" : "Terms of Service | TzDraft",
+    description: isSw 
+      ? "Soma masharti ya huduma ya TzDraft kabla ya kutumia jukwaa letu kucheza Drafti mtandaoni."
+      : "Read the TzDraft Terms of Service before using our platform to play Drafti online.",
+  });
+}
 
 export default function TermsOfServicePage() {
   return (
