@@ -30,6 +30,7 @@ import {
   RefreshCw,
   UserPlus,
   Check,
+  Users,
 } from "lucide-react-native";
 import { useSocial } from "../../src/hooks/useSocial";
 import { historyService, GameHistoryItem, PlayerStats, HistoryFilters } from "../../src/lib/history-service";
@@ -42,8 +43,9 @@ export default function GameHistoryScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const locale = i18n.language;
-  const { follow } = useSocial();
-  const [followedUsernames, setFollowedUsernames] = useState<Set<string>>(new Set());
+  const { follow, getFollowing } = useSocial();
+  const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+  const [showFollowingOnly, setShowFollowingOnly] = useState(false);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -91,6 +93,9 @@ export default function GameHistoryScreen() {
   useEffect(() => {
     fetchStats();
     fetchGames(0);
+    getFollowing().then(list => {
+      setFollowingSet(new Set(list.map((u: any) => u.username)));
+    });
   }, []);
 
   const onRefresh = () => {
@@ -116,6 +121,10 @@ export default function GameHistoryScreen() {
     setFilters(newFilters);
     fetchGames(0, newFilters);
   };
+
+  const displayedGames = showFollowingOnly
+    ? games.filter(g => g.opponent && followingSet.has(g.opponent.username))
+    : games;
 
   const formatDate = (iso: string | null) => {
     if (!iso) return "—";
@@ -155,76 +164,81 @@ export default function GameHistoryScreen() {
     </View>
   );
 
-  const renderGameItem = ({ item }: { item: GameHistoryItem }) => (
-    <TouchableOpacity 
-      style={styles.gameCard}
-      onPress={() =>
-        router.push({
-          pathname: "/game/game-replay",
-          params: {
-            id: item.id,
-            opponentName: item.opponent?.displayName ?? "AI",
-            result: item.result,
-          },
-        })
-      }
-    >
-      <View style={styles.gameCardLeft}>
-        <View style={[styles.resultIndicator, {
-          backgroundColor: item.result === "WIN" ? colors.win : item.result === "LOSS" ? colors.danger : colors.textSubtle
-        }]} />
-        <View style={styles.gameInfo}>
-          <View style={styles.opponentRow}>
-            <Text style={styles.opponentName}>
-              {item.opponent ? item.opponent.displayName : "Stockfish AI"}
-            </Text>
-            {item.opponent?.elo && <Text style={styles.opponentElo}>({item.opponent.elo})</Text>}
-          </View>
-          <View style={styles.metaRow}>
-            <View style={styles.modeBadge}>
-              {item.gameType === "AI" ? <Cpu size={10} color={colors.textSubtle} /> : <Target size={10} color={colors.textSubtle} />}
-              <Text style={styles.modeText}>{item.gameType}</Text>
+  const renderGameItem = ({ item }: { item: GameHistoryItem }) => {
+    const isFollowing = item.opponent ? followingSet.has(item.opponent.username) : false;
+
+    return (
+      <TouchableOpacity
+        style={styles.gameCard}
+        onPress={() =>
+          router.push({
+            pathname: "/game/game-replay",
+            params: {
+              id: item.id,
+              opponentName: item.opponent?.displayName ?? "AI",
+              result: item.result,
+            },
+          })
+        }
+      >
+        <View style={styles.gameCardLeft}>
+          <View style={[styles.resultIndicator, {
+            backgroundColor: item.result === "WIN" ? colors.win : item.result === "LOSS" ? colors.danger : colors.textSubtle
+          }]} />
+          <View style={styles.gameInfo}>
+            <View style={styles.opponentRow}>
+              {isFollowing && (
+                <View style={styles.friendBadge}>
+                  <Users size={9} color={colors.primary} />
+                </View>
+              )}
+              <Text style={styles.opponentName}>
+                {item.opponent ? item.opponent.displayName : "Stockfish AI"}
+              </Text>
+              {item.opponent?.elo && <Text style={styles.opponentElo}>({item.opponent.elo})</Text>}
             </View>
-            <View style={styles.dot} />
-            <Text style={styles.metaText}>{formatDate(item.playedAt)}</Text>
-            <View style={styles.dot} />
-            <Text style={styles.metaText}>{item.moveCount} moves</Text>
+            <View style={styles.metaRow}>
+              <View style={styles.modeBadge}>
+                {item.gameType === "AI" ? <Cpu size={10} color={colors.textSubtle} /> : <Target size={10} color={colors.textSubtle} />}
+                <Text style={styles.modeText}>{item.gameType}</Text>
+              </View>
+              <View style={styles.dot} />
+              <Text style={styles.metaText}>{formatDate(item.playedAt)}</Text>
+              <View style={styles.dot} />
+              <Text style={styles.metaText}>{item.moveCount} moves</Text>
+            </View>
           </View>
         </View>
-      </View>
-      
-      <View style={styles.gameCardRight}>
-         {renderResultBadge(item.result)}
-         
-         {item.opponent && item.gameType !== "AI" && (
-           <TouchableOpacity 
-             style={[
-               styles.followButton,
-               followedUsernames.has(item.opponent.username) && styles.followButtonActive
-             ]}
-             onPress={async (e) => {
-               // Prevent navigation to replay when clicking follow
-               if (followedUsernames.has(item.opponent!.username)) return;
-               try {
-                 await follow(item.opponent!.username);
-                 setFollowedUsernames(prev => new Set(prev).add(item.opponent!.username));
-               } catch (err) {
-                 console.error("Follow failed", err);
-               }
-             }}
-           >
-             {followedUsernames.has(item.opponent.username) ? (
-               <Check size={14} color={colors.primary} />
-             ) : (
-               <UserPlus size={14} color={colors.textMuted} />
-             )}
-           </TouchableOpacity>
-         )}
-         
-         <ChevronRight size={16} color={colors.textDisabled} />
-      </View>
-    </TouchableOpacity>
-  );
+
+        <View style={styles.gameCardRight}>
+          {renderResultBadge(item.result)}
+
+          {item.opponent && item.gameType !== "AI" && (
+            <TouchableOpacity
+              style={[styles.followButton, isFollowing && styles.followButtonActive]}
+              onPress={async () => {
+                if (isFollowing) return;
+                try {
+                  await follow(item.opponent!.username);
+                  setFollowingSet(prev => new Set(prev).add(item.opponent!.username));
+                } catch (err) {
+                  console.error("Follow failed", err);
+                }
+              }}
+            >
+              {isFollowing ? (
+                <Check size={14} color={colors.primary} />
+              ) : (
+                <UserPlus size={14} color={colors.textMuted} />
+              )}
+            </TouchableOpacity>
+          )}
+
+          <ChevronRight size={16} color={colors.textDisabled} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (loading && !refreshing && page === 0) return <LoadingScreen />;
 
@@ -239,7 +253,7 @@ export default function GameHistoryScreen() {
       </View>
 
       <FlatList
-        data={games}
+        data={displayedGames}
         renderItem={renderGameItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -282,8 +296,8 @@ export default function GameHistoryScreen() {
             <View style={styles.filterSection}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
                 {(["ALL", "WIN", "LOSS", "DRAW"] as const).map(res => (
-                  <TouchableOpacity 
-                    key={res} 
+                  <TouchableOpacity
+                    key={res}
                     style={[styles.filterChip, filters.result === res && styles.filterChipActive]}
                     onPress={() => handleFilterChange({ ...filters, result: res })}
                   >
@@ -294,8 +308,8 @@ export default function GameHistoryScreen() {
                 ))}
                 <View style={styles.filterSeparator} />
                 {(["ALL", "RANKED", "AI", "CASUAL"] as const).map(type => (
-                  <TouchableOpacity 
-                    key={type} 
+                  <TouchableOpacity
+                    key={type}
                     style={[styles.filterChip, filters.gameType === type && styles.filterChipActive]}
                     onPress={() => handleFilterChange({ ...filters, gameType: type })}
                   >
@@ -304,12 +318,24 @@ export default function GameHistoryScreen() {
                     </Text>
                   </TouchableOpacity>
                 ))}
+                <View style={styles.filterSeparator} />
+                <TouchableOpacity
+                  style={[styles.filterChip, styles.followingChip, showFollowingOnly && styles.filterChipActive]}
+                  onPress={() => setShowFollowingOnly(v => !v)}
+                >
+                  <Users size={11} color={showFollowingOnly ? colors.primary : colors.textSubtle} />
+                  <Text style={[styles.filterChipText, showFollowingOnly && styles.filterChipTextActive]}>
+                    FOLLOWING
+                  </Text>
+                </TouchableOpacity>
               </ScrollView>
             </View>
-            
+
             <View style={styles.listHeader}>
-               <Text style={styles.listTitle}>Timeline</Text>
-               <Text style={styles.listCount}>{totalGames} matches</Text>
+              <Text style={styles.listTitle}>Timeline</Text>
+              <Text style={styles.listCount}>
+                {showFollowingOnly ? `${displayedGames.length} matches` : `${totalGames} matches`}
+              </Text>
             </View>
           </>
         }
@@ -338,9 +364,19 @@ export default function GameHistoryScreen() {
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Swords size={48} color={colors.surfaceElevated} />
-                <Text style={styles.emptyTitle}>No games found</Text>
-                <Text style={styles.emptySubtitle}>Start your first match to see your history here!</Text>
+                {showFollowingOnly ? (
+                  <Users size={48} color={colors.surfaceElevated} />
+                ) : (
+                  <Swords size={48} color={colors.surfaceElevated} />
+                )}
+                <Text style={styles.emptyTitle}>
+                  {showFollowingOnly ? "No games with following" : "No games found"}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {showFollowingOnly
+                    ? "You haven't played against anyone you follow yet."
+                    : "Start your first match to see your history here!"}
+                </Text>
               </View>
             )
           ) : null
@@ -467,6 +503,21 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: colors.borderStrong,
     marginHorizontal: 8,
+  },
+  followingChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  friendBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 5,
+    backgroundColor: colors.primaryAlpha10,
+    borderWidth: 1,
+    borderColor: colors.primaryAlpha30,
+    alignItems: "center",
+    justifyContent: "center",
   },
   listHeader: {
     flexDirection: "row",
