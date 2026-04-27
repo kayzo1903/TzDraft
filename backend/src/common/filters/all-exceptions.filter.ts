@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -41,11 +42,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
       }
     } else {
-      // Non-HTTP (unexpected) errors — log full error, return generic message
+      // Non-HTTP (unexpected) errors — log full error, report to Sentry, return generic message
       this.logger.error(
         `Unhandled exception on ${request.method} ${request.url}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
+      Sentry.captureException(exception);
       message = 'Internal server error';
     }
 

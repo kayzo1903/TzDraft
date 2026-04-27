@@ -1,3 +1,20 @@
+import * as Sentry from "@sentry/react-native";
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+  environment: process.env.NODE_ENV ?? "development",
+  tracesSampleRate: 0.1,
+  integrations: [
+    Sentry.mobileReplayIntegration(),
+  ],
+  _experiments: {
+    replaysSessionSampleRate: 0.01,
+    replaysOnErrorSampleRate: 1.0,
+    enableLogs: true,
+  },
+});
+
 import React, { useEffect, useRef, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -35,7 +52,7 @@ const PENDING_INVITE_KEY = "pendingInviteCode";
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const { hasHydrated } = useAuthInitializer();
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [loaded, error] = useFonts({
@@ -263,6 +280,8 @@ export default function RootLayout() {
     </QueryProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   container: {

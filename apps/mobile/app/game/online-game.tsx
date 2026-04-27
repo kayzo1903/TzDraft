@@ -334,13 +334,15 @@ function DisconnectBanner({
   visible: boolean;
   secondsRemaining: number | null;
 }) {
+  const { t } = useTranslation();
   if (!visible) return null;
   return (
     <View style={disconnectStyles.container}>
       <WifiOff color={colors.warning} size={15} />
       <Text style={disconnectStyles.text}>
-        Opponent disconnected
-        {secondsRemaining !== null ? ` — forfeits in ${secondsRemaining}s` : ""}
+        {secondsRemaining !== null
+          ? t("gameArena.status.opponentForfeit", { seconds: secondsRemaining })
+          : t("gameArena.status.opponentDisconnected")}
       </Text>
     </View>
   );

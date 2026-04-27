@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   Trophy,
@@ -30,6 +30,7 @@ import {
   Timer,
   Zap,
   BookOpen,
+  Lock,
 } from "lucide-react-native";
 import {
   tournamentService,
@@ -103,6 +104,7 @@ export default function TournamentDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const [guestBarrierVisible, setGuestBarrierVisible] = useState(false);
+  const insets = useSafeAreaInsets();
   const { socket } = useSocket();
 
   const fetchDetail = useCallback(async () => {
@@ -646,32 +648,60 @@ export default function TournamentDetailScreen() {
       </ScrollView>
 
       {/* Footer CTA */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+        <View style={styles.controlsRow}>
+          {/* Format Control (Locked) */}
+          <View style={[styles.controlItem, styles.controlItemLocked]}>
+            <Trophy color={colors.primary} size={18} />
+            <Text style={styles.controlLabel} numberOfLines={1}>
+              {tournament.format.replace(/_/g, " ")}
+            </Text>
+            <Lock color={colors.primary} size={12} />
+          </View>
+ 
+          {/* Style Control (Locked) */}
+          <View style={[styles.controlItem, styles.controlItemLocked]}>
+            <Clock3 color={colors.primary} size={18} />
+            <Text style={styles.controlLabel} numberOfLines={1}>
+              {tournament.style}
+            </Text>
+            <Lock color={colors.primary} size={12} />
+          </View>
+        </View>
+ 
         {tournament.status === "REGISTRATION" ? (
           isRegistered ? (
             <TouchableOpacity
-              style={styles.registeredButton}
+              style={[styles.startButton, { backgroundColor: colors.surface, borderColor: "rgba(16,185,129,0.2)", borderWidth: 1 }]}
               onPress={() => setWithdrawModalVisible(true)}
               disabled={actionLoading}
             >
-              <CheckCircle2 size={20} color={colors.win} />
-              <Text style={styles.registeredButtonText}>YOU ARE REGISTERED · WITHDRAW</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <CheckCircle2 size={20} color={colors.win} />
+                <Text style={[styles.startButtonText, { color: colors.win }]}>
+                  {t("tournament.registered", "JOINED")} — {t("tournament.withdraw", "WITHDRAW")}
+                </Text>
+              </View>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.primaryButton, actionLoading && { opacity: 0.6 }]}
+              style={[styles.startButton, actionLoading && { opacity: 0.6 }]}
               onPress={handleRegister}
               disabled={actionLoading}
             >
               {actionLoading
                 ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                : <Text style={styles.primaryButtonText}>REGISTER NOW</Text>}
+                : <Text style={styles.startButtonText}>{t("tournament.registerNow", "REGISTER NOW")}</Text>}
             </TouchableOpacity>
           )
         ) : (
-          <View style={styles.closedButton}>
-            <AlertTriangle size={20} color={colors.textSubtle} />
-            <Text style={styles.closedButtonText}>REGISTRATION CLOSED</Text>
+          <View style={[styles.startButton, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, opacity: 0.7 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <AlertTriangle size={20} color={colors.textSubtle} />
+              <Text style={[styles.startButtonText, { color: colors.textSubtle }]}>
+                {t("tournament.closed", "CLOSED")}
+              </Text>
+            </View>
           </View>
         )}
       </View>
@@ -834,6 +864,7 @@ const styles = StyleSheet.create({
   bracketWinnerScore: { color: colors.primary },
   bracketDivider: { height: 1, backgroundColor: colors.border, marginHorizontal: 14 },
   bracketFooter: { flexDirection: "row", gap: 8, padding: 10, paddingTop: 8, alignItems: "center" },
+  // ... (header, hero, match card, tabs, card, grid, prizes, participants, standings, round, match row, bracket, status chips)
 
   // Status chips
   liveChip: { backgroundColor: "rgba(56,189,248,0.15)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: "rgba(56,189,248,0.3)" },
@@ -850,12 +881,65 @@ const styles = StyleSheet.create({
   emptyResultsTitle: { color: colors.foreground, fontSize: 18, fontWeight: "bold" },
   emptyResultsText: { color: colors.textSubtle, fontSize: 14, textAlign: "center", lineHeight: 20 },
 
-  // Footer
-  footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: colors.background, padding: 20, paddingBottom: Platform.OS === "ios" ? 40 : 20, borderTopWidth: 1, borderTopColor: colors.border },
-  primaryButton: { backgroundColor: colors.primary, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  primaryButtonText: { color: colors.onPrimary, fontSize: 16, fontWeight: "900", letterSpacing: 1 },
-  registeredButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(16,185,129,0.08)", height: 56, borderRadius: 16, gap: 12, borderWidth: 1, borderColor: "rgba(16,185,129,0.2)" },
-  registeredButtonText: { color: colors.win, fontSize: 14, fontWeight: "900", letterSpacing: 1 },
-  closedButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.surface, height: 56, borderRadius: 16, gap: 12 },
-  closedButtonText: { color: colors.textSubtle, fontSize: 14, fontWeight: "bold" },
+  // Footer CTA
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  controlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 12,
+  },
+  controlItem: {
+    flex: 1,
+    height: 48,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  controlItemLocked: {
+    borderColor: colors.primaryAlpha30,
+    backgroundColor: colors.primaryAlpha05,
+  },
+  controlLabel: {
+    flex: 1,
+    color: colors.foreground,
+    fontSize: 13,
+    fontWeight: "bold",
+    textTransform: "capitalize",
+  },
+  startButton: {
+    height: 56,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  startButtonText: {
+    color: colors.onPrimary,
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
 });
