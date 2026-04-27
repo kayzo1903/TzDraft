@@ -1,0 +1,2 @@
+-- Add MATCH_DEADLINE_REMINDER to NotificationType enum
+ALTER TYPE "NotificationType" ADD VALUE 'MATCH_DEADLINE_REMINDER';

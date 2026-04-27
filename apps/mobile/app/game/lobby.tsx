@@ -7,8 +7,9 @@ import {
   Animated,
   Easing,
   Alert,
+  ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
@@ -23,6 +24,8 @@ import {
   Lock,
   WifiOff,
   Globe,
+  Shuffle,
+  ChevronDown,
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
 import { matchService } from "../../src/lib/match-service";
@@ -41,6 +44,7 @@ export default function OnlineLobby() {
   const router = useRouter();
   const { socket, connected } = useSocket();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchSeconds, setSearchSeconds] = useState(SEARCH_TIMEOUT_SECONDS);
@@ -231,7 +235,6 @@ export default function OnlineLobby() {
     }
   };
 
-  // ── Keep searching (reset timer, stay in queue) ───────────────────────────
   const handleKeepSearching = () => {
     setTimeoutReached(false);
     setSearchSeconds(SEARCH_TIMEOUT_SECONDS);
@@ -249,10 +252,25 @@ export default function OnlineLobby() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <View style={styles.header}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["left", "right", "bottom"]}>
+      <View style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 12,
+        height: 60,
+      }}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            backgroundColor: colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
           onPress={() => {
             if (isSearching) handleCancelSearch();
             router.back();
@@ -260,188 +278,228 @@ export default function OnlineLobby() {
         >
           <ArrowLeft color={colors.foreground} size={24} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Globe color={colors.primary} size={20} />
-          <Text style={styles.headerTitle}>{t("lobby.title", "Play Online")}</Text>
+          <Text style={{ color: colors.foreground, fontSize: 18, fontWeight: "bold" }}>{t("lobby.title", "Play Online")}</Text>
         </View>
-        {/* Connection indicator */}
-        <View style={[styles.connDot, connected ? styles.connDotOn : styles.connDotOff]} />
+        <View style={[
+          { width: 10, height: 10, borderRadius: 5, marginRight: 4 },
+          connected ? { backgroundColor: colors.success } : { backgroundColor: colors.textDisabled }
+        ]} />
       </View>
 
-      <View style={styles.content}>
-        {!isSearching ? (
-          <View style={styles.setupSection}>
-            {/* Error banner */}
-            {queueError ? (
-              <View style={styles.errorBanner}>
-                <WifiOff color={colors.danger} size={15} />
-                <Text style={styles.errorText} numberOfLines={2}>{queueError}</Text>
-                <TouchableOpacity onPress={() => setQueueError(null)}>
-                  <X color={colors.textMuted} size={15} />
-                </TouchableOpacity>
-              </View>
-            ) : null}
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, isSearching && { flexGrow: 1, justifyContent: "center" }]} 
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!isSearching}
+      >
+        <View style={styles.content}>
+          {!isSearching ? (
+            <View style={styles.setupSection}>
+              {/* Error banner */}
+              {queueError ? (
+                <View style={styles.errorBanner}>
+                  <WifiOff color={colors.danger} size={15} />
+                  <Text style={styles.errorText} numberOfLines={2}>{queueError}</Text>
+                  <TouchableOpacity onPress={() => setQueueError(null)}>
+                    <X color={colors.textMuted} size={15} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
 
-            {/* Stats row */}
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Users color={colors.primary} size={20} />
-                <Text style={styles.statValue}>
-                  {connected ? counts.online : "—"}
-                </Text>
-                <Text style={styles.statLabel}>
-                  {t("lobby.playersOnline", "Online")}
-                </Text>
+              {/* Stats row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <Users color={colors.primary} size={20} />
+                  <Text style={styles.statValue}>
+                    {connected ? counts.online : "—"}
+                  </Text>
+                  <Text style={styles.statLabel}>
+                    {t("lobby.playersOnline", "Online")}
+                  </Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Search color={colors.primary} size={20} />
+                  <Text style={styles.statValue}>
+                    {connected ? counts.searching : "—"}
+                  </Text>
+                  <Text style={styles.statLabel}>
+                    {t("lobby.playersSearching", "Searching")}
+                  </Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Trophy color={colors.primary} size={20} />
+                  <Text style={styles.statValue}>{user?.username ?? "—"}</Text>
+                  <Text style={styles.statLabel}>{t("lobby.you", "You")}</Text>
+                </View>
               </View>
-              <View style={styles.statCard}>
-                <Search color={colors.primary} size={20} />
-                <Text style={styles.statValue}>
-                  {connected ? counts.searching : "—"}
+
+              {/* Time control selection */}
+              <View style={styles.modeSelection}>
+                <Text style={styles.sectionTitle}>
+                  {t("lobby.selectMode", "Time Control")}
                 </Text>
-                <Text style={styles.statLabel}>
-                  {t("lobby.playersSearching", "Searching")}
-                </Text>
-              </View>
-              <View style={styles.statCard}>
-                <Trophy color={colors.primary} size={20} />
-                <Text style={styles.statValue}>{user?.username ?? "—"}</Text>
-                <Text style={styles.statLabel}>{t("lobby.you", "You")}</Text>
+
+                <View style={styles.poolNotice}>
+                  <Lock color={colors.textDisabled} size={12} />
+                  <Text style={styles.poolNoticeText}>
+                    {t(
+                      "lobby.poolNotice",
+                      "Only 5-min Blitz available — more time controls unlock as the player pool grows.",
+                    )}
+                  </Text>
+                </View>
+
+                <View style={styles.grid}>
+                  {/* Blitz 5 min — available */}
+                  <View style={[styles.modeCard, styles.activeModeCard]}>
+                    <Zap color={colors.primary} size={24} />
+                    <Text style={styles.modeTitle}>Blitz</Text>
+                    <Text style={styles.modeDesc}>{t("setupAi.time.minutes", { minutes: 5 })}</Text>
+                  </View>
+
+                  {/* Rapid — coming soon */}
+                  <View style={[styles.modeCard, styles.modeCardDisabled]}>
+                    <Clock color={colors.textDisabled} size={24} />
+                    <Text style={[styles.modeTitle, styles.modeTitleDisabled]}>Rapid</Text>
+                    <Text style={[styles.modeDesc, styles.modeDescDisabled]}>10 + 5</Text>
+                    <View style={styles.soonBadge}>
+                      <Text style={styles.soonBadgeText}>{t("play.modes.online.comingSoon", "SOON")}</Text>
+                    </View>
+                  </View>
+
+                  {/* Classic — coming soon */}
+                  <View style={[styles.modeCard, styles.modeCardDisabled]}>
+                    <Shield color={colors.textDisabled} size={24} />
+                    <Text style={[styles.modeTitle, styles.modeTitleDisabled]}>Classic</Text>
+                    <Text style={[styles.modeDesc, styles.modeDescDisabled]}>30 + 0</Text>
+                    <View style={styles.soonBadge}>
+                      <Text style={styles.soonBadgeText}>{t("play.modes.online.comingSoon", "SOON")}</Text>
+                    </View>
+                  </View>
+                </View>
               </View>
             </View>
+          ) : (
+            /* ── Searching screen ─────────────────────────────────────────── */
+            <View style={styles.searchSection}>
+              <Animated.View
+                style={[styles.searchRing, { transform: [{ scale: pulseAnim }] }]}
+              >
+                <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                  <Search color={colors.primary} size={56} strokeWidth={1} />
+                </Animated.View>
+              </Animated.View>
 
-            {/* Time control selection */}
-            <View style={styles.modeSelection}>
-              <Text style={styles.sectionTitle}>
-                {t("lobby.selectMode", "Time Control")}
+              <Text style={styles.searchingTitle}>
+                {t("lobby.searching", "Searching for Opponent…")}
               </Text>
 
-              <View style={styles.poolNotice}>
-                <Lock color={colors.textDisabled} size={12} />
-                <Text style={styles.poolNoticeText}>
-                  {t(
-                    "lobby.poolNotice",
-                    "Only 5-min Blitz available — more time controls unlock as the player pool grows.",
-                  )}
+              <View style={styles.searchTimerBlock}>
+                <Text style={styles.searchTimerLabel}>{t("lobby.timeRemaining")}</Text>
+                <Text
+                  style={[
+                    styles.searchTimer,
+                    searchSeconds <= 10 && styles.searchTimerDanger,
+                  ]}
+                >
+                  {formatSearchTime(searchSeconds)}
                 </Text>
               </View>
 
-              <View style={styles.grid}>
-                {/* Blitz 5 min — available */}
-                <View style={[styles.modeCard, styles.activeModeCard]}>
-                  <Zap color={colors.primary} size={24} />
-                  <Text style={styles.modeTitle}>Blitz</Text>
-                  <Text style={styles.modeDesc}>{t("setupAi.time.minutes", { minutes: 5 })}</Text>
-                </View>
+              <View style={styles.searchingStats}>
+                <Text style={styles.searchingStatsText}>
+                  {counts.searching} {t("lobby.othersSearching", "players searching")}
+                </Text>
+              </View>
 
-                {/* Rapid — coming soon */}
-                <View style={[styles.modeCard, styles.modeCardDisabled]}>
-                  <Clock color={colors.textDisabled} size={24} />
-                  <Text style={[styles.modeTitle, styles.modeTitleDisabled]}>Rapid</Text>
-                  <Text style={[styles.modeDesc, styles.modeDescDisabled]}>10 + 5</Text>
-                  <View style={styles.soonBadge}>
-                    <Text style={styles.soonBadgeText}>{t("play.modes.online.comingSoon", "SOON")}</Text>
+              <View style={styles.modeChip}>
+                <Zap color={colors.primary} size={14} />
+                <Text style={styles.modeChipText}>{t("setupAi.time.minutes", { minutes: 5 })} · Blitz</Text>
+              </View>
+
+              {/* Timeout hint — shown once countdown reaches 0 */}
+              {timeoutReached && (
+                <View style={styles.timeoutCard}>
+                  <Text style={styles.timeoutText}>
+                    {t("lobby.timeoutHint")}
+                  </Text>
+                  <View style={styles.timeoutActions}>
+                    <TouchableOpacity
+                      style={[styles.timeoutBtn, styles.timeoutBtnAI]}
+                      onPress={() => {
+                        handleCancelSearch();
+                        const level = getCachedMaxUnlockedLevel();
+                        router.replace(
+                          `/game/vs-ai?botLevel=${level}&playerColor=WHITE&timeControlType=timed&timeSeconds=300` as any,
+                        );
+                      }}
+                    >
+                      <Zap color={colors.primary} size={15} />
+                      <Text style={styles.timeoutBtnAIText}>{t("lobby.matchVsAi")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.timeoutBtn, styles.timeoutBtnSearch]}
+                      onPress={handleKeepSearching}
+                    >
+                      <Search color={colors.textMuted} size={15} />
+                      <Text style={styles.timeoutBtnSearchText}>{t("lobby.searchAgain")}</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
+              )}
+            </View>
+          )}
+        </View>
+        {!isSearching && <View style={{ height: 180 }} />}
+      </ScrollView>
 
-                {/* Classic — coming soon */}
-                <View style={[styles.modeCard, styles.modeCardDisabled]}>
-                  <Shield color={colors.textDisabled} size={24} />
-                  <Text style={[styles.modeTitle, styles.modeTitleDisabled]}>Classic</Text>
-                  <Text style={[styles.modeDesc, styles.modeDescDisabled]}>30 + 0</Text>
-                  <View style={styles.soonBadge}>
-                    <Text style={styles.soonBadgeText}>{t("play.modes.online.comingSoon", "SOON")}</Text>
-                  </View>
+      {/* Sticky Bottom Footer */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+        {!isSearching ? (
+          <>
+            <View style={styles.controlsRow}>
+              {/* Time Selector (Locked) */}
+              <View style={[styles.timeButton, styles.timeButtonLocked]}>
+                <Clock color={colors.primary} size={20} />
+                <Text style={[styles.controlLabel, { color: colors.primary }]}>
+                  {t("setupAi.time.minutes", { minutes: 5 })}
+                </Text>
+                <Lock color={colors.primary} size={14} />
+              </View>
+
+              {/* Color Selector (Locked to Random) */}
+              <View style={styles.colorSelector}>
+                <View style={[styles.colorIcon, styles.activeColor]}>
+                  <Shuffle color={colors.primary} size={20} />
                 </View>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.mainActionBtn, !connected && styles.mainActionBtnDisabled]}
+              style={[styles.startButton, !connected && styles.startButtonDisabled]}
               onPress={handleStartSearch}
               disabled={!connected}
             >
-              <Text style={styles.mainActionText}>
+              <Text style={styles.startButtonText}>
                 {connected
-                  ? t("lobby.findOpponent", "Find Opponent")
+                  ? `${t("setupAi.start.cta", "Start Game")} — Blitz`
                   : t("lobby.connecting", "Connecting…")}
               </Text>
-              <Search color={colors.onPrimary} size={20} strokeWidth={3} />
             </TouchableOpacity>
-          </View>
+          </>
         ) : (
-          /* ── Searching screen ─────────────────────────────────────────── */
-          <View style={styles.searchSection}>
-            <Animated.View
-              style={[styles.searchRing, { transform: [{ scale: pulseAnim }] }]}
-            >
-              <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <Search color={colors.primary} size={56} strokeWidth={1} />
-              </Animated.View>
-            </Animated.View>
-
-            <Text style={styles.searchingTitle}>
-              {t("lobby.searching", "Searching for Opponent…")}
-            </Text>
-
-            <View style={styles.searchTimerBlock}>
-              <Text style={styles.searchTimerLabel}>{t("lobby.timeRemaining")}</Text>
-              <Text
-                style={[
-                  styles.searchTimer,
-                  searchSeconds <= 10 && styles.searchTimerDanger,
-                ]}
-              >
-                {formatSearchTime(searchSeconds)}
+          <TouchableOpacity 
+            style={[styles.startButton, { backgroundColor: colors.surface, borderColor: colors.dangerAlpha20, borderWidth: 1 }]} 
+            onPress={handleCancelSearch}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <X color={colors.danger} size={20} strokeWidth={3} />
+              <Text style={[styles.startButtonText, { color: colors.danger }]}>
+                {t("common.cancel", "Cancel Search")}
               </Text>
             </View>
-
-            <View style={styles.searchingStats}>
-              <Text style={styles.searchingStatsText}>
-                {counts.searching} {t("lobby.othersSearching", "players searching")}
-              </Text>
-            </View>
-
-            <View style={styles.modeChip}>
-              <Zap color={colors.primary} size={14} />
-              <Text style={styles.modeChipText}>{t("setupAi.time.minutes", { minutes: 5 })} · Blitz</Text>
-            </View>
-
-            {/* Timeout hint — shown once countdown reaches 0 */}
-            {timeoutReached && (
-              <View style={styles.timeoutCard}>
-                <Text style={styles.timeoutText}>
-                  {t("lobby.timeoutHint")}
-                </Text>
-                <View style={styles.timeoutActions}>
-                  <TouchableOpacity
-                    style={[styles.timeoutBtn, styles.timeoutBtnAI]}
-                    onPress={() => {
-                      handleCancelSearch();
-                      const level = getCachedMaxUnlockedLevel();
-                      router.replace(
-                        `/game/vs-ai?botLevel=${level}&playerColor=WHITE&timeControlType=timed&timeSeconds=300` as any,
-                      );
-                    }}
-                  >
-                    <Zap color={colors.primary} size={15} />
-                    <Text style={styles.timeoutBtnAIText}>{t("lobby.matchVsAi")}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.timeoutBtn, styles.timeoutBtnSearch]}
-                    onPress={handleKeepSearching}
-                  >
-                    <Search color={colors.textMuted} size={15} />
-                    <Text style={styles.timeoutBtnSearchText}>{t("lobby.searchAgain")}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelSearch}>
-              <X color={colors.danger} size={18} />
-              <Text style={styles.cancelBtnText}>{t("common.cancel", "Cancel")}</Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         )}
       </View>
     </SafeAreaView>
@@ -449,52 +507,12 @@ export default function OnlineLobby() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    height: 60,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerTitle: {
-    color: colors.foreground,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  headerTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  connDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 4,
-  },
-  connDotOn: {
-    backgroundColor: colors.success,
-  },
-  connDotOff: {
-    backgroundColor: colors.textDisabled,
+  scrollContent: {
+    padding: 20,
+    paddingTop: 0,
   },
   content: {
     flex: 1,
-    padding: 20,
     justifyContent: "center",
   },
   setupSection: {
@@ -615,26 +633,83 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.5,
   },
-  mainActionBtn: {
-    backgroundColor: colors.primary,
-    height: 64,
-    borderRadius: 20,
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16, // Base; overridden by insets
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  controlsRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
     gap: 12,
+  },
+  timeButton: {
+    flex: 1,
+    height: 48,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timeButtonLocked: {
+    borderColor: colors.primaryAlpha30,
+    backgroundColor: colors.primaryAlpha05,
+  },
+  controlLabel: {
+    flex: 1,
+    color: colors.foreground,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  colorSelector: {
+    flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  colorIcon: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  activeColor: {
+    backgroundColor: colors.primaryAlpha15,
+  },
+  startButton: {
+    height: 56,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
-  mainActionBtnDisabled: {
+  startButtonDisabled: {
     backgroundColor: colors.surfaceElevated,
     shadowOpacity: 0,
     elevation: 0,
   },
-  mainActionText: {
+  startButtonText: {
     color: colors.onPrimary,
     fontSize: 18,
     fontWeight: "900",
@@ -644,7 +719,9 @@ const styles = StyleSheet.create({
   // ── Searching screen ──────────────────────────────────────────────────────
   searchSection: {
     alignItems: "center",
+    justifyContent: "center",
     gap: 28,
+    paddingBottom: 40, // Slight offset to look visually centered above footer
   },
   searchRing: {
     width: 140,

@@ -83,7 +83,9 @@
     "earlier": "Za awali",
     "emptyTitle": "Umeshafika mwisho",
     "emptySubtitle": "Taarifa za mashindano, matangazo ya wasimamizi, na vikumbusho vitaonekana hapa.",
-    "devPreviewHint": "Bonyeza kitufe cha maabara kuona aina za arifa."
+    "devPreviewHint": "Bonyeza kitufe cha maabara kuona aina za arifa.",
+    "followBack": "Mfuate Pia",
+    "following": "Unafuata"
   },
   "game": {
     "playOnline": "Cheza Mtandaoni 🌐",
@@ -635,6 +637,8 @@
       "onlineMatch": "MECHI MTANDAONI",
       "offlineTitle": "Uko Nje ya Mtandao",
       "offlineBody": "Inajaribu kuunganisha tena...",
+      "opponentDisconnected": "Mpinzani amekata mtandao",
+      "opponentForfeit": "Mpinzani amekata — anashindwa baada ya sekunde {{seconds}}",
       "moveTimeout": "Muda wa kucheza umeisha — angalia mtandao wako."
     },
     "endgameCountdown": "Hesabu ya mwisho: hatua {remaining} zimebaki kwa {favored}",
