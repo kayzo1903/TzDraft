@@ -7,7 +7,26 @@ import { Button } from '@/components/ui/Button';
 import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings, ChevronDown, Globe, Menu, X, LayoutDashboard, Trophy, Bell, FileText, Shield } from 'lucide-react';
+import { 
+  User, 
+  LogOut, 
+  Settings, 
+  ChevronDown, 
+  Globe, 
+  Menu, 
+  X, 
+  LayoutDashboard, 
+  Trophy, 
+  Bell, 
+  FileText, 
+  Shield,
+  History,
+  Medal,
+  BookOpen,
+  HelpCircle,
+  ExternalLink,
+  ScrollText
+} from 'lucide-react';
 import Image from 'next/image';
 import { useTournamentNotifications } from '@/hooks/useTournamentNotifications';
 
@@ -32,9 +51,12 @@ export const Navbar: React.FC = () => {
 
     const navLinks = [
         { name: t('home'), href: '/' },
-        { name: t('play'), href: '/play' },
-        { name: t('community'), href: '/community' },
+        { name: t('play'), href: '/game/setup-online' },
+        { name: t('history'), href: '/game/history' },
         { name: t('leaderboard'), href: '/leaderboard' },
+        { name: t('tournaments'), href: '/community/tournament' },
+        { name: t('community'), href: '/community' },
+        { name: t('learn'), href: '/learn' },
         { name: t('support'), href: '/support' },
     ];
 
@@ -123,79 +145,61 @@ export const Navbar: React.FC = () => {
     return (
         <nav
             className={clsx(
-                'sticky top-0 z-50 w-full transition-all duration-300',
+                'sticky top-0 z-50 w-full transition-all duration-300 lg:hidden',
                 isScrolled
-                    ? 'border-b border-white/5 bg-[rgb(28,25,23)] shadow-[0_12px_40px_rgba(0,0,0,0.35)]'
-                    : 'border-b border-white/5 bg-[rgb(28,25,23)]'
+                    ? 'border-b border-white/5 bg-[var(--background)] shadow-[0_12px_40px_rgba(0,0,0,0.35)]'
+                    : 'border-b border-white/5 bg-[var(--background)]'
             )}
         >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-16">
-                    {/* Left: Logo & Desktop Links */}
-                    <div className="flex items-center gap-8">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="relative w-9 h-9">
+            <div className="mx-auto px-4">
+                <div className="flex items-center justify-between h-16 relative">
+                    {/* Left: Profile / Login */}
+                    <div className="flex-1 flex items-center justify-start">
+                        {user && !isGuest ? (
+                            <Link href="/profile" className="flex items-center justify-center w-11 h-11 rounded-xl border border-white/10 bg-surface hover:bg-surface-elevated transition-colors">
+                                <User className="w-6 h-6 text-[var(--primary)]" />
+                            </Link>
+                        ) : (
+                            <Link href="/auth/login" className="flex items-center justify-center px-4 h-11 rounded-xl border border-white/10 bg-surface text-sm font-bold text-foreground">
+                                {t('login')}
+                            </Link>
+                        )}
+                    </div>
+
+                    {/* Center: Branding */}
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        <Link href="/" className="flex items-center pointer-events-auto">
+                            <div className="relative w-32 h-10">
                                 <Image
                                     src="/logo/tzdraft-logo-transparent.png"
                                     alt="TzDraft"
                                     fill
-                                    sizes="36px"
                                     className="object-contain"
                                     priority
                                 />
                             </div>
-                            <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-[var(--primary)] via-amber-300 to-[var(--primary)] bg-clip-text text-transparent">
-                                TzDraft
-                            </span>
                         </Link>
-
-                        <div className="hidden lg:flex items-center gap-1 rounded-2xl border border-white/5 bg-white/5 p-1">
-                            {navLinks.map((link) => (
-                                <Link
-                                    key={link.name}
-                                    href={link.href}
-                                    className={clsx(
-                                        'relative px-4 py-2 rounded-xl text-sm font-semibold transition-colors',
-                                        isActive(link.href)
-                                            ? "text-white bg-white/10 after:content-[''] after:absolute after:left-3 after:right-3 after:-bottom-0.5 after:h-0.5 after:bg-[var(--primary)] after:rounded-full"
-                                            : 'text-neutral-300/80 hover:text-white hover:bg-white/10'
-                                    )}
-                                >
-                                    {link.name}
-                                </Link>
-                            ))}
-
-                            {/* Language Toggler */}
-                            <button
-                                onClick={toggleLanguage}
-                                className="ml-1 inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-neutral-300/80 hover:text-white hover:bg-white/10 transition-colors"
-                            >
-                                <Globe className="w-4 h-4" />
-                                <span className="tracking-wide">{locale === 'sw' ? 'SW' : 'EN'}</span>
-                            </button>
-                        </div>
                     </div>
 
-                    {/* Right: Auth Buttons or User Menu */}
-                    <div className="hidden lg:flex items-center gap-3">
-                        {/* Notification Bell — shown only for logged-in non-guest users */}
+                    {/* Right: Notifications & Menu */}
+                    <div className="flex-1 flex items-center justify-end gap-2">
                         {user && !isGuest && (
                             <div className="relative" ref={bellRef}>
                                 <button
-                                    onClick={() => { setIsBellOpen((v) => !v); setIsUserMenuOpen(false); }}
-                                    className="relative p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-neutral-300 hover:text-white"
+                                    onClick={() => { setIsBellOpen((v) => !v); }}
+                                    className="relative flex items-center justify-center w-11 h-11 rounded-xl border border-white/10 bg-surface hover:bg-surface-elevated transition-colors text-[var(--primary)]"
                                     aria-label="Notifications"
                                 >
-                                    <Bell className="w-5 h-5" />
+                                    <Bell className="w-6 h-6" />
                                     {unreadCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--primary)] text-black text-[10px] font-black px-1">
+                                        <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-danger text-white text-[9px] font-black border-2 border-surface">
                                             {unreadCount > 9 ? '9+' : unreadCount}
                                         </span>
                                     )}
                                 </button>
 
                                 {isBellOpen && (
-                                    <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-white/10 bg-[rgb(20_19_18/0.96)] backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+                                    <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-white/10 bg-[var(--background)]/95 backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden z-[90]">
                                         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                                             <p className="text-sm font-semibold text-white">Notifications</p>
                                             {unreadCount > 0 && (
@@ -240,131 +244,27 @@ export const Navbar: React.FC = () => {
                                 )}
                             </div>
                         )}
-
-                        {user && !isGuest ? (
-                            <div className="relative" ref={userMenuRef}>
-                                <button
-                                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                    className={clsx(
-                                        'flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors',
-                                        isUserMenuOpen && 'bg-white/10'
-                                    )}
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)] to-amber-300 flex items-center justify-center text-black font-black shadow-[0_10px_30px_rgba(249,115,22,0.25)] ring-1 ring-white/10">
-                                        {user.username.charAt(0).toUpperCase()}
-                                    </div>
-                                    <span className="text-white font-medium">{user.username}</span>
-                                    <ChevronDown className={clsx(
-                                        "w-4 h-4 text-gray-400 transition-transform",
-                                        isUserMenuOpen && "rotate-180"
-                                    )} />
-                                </button>
-
-                                {/* Dropdown Menu */}
-                                {isUserMenuOpen && (
-                                    <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[rgb(20_19_18/0.92)] backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
-                                        <div className="px-4 py-3 border-b border-white/10">
-                                            <p className="text-xs uppercase tracking-[0.4em] text-neutral-400">Account</p>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-sm font-medium text-white truncate">{user.username}</p>
-                                                <span
-                                                    className={clsx(
-                                                        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black border",
-                                                        user.isVerified
-                                                            ? "bg-green-500/10 text-green-300 border-green-500/30"
-                                                            : "bg-amber-500/10 text-amber-300 border-amber-500/30"
-                                                    )}
-                                                >
-                                                    {user.isVerified ? "VERIFIED" : "UNVERIFIED"}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">Rating: {typeof user.rating === 'object' ? user.rating.rating : user.rating}</p>
-                                        </div>
-                                        <div className="py-1">
-                                            <Link
-                                                href="/profile"
-                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200/90 hover:bg-white/10 hover:text-white transition-colors"
-                                                onClick={() => setIsUserMenuOpen(false)}
-                                            >
-                                                <User className="w-4 h-4" />
-                                                Profile
-                                            </Link>
-                                            <Link
-                                                href="/leaderboard"
-                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200/90 hover:bg-white/10 hover:text-white transition-colors"
-                                                onClick={() => setIsUserMenuOpen(false)}
-                                            >
-                                                <Trophy className="w-4 h-4" />
-                                                Leaderboard
-                                            </Link>
-                                            <Link
-                                                href="/settings"
-                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200/90 hover:bg-white/10 hover:text-white transition-colors"
-                                                onClick={() => setIsUserMenuOpen(false)}
-                                            >
-                                                <Settings className="w-4 h-4" />
-                                                Settings
-                                            </Link>
-                                            {user.role === 'ADMIN' && (
-                                                <Link
-                                                    href="/admin"
-                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-400/90 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
-                                                    onClick={() => setIsUserMenuOpen(false)}
-                                                >
-                                                    <LayoutDashboard className="w-4 h-4" />
-                                                    Admin Panel
-                                                </Link>
-                                            )}
-                                        </div>
-                                        <div className="border-t border-white/10">
-                                            <button
-                                                onClick={handleLogout}
-                                                className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-300/90 hover:bg-red-500/10 hover:text-red-200 transition-colors"
-                                            >
-                                                <LogOut className="w-4 h-4" />
-                                                Sign Out
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <>
-                                <Link href="/auth/login">
-                                    <Button variant="ghost" size="sm" className="text-neutral-300/80 hover:text-white font-semibold">{t('login')}</Button>
-                                </Link>
-                                <Link href="/auth/signup">
-                                    <Button size="sm" className="font-black shadow-[0_18px_50px_rgba(249,115,22,0.22)] border-b-0 active:translate-y-0">{t('signup')}</Button>
-                                </Link>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Mobile Menu Button */}
-                    <div className="lg:hidden">
                         <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-2 text-neutral-200 transition-colors"
+                            className="flex items-center justify-center w-11 h-11 rounded-xl border border-white/10 bg-surface hover:bg-surface-elevated transition-colors text-[var(--primary)]"
                             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
                         >
-                            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile Menu (Full-page slide-in) */}
+            {/* Mobile Menu (Full-page slide-in from Right) */}
             <div
                 className={clsx(
-                    'lg:hidden fixed inset-0 z-[80] transition-opacity duration-500 ease-out',
+                    'lg:hidden fixed inset-0 z-[100] transition-opacity duration-500 ease-out',
                     isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 )}
                 aria-hidden={!isMenuOpen}
             >
-                {/* Deep blur backdrop */}
-                <button
-                    type="button"
-                    aria-label="Close menu"
+                {/* Overlay Backdrop */}
+                <div
                     onClick={() => setIsMenuOpen(false)}
                     className={clsx(
                         'absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500 ease-out',
@@ -375,155 +275,139 @@ export const Navbar: React.FC = () => {
                 {/* Slide panel */}
                 <div
                     className={clsx(
-                        'absolute inset-y-0 left-0 w-[85%] max-w-sm transform transition-transform duration-500 ease-[cubic-bezier(0.22,0.61,0.36,1)] will-change-transform',
-                        isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+                        'absolute inset-y-0 right-0 w-[80%] max-w-sm transform transition-transform duration-500 ease-[cubic-bezier(0.22,0.61,0.36,1)] will-change-transform',
+                        isMenuOpen ? 'translate-x-0' : 'translate-x-full'
                     )}
                     role="dialog"
                     aria-modal="true"
                 >
-                    <div className="h-full w-full border-r border-white/10 bg-[#141312]/95 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.75)]">
-                        <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between">
-                            <Link href="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
-                                <div className="relative w-9 h-9">
-                                    <Image
-                                        src="/logo/tzdraft-logo-transparent.png"
-                                        alt="TzDraft"
-                                        fill
-                                        sizes="36px"
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <span className="text-xl font-black tracking-tight bg-gradient-to-r from-[var(--primary)] via-amber-300 to-[var(--primary)] bg-clip-text text-transparent">
-                                    TzDraft
-                                </span>
-                            </Link>
-
+                    <div className="h-full w-full border-l border-white/10 bg-[var(--background)] shadow-[-30px_0_120px_rgba(0,0,0,0.75)] flex flex-col">
+                        {/* Drawer Header */}
+                        <div className="px-5 h-16 border-b border-white/10 flex items-center justify-between shrink-0">
+                            <span className="text-lg font-black text-foreground">Menu</span>
                             <button
-                                type="button"
                                 onClick={() => setIsMenuOpen(false)}
-                                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-2 text-neutral-200 transition-colors"
-                                aria-label="Close menu"
+                                className="p-2 text-[var(--primary)]"
                             >
-                                <X className="w-5 h-5" />
+                                <X className="w-6 h-6" />
                             </button>
                         </div>
 
-                        <div className="px-4 py-5 space-y-5">
-                            <div className="space-y-2">
+                        {/* Drawer Content */}
+                        <div className="flex-1 overflow-y-auto pb-24">
+                            {/* Account Section */}
+                            <div className="px-5 py-6 border-b border-white/10">
+                                {user && !isGuest ? (
+                                    <Link 
+                                        href="/profile" 
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="flex items-center gap-4 group"
+                                    >
+                                        <div className="w-14 h-14 rounded-full bg-surface-elevated flex items-center justify-center border border-border-strong overflow-hidden">
+                                            <User className="w-8 h-8 text-[var(--primary)]" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-base font-black text-foreground truncate group-hover:text-[var(--primary)] transition-colors">
+                                                {user.displayName || user.username}
+                                            </p>
+                                            <p className="text-xs text-text-muted truncate">{user.email || `@${user.username}`}</p>
+                                        </div>
+                                    </Link>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <Link href="/auth/login" onClick={() => setIsMenuOpen(false)} className="block">
+                                            <Button className="w-full h-12 rounded-xl font-black">Login</Button>
+                                        </Link>
+                                        <Link href="/auth/signup" onClick={() => setIsMenuOpen(false)} className="block">
+                                            <Button variant="secondary" className="w-full h-12 rounded-xl font-black border border-[var(--primary)]/30 text-[var(--primary)]">Sign Up</Button>
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Nav Section */}
+                            <div className="px-3 py-4 space-y-1">
                                 {navLinks.map((link) => (
                                     <Link
                                         key={link.name}
                                         href={link.href}
                                         className={clsx(
-                                            "block px-4 py-3 rounded-2xl text-lg font-semibold transition-colors",
+                                            "flex items-center gap-4 px-4 py-3 rounded-2xl text-base font-bold transition-all",
                                             isActive(link.href)
-                                                ? "text-white bg-white/10"
-                                                : "text-neutral-200/90 hover:text-white hover:bg-white/10"
+                                                ? "bg-[var(--primary)] text-black"
+                                                : "text-text-secondary hover:text-white hover:bg-white/5"
                                         )}
                                         onClick={() => setIsMenuOpen(false)}
                                     >
                                         {link.name}
                                     </Link>
                                 ))}
+                                {user && !isGuest && (
+                                    <Link
+                                        href="/game/studies"
+                                        className={clsx(
+                                            "flex items-center gap-4 px-4 py-3 rounded-2xl text-base font-bold transition-all",
+                                            isActive("/game/studies")
+                                                ? "bg-[var(--primary)] text-black"
+                                                : "text-text-secondary hover:text-white hover:bg-white/5"
+                                        )}
+                                        onClick={() => setIsMenuOpen(false)}
+                                    >
+                                        {t('studies')}
+                                    </Link>
+                                )}
                             </div>
 
-                            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3">
-                                <div className="text-sm font-semibold text-neutral-200">Language</div>
+                            {/* Divider */}
+                            <div className="mx-6 h-px bg-white/5 my-2" />
+
+                            {/* Legal Section */}
+                            <div className="px-3 py-4 space-y-1">
+                                <Link href="/rules" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 px-4 py-2.5 text-sm font-bold text-text-muted hover:text-foreground">
+                                    <FileText className="w-5 h-5" />
+                                    {t("rules")}
+                                </Link>
+                                <Link href="/terms" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 px-4 py-2.5 text-sm font-bold text-text-muted hover:text-foreground">
+                                    <ScrollText className="w-5 h-5" />
+                                    {t("terms")}
+                                </Link>
+                                <Link href="/privacy" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 px-4 py-2.5 text-sm font-bold text-text-muted hover:text-foreground">
+                                    <Shield className="w-5 h-5" />
+                                    {t("privacy")}
+                                </Link>
+                                <Link href="https://tzdraft.co.tz" target="_blank" className="flex items-center gap-4 px-4 py-2.5 text-sm font-bold text-text-muted hover:text-foreground">
+                                    <ExternalLink className="w-5 h-5" />
+                                    {t("website")}
+                                </Link>
+                            </div>
+
+                            {/* Language Section */}
+                            <div className="px-5 py-6 border-t border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Globe className="w-5 h-5 text-text-muted" />
+                                    <span className="text-sm font-bold text-text-secondary">Language</span>
+                                </div>
                                 <button
                                     onClick={toggleLanguage}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-neutral-200 hover:bg-white/10 transition-colors"
+                                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-surface text-xs font-black text-[var(--primary)] uppercase tracking-widest"
                                 >
-                                    <Globe className="w-4 h-4" />
-                                    {locale === 'sw' ? 'EN' : 'SW'}
+                                    {locale === 'sw' ? 'SW' : 'EN'}
                                 </button>
                             </div>
-
-                            {user && !isGuest ? (
-                                <div className="space-y-2">
-                                    {unreadCount > 0 && (
-                                        <div className="rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-4 py-3 flex items-center gap-3">
-                                            <Bell className="w-4 h-4 text-[var(--primary)] shrink-0" />
-                                            <p className="text-sm text-[var(--primary)] font-semibold">
-                                                {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
-                                            </p>
-                                        </div>
-                                    )}
-                                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                                        <p className="text-xs uppercase tracking-[0.4em] text-neutral-400">Signed in</p>
-                                        <div className="mt-1 flex items-center justify-between gap-2">
-                                            <p className="text-sm font-semibold text-white truncate">{user.username}</p>
-                                            <span
-                                                className={clsx(
-                                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black border",
-                                                    user.isVerified
-                                                        ? "bg-green-500/10 text-green-300 border-green-500/30"
-                                                        : "bg-amber-500/10 text-amber-300 border-amber-500/30"
-                                                )}
-                                            >
-                                                {user.isVerified ? "VERIFIED" : "UNVERIFIED"}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-neutral-300/80 mt-1">Rating: {typeof user.rating === 'object' ? user.rating.rating : user.rating}</p>
-                                    </div>
-                                    <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
-                                        <Button variant="secondary" className="w-full justify-start gap-2">
-                                            <User className="w-4 h-4" />
-                                            Profile
-                                        </Button>
-                                    </Link>
-                                    <Link href="/settings" onClick={() => setIsMenuOpen(false)}>
-                                        <Button variant="secondary" className="w-full justify-start gap-2">
-                                            <Settings className="w-4 h-4" />
-                                            Settings
-                                        </Button>
-                                    </Link>
-                                    {user.role === 'ADMIN' && (
-                                        <Link href="/admin" onClick={() => setIsMenuOpen(false)}>
-                                            <Button variant="secondary" className="w-full justify-start gap-2 text-amber-400">
-                                                <LayoutDashboard className="w-4 h-4" />
-                                                Admin Panel
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    <Button
-                                        onClick={handleLogout}
-                                        variant="secondary"
-                                        className="w-full justify-start gap-2 text-red-300 hover:text-red-200"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        Sign Out
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2">
-                                    <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
-                                        <Button variant="secondary" className="w-full justify-center">{t('login')}</Button>
-                                    </Link>
-                                    <Link href="/auth/signup" onClick={() => setIsMenuOpen(false)}>
-                                        <Button className="w-full justify-center">{t('signup')}</Button>
-                                    </Link>
-                                </div>
-                            )}
-                            <div className="border-t border-white/10 pt-4 space-y-1">
-                                <p className="px-4 text-xs uppercase tracking-[0.4em] text-neutral-500 mb-2">Legal</p>
-                                <Link
-                                    href="/terms"
-                                    onClick={() => setIsMenuOpen(false)}
-                                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
-                                >
-                                    <FileText className="w-4 h-4 shrink-0" />
-                                    Terms of Service
-                                </Link>
-                                <Link
-                                    href="/privacy"
-                                    onClick={() => setIsMenuOpen(false)}
-                                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
-                                >
-                                    <Shield className="w-4 h-4 shrink-0" />
-                                    Privacy Policy
-                                </Link>
-                            </div>
                         </div>
+
+                        {/* Logout at Bottom */}
+                        {user && !isGuest && (
+                            <div className="p-5 border-t border-white/10 bg-[var(--background)]">
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-base font-bold text-danger hover:bg-danger/10 transition-all"
+                                >
+                                    <LogOut className="w-5 h-5" />
+                                    Logout
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -25,7 +25,10 @@
         "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
         "EXPO_PUBLIC_SANITY_DATASET": "production",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "583911650740-l7g21qc3sgl3qspi3q3fhfjlrn6dcqqt.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "583911650740-a6ng737m7t4dbnkcctbeq6oot7i1pj94.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "583911650740-a6ng737m7t4dbnkcctbeq6oot7i1pj94.apps.googleusercontent.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://72762c505efa4bd282addf6875760f32@o4510271784550400.ingest.us.sentry.io/4511290094452736",
+        "SENTRY_ORG": "tzdraft",
+        "SENTRY_PROJECT": "react-native"
       }
     },
     "production": {
@@ -37,7 +40,10 @@
         "EXPO_PUBLIC_SANITY_PROJECT_ID": "wvztgicc",
         "EXPO_PUBLIC_SANITY_DATASET": "production",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "583911650740-l7g21qc3sgl3qspi3q3fhfjlrn6dcqqt.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "583911650740-a6ng737m7t4dbnkcctbeq6oot7i1pj94.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "583911650740-a6ng737m7t4dbnkcctbeq6oot7i1pj94.apps.googleusercontent.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://72762c505efa4bd282addf6875760f32@o4510271784550400.ingest.us.sentry.io/4511290094452736",
+        "SENTRY_ORG": "tzdraft",
+        "SENTRY_PROJECT": "react-native"
       }
     }
   },

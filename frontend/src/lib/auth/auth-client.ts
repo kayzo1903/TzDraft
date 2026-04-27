@@ -166,4 +166,20 @@ export const authClient = {
     }
     return response.data;
   },
+
+  async uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await axiosInstance.post("/auth/avatar", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (response.data?.data?.avatarUrl) {
+      useAuthStore.getState().updateUser({ avatarUrl: response.data.data.avatarUrl });
+    }
+    return response.data.data;
+  },
 };

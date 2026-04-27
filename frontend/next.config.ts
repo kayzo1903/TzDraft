@@ -103,6 +103,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cdn.sanity.io",
       },
+      {
+        protocol: "https",
+        hostname: "pub-45c6d761a8e341418a3286f116654f56.r2.dev",
+      },
     ],
   },
   transpilePackages: ["@tzdraft/shared-client", "@tzdraft/translations"],

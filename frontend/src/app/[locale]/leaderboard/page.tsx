@@ -1,9 +1,32 @@
 import LeaderboardClient from './LeaderboardClient';
 import { JsonLd } from '@/components/seo/JsonLd';
 import type { LeaderboardEntry } from '@/services/history.service';
-import { getCanonicalUrl, getSiteUrl, isAppLocale } from '@/lib/seo';
+import type { Metadata } from 'next';
+import { getCanonicalUrl, getSiteUrl, isAppLocale, buildPageMetadata } from '@/lib/seo';
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isSw = locale === 'sw';
+  const siteUrl = getSiteUrl();
+
+  return buildPageMetadata({
+    locale: isAppLocale(locale) ? locale : 'en',
+    path: '/leaderboard',
+    title: isSw 
+      ? 'Orodha ya Ubora — Wachezaji Bora wa Drafti Tanzania | TzDraft' 
+      : 'Global Leaderboard — Top Tanzania Drafti Players | TzDraft',
+    description: isSw
+      ? 'Angalia viwango vya hivi karibuni vya wachezaji bora wa Tanzania Drafti. Jua nani anaongoza kwenye rating, michezo iliyochezwa, na ushindi Tanzania nzima.'
+      : 'View the latest rankings of the best Tanzania Drafti players. See who leads in rating, games played, and total wins across the nation.',
+    keywords: ['leaderboard', 'rankings', 'top players', 'TzDraft', 'Tanzania Drafti', 'orodha ya ubora', 'wachezaji bora'],
+  });
+}
 
 async function fetchGlobalLeaderboard(): Promise<{ items: LeaderboardEntry[]; total: number }> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
