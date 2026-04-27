@@ -3,7 +3,7 @@
     "slug": "tzdraft",
     "owner": "tzdraft",
     "scheme": "tzdraft-mobile",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -26,6 +26,7 @@
     },
     "android": {
       "package": "com.tzdraft.mobile",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
