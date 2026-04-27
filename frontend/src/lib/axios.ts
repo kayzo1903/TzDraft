@@ -64,14 +64,6 @@ axiosInstance.interceptors.response.use(
         // Refresh failed — session expired or cookie missing
         useAuthStore.getState().clearAuth();
 
-        const pathParts = window.location.pathname.split("/");
-        const currentLocale = ["sw", "en"].includes(pathParts[1])
-          ? pathParts[1]
-          : "sw";
-
-        if (!isAuthPage(window.location.pathname)) {
-          window.location.href = `/${currentLocale}/auth/login`;
-        }
         return Promise.reject(error);
       }
     }

@@ -22,6 +22,7 @@ export interface User {
   country?: string | null;
   region?: string | null;
   termsAcceptedAt?: string | null;
+  avatarUrl?: string;
 }
 
 export interface AuthState {

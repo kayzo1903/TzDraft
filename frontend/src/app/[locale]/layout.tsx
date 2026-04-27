@@ -2,11 +2,13 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { EngineInit } from "@/components/engine/EngineInit";
 import { AuthInitializer } from "@/components/auth/AuthInitializer";
 import { TermsAcceptanceBanner } from "@/components/legal/TermsAcceptanceBanner";
+import { ChallengeCenter } from "@/components/game/ChallengeCenter";
 import type { Metadata } from "next";
 import {
   getCanonicalUrl,
@@ -150,6 +152,9 @@ const gameSchema = {
   },
 };
 
+import { BottomNav } from "@/components/layout/BottomNav";
+import { LayoutPaddingWrapper } from "@/components/layout/LayoutPaddingWrapper";
+
 export default async function LocaleLayout({
   children,
   params,
@@ -172,9 +177,16 @@ export default async function LocaleLayout({
       <JsonLd data={organizationSchema} />
       <JsonLd data={gameSchema} />
       <Navbar />
-      {children}
-      <Footer />
+      <LayoutPaddingWrapper>
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-x-hidden">
+          {children}
+          <Footer />
+        </div>
+      </LayoutPaddingWrapper>
+      <BottomNav />
       <TermsAcceptanceBanner />
+      <ChallengeCenter />
     </NextIntlClientProvider>
   );
 }

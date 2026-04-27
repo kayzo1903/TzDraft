@@ -45,7 +45,7 @@ export default function SetupOnlinePage() {
   const router = useRouter();
   const { locale: routeLocale } = useParams<{ locale: string }>();
   const { state, error, timeoutReached, remainingMs, joinQueue, cancelQueue, resetTimeout } = useMatchmaking();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, hasHydrated } = useAuthStore();
   const searchParams = useSearchParams();
   const selectedOption = QUEUE_TIME_OPTIONS.find((o) => o.ms === 300000) ?? QUEUE_TIME_OPTIONS[1];
 
@@ -57,12 +57,15 @@ export default function SetupOnlinePage() {
   const isSw = locale === "sw";
 
   useEffect(() => {
-    if (searchParams.get("autoSearch") === "true" && isAuthenticated && state === "idle") {
+    if (!hasHydrated) return;
+
+    if (!isAuthenticated) {
+      router.push(`/${routeLocale}/auth/login?callbackUrl=/${routeLocale}/game/setup-online`);
+    } else if (searchParams.get("autoSearch") === "true" && state === "idle") {
       joinQueue(300000);
     }
-    // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, hasHydrated]);
 
   const infoStrips = [
     {

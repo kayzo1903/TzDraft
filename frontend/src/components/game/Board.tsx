@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 import { Piece } from "./Piece";
 
 export type PieceState = { color: "WHITE" | "BLACK"; isKing?: boolean };
@@ -330,7 +330,7 @@ export const Board: React.FC<BoardProps> = ({
     return (
       <div
         key={index}
-        className={clsx(
+        className={cn(
           "w-full h-full aspect-square relative select-none",
           isDark ? "bg-[var(--board-dark)]" : "bg-[var(--board-light)]",
         )}
@@ -361,7 +361,7 @@ export const Board: React.FC<BoardProps> = ({
         {/* Legal move dot (empty square) */}
         {isLegalTarget && !piece && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-[30%] h-[30%] rounded-full bg-neutral-900/40" />
+            <div className="w-[30%] h-[30%] rounded-full bg-background/40" />
           </div>
         )}
 
@@ -373,7 +373,7 @@ export const Board: React.FC<BoardProps> = ({
         {/* Last-move tint */}
         {isLastMoveSquare && isDark && (
           <div
-            className={clsx(
+            className={cn(
               "absolute inset-0 pointer-events-none",
               isLastMoveToSquare ? "bg-amber-400/20" : "bg-amber-300/12",
             )}
@@ -411,8 +411,8 @@ export const Board: React.FC<BoardProps> = ({
 
   return (
     <div
-      className={clsx(
-        "w-full max-w-[min(94vw,600px)] mx-auto bg-[#1e1b18] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-2xl ring-1 ring-white/8 touch-manipulation",
+      className={cn(
+        "w-full max-w-[min(94vw,600px)] mx-auto bg-[var(--background)] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-2xl ring-1 ring-white/8 touch-manipulation",
         isShaking && "board-shake",
         className,
       )}
@@ -422,8 +422,8 @@ export const Board: React.FC<BoardProps> = ({
       {/* ── Interactive board surface ──────────────────────────────────── */}
       <div
         ref={boardRef}
-        className={clsx(
-          "w-full aspect-square relative border border-[#8B6914]/60 rounded-sm overflow-hidden",
+        className={cn(
+          "w-full aspect-square relative border border-[var(--primary-border)]/40 rounded-sm overflow-hidden",
           !readOnly && (isDraggingActive ? "cursor-grabbing" : "cursor-pointer"),
         )}
         onPointerDown={handleBoardPointerDown}
@@ -476,7 +476,7 @@ export const Board: React.FC<BoardProps> = ({
               return (
                 <div
                   key={key}
-                  className={clsx(
+                  className={cn(
                     "absolute flex items-center justify-center piece-move",
                     isDraggingThis && "is-dragging",
                   )}
