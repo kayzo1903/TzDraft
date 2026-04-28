@@ -25,6 +25,7 @@ import {
   Flame,
   Skull,
   ChevronDown,
+  Gamepad2,
 } from "lucide-react-native";
 import { BOTS, TIERS, BOT_IMAGES, getTierForLevel } from "../../src/lib/game/bots";
 import type { TimeControl } from "../../src/hooks/useAiGame";
@@ -244,9 +245,12 @@ export default function SetupAiScreen() {
           style={styles.startButton}
           onPress={handleStartGame}
         >
-          <Text style={styles.startButtonText}>
-            {`${t("setupAi.start.cta", "Start Game")} — ${selectedBot.name}`}
-          </Text>
+          <View style={styles.startButtonContent}>
+            <Gamepad2 color={colors.onPrimary} size={24} strokeWidth={2.5} />
+            <Text style={styles.startButtonText}>
+              {`${t("setupAi.start.cta", "Start Game")} — ${selectedBot.name}`}
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -551,6 +555,11 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1,
+  },
+  startButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   modalOverlay: {
     flex: 1,
