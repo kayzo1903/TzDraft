@@ -18,7 +18,8 @@ import {
   Clock, 
   ChevronRight,
   Loader2,
-  Swords
+  Swords,
+  Puzzle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ const CARD_COLORS = {
   tournaments: "#eab308", // gold
   history: "#6366f1", // indigo
   leaderboard: "#ec4899", // pink
+  puzzles: "#f43f5e", // rose
 } as const;
 
 export function Dashboard() {
@@ -183,6 +185,14 @@ export function Dashboard() {
               iconColor={CARD_COLORS.leaderboard}
               icon="🏅"
             />
+            <ServiceCard
+              title={t("featureGrid.puzzles.title")}
+              subtitle={t("featureGrid.puzzles.desc")}
+              href="/puzzles"
+              iconColor={CARD_COLORS.puzzles}
+              icon={<Puzzle size={24} />}
+              badge={locale === "sw" ? "Mpya" : "New"}
+            />
           </div>
 
           {/* --- Recent Results --- */}
@@ -195,24 +205,57 @@ export function Dashboard() {
                 <Clock size={14} className="text-neutral-600" />
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-3">
                 {recentGames.length > 0 ? (
-                  recentGames.map((game) => (
-                    <div
-                      key={game.id}
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-black",
-                        game.result === "WIN" 
-                          ? "border-win/20 bg-win/10 text-win" 
-                          : game.result === "LOSS"
-                          ? "border-danger/20 bg-danger/10 text-danger"
-                          : "border-white/10 bg-white/5 text-neutral-400"
-                      )}
-                      title={`${game.gameType} vs ${game.opponent?.displayName || "AI"}`}
-                    >
-                      {game.result === "WIN" ? "W" : game.result === "LOSS" ? "L" : "D"}
+                  <>
+                    {/* Small screen: Compact boxes (Current design) */}
+                    <div className="flex flex-wrap gap-2 lg:hidden">
+                      {recentGames.map((game) => (
+                        <div
+                          key={game.id}
+                          className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-black",
+                            game.result === "WIN" 
+                              ? "border-win/20 bg-win/10 text-win" 
+                              : game.result === "LOSS"
+                              ? "border-danger/20 bg-danger/10 text-danger"
+                              : "border-white/10 bg-white/5 text-neutral-400"
+                          )}
+                          title={`${game.gameType} vs ${game.opponent?.displayName || "AI"}`}
+                        >
+                          {game.result === "WIN" ? "W" : game.result === "LOSS" ? "L" : "D"}
+                        </div>
+                      ))}
                     </div>
-                  ))
+
+                    {/* Large screen: Detailed list */}
+                    <div className="hidden lg:flex lg:flex-col lg:gap-2">
+                      {recentGames.map((game) => (
+                        <Link key={game.id} href={`/game/${game.id}`} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 transition hover:bg-white/10">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-white truncate max-w-[120px]">
+                              {game.opponent?.displayName || "AI"}
+                            </span>
+                            <span className="text-[10px] font-black uppercase text-neutral-500">
+                              {game.gameType}
+                            </span>
+                          </div>
+                          <div
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-black",
+                              game.result === "WIN" 
+                                ? "border-win/20 bg-win/10 text-win" 
+                                : game.result === "LOSS"
+                                ? "border-danger/20 bg-danger/10 text-danger"
+                                : "border-white/10 bg-white/5 text-neutral-400"
+                            )}
+                          >
+                            {game.result === "WIN" ? "W" : game.result === "LOSS" ? "L" : "D"}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <p className="py-4 text-xs font-bold text-neutral-600">
                     {locale === "sw" ? "Hakuna mechi bado" : "No games played yet"}
@@ -220,7 +263,7 @@ export function Dashboard() {
                 )}
               </div>
 
-              <Link href="/game/history" className="mt-auto pt-4">
+              <Link href="/profile/history" className="mt-auto pt-4">
                 <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 py-3 text-xs font-black text-white hover:bg-white/10">
                   {locale === "sw" ? "Historia Kamili" : "Full History"}
                   <ChevronRight size={14} />

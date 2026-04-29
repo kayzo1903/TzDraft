@@ -215,6 +215,11 @@ class AuthClient {
     }
   }
 
+  async acceptTerms() {
+    const response = await api.patch("/auth/accept-terms");
+    return response.data;
+  }
+
   async updateProfile(details: any) {
     try {
       const response = await api.patch("/auth/profile", details);

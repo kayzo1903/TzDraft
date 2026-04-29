@@ -1,8 +1,11 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PuzzleClient, type PuzzleData, difficultyStars } from "./PuzzleClient";
+import { PuzzleClient, type PuzzleData } from "./PuzzleClient";
+
+const difficultyStars = (d: number) => "★".repeat(d) + "☆".repeat(5 - d);
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
+import { getTranslations } from "next-intl/server";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -30,16 +33,19 @@ export async function generateMetadata({
   const siteUrl = getSiteUrl();
   const canonical = getCanonicalUrl(locale, `/puzzles/${id}`, siteUrl);
 
-  const themeDisplay = puzzle.theme ? `${puzzle.theme.charAt(0).toUpperCase() + puzzle.theme.slice(1)}` : "Tactics";
+  const t = await getTranslations({ locale, namespace: "puzzles.seo" });
+  const themeT = await getTranslations({ locale, namespace: "puzzles.themes" });
+
+  const themeKey = puzzle.theme && puzzle.theme !== "tactical" && puzzle.theme !== "sacrifice" && puzzle.theme !== "position-trap" && puzzle.theme !== "king-trap" && puzzle.theme !== "endgame" && puzzle.theme !== "promotion" ? "tactical" : puzzle.theme;
+  
+  // Handle hyphenated themes for JSON keys (position-trap -> positionTrap)
+  const safeThemeKey = themeKey ? themeKey.replace(/-([a-z])/g, (g) => g[1].toUpperCase()) : "tactical";
+  
+  const themeDisplay = themeT(safeThemeKey as any);
   const stars = difficultyStars(puzzle.difficulty);
   
-  const title = locale === "sw" 
-    ? `Fumbo la Drafti: ${themeDisplay} (${stars}) | TzDraft`
-    : `Drafti Puzzle: ${themeDisplay} (${stars}) | TzDraft`;
-    
-  const description = locale === "sw"
-    ? `Jaribu fumbo hili la TzDraft. Mada: ${themeDisplay}. Ugumu: ${puzzle.difficulty}/5.`
-    : `Solve this TzDraft tactical puzzle. Theme: ${themeDisplay}. Difficulty: ${puzzle.difficulty}/5.`;
+  const title = t("solveTitle", { theme: themeDisplay, stars });
+  const description = t("solveDesc", { theme: themeDisplay, difficulty: puzzle.difficulty });
 
   const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
   const ogLocaleAlt = locale === "sw" ? "en_TZ" : "sw_TZ";
@@ -74,6 +80,8 @@ export default async function PuzzleSolvePage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  const t = await getTranslations({ locale, namespace: "puzzles" });
+  const themeT = await getTranslations({ locale, namespace: "puzzles.themes" });
   const puzzle = await getPuzzle(id);
 
   if (!puzzle) {
@@ -82,13 +90,15 @@ export default async function PuzzleSolvePage({
 
   const siteUrl = getSiteUrl();
 
+  const themeKey = puzzle.theme && puzzle.theme !== "tactical" && puzzle.theme !== "sacrifice" && puzzle.theme !== "position-trap" && puzzle.theme !== "king-trap" && puzzle.theme !== "endgame" && puzzle.theme !== "promotion" ? "tactical" : puzzle.theme;
+  const safeThemeKey = themeKey ? themeKey.replace(/-([a-z])/g, (g) => g[1].toUpperCase()) : "tactical";
+  const themeDisplay = themeT(safeThemeKey as any);
+
   const videoGameSchema = {
     "@context": "https://schema.org",
     "@type": "VideoGame",
-    "name": puzzle.title ?? (locale === "sw" ? `Fumbo la Drafti #${puzzle.id.slice(0, 6)}` : `Drafti Puzzle #${puzzle.id.slice(0, 6)}`),
-    "description": locale === "sw" 
-      ? `Fumbo la kiufundi la Tanzania Drafti lenye ugumu wa ${puzzle.difficulty} kati ya 5.`
-      : `Tanzania Drafti tactical puzzle with difficulty ${puzzle.difficulty} out of 5.`,
+    "name": puzzle.title ?? t("seo.puzzleTitle", { id: puzzle.id.slice(0, 6) }),
+    "description": t("seo.solveDesc", { theme: themeDisplay, difficulty: puzzle.difficulty }),
     "url": `${siteUrl}/${locale}/puzzles/${puzzle.id}`,
     "playMode": "SinglePlayer",
     "gamePlatform": "Web Browser",

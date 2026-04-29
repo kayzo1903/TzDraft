@@ -3,6 +3,8 @@ import { Link } from "@/i18n/routing";
 import type { Metadata } from "next";
 import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { PuzzleThumbnail } from "@/components/puzzles/PuzzleThumbnail";
+import { getTranslations } from "next-intl/server";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -11,7 +13,8 @@ interface PuzzleSummary {
   title: string | null;
   difficulty: number;
   theme: string | null;
-  sideToMove: string;
+  sideToMove: "WHITE" | "BLACK";
+  pieces?: any[];
   publishedAt: string;
   _count: { attempts: number };
 }
@@ -44,7 +47,7 @@ async function fetchDailyPuzzle(): Promise<PuzzleSummary | null> {
   }
 }
 
-const THEMES = ["multi-capture", "promotion", "king-trap", "endgame", "capture", "positional"];
+const THEMES = ["sacrifice", "position-trap", "king-trap", "endgame", "promotion"];
 const DIFFICULTIES = [1, 2, 3, 4, 5];
 
 function difficultyStars(d: number) {
@@ -53,28 +56,16 @@ function difficultyStars(d: number) {
 
 function themeColor(theme: string | null) {
   const map: Record<string, string> = {
-    "multi-capture": "border-orange-400/30 bg-orange-400/10 text-orange-200",
-    promotion: "border-sky-400/30 bg-sky-400/10 text-sky-200",
+    sacrifice: "border-rose-400/30 bg-rose-400/10 text-rose-200",
+    "position-trap": "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
     "king-trap": "border-purple-400/30 bg-purple-400/10 text-purple-200",
     endgame: "border-amber-400/30 bg-amber-400/10 text-amber-200",
-    capture: "border-rose-400/30 bg-rose-400/10 text-rose-200",
-    positional: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+    promotion: "border-sky-400/30 bg-sky-400/10 text-sky-200",
   };
   return (
     map[theme ?? ""] ?? "border-white/10 bg-white/5 text-neutral-300"
   );
 }
-
-const PUZZLE_META = {
-  sw: {
-    title: "Mafumbo & Mbinu za Drafti | TzDraft Puzzles",
-    description: "Jifunze mbinu za ushindi kupitia mafumbo halisi ya Tanzania Drafti. Boresha kiwango chako cha uchezaji.",
-  },
-  en: {
-    title: "Drafti Puzzles & Tactics | TzDraft",
-    description: "Master winning tactics with real Tanzania Drafti puzzles. Sharpen your game and train with daily challenges.",
-  },
-} as const;
 
 export async function generateMetadata({
   params,
@@ -84,22 +75,23 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isAppLocale(locale)) return {};
 
+  const t = await getTranslations({ locale, namespace: "puzzles.seo" });
   const siteUrl = getSiteUrl();
   const canonical = getCanonicalUrl(locale, "/puzzles", siteUrl);
-  const m = PUZZLE_META[locale as keyof typeof PUZZLE_META] ?? PUZZLE_META.en;
+  
   const ogLocale = locale === "sw" ? "sw_TZ" : "en_TZ";
   const ogLocaleAlt = locale === "sw" ? "en_TZ" : "sw_TZ";
 
   return {
-    title: m.title,
-    description: m.description,
+    title: t("title"),
+    description: t("description"),
     alternates: {
       canonical,
       languages: getLanguageAlternates("/puzzles", siteUrl),
     },
     openGraph: {
-      title: m.title,
-      description: m.description,
+      title: t("title"),
+      description: t("description"),
       url: canonical,
       siteName: "TzDraft",
       locale: ogLocale,
@@ -108,8 +100,8 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: m.title,
-      description: m.description,
+      title: t("title"),
+      description: t("description"),
     },
   };
 }
@@ -122,6 +114,7 @@ export default async function PuzzlesPage({
   searchParams: Promise<{ difficulty?: string; theme?: string; page?: string }>;
 }) {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "puzzles" });
   const sp = await searchParams;
   const currentPage = Number(sp.page ?? 1);
 
@@ -135,13 +128,13 @@ export default async function PuzzlesPage({
   const itemListSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "name": locale === "sw" ? "Mafumbo ya TzDraft" : "TzDraft Puzzles",
+    "name": t("seo.schemaList"),
     "itemListElement": puzzles.slice(0, 10).map((p, index) => ({
       "@type": "ListItem",
       "position": index + 1,
       "item": {
         "@type": "Game",
-        "name": p.title ?? (locale === "sw" ? `Fumbo la Drafti #${p.id.slice(0,6)}` : `Drafti Puzzle #${p.id.slice(0,6)}`),
+        "name": p.title ?? t("seo.puzzleTitle", { id: p.id.slice(0, 6) }),
         "url": `${getSiteUrl()}/${locale}/puzzles/${p.id}`
       }
     }))
@@ -152,162 +145,65 @@ export default async function PuzzlesPage({
       <JsonLd data={itemListSchema} />
       <main className="bg-[var(--background)] min-h-screen">
         {/* Hero */}
-      <section className="relative overflow-hidden border-b border-white/5 px-4 py-12 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border-b border-white/5 px-4 py-16 sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.14),_transparent_32%)]" />
-        <div className="relative mx-auto max-w-6xl">
-          <div className="flex items-end justify-between gap-6">
-            <div className="space-y-3">
-              <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold tracking-[0.2em] text-neutral-300">
-                PUZZLES & TACTICS
-              </span>
-              <h1 className="text-4xl font-black text-white sm:text-5xl">
-                Sharpen your game.
-              </h1>
-              <p className="max-w-xl text-base leading-7 text-neutral-300">
-                Real positions extracted from TzDraft games. Every puzzle is a
-                genuine tactical moment that happened in a live match.
-              </p>
-            </div>
-            {daily && (
-              <Link
-                href={`/puzzles/${daily.id}`}
-                className="hidden lg:flex shrink-0 flex-col gap-3 rounded-2xl border border-orange-400/30 bg-orange-400/10 p-5 w-56 hover:border-orange-400/50 transition-colors"
-              >
-                <span className="text-xs font-bold tracking-widest text-orange-300 uppercase">
-                  Daily Puzzle
-                </span>
-                <p className="text-lg font-black text-white leading-tight">
-                  {daily.title ?? "Today's challenge"}
-                </p>
-                <div className="text-xs text-orange-200/70">
-                  {difficultyStars(daily.difficulty)}
-                </div>
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-orange-300">
-                  Solve now <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="border-b border-white/5 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl flex flex-wrap items-center gap-3">
-          <span className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-            Filter:
+        <div className="relative mx-auto max-w-6xl text-center">
+          <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold tracking-[0.2em] text-neutral-300 mb-6">
+            {t("hero.badge")}
           </span>
-          {/* Difficulty */}
-          {DIFFICULTIES.map((d) => (
-            <Link
-              key={d}
-              href={`/puzzles?difficulty=${d}${sp.theme ? `&theme=${sp.theme}` : ""}`}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors
-                ${Number(sp.difficulty) === d
-                  ? "border-orange-400/60 bg-orange-400/20 text-orange-200"
-                  : "border-white/10 bg-white/5 text-neutral-400 hover:border-white/20"
-                }`}
-            >
-              {"★".repeat(d)}
-            </Link>
-          ))}
-          <span className="text-white/10">|</span>
-          {/* Themes */}
-          {THEMES.map((t) => (
-            <Link
-              key={t}
-              href={`/puzzles?theme=${t}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}`}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors capitalize
-                ${sp.theme === t
-                  ? "border-orange-400/60 bg-orange-400/20 text-orange-200"
-                  : "border-white/10 bg-white/5 text-neutral-400 hover:border-white/20"
-                }`}
-            >
-              {t}
-            </Link>
-          ))}
-          {(sp.difficulty || sp.theme) && (
-            <Link
-              href="/puzzles"
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-neutral-500 hover:text-white transition-colors"
-            >
-              Clear
-            </Link>
-          )}
+          <h1 className="text-5xl font-black text-white sm:text-7xl tracking-tight">
+            {t("hero.title")}
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-neutral-400">
+            {t("hero.description")}
+          </p>
         </div>
       </section>
 
-      {/* Grid */}
-      <section className="px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          {puzzles.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-10 text-center">
-              <p className="text-xl font-black text-white">No puzzles yet</p>
-              <p className="mt-2 text-sm text-neutral-400">
-                Puzzles are mined nightly from completed games and reviewed by the team.
-                Check back soon.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {puzzles.map((puzzle) => (
-                <Link
-                  key={puzzle.id}
-                  href={`/puzzles/${puzzle.id}`}
-                  className="group rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-5 transition duration-200 hover:-translate-y-1 hover:border-orange-400/30"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${themeColor(puzzle.theme)}`}
-                    >
-                      {puzzle.theme ?? "puzzle"}
-                    </span>
-                    <span className="text-xs tracking-widest text-amber-300">
-                      {difficultyStars(puzzle.difficulty)}
-                    </span>
+      {/* Featured Challenge Section */}
+      {daily && (
+        <section className="px-4 py-12 sm:px-6 lg:px-8 bg-white/[0.01]">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="mb-8 text-xs font-black uppercase tracking-[0.3em] text-neutral-600">
+              {t("featured.badge")}
+            </h2>
+            <Link
+              href={`/puzzles/${daily.id}`}
+              className="flex flex-col md:flex-row items-center gap-8 rounded-[2rem] border border-orange-400/20 bg-[linear-gradient(145deg,rgba(249,115,22,0.12),rgba(0,0,0,0))] p-8 hover:border-orange-400/40 transition-all hover:bg-orange-400/10 group shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+            >
+              <div className="w-full md:w-56 shrink-0">
+                 <PuzzleThumbnail sideToMove={daily.sideToMove} />
+              </div>
+              <div className="flex flex-col gap-3 text-center md:text-left">
+                <span className="inline-flex items-center justify-center md:justify-start gap-2 text-[10px] font-black tracking-[0.2em] text-orange-400 uppercase">
+                  <Star className="h-3 w-3" /> {t("featured.daily")}
+                </span>
+                <h3 className="text-3xl font-black text-white leading-tight sm:text-4xl">
+                  {daily.title ?? t("featured.fallbackTitle")}
+                </h3>
+                <p className="text-neutral-400 max-w-md">
+                  {t("featured.description")}
+                </p>
+                <div className="mt-2 flex items-center justify-center md:justify-start gap-4">
+                   <div className="text-sm text-orange-300/60 font-mono">
+                    {difficultyStars(daily.difficulty)}
                   </div>
+                  <span className="h-1 w-1 rounded-full bg-white/10" />
+                  <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                    {t("featured.attempts", { count: daily._count.attempts })}
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <span className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-8 py-4 text-sm font-black text-black transition-transform group-hover:scale-105 active:scale-95">
+                    {t("featured.solve")} <ArrowRight className="h-4 w-4" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
 
-                  <p className="mt-4 font-bold text-white line-clamp-2">
-                    {puzzle.title ?? `${puzzle.sideToMove} to move`}
-                  </p>
-
-                  <div className="mt-4 flex items-center justify-between text-xs text-neutral-500">
-                    <span>{puzzle._count.attempts} attempts</span>
-                    <span className="inline-flex items-center gap-1 text-orange-300 transition group-hover:translate-x-1">
-                      Solve <ArrowRight className="h-3 w-3" />
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-10 flex items-center justify-center gap-3">
-              {currentPage > 1 && (
-                <Link
-                  href={`/puzzles?page=${currentPage - 1}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}${sp.theme ? `&theme=${sp.theme}` : ""}`}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-300 hover:bg-white/10 transition-colors"
-                >
-                  Previous
-                </Link>
-              )}
-              <span className="text-sm text-neutral-500">
-                {currentPage} / {totalPages}
-              </span>
-              {currentPage < totalPages && (
-                <Link
-                  href={`/puzzles?page=${currentPage + 1}${sp.difficulty ? `&difficulty=${sp.difficulty}` : ""}${sp.theme ? `&theme=${sp.theme}` : ""}`}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-neutral-300 hover:bg-white/10 transition-colors"
-                >
-                  Next
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
     </main>
     </>
   );

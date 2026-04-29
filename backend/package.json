@@ -65,7 +65,8 @@
     "resend": "^6.9.1",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "@tzdraft/mkaguzi-engine": "workspace:*"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
