@@ -26,6 +26,7 @@ import {
   Globe,
   Shuffle,
   ChevronDown,
+  Gamepad2,
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
 import { matchService } from "../../src/lib/match-service";
@@ -481,11 +482,14 @@ export default function OnlineLobby() {
               onPress={handleStartSearch}
               disabled={!connected}
             >
-              <Text style={styles.startButtonText}>
-                {connected
-                  ? `${t("setupAi.start.cta", "Start Game")} — Blitz`
-                  : t("lobby.connecting", "Connecting…")}
-              </Text>
+              <View style={styles.startButtonContent}>
+                {connected && <Gamepad2 color={colors.onPrimary} size={24} strokeWidth={2.5} />}
+                <Text style={styles.startButtonText}>
+                  {connected
+                    ? `${t("setupAi.start.cta", "Start Game")} — Blitz`
+                    : t("lobby.connecting", "Connecting…")}
+                </Text>
+              </View>
             </TouchableOpacity>
           </>
         ) : (
@@ -715,6 +719,11 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1,
+  },
+  startButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   // ── Searching screen ──────────────────────────────────────────────────────
   searchSection: {
