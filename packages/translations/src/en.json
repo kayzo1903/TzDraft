@@ -18,7 +18,8 @@
     "learn": "Learn",
     "history": "Game History",
     "tournaments": "Tournaments",
-    "studies": "My Studies"
+    "studies": "My Studies",
+    "puzzles": "Puzzles"
   },
   "home": {
     "tagline": "Experience the finest draft platform",
@@ -128,6 +129,7 @@
     }
   },
   "common": {
+    "move": "Move",
     "cancel": "Cancel",
     "continue": "Continue",
     "optional": "optional",
@@ -200,6 +202,10 @@
       "analysis": {
         "title": "Analysis",
         "desc": "Review your games move by move with engine assistance."
+      },
+      "puzzles": {
+        "title": "Puzzles",
+        "desc": "Solve tactical board challenges"
       }
     }
   },
@@ -313,7 +319,8 @@
       "registrationFailed": "Registration failed. Please try again.",
       "passwordTooShort": "Password must be at least 8 characters",
       "userAlreadyExists": "User with this phone number, username, or email already exists",
-      "phoneAlreadyRegistered": "This phone number is already registered. Please login instead."
+      "phoneAlreadyRegistered": "This phone number is already registered. Please login instead.",
+      "termsRequired": "You must accept the Terms of Service and Privacy Policy to continue."
     },
     "forgotPassword": {
       "title": "Forgot Password?",
@@ -402,6 +409,8 @@
     "legal": "Legal & Rules",
     "rules": "Game Rules",
     "privacy": "Privacy & Terms",
+    "terms": "Terms of Service",
+    "policyHint": "Review the fair-play and platform rules.",
     "website": "Visit Official Website",
     "contactSubtitle": "Send a clear message and include the game ID, invite code, or tournament name when relevant.",
     "emailUs": "Email Support Team",
@@ -878,5 +887,81 @@
     "timeoutHint": "No opponent found yet. Try the AI or search again.",
     "matchVsAi": "Match vs AI",
     "searchAgain": "Search Again"
+  },
+  "puzzles": {
+    "hero": {
+      "badge": "PUZZLES & TACTICS",
+      "title": "Sharpen your game.",
+      "description": "Real positions extracted from TzDraft games. Every puzzle is a genuine tactical moment that happened in a live match."
+    },
+    "featured": {
+      "badge": "Featured Challenge",
+      "daily": "Daily Puzzle",
+      "fallbackTitle": "Today's Tactical Riddle",
+      "description": "Can you find the winning sequence in this position? Test your skills and climb the tactical leaderboard.",
+      "attempts": "{count} Attempts",
+      "solve": "Solve Fumbo"
+    },
+    "seo": {
+      "title": "Drafti Puzzles & Tactics | TzDraft",
+      "description": "Master winning tactics with real Tanzania Drafti puzzles. Sharpen your game and train with daily challenges.",
+      "schemaList": "TzDraft Puzzles",
+      "puzzleTitle": "Drafti Puzzle #{id}",
+      "solveTitle": "Drafti Puzzle: {theme} ({stars}) | TzDraft",
+      "solveDesc": "Solve this TzDraft tactical puzzle. Theme: {theme}. Difficulty: {difficulty}/5."
+    },
+    "solve": {
+      "back": "All puzzles",
+      "whiteToMove": "⚪ White to move",
+      "blackToMove": "⚫ Black to move",
+      "instruction": "Find the best move.",
+      "attemptCount": "{count} player(s) attempted this.",
+      "attemptCountOne": "{count} player attempted this.",
+      "speed": {
+        "lightning": "Lightning!",
+        "great": "Great",
+        "solved": "Solved"
+      },
+      "solvedIn": "Solved in {time}",
+      "puzzleRating": "Puzzle rating: {rating}",
+      "updating": "updating…",
+      "hint": {
+        "maxReward": "Under 4 s — maximum reward!",
+        "greatSpeed": "Under 8 s — great speed.",
+        "correct": "Correct — keep practicing for faster solves."
+      },
+      "wrongMove": "Wrong move",
+      "studySolution": "Study the solution below",
+      "guestCta": {
+        "title": "Save your tactical progress!",
+        "desc": "Register to track your puzzle rating and streak.",
+        "button": "Register Now"
+      },
+      "bestLine": "Best line",
+      "showHint": "Show hint",
+      "hintTitle": "Hint",
+      "action": {
+        "reset": "Reset",
+        "tryAgain": "Try again",
+        "solvedButton": "Solved",
+        "next": "Next puzzle"
+      }
+    },
+    "hints": {
+      "sacrifice": "Consider giving up material to gain a decisive positional advantage.",
+      "positionTrap": "A quiet move sets up an unstoppable threat. Think two moves ahead.",
+      "kingTrap": "The opponent's king is vulnerable. Find the move that traps or eliminates it.",
+      "endgame": "Precise king maneuvers decide this endgame. Every tempo counts.",
+      "promotion": "A man is one step from becoming a king. Clear the path.",
+      "tactical": "Look for the move that creates the biggest long-term advantage."
+    },
+    "themes": {
+      "sacrifice": "Sacrifice",
+      "positionTrap": "Position Trap",
+      "kingTrap": "King Trap",
+      "endgame": "Endgame",
+      "promotion": "Promotion",
+      "tactical": "Tactical"
+    }
   }
 }

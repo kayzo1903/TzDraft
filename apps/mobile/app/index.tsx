@@ -54,6 +54,7 @@ const CARD_COLORS = {
   friend: "#10b981", // emerald
   freePlay: "#06b6d4", // cyan
   learn: "#f59e0b", // amber
+  puzzles: "#f97316", // orange (primary)
   tournaments: "#eab308", // gold
   history: "#6366f1", // indigo
   leaderboard: "#ec4899", // pink
@@ -592,6 +593,13 @@ export default function Home() {
             onPress={() => router.push("/learn")}
             iconColor={CARD_COLORS.learn}
             icon={<Emoji>📚</Emoji>}
+          />
+          <ServiceCard
+            title="Puzzles"
+            subtitle="Sharpen your game with tactical positions"
+            onPress={() => router.push("/game/puzzles" as any)}
+            iconColor={CARD_COLORS.puzzles}
+            icon={<Emoji>🧩</Emoji>}
           />
         </View>
 

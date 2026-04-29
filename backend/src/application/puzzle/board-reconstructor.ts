@@ -20,6 +20,7 @@ export interface MoveRecord {
   toSquare: number;
   capturedSquares: number[];
   isPromotion: boolean;
+  isMultiCapture?: boolean;
   player: 'WHITE' | 'BLACK';
 }
 

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   StatusBar,
+  Linking,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -88,6 +89,7 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +181,10 @@ export default function SignupScreen() {
       setError(t("auth.signup.errors.passwordMismatch", "Passwords do not match"));
       return;
     }
+    if (!termsAccepted) {
+      setError(t("auth.errors.termsRequired", "You must accept the Terms of Service and Privacy Policy to continue."));
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -188,6 +194,7 @@ export default function SignupScreen() {
         password,
         confirmPassword,
       });
+      await authClient.acceptTerms();
       // Navigation handled by the root auth guard on status change
     } catch (err: any) {
       const msg = err?.response?.data?.message;
@@ -353,10 +360,41 @@ export default function SignupScreen() {
                 </View>
               )}
 
+              {step === "details" && (
+                <TouchableOpacity
+                  onPress={() => setTermsAccepted(!termsAccepted)}
+                  style={styles.termsRow}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                    {termsAccepted && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.termsText}>
+                    {t("auth.signup.termsPrefix", "I have read and agree to the ")}{" "}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => Linking.openURL("https://tzdraft.co.tz/terms")}
+                    >
+                      {t("auth.signup.termsLabel", "Terms of Service")}
+                    </Text>
+                    {" "}{t("common.and", "and")}{" "}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => Linking.openURL("https://tzdraft.co.tz/privacy")}
+                    >
+                      {t("auth.signup.privacyLabel", "Privacy Policy")}
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 onPress={handleNextStep}
-                disabled={isLoading}
-                style={[styles.actionBtn, isLoading && styles.btnDisabled]}
+                disabled={isLoading || (step === "details" && !termsAccepted)}
+                style={[
+                  styles.actionBtn,
+                  (isLoading || (step === "details" && !termsAccepted)) && styles.btnDisabled,
+                ]}
               >
                 {isLoading ? (
                   <ActivityIndicator color="white" />
@@ -703,6 +741,44 @@ const styles = StyleSheet.create({
   googleBtnText: {
     color: colors.textSecondary,
     fontSize: 14,
+    fontWeight: "600",
+  },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkmark: {
+    color: colors.onPrimary,
+    fontSize: 12,
+    fontWeight: "bold",
+    lineHeight: 14,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: colors.primary,
     fontWeight: "600",
   },
 });

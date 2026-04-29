@@ -39,6 +39,14 @@ export interface CheckReceiptsJobData {
   receiptIds: string[];
 }
 
+export interface PuzzleNotificationJobData {
+  puzzleId: string;
+  title: string;
+  body: string;
+  /** Cursor: last user id processed so far (null = first page). */
+  cursor: string | null;
+}
+
 @Injectable()
 export class PushCampaignQueue implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PushCampaignQueue.name);
@@ -82,6 +90,14 @@ export class PushCampaignQueue implements OnModuleInit, OnModuleDestroy {
       delay: delayMs,
       attempts: 2,
       backoff: { type: 'fixed', delay: 60_000 },
+    });
+  }
+
+  async enqueuePuzzleNotification(data: PuzzleNotificationJobData): Promise<void> {
+    if (!this.queue) return;
+    await this.queue.add('puzzle-notification', data, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5_000 },
     });
   }
 }

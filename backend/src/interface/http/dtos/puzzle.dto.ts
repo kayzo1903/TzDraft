@@ -60,6 +60,12 @@ export class SubmitAttemptDto {
   @ValidateNested({ each: true })
   @Type(() => SolveMoveDto)
   moves: SolveMoveDto[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  timeTaken?: number; // seconds
 }
 
 // ── Admin endpoints ────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import {
   PUSH_QUEUE_NAME,
   SendCampaignJobData,
   CheckReceiptsJobData,
+  PuzzleNotificationJobData,
 } from './push-campaign.queue';
 
 function urlToConnectionOptions(url: string): ConnectionOptions {
@@ -69,6 +70,8 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
       await this.handleSendCampaign(job.data as SendCampaignJobData);
     } else if (job.name === 'check-receipts') {
       await this.handleCheckReceipts(job.data as CheckReceiptsJobData);
+    } else if (job.name === 'puzzle-notification') {
+      await this.handlePuzzleNotification(job.data as PuzzleNotificationJobData);
     }
   }
 
@@ -172,6 +175,43 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
         },
       },
     });
+  }
+
+  private async handlePuzzleNotification(data: PuzzleNotificationJobData): Promise<void> {
+    const { puzzleId, title, body, cursor } = data;
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        pushToken: { not: null },
+        ...(cursor ? { id: { gt: cursor } } : {}),
+      },
+      select: { id: true, pushToken: true },
+      orderBy: { id: 'asc' },
+      take: PAGE_SIZE,
+    });
+
+    if (users.length === 0) {
+      this.logger.log(`[Push] Puzzle notification ${puzzleId} complete`);
+      return;
+    }
+
+    const tokens = users.map((u) => u.pushToken!).filter(Boolean);
+    await this.expoPush.sendToTokens(tokens, title, body, {
+      type: 'PUZZLE_RELEASED',
+      puzzleId,
+      screen: 'puzzles',
+    });
+
+    if (users.length === PAGE_SIZE) {
+      await this.queue.enqueuePuzzleNotification({
+        puzzleId,
+        title,
+        body,
+        cursor: users[users.length - 1].id,
+      });
+    } else {
+      this.logger.log(`[Push] Puzzle notification ${puzzleId} complete`);
+    }
   }
 
   private buildAudienceWhere(audience: string): Record<string, unknown> {

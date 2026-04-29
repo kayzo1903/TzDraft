@@ -11,9 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
-import { BookOpen, Target, ChevronLeft } from "lucide-react-native";
+import { BookOpen, ChevronLeft, ArrowRight, Target } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { fetchTactics, SanityTactic } from "../src/services/sanity.service";
+import { puzzleService, Puzzle } from "../src/services/puzzle.service";
 import { LinearGradient } from "expo-linear-gradient";
 import { LoadingScreen } from "../src/components/ui/LoadingScreen";
 
@@ -34,6 +35,7 @@ export default function LearnScreen() {
   const locale = i18n.language;
 
   const [tactics, setTactics] = useState<SanityTactic[]>([]);
+  const [dailyPuzzle, setDailyPuzzle] = useState<Puzzle | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,8 +45,12 @@ export default function LearnScreen() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const tacData = await fetchTactics();
+      const [tacData, daily] = await Promise.all([
+        fetchTactics(),
+        puzzleService.getDaily(),
+      ]);
       setTactics(tacData);
+      setDailyPuzzle(daily);
     } catch (error) {
       console.error("[LearnScreen] Error loading data:", error);
     } finally {
@@ -93,7 +99,42 @@ export default function LearnScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* Tactics Playbook */}
+        {/* Daily Puzzle Hero */}
+        {dailyPuzzle && (
+          <TouchableOpacity 
+            style={styles.dailyCard}
+            onPress={() => router.push(`/game/puzzle-player?id=${dailyPuzzle.id}` as any)}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={[colors.primary, "#ea580c"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.dailyGradient}
+            >
+              <View style={styles.dailyHeader}>
+                <View style={styles.dailyBadge}>
+                  <Text style={styles.dailyBadgeText}>{t("learn.dailyChallenge", "DAILY CHALLENGE")}</Text>
+                </View>
+                <Text style={styles.dailyAttempts}>{dailyPuzzle._count.attempts} {t("learn.attempts", "attempts")}</Text>
+              </View>
+              <Text style={styles.dailyTitle}>{dailyPuzzle.title || t("learn.dailyPuzzleTitle", "Today's Tactical Moment")}</Text>
+              <View style={styles.dailyFooter}>
+                <View style={styles.puzzleMeta}>
+                  <Text style={styles.puzzleTheme}>{dailyPuzzle.theme.replace("-", " ")}</Text>
+                  <Text style={styles.puzzleDiff}>{"★".repeat(dailyPuzzle.difficulty)}</Text>
+                </View>
+                <View style={styles.solveBtn}>
+                  <Text style={styles.solveBtnText}>{t("learn.solveNow", "Solve Now")}</Text>
+                  <ArrowRight size={14} color="#fff" />
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+
+        {/* Tactics Playbook (Sanity) */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Target size={18} color={colors.primary} />
@@ -303,5 +344,112 @@ const styles = StyleSheet.create({
   },
   footerSpacer: {
     height: 60,
+  },
+  dailyCard: {
+    marginBottom: 24,
+    borderRadius: 24,
+    overflow: "hidden",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  dailyGradient: {
+    padding: 20,
+    minHeight: 160,
+    justifyContent: "space-between",
+  },
+  dailyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dailyBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  dailyBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  dailyAttempts: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+  },
+  dailyTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "900",
+    marginVertical: 12,
+  },
+  dailyFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  puzzleMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  puzzleTheme: {
+    color: "#fff",
+    fontSize: 12,
+    textTransform: "uppercase",
+    fontWeight: "bold",
+    opacity: 0.9,
+  },
+  puzzleDiff: {
+    color: "#fbbf24",
+    fontSize: 12,
+  },
+  solveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  solveBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "bold",
+  },
+  puzzleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  puzzleInfo: {
+    flex: 1,
+  },
+  puzzleTitle: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  puzzleSub: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  puzzleThemeTag: {
+    color: colors.primary,
+    fontSize: 11,
+    textTransform: "uppercase",
+    fontWeight: "bold",
+  },
+  puzzleDiffText: {
+    color: "#fbbf24",
+    fontSize: 11,
   },
 });

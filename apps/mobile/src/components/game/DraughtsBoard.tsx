@@ -122,7 +122,7 @@ const PDN_TO_CELL         = buildPdnToCell(GRID);
 const PDN_TO_CELL_FLIPPED = buildPdnToCell(GRID_FLIPPED);
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-export type HighlightType = "selected" | "destination" | "capturable" | "forced";
+export type HighlightType = "selected" | "destination" | "capturable" | "forced" | "hint";
 export interface LastMove  { from: number; to: number; }
 
 interface DraughtsBoardProps {
@@ -133,6 +133,7 @@ interface DraughtsBoardProps {
   lastMove?:       LastMove | null;
   disabled?:       boolean;
   flipped?:        boolean;
+  noFrame?:        boolean;
 }
 
 // ─── Landing-bounce hook ───────────────────────────────────────────────────────
@@ -180,6 +181,7 @@ export function DraughtsBoard({
   lastMove  = null,
   disabled  = false,
   flipped   = false,
+  noFrame   = false,
 }: DraughtsBoardProps) {
   const activeGrid = flipped ? GRID_FLIPPED : GRID;
   const pdnToCell  = flipped ? PDN_TO_CELL_FLIPPED : PDN_TO_CELL;
@@ -380,7 +382,7 @@ export function DraughtsBoard({
   );
 
   return (
-    <Animated.View style={[styles.outerFrame, shakeStyle]}>
+    <Animated.View style={[styles.outerFrame, noFrame && styles.noFrame, shakeStyle]}>
       <GestureDetector gesture={gesture}>
         <Canvas style={styles.board}>
 
@@ -430,13 +432,20 @@ export function DraughtsBoard({
 
           {/* ── Legal move dots (empty destination squares) ── */}
           {highlightEntries.map(({ pdn, type }) => {
-            if (type !== "destination" || pieceMap.has(pdn)) return null;
+            if (type !== "destination" && type !== "hint") return null;
+            // Only show destination dots on empty squares, but hint dots can be on pieces
+            if (type === "destination" && pieceMap.has(pdn)) return null;
+            
             const cell = pdnToCell.get(pdn);
             if (!cell) return null;
             const cx = cell.col * CELL_SIZE + CELL_SIZE / 2;
             const cy = cell.row * CELL_SIZE + CELL_SIZE / 2;
+            
+            const dotColor = type === "hint" ? "#22c55e" : "rgba(34,197,94,0.88)";
+            const dotRadius = type === "hint" ? CELL_SIZE * 0.12 : CELL_SIZE * 0.22;
+
             return (
-              <Circle key={`dot${pdn}`} cx={cx} cy={cy} r={CELL_SIZE * 0.17} color="rgba(52,211,153,0.70)" />
+              <Circle key={`dot${pdn}`} cx={cx} cy={cy} r={dotRadius} color={dotColor} />
             );
           })}
 
@@ -625,6 +634,15 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 10,
     alignSelf: "center",
+  },
+  noFrame: {
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    shadowOpacity: 0,
+    elevation: 0,
+    padding: 0,
   },
   board: {
     width: BOARD_SIZE,

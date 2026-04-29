@@ -19,13 +19,16 @@ import {
   Trophy, 
   Bell, 
   FileText, 
-  Shield,
+  ShieldCheck,
   History,
   Medal,
   BookOpen,
   HelpCircle,
-  ExternalLink,
-  ScrollText
+  ScrollText,
+  Home,
+  Gamepad2,
+  Puzzle,
+  Users
 } from 'lucide-react';
 import Image from 'next/image';
 import { useTournamentNotifications } from '@/hooks/useTournamentNotifications';
@@ -49,15 +52,18 @@ export const Navbar: React.FC = () => {
     const { notifications, unreadCount, markRead, markAllRead } =
         useTournamentNotifications();
 
+    if (pathname.startsWith('/admin')) return null;
+
     const navLinks = [
-        { name: t('home'), href: '/' },
-        { name: t('play'), href: '/game/setup-online' },
-        { name: t('history'), href: '/game/history' },
-        { name: t('leaderboard'), href: '/leaderboard' },
-        { name: t('tournaments'), href: '/community/tournament' },
-        { name: t('community'), href: '/community' },
-        { name: t('learn'), href: '/learn' },
-        { name: t('support'), href: '/support' },
+        { name: t('home'), href: '/', icon: Home },
+        { name: t('play'), href: '/game/setup-online', icon: Gamepad2 },
+        { name: t('history'), href: '/profile/history', icon: History },
+        { name: t('leaderboard'), href: '/leaderboard', icon: Medal },
+        { name: t('tournaments'), href: '/community/tournament', icon: Trophy },
+        { name: t('puzzles'), href: '/puzzles', icon: Puzzle },
+        { name: t('community'), href: '/community', icon: Users },
+        { name: t('learn'), href: '/learn', icon: BookOpen },
+        { name: t('support'), href: '/support', icon: HelpCircle },
     ];
 
     const isActive = (href: string) => {
@@ -332,30 +338,17 @@ export const Navbar: React.FC = () => {
                                         key={link.name}
                                         href={link.href}
                                         className={clsx(
-                                            "flex items-center gap-4 px-4 py-3 rounded-2xl text-base font-bold transition-all",
+                                            "flex items-center gap-4 px-4 py-3 rounded-2xl text-base font-bold transition-all group",
                                             isActive(link.href)
                                                 ? "bg-[var(--primary)] text-black"
                                                 : "text-text-secondary hover:text-white hover:bg-white/5"
                                         )}
                                         onClick={() => setIsMenuOpen(false)}
                                     >
+                                        <link.icon className={clsx("w-5 h-5", isActive(link.href) ? "text-black" : "text-neutral-500 group-hover:text-white")} />
                                         {link.name}
                                     </Link>
                                 ))}
-                                {user && !isGuest && (
-                                    <Link
-                                        href="/game/studies"
-                                        className={clsx(
-                                            "flex items-center gap-4 px-4 py-3 rounded-2xl text-base font-bold transition-all",
-                                            isActive("/game/studies")
-                                                ? "bg-[var(--primary)] text-black"
-                                                : "text-text-secondary hover:text-white hover:bg-white/5"
-                                        )}
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        {t('studies')}
-                                    </Link>
-                                )}
                             </div>
 
                             {/* Divider */}
@@ -372,12 +365,8 @@ export const Navbar: React.FC = () => {
                                     {t("terms")}
                                 </Link>
                                 <Link href="/privacy" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 px-4 py-2.5 text-sm font-bold text-text-muted hover:text-foreground">
-                                    <Shield className="w-5 h-5" />
+                                    <ShieldCheck className="w-5 h-5" />
                                     {t("privacy")}
-                                </Link>
-                                <Link href="https://tzdraft.co.tz" target="_blank" className="flex items-center gap-4 px-4 py-2.5 text-sm font-bold text-text-muted hover:text-foreground">
-                                    <ExternalLink className="w-5 h-5" />
-                                    {t("website")}
                                 </Link>
                             </div>
 

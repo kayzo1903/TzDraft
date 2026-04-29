@@ -17,6 +17,7 @@ import {
   Bell,
   History,
   Medal,
+  Puzzle,
   BookOpen,
   BookMarked,
   HelpCircle,
@@ -39,6 +40,9 @@ export function Sidebar() {
   const locale = useLocale();
   const { user, logout } = useAuth();
   const { unreadCount } = useTournamentNotifications();
+  const isAdminPath = pathname.startsWith("/admin");
+
+  if (isAdminPath) return null;
 
   const toggleLanguage = () => {
     const nextLocale = locale === "sw" ? "en" : "sw";
@@ -53,9 +57,10 @@ export function Sidebar() {
   const navLinks = [
     { name: t("home"), href: "/", icon: Home },
     { name: t("play"), href: "/game/setup-online", icon: Gamepad2 },
-    { name: t("history"), href: "/game/history", icon: History },
+    { name: t("history"), href: "/profile/history", icon: History },
     { name: t("leaderboard"), href: "/leaderboard", icon: Medal },
     { name: t("tournaments"), href: "/community/tournament", icon: Trophy },
+    { name: t("puzzles"), href: "/puzzles", icon: Puzzle },
     { name: t("community"), href: "/community", icon: Users },
     { name: t("learn"), href: "/learn", icon: BookOpen },
     { name: t("support"), href: "/support", icon: HelpCircle },
@@ -65,7 +70,6 @@ export function Sidebar() {
     { name: t("rules"), href: "/rules", icon: FileText },
     { name: t("privacy"), href: "/privacy", icon: ShieldCheck },
     { name: t("terms"), href: "/terms", icon: ScrollText },
-    { name: t("website"), href: "https://tzdraft.co.tz", icon: ExternalLink },
   ];
 
   return (
@@ -89,6 +93,38 @@ export function Sidebar() {
           </span>
         </Link>
 
+        {/* User Profile / Auth Section */}
+        <div className="mb-8 px-2">
+          {user ? (
+            <Link href="/profile" className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors border border-white/5 bg-white/5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary)]/20 border border-[var(--primary)]/30 overflow-hidden">
+                {(user as any).avatarUrl ? (
+                  <Image src={(user as any).avatarUrl} alt={user.username || "User"} width={40} height={40} className="object-cover" />
+                ) : (
+                  <User className="h-5 w-5 text-[var(--primary)]" />
+                )}
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-bold text-white truncate">{(user as any).displayName || user.username || "User"}</span>
+                <span className="text-xs text-neutral-500 truncate">{user.email}</span>
+              </div>
+            </Link>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/auth/login" className="w-full">
+                <Button variant="outline" className="w-full rounded-xl border-white/10 text-white hover:bg-white/5 text-xs h-10">
+                  Login
+                </Button>
+              </Link>
+              <Link href="/auth/signup" className="w-full">
+                <Button className="w-full rounded-xl font-black text-xs h-10">
+                  Sign Up
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+
         {/* Navigation Section */}
         <div className="space-y-1">
           <p className="px-3 mb-4 text-[10px] font-black uppercase tracking-[0.25em] text-neutral-500">
@@ -111,106 +147,36 @@ export function Sidebar() {
           ))}
           
           {user && (
-            <Link
-              href="/game/studies"
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-200 group",
-                isActive("/game/studies")
-                  ? "bg-[var(--primary)] text-black"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <BookMarked className={cn("w-5 h-5", isActive("/game/studies") ? "text-black" : "text-neutral-500 group-hover:text-white")} />
-              {t("studies")}
-            </Link>
-          )}
-        </div>
-
-        {/* User Section (if logged in) */}
-        {user ? (
-          <div className="mt-10 space-y-1">
-            <p className="px-3 mb-4 text-[10px] font-black uppercase tracking-[0.25em] text-neutral-500">
-              Account
-            </p>
-            <Link
-              href="/profile"
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
-                isActive("/profile")
-                  ? "bg-[var(--primary)] text-black"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <User className="w-5 h-5" />
-              Profile
-            </Link>
-            <Link
-              href="/notifications"
-              className={cn(
-                "flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
-                isActive("/notifications")
-                  ? "bg-[var(--primary)] text-black"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5" />
-                Notifications
-              </div>
-              {unreadCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-black text-black">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              href="/settings"
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
-                isActive("/settings")
-                  ? "bg-[var(--primary)] text-black"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <Settings className="w-5 h-5" />
-              Settings
-            </Link>
-            {user.role === "ADMIN" && (
+            <>
               <Link
-                href="/admin"
+                href="/settings"
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
-                  isActive("/admin")
-                    ? "bg-warning text-black"
-                    : "text-warning/80 hover:text-warning hover:bg-warning/10"
+                  isActive("/settings")
+                    ? "bg-[var(--primary)] text-black"
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
                 )}
               >
-                <LayoutDashboard className="w-5 h-5" />
-                Admin Panel
+                <Settings className={cn("w-5 h-5", isActive("/settings") ? "text-black" : "text-neutral-500 group-hover:text-white")} />
+                Settings
               </Link>
-            )}
-            <button
-              onClick={() => logout()}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-sm font-bold text-danger/80 hover:text-danger hover:bg-danger/10 transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              Sign Out
-            </button>
-          </div>
-        ) : (
-          <div className="mt-10 pt-6 grid grid-cols-1 gap-2 border-t border-white/5">
-            <Link href="/auth/login">
-              <Button variant="outline" className="w-full rounded-2xl border-white/10 text-white hover:bg-white/5">
-                Login
-              </Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button className="w-full rounded-2xl font-black">
-                Sign Up
-              </Button>
-            </Link>
-          </div>
-        )}
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+                    isActive("/admin")
+                      ? "bg-warning text-black"
+                      : "text-warning/80 hover:text-warning hover:bg-warning/10"
+                  )}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Admin Panel
+                </Link>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Legal Section */}
         <div className="mt-10 space-y-1">
@@ -231,7 +197,7 @@ export function Sidebar() {
         </div>
 
         {/* Preferences Section */}
-        <div className="mt-10 space-y-1 pb-10">
+        <div className="mt-10 space-y-1 pb-6">
           <p className="px-3 mb-4 text-[10px] font-black uppercase tracking-[0.25em] text-neutral-500">
             Preferences
           </p>
@@ -249,6 +215,18 @@ export function Sidebar() {
           </button>
         </div>
 
+        {/* Bottom Section */}
+        {user && (
+          <div className="mt-auto pt-6 border-t border-white/5 pb-6">
+            <button
+              onClick={() => logout()}
+              className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-2xl text-sm font-bold text-danger/80 hover:text-danger hover:bg-danger/10 transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

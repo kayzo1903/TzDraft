@@ -2,12 +2,15 @@
 "use client";
 
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/routing';
+import { Link, usePathname } from '@/i18n/routing';
 import Image from 'next/image';
 
 export const Footer: React.FC = () => {
     const t = useTranslations('footer');
+    const pathname = usePathname();
     const currentYear = new Date().getFullYear();
+
+    if (pathname.startsWith('/admin')) return null;
 
     return (
         <footer className="w-full bg-[var(--background)] border-t border-[var(--secondary)] py-8 mt-auto">

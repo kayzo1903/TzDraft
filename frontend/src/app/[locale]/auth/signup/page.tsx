@@ -27,6 +27,7 @@ import {
   Smartphone,
   UserCircle,
   Lock,
+  Scale,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -53,6 +54,7 @@ export default function SignupPage() {
     country: "TZ",
     region: "",
   });
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -142,10 +144,16 @@ export default function SignupPage() {
       return;
     }
 
+    if (!termsAccepted) {
+      setError(t("errors.termsRequired"));
+      return;
+    }
+
     setLoading(true);
 
     try {
       await register(formData);
+      await authClient.acceptTerms();
       router.push("/");
     } catch (err: any) {
       const backendMessage = err.response?.data?.message;
@@ -457,10 +465,28 @@ export default function SignupPage() {
                         label={t("fields.confirmPassword")}
                       />
                     </div>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 accent-[#f97316] shrink-0"
+                      />
+                      <span className="text-xs text-neutral-400 leading-relaxed">
+                        I have read and agree to the{" "}
+                        <Link href="/terms" className="text-orange-400 hover:underline font-medium" target="_blank">
+                          Terms of Service
+                        </Link>{" "}
+                        and{" "}
+                        <Link href="/privacy" className="text-orange-400 hover:underline font-medium" target="_blank">
+                          Privacy Policy
+                        </Link>
+                      </span>
+                    </label>
                     <Button
                       type="submit"
-                      className="w-full py-5 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#f43f5e] text-white font-semibold"
-                      disabled={loading}
+                      className="w-full py-5 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#f43f5e] text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={loading || !termsAccepted}
                     >
                       {loading ? (
                         <span className="flex items-center justify-center gap-2">

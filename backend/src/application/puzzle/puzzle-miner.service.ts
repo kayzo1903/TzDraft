@@ -5,9 +5,10 @@
  * position, and uses Mkaguzi's eval to detect tactical moments worth turning
  * into puzzles.
  *
- * A position is a puzzle candidate when the eval swing (before vs after the
- * actual move played) exceeds PUZZLE_EVAL_THRESHOLD centipawns, OR when the
- * move was a multi-capture (always tactically interesting).
+ * A position is a puzzle candidate when the position is quiet (no captures
+ * available) and the eval swing exceeds PUZZLE_EVAL_THRESHOLD centipawns.
+ * This filters out forced captures and ensures puzzles require genuine
+ * strategic insight (sacrifices, positional traps, endgame maneuvers).
  *
  * Candidates are saved with status=PENDING and reviewed in the admin dashboard
  * before being published to players.
@@ -18,6 +19,8 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { MkaguziAdapter } from '../../infrastructure/engine/mkaguzi.adapter';
 import { replayGame, MoveRecord, PieceSnapshot } from './board-reconstructor';
+// We avoid the WASM-based MkaguziEngine in the backend miner to avoid Node.js/WASM load issues.
+// Instead we use lightweight pure-JS checkers logic for jump detection.
 
 /** Minimum centipawn swing to flag a position as a puzzle candidate. */
 const PUZZLE_EVAL_THRESHOLD = 150;
@@ -101,8 +104,13 @@ export class PuzzleMinerService {
         minedForPuzzles: false,
         endedAt: { gte: since },
         winner: { not: null },
+        // Prioritize ranked games with at least one established player
+        OR: [{ whiteElo: { gte: 1000 } }, { blackElo: { gte: 1000 } }],
       },
       select: { id: true },
+      orderBy: {
+        createdAt: 'desc',
+      },
       take: 100, // process at most 100 games per cycle
     });
 
@@ -157,64 +165,65 @@ export class PuzzleMinerService {
       toSquare: m.toSquare,
       capturedSquares: m.capturedSquares,
       isPromotion: m.isPromotion,
+      isMultiCapture: m.isMultiCapture,
       player: m.player as 'WHITE' | 'BLACK',
     }));
 
     const states = replayGame(moveRecords);
     let candidatesFound = 0;
 
-    for (let i = 0; i < moves.length - 1; i++) {
+    for (let i = 0; i < moves.length - 5; i++) {
       if (candidatesFound >= MAX_CANDIDATES_PER_GAME) break;
 
-      const move = moves[i];
       const boardBefore = states[i];
-      const boardAfter = states[i + 1];
-      const sideToMove = move.player as 'WHITE' | 'BLACK';
+      const sideToMove = moves[i].player as 'WHITE' | 'BLACK';
       const opponent = sideToMove === 'WHITE' ? 'BLACK' : 'WHITE';
+      const jumps = this.findAllJumps(boardBefore, sideToMove);
 
-      // Fast path: always flag multi-captures as candidates (tactically rich).
-      if (move.isMultiCapture) {
+      // RULE: If there's ANY forced jump, it's a "mandatory capture puzzle".
+      // We skip these to focus on "quiet" starting moves like sacrifices and traps.
+      if (jumps.length > 0) continue;
+
+      // Deep Eval: Check if the player's position improves significantly after their NEXT move too.
+      // This helps catch sacrifices (move i) that lead to a win (move i+2).
+      const boardAfter1 = states[i + 1]; // After player's 1st move
+      const boardAfter3 = states[Math.min(i + 3, moves.length - 1)]; // After player's 2nd move (if exists)
+
+      const evalGapShort = await this.computeEvalGap(boardBefore, boardAfter1, sideToMove, opponent);
+      const evalGapDeep = await this.computeEvalGap(boardBefore, boardAfter3, sideToMove, opponent);
+
+      const evalGap = Math.max(evalGapShort, evalGapDeep);
+
+      // Thresholds: positional traps need a slightly higher bar to be "clean"
+      if (evalGap >= 150) {
+        const solutionMoves = [{
+          from: moves[i].fromSquare,
+          to: moves[i].toSquare,
+          captures: moves[i].capturedSquares,
+        }];
+
+        // Add follow-up moves if they maintain the advantage
+        if (i + 2 < moves.length && moves[i+2].player === sideToMove) {
+            solutionMoves.push({
+                from: moves[i+2].fromSquare,
+                to: moves[i+2].toSquare,
+                captures: moves[i+2].capturedSquares,
+            });
+        }
+
+        const theme = classifyTheme(moves[i] as any, boardBefore, boardAfter1);
+        
         await this.savePuzzleCandidate({
           gameId,
-          moveNum: move.moveNumber,
+          moveNum: moves[i].moveNumber,
           pieces: boardBefore,
           sideToMove,
-          solution: {
-            from: move.fromSquare,
-            to: move.toSquare,
-            captures: move.capturedSquares,
-          },
-          evalGap: 0, // will be estimated below
-          theme: move.isPromotion ? 'promotion' : 'multi-capture',
+          solution: solutionMoves,
+          evalGap: evalGap,
+          theme: theme,
         });
         candidatesFound++;
-        continue;
-      }
-
-      // Eval-based detection: compare position before vs after the move.
-      const evalGap = await this.computeEvalGap(
-        boardBefore,
-        boardAfter,
-        sideToMove,
-        opponent,
-      );
-
-      if (Math.abs(evalGap) >= PUZZLE_EVAL_THRESHOLD) {
-        const theme = classifyTheme(move);
-        await this.savePuzzleCandidate({
-          gameId,
-          moveNum: move.moveNumber,
-          pieces: boardBefore,
-          sideToMove,
-          solution: {
-            from: move.fromSquare,
-            to: move.toSquare,
-            captures: move.capturedSquares,
-          },
-          evalGap: Math.abs(evalGap),
-          theme,
-        });
-        candidatesFound++;
+        i += 3; // Move past the sequence
       }
     }
 
@@ -232,18 +241,16 @@ export class PuzzleMinerService {
     opponent: 'WHITE' | 'BLACK',
   ): Promise<number> {
     try {
-      const [evalBefore, evalAfter] = await Promise.all([
-        this.analyzeWithTimeout(boardBefore, sideToMove),
-        this.analyzeWithTimeout(boardAfter, opponent),
-      ]);
+      const evalBefore = await this.analyzeWithTimeout(boardBefore, sideToMove);
+      const evalAfter = await this.analyzeWithTimeout(boardAfter, opponent);
 
       if (evalBefore === null || evalAfter === null) return 0;
 
       // evalBefore  = score from sideToMove's perspective (positive = good for them)
       // evalAfter   = score from opponent's perspective   (positive = good for opponent)
-      // Swing for sideToMove = evalBefore - evalAfter (if they made a great move,
-      // opponent's position worsened → evalAfter is negative → gap is large positive)
-      return evalBefore - evalAfter;
+      // Eval for sideToMove after the move is -evalAfter.
+      // Swing for sideToMove = (Eval After) - (Eval Before) = -evalAfter - evalBefore
+      return -evalAfter - evalBefore;
     } catch {
       return 0;
     }
@@ -270,7 +277,7 @@ export class PuzzleMinerService {
     moveNum: number;
     pieces: PieceSnapshot[];
     sideToMove: 'WHITE' | 'BLACK';
-    solution: { from: number; to: number; captures: number[] };
+    solution: Array<{ from: number; to: number; captures: number[] }>;
     evalGap: number;
     theme: string;
   }): Promise<void> {
@@ -278,7 +285,7 @@ export class PuzzleMinerService {
       data: {
         pieces: opts.pieces as any,
         sideToMove: opts.sideToMove,
-        solution: [opts.solution] as any,
+        solution: opts.solution as any,
         evalGap: opts.evalGap,
         theme: opts.theme,
         difficulty: evalGapToDifficulty(opts.evalGap),
@@ -288,19 +295,145 @@ export class PuzzleMinerService {
       },
     });
   }
+
+  // ── Pure JS Draughts Logic for Mining Filter ──────────────────────────────
+
+  /**
+   * Returns all legal captures available to sideToMove.
+   *
+   * Uses correct PDN 1-32 board geometry (row parity determines offsets) and
+   * handles flying king jumps: kings can jump over any piece along a diagonal,
+   * not just the immediately adjacent one.
+   *
+   * Men can only capture forward (WHITE=SW/SE, BLACK=NW/NE) per TZD rules.
+   */
+  private findAllJumps(
+    pieces: PieceSnapshot[],
+    sideToMove: 'WHITE' | 'BLACK',
+  ): Array<{ from: number; to: number }> {
+    const jumps: Array<{ from: number; to: number }> = [];
+    const pieceMap = new Map(pieces.map(p => [p.position, p]));
+    const opponent = sideToMove === 'WHITE' ? 'BLACK' : 'WHITE';
+    // WHITE moves toward higher square numbers (down); BLACK toward lower (up).
+    const manDirs: DiagDir[] = sideToMove === 'WHITE' ? ['sw', 'se'] : ['nw', 'ne'];
+
+    for (const p of pieces.filter(pc => pc.color === sideToMove)) {
+      if (p.type === 'MAN') {
+        for (const dir of manDirs) {
+          const over = pdnStep(p.position, dir);
+          if (over === null) continue;
+          if (pieceMap.get(over)?.color !== opponent) continue;
+          const land = pdnStep(over, dir);
+          if (land !== null && !pieceMap.has(land)) {
+            jumps.push({ from: p.position, to: land });
+          }
+        }
+      } else {
+        // Flying king: scan each diagonal for an opponent piece, then collect
+        // all empty landing squares beyond it in the same direction.
+        for (const dir of ALL_DIRS) {
+          let cur = p.position;
+          let foundOpponent = false;
+          while (true) {
+            const next = pdnStep(cur, dir);
+            if (next === null) break;
+            const nextPiece = pieceMap.get(next);
+            if (!foundOpponent) {
+              if (nextPiece) {
+                if (nextPiece.color === sideToMove) break; // own piece blocks
+                foundOpponent = true;
+              }
+            } else {
+              if (nextPiece) break; // second piece blocks
+              jumps.push({ from: p.position, to: next });
+            }
+            cur = next;
+          }
+        }
+      }
+    }
+
+    return jumps;
+  }
+}
+
+// ── PDN 1-32 Board Geometry ────────────────────────────────────────────────
+
+type DiagDir = 'nw' | 'ne' | 'sw' | 'se';
+const ALL_DIRS: DiagDir[] = ['nw', 'ne', 'sw', 'se'];
+
+/**
+ * Returns the diagonal neighbor of `sq` in direction `dir`, or null if off-board.
+ *
+ * PDN 1-32 squares are grouped into rows of 4 (group = ceil(sq/4)).
+ * Odd-numbered groups have their dark squares in even columns (B,D,F,H);
+ * even-numbered groups in odd columns (A,C,E,G). This alternation means the
+ * step offsets differ by row parity.
+ */
+function pdnAdjacent(sq: number): Record<DiagDir, number | null> {
+  const group = Math.ceil(sq / 4); // 1–8
+  const pos = (sq - 1) % 4;       // 0–3 (0 = leftmost in group)
+  const isOdd = group % 2 === 1;
+
+  if (isOdd) {
+    return {
+      nw: group > 1 ? sq - 4 : null,
+      ne: group > 1 && pos < 3 ? sq - 3 : null,
+      sw: group < 8 ? sq + 4 : null,
+      se: group < 8 && pos < 3 ? sq + 5 : null,
+    };
+  } else {
+    return {
+      nw: group > 1 && pos > 0 ? sq - 5 : null,
+      ne: group > 1 ? sq - 4 : null,
+      sw: group < 8 && pos > 0 ? sq + 3 : null,
+      se: group < 8 ? sq + 4 : null,
+    };
+  }
+}
+
+function pdnStep(sq: number, dir: DiagDir): number | null {
+  return pdnAdjacent(sq)[dir];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function classifyTheme(move: {
-  capturedSquares: number[];
-  isPromotion: boolean;
-  isMultiCapture: boolean;
-}): string {
+function classifyTheme(
+  move: MoveRecord,
+  boardBefore: PieceSnapshot[],
+  boardAfter: PieceSnapshot[],
+): string {
+  const sideToMove = move.player;
+  const opponent = sideToMove === 'WHITE' ? 'BLACK' : 'WHITE';
+
+  // 1. King Trap: Did a follow-up sequence eliminate an opponent's King?
+  const lostKings = boardBefore.filter(
+    (p) =>
+      p.color === opponent &&
+      p.type === 'KING' &&
+      !boardAfter.some(a => a.position === p.position),
+  );
+  if (lostKings.length > 0) return 'king-trap';
+
+  // 2. Sacrifice: Did our total material decrease while eval went up?
+  const myMaterialBefore = countMaterial(boardBefore, sideToMove);
+  const myMaterialAfter = countMaterial(boardAfter, sideToMove);
+  if (myMaterialAfter < myMaterialBefore) return 'sacrifice';
+
+  // 3. Endgame: Very few pieces left on the board.
+  if (boardBefore.length <= 8) return 'endgame';
+
   if (move.isPromotion) return 'promotion';
-  if (move.isMultiCapture) return 'multi-capture';
-  if (move.capturedSquares.length === 1) return 'capture';
-  return 'positional';
+  return 'position-trap';
+}
+
+function countMaterial(
+  pieces: PieceSnapshot[],
+  color: 'WHITE' | 'BLACK',
+): number {
+  return pieces
+    .filter((p) => p.color === color)
+    .reduce((sum, p) => sum + (p.type === 'KING' ? 3 : 1), 0);
 }
 
 function evalGapToDifficulty(gap: number): number {
