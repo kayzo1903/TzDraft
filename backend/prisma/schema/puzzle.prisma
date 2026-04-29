@@ -6,12 +6,12 @@ model Puzzle {
   id                String    @id @default(uuid())
   title             String?
   pieces            Json                    // Board snapshot (array of pieces)
-  sideToMove        String                  // 'WHITE' | 'BLACK'
+  sideToMove        String    @map("side_to_move") // 'WHITE' | 'BLACK'
   solution          Json                    // Array of moves: [{from, to, captures}, ...]
-  evalGap           Int       @default(0)   // Centipawn evaluation swing
+  evalGap           Int       @default(0) @map("eval_gap") // Centipawn evaluation swing
   difficulty        Int       @default(3)   // 1-5 scale
   theme             String    @default("tactical")  // tactical, sacrifice, endgame, etc.
-  status            String    @default("PENDING")   // PENDING | APPROVED | REJECTED
+  status            PuzzleStatus @default(PENDING)
   
   // Source game reference
   sourceGameId      String?   @map("source_game_id")
@@ -23,6 +23,7 @@ model Puzzle {
   publishedAt       DateTime? @map("published_at")
   
   attempts          PuzzleAttempt[]
+  ratedBy           UserRatedPuzzle[]
 
   @@index([status])
   @@index([difficulty])
@@ -35,14 +36,31 @@ model PuzzleAttempt {
   id        String   @id @default(uuid())
   puzzleId  String   @map("puzzle_id")
   puzzle    Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
-  
+
   userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   solved    Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
+  timeTaken Int?     @map("time_taken")
+  points    Int      @default(0)
+  createdAt DateTime @default(now()) @map("attempted_at")
 
   @@index([puzzleId])
   @@index([userId])
   @@map("puzzle_attempts")
+}
+
+// Tracks exactly which puzzle IDs have been rated for each user.
+// A row here means the rating was already applied — no second effect ever.
+model UserRatedPuzzle {
+  userId    String   @map("user_id")
+  puzzleId  String   @map("puzzle_id")
+  points    Int
+  ratedAt   DateTime @default(now()) @map("rated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  puzzle Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, puzzleId])
+  @@map("user_rated_puzzles")
 }

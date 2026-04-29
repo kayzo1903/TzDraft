@@ -26,6 +26,7 @@ import { CommunicationModule } from '../../admin/communication.module';
 import { CommunicationController } from './controllers/communication.controller';
 import { SocialController } from './controllers/social.controller';
 import { SocialModule } from '../../domain/social/social.module';
+import { PushCampaignModule } from '../../infrastructure/push/push-campaign.module';
 
 /**
  * HTTP Module
@@ -42,6 +43,7 @@ import { SocialModule } from '../../domain/social/social.module';
     UserModule,
     CommunicationModule,
     SocialModule,
+    PushCampaignModule,
   ],
   controllers: [
     GameController,
