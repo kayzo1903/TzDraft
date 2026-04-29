@@ -303,7 +303,7 @@ export function PuzzleClient({
   const [displayRating, setDisplayRating] = useState(1000);
   const [showModal, setShowModal]         = useState(false);
 
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const submittingRef       = useRef(false);
   const failedOnceRef       = useRef(false);
   const alreadyAttemptedRef = useRef(puzzle.alreadyAttempted ?? false);
@@ -472,26 +472,24 @@ export function PuzzleClient({
     ? { from: pdnToGrid(sol0.from, flip), to: pdnToGrid(sol0.to, flip) }
     : null;
 
-  const isCorrect   = solveState === "correct";
-  const pointsSign  = points !== null && points > 0 ? "+" : "";
+  const isCorrect    = solveState === "correct";
+  const pointsSign   = points !== null && points > 0 ? "+" : points !== null && points < 0 ? "−" : "";
   const opponentSide = puzzle.sideToMove === "WHITE" ? "Black" : "White";
-  const solverSide   = puzzle.sideToMove === "WHITE" ? "White" : "Black";
+  const playerName   = user?.displayName ?? user?.username ?? "You";
+  const avatarUrl    = user?.avatarUrl;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <main className="min-h-[100svh] overflow-hidden overscroll-none flex flex-col items-center justify-start px-3 py-3 sm:p-4 gap-3 sm:gap-4 bg-background">
+    <main className="h-[100svh] overflow-hidden overscroll-none flex flex-col bg-background">
 
-      {/* ── Result Modal ────────────────────────────────────────────────────── */}
+      {/* ── Result Modal (shared mobile + desktop) ──────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6">
           <div className={`w-full max-w-sm bg-neutral-900 rounded-3xl border overflow-hidden shadow-2xl ${
             isCorrect ? "border-emerald-500/40" : "border-red-500/40"
           }`}>
-            {/* Header */}
-            <div className={`flex flex-col items-center gap-3 py-8 px-6 ${
-              isCorrect ? "bg-emerald-500/10" : "bg-red-500/10"
-            }`}>
+            <div className={`flex flex-col items-center gap-3 py-8 px-6 ${isCorrect ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
               {isCorrect
                 ? <CheckCircle className="w-14 h-14 text-emerald-400" strokeWidth={2.5} />
                 : <XCircle    className="w-14 h-14 text-red-400"     strokeWidth={2.5} />
@@ -502,21 +500,14 @@ export function PuzzleClient({
               <p className="text-sm text-neutral-400">
                 {isCorrect
                   ? `Solved in ${fmt(finalTime)}`
-                  : failedOnceRef.current && points === 0
-                    ? "Practice — no points"
-                    : "Study the line to improve"}
+                  : failedOnceRef.current && points === 0 ? "Practice — no points" : "Study the line to improve"}
               </p>
             </div>
-
-            {/* Stats row */}
             <div className="flex border-t border-b border-neutral-700/60">
               <div className="flex-1 flex flex-col items-center gap-1.5 py-5">
                 <span className="text-[10px] font-black tracking-widest text-neutral-500 uppercase">Points</span>
                 <div className="flex items-center gap-1.5">
-                  {isCorrect
-                    ? <TrendingUp   className="w-4 h-4 text-emerald-400" />
-                    : <TrendingDown className="w-4 h-4 text-red-400"     />
-                  }
+                  {isCorrect ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
                   <span className={`text-2xl font-black tabular-nums ${isCorrect ? "text-emerald-300" : "text-red-300"}`}>
                     {pointsSign}{displayPoints}
                   </span>
@@ -525,18 +516,13 @@ export function PuzzleClient({
               <div className="flex-1 flex flex-col items-center gap-1.5 py-5 border-l border-neutral-700/60">
                 <span className="text-[10px] font-black tracking-widest text-neutral-500 uppercase">Puzzle Rating</span>
                 <div className="flex items-center gap-1.5">
-                  {isCorrect
-                    ? <TrendingUp   className="w-4 h-4 text-emerald-400" />
-                    : <TrendingDown className="w-4 h-4 text-red-400"     />
-                  }
+                  {isCorrect ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
                   <span className={`text-2xl font-black tabular-nums ${isCorrect ? "text-emerald-300" : "text-red-300"}`}>
                     {displayRating}
                   </span>
                 </div>
               </div>
             </div>
-
-            {/* Guest CTA inside modal */}
             {!isAuthenticated && (
               <div className="mx-5 mt-5 rounded-2xl border border-orange-400/20 bg-orange-400/5 p-3 flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-400/10 text-orange-400">
@@ -544,17 +530,12 @@ export function PuzzleClient({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-white leading-tight">{t("guestCta.title")}</p>
-                  <Link
-                    href="/auth/register"
-                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-orange-400 hover:text-orange-300"
-                  >
+                  <Link href="/auth/register" className="mt-1 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-orange-400 hover:text-orange-300">
                     <UserPlus size={11} />{t("guestCta.button")}
                   </Link>
                 </div>
               </div>
             )}
-
-            {/* Actions */}
             <div className="p-5 flex flex-col gap-3">
               <button
                 onClick={() => { setShowModal(false); reset(); }}
@@ -566,9 +547,7 @@ export function PuzzleClient({
               <Link
                 href="/puzzles"
                 className={`w-full h-12 rounded-2xl flex items-center justify-center gap-2 font-bold transition-colors ${
-                  isCorrect
-                    ? "bg-emerald-500 hover:bg-emerald-400 text-black"
-                    : "bg-[var(--primary)] hover:opacity-90 text-white"
+                  isCorrect ? "bg-emerald-500 hover:bg-emerald-400 text-black" : "bg-[var(--primary)] hover:opacity-90 text-white"
                 }`}
               >
                 <ArrowRight className="w-5 h-5" />
@@ -579,37 +558,142 @@ export function PuzzleClient({
         </div>
       )}
 
-      {/* ── Main layout ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full max-w-5xl items-stretch md:items-start justify-center">
+      {/* ══════════════════════════════════════════════════════════════════════
+          MOBILE LAYOUT  (< md) — mirrors apps/mobile/puzzle-player exactly
+          ══════════════════════════════════════════════════════════════════ */}
+      <div className="flex flex-col flex-1 md:hidden overflow-hidden">
 
-        {/* ── Board column ────────────────────────────────────────────────── */}
-        <div className="flex-1 max-w-[600px] w-full mx-auto flex flex-col gap-2">
+        {/* Header: back icon | title + theme + stars | reset icon */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-800">
+          <Link
+            href="/puzzles"
+            className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 text-neutral-300" />
+          </Link>
+          <div className="flex flex-col items-center gap-0.5 flex-1 px-2">
+            <span className="text-[11px] font-black uppercase tracking-widest text-white">Tactical Puzzle</span>
+            <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider">
+              {(puzzle.theme ?? "tactical").replace(/-/g, " ")}
+              {"  "}{"★".repeat(puzzle.difficulty)}
+            </span>
+          </div>
+          <button
+            onClick={reset}
+            className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center shrink-0"
+          >
+            <RotateCcw className="w-4.5 h-4.5 text-neutral-400" />
+          </button>
+        </div>
 
-          {/* Mobile top bar */}
-          <div className="md:hidden rounded-xl border border-neutral-700/50 bg-neutral-900/50 backdrop-blur px-3 py-2 flex items-center gap-2">
-            <Link
-              href="/puzzles"
-              className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-neutral-700/60 transition-colors text-neutral-400 hover:text-neutral-100"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {puzzle.theme && (
-                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold shrink-0 ${themeColor(puzzle.theme)}`}>
-                  {themeT(safeThemeKey as any)}
-                </span>
-              )}
-              <span className="text-xs font-semibold text-neutral-300 truncate">
-                {puzzle.title ?? (puzzle.sideToMove === "WHITE" ? t("whiteToMove") : t("blackToMove"))}
-              </span>
+        {/* Body: opponent bar → board → player bar → action row */}
+        <div className="flex flex-col flex-1 px-3 py-2 gap-2 overflow-hidden">
+
+          {/* Opponent bar */}
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-neutral-700/50 bg-neutral-900/40">
+            <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-base shrink-0">
+              {puzzle.sideToMove === "WHITE" ? "⚫" : "⚪"}
             </div>
-            <span className="shrink-0 text-xs tracking-widest text-amber-300 font-mono">
-              {difficultyStars(puzzle.difficulty)}
+            <div className="flex-1">
+              <p className="text-[13px] font-extrabold text-white leading-none">{opponentSide}</p>
+            </div>
+            <span className="font-mono text-[13px] text-neutral-400">
+              {solveState === "idle" ? fmt(elapsed) : fmt(finalTime)}
             </span>
           </div>
 
+          {/* Board — flex-1 so it fills remaining space */}
+          <div className="flex-1 flex items-center justify-center min-h-0">
+            <Board
+              pieces={board}
+              onMove={handleMove}
+              readOnly={solveState !== "idle"}
+              legalMoves={gridLegal}
+              forcedPieces={forcedPieces}
+              lastMove={lastMove}
+              capturedGhosts={ghosts}
+              flipped={flip}
+              hintSquares={hintSquares}
+            />
+          </div>
+
+          {/* Player bar */}
+          <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors duration-300 ${
+            solveState !== "idle"
+              ? isCorrect ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
+              : "border-neutral-700/50 bg-neutral-900/40"
+          }`}>
+            {/* Avatar */}
+            <div className="w-9 h-9 rounded-full border border-neutral-700 bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
+              {avatarUrl
+                ? <img src={avatarUrl} alt={playerName} className="w-full h-full object-cover" />
+                : <UserPlus className="w-4 h-4 text-neutral-500" />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-extrabold text-white leading-none truncate">{playerName}</p>
+              <p className="text-[10px] text-neutral-500 mt-0.5">Puzzle Rating</p>
+            </div>
+            {/* Rating badge */}
+            <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border font-mono font-black text-sm transition-all duration-300 ${
+              solveState !== "idle"
+                ? isCorrect ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-red-500/10 border-red-500/30 text-red-300"
+                : "bg-neutral-900 border-neutral-700 text-white"
+            }`}>
+              {solveState !== "idle" && (
+                isCorrect ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />
+              )}
+              <span className="tabular-nums">{displayRating}</span>
+            </div>
+          </div>
+
+          {/* Action row */}
+          <div className="flex items-center border-t border-neutral-800 pt-1 pb-safe">
+            <Link
+              href="/puzzles"
+              className="flex-1 flex flex-col items-center gap-1 py-2.5"
+            >
+              <ArrowLeft className="w-5 h-5 text-neutral-500" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500">Back</span>
+            </Link>
+
+            <button onClick={reset} className="flex-1 flex flex-col items-center gap-1 py-2.5">
+              <RotateCcw className="w-5 h-5 text-neutral-500" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500">
+                {solveState === "idle" ? "Reset" : "Retry"}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setShowHint((s) => !s)}
+              disabled={solveState !== "idle" && !showHint}
+              className="flex-1 flex flex-col items-center gap-1 py-2.5 disabled:opacity-40"
+            >
+              <Lightbulb className={`w-5 h-5 ${showHint ? "text-[var(--primary)]" : "text-neutral-500"}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wider ${showHint ? "text-[var(--primary)]" : "text-neutral-500"}`}>
+                Hint
+              </span>
+            </button>
+
+            <Link href="/puzzles" className="flex-1 flex flex-col items-center gap-1 py-2.5">
+              <ArrowRight className={`w-5 h-5 ${solveState === "correct" ? "text-emerald-400" : "text-neutral-500"}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wider ${solveState === "correct" ? "text-emerald-400" : "text-neutral-500"}`}>
+                Next
+              </span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          DESKTOP LAYOUT  (≥ md) — sidebar panel + board column
+          ══════════════════════════════════════════════════════════════════ */}
+      <div className="hidden md:flex flex-row gap-6 flex-1 w-full max-w-5xl mx-auto px-4 py-4 items-start justify-center">
+
+        {/* Board column */}
+        <div className="flex-1 max-w-[560px] flex flex-col gap-3">
           {/* Opponent bar */}
-          <div className="rounded-xl border border-neutral-700/50 bg-neutral-900/40 backdrop-blur px-3 py-2 flex items-center justify-between gap-3">
+          <div className="rounded-xl border border-neutral-700/50 bg-neutral-900/40 px-3 py-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-neutral-700 border border-neutral-600 flex items-center justify-center text-sm shrink-0">
                 {puzzle.sideToMove === "WHITE" ? "⚫" : "⚪"}
@@ -625,101 +709,76 @@ export function PuzzleClient({
           </div>
 
           {/* Board */}
-          <div className="relative">
-            <Board
-              pieces={board}
-              onMove={handleMove}
-              readOnly={solveState !== "idle"}
-              legalMoves={gridLegal}
-              forcedPieces={forcedPieces}
-              lastMove={lastMove}
-              capturedGhosts={ghosts}
-              flipped={flip}
-              hintSquares={hintSquares}
-            />
-          </div>
+          <Board
+            pieces={board}
+            onMove={handleMove}
+            readOnly={solveState !== "idle"}
+            legalMoves={gridLegal}
+            forcedPieces={forcedPieces}
+            lastMove={lastMove}
+            capturedGhosts={ghosts}
+            flipped={flip}
+            hintSquares={hintSquares}
+          />
 
-          {/* Player bar — shows puzzle rating badge */}
-          <div className={`rounded-xl border backdrop-blur px-3 py-2 flex items-center justify-between gap-3 transition-colors duration-300 ${
+          {/* Player bar */}
+          <div className={`rounded-xl border px-3 py-2 flex items-center justify-between gap-3 transition-colors duration-300 ${
             solveState !== "idle"
-              ? isCorrect
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-red-500/30 bg-red-500/5"
+              ? isCorrect ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
               : "border-neutral-700/50 bg-neutral-900/40"
           }`}>
             <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm shrink-0 transition-colors duration-300 ${
-                solveState !== "idle"
-                  ? isCorrect
-                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
-                    : "bg-red-500/20 border-red-500/40 text-red-300"
-                  : "bg-[var(--primary)]/20 border-[var(--primary)]/40 text-[var(--primary)]"
-              }`}>
-                {puzzle.sideToMove === "WHITE" ? "⚪" : "⚫"}
+              <div className="w-8 h-8 rounded-full border border-neutral-700 bg-neutral-800 flex items-center justify-center overflow-hidden shrink-0">
+                {avatarUrl
+                  ? <img src={avatarUrl} alt={playerName} className="w-full h-full object-cover" />
+                  : <UserPlus className="w-4 h-4 text-neutral-500" />
+                }
               </div>
               <div>
-                <div className="text-xs font-bold text-neutral-200">{solverSide}</div>
-                <div className="text-[10px] text-neutral-500 uppercase tracking-wider">You</div>
+                <div className="text-xs font-bold text-neutral-200">{playerName}</div>
+                <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Puzzle Rating</div>
               </div>
             </div>
-
-            {/* Rating badge */}
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-mono font-black text-sm transition-all duration-300 ${
               solveState !== "idle"
-                ? isCorrect
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                  : "bg-red-500/10 border-red-500/30 text-red-300"
+                ? isCorrect ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-red-500/10 border-red-500/30 text-red-300"
                 : "bg-neutral-950/60 border-neutral-700/60 text-neutral-100"
             }`}>
-              {solveState !== "idle" && (
-                isCorrect
-                  ? <TrendingUp   className="w-3.5 h-3.5" />
-                  : <TrendingDown className="w-3.5 h-3.5" />
-              )}
+              {solveState !== "idle" && (isCorrect ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />)}
               <span className="tabular-nums">{displayRating}</span>
             </div>
           </div>
 
-          {/* Solution line — visible after result */}
-          {solution && solution.length > 0 && (
-            <div className="md:hidden rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-500">{t("bestLine")}</p>
-              <div className="space-y-2">
-                {solution.map((move, i) => (
-                  <div key={i} className="flex items-center gap-2 font-mono text-sm">
-                    <span className="w-4 text-right text-neutral-600">{i + 1}.</span>
-                    <span className="tabular-nums text-white">{move.from}</span>
-                    <ArrowRight className="h-3 w-3 shrink-0 text-neutral-600" />
-                    <span className="tabular-nums text-emerald-300">{move.to}</span>
-                    {move.captures && move.captures.length > 0 && (
-                      <span className="ml-1 text-xs text-red-400">×{move.captures.join(", ")}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Hint panel */}
-          {showHint && solveState === "idle" && (
-            <div className="md:hidden rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-amber-500">{t("hintTitle")}</p>
-              <p className="text-sm leading-relaxed text-amber-200/80">{hintT(safeThemeKey as any)}</p>
-            </div>
-          )}
+          {/* Desktop action row */}
+          <div className="flex items-center justify-around border-t border-neutral-800 pt-2">
+            <Link href="/puzzles" className="flex flex-col items-center gap-1.5 py-2 px-3 hover:bg-neutral-800/40 rounded-xl group">
+              <ArrowLeft className="w-5 h-5 text-neutral-500 group-hover:text-neutral-300" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">{t("back")}</span>
+            </Link>
+            <button onClick={reset} className="flex flex-col items-center gap-1.5 py-2 px-3 hover:bg-neutral-800/40 rounded-xl group">
+              <RotateCcw className="w-5 h-5 text-neutral-500 group-hover:text-amber-400" />
+              <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-amber-400">
+                {solveState === "idle" ? t("action.reset") : t("action.tryAgain")}
+              </span>
+            </button>
+            <button onClick={() => setShowHint((s) => !s)} disabled={solveState !== "idle"} className="flex flex-col items-center gap-1.5 py-2 px-3 hover:bg-neutral-800/40 rounded-xl group disabled:opacity-40">
+              <Lightbulb className={`w-5 h-5 group-hover:text-cyan-400 ${showHint ? "text-cyan-500" : "text-neutral-500"}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wider group-hover:text-cyan-400 ${showHint ? "text-cyan-600" : "text-neutral-500"}`}>{t("showHint")}</span>
+            </button>
+            <Link href="/puzzles" className="flex flex-col items-center gap-1.5 py-2 px-3 hover:bg-neutral-800/40 rounded-xl group">
+              <ArrowRight className={`w-5 h-5 ${solveState === "correct" ? "text-emerald-400" : "text-neutral-500 group-hover:text-emerald-400"}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wider ${solveState === "correct" ? "text-emerald-400" : "text-neutral-500 group-hover:text-emerald-400"}`}>
+                {solveState === "correct" ? t("action.solvedButton") : t("action.next")}
+              </span>
+            </Link>
+          </div>
         </div>
 
-        {/* ── Desktop right panel ─────────────────────────────────────────── */}
-        <div className="hidden md:flex flex-col gap-4 w-72 shrink-0">
-          <Link
-            href="/puzzles"
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t("back")}
+        {/* Right panel */}
+        <div className="flex flex-col gap-4 w-72 shrink-0">
+          <Link href="/puzzles" className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white transition-colors">
+            <ArrowLeft className="h-4 w-4" />{t("back")}
           </Link>
-
-          {/* Puzzle meta */}
           <div className="rounded-2xl border border-white/10 bg-neutral-800/50 p-4 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               {puzzle.theme && (
@@ -735,9 +794,7 @@ export function PuzzleClient({
             <p className="text-sm text-neutral-400">
               {t("instruction")}{" "}
               <span className="text-neutral-500">
-                {puzzle._count.attempts === 1
-                  ? t("attemptCountOne", { count: puzzle._count.attempts })
-                  : t("attemptCount", { count: puzzle._count.attempts })}
+                {puzzle._count.attempts === 1 ? t("attemptCountOne", { count: puzzle._count.attempts }) : t("attemptCount", { count: puzzle._count.attempts })}
               </span>
             </p>
             {solveState === "idle" && (
@@ -746,8 +803,6 @@ export function PuzzleClient({
               </div>
             )}
           </div>
-
-          {/* Solution line */}
           {solution && solution.length > 0 && (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-500">{t("bestLine")}</p>
@@ -766,16 +821,12 @@ export function PuzzleClient({
               </div>
             </div>
           )}
-
-          {/* Hint */}
           {showHint && solveState === "idle" && (
             <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-amber-500">{t("hintTitle")}</p>
               <p className="text-sm leading-relaxed text-amber-200/80">{hintT(safeThemeKey as any)}</p>
             </div>
           )}
-
-          {/* Guest CTA on desktop */}
           {solveState !== "idle" && !isAuthenticated && points !== null && (
             <div className="rounded-2xl border border-orange-400/20 bg-orange-400/5 p-4 flex items-center gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-400/10 text-orange-400">
@@ -784,62 +835,12 @@ export function PuzzleClient({
               <div className="flex-1">
                 <p className="text-sm font-bold text-white leading-tight">{t("guestCta.title")}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">{t("guestCta.desc")}</p>
-                <Link
-                  href="/auth/register"
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-orange-400 hover:text-orange-300"
-                >
+                <Link href="/auth/register" className="mt-2 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-orange-400 hover:text-orange-300">
                   <UserPlus size={12} />{t("guestCta.button")}
                 </Link>
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* ── Bottom action bar ───────────────────────────────────────────────── */}
-      <div className="w-full max-w-[600px] sticky bottom-0 z-20 -mx-3 px-1 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] bg-transparent sm:static sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0">
-        <div className="flex items-center justify-around w-full">
-
-          <Link
-            href="/puzzles"
-            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
-          >
-            <ArrowLeft className="w-6 h-6 text-neutral-500 group-hover:text-neutral-300" />
-            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
-              {t("back")}
-            </span>
-          </Link>
-
-          <button
-            onClick={reset}
-            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
-          >
-            <RotateCcw className="w-6 h-6 text-neutral-500 group-hover:text-amber-400" />
-            <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-amber-400">
-              {solveState === "idle" ? t("action.reset") : t("action.tryAgain")}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setShowHint((s) => !s)}
-            disabled={solveState !== "idle"}
-            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group disabled:opacity-40 disabled:pointer-events-none"
-          >
-            <Lightbulb className={`w-6 h-6 group-hover:text-cyan-400 ${showHint ? "text-cyan-500" : "text-neutral-500"}`} />
-            <span className={`text-[9px] font-bold uppercase tracking-wider group-hover:text-cyan-400 ${showHint ? "text-cyan-600" : "text-neutral-500"}`}>
-              {t("showHint")}
-            </span>
-          </button>
-
-          <Link
-            href="/puzzles"
-            className="flex flex-col items-center gap-1.5 py-2 px-1 transition-all hover:bg-neutral-800/40 rounded-xl group"
-          >
-            <ArrowRight className={`w-6 h-6 ${solveState === "correct" ? "text-emerald-400" : "text-neutral-500 group-hover:text-emerald-400"}`} />
-            <span className={`text-[9px] font-bold uppercase tracking-wider ${solveState === "correct" ? "text-emerald-400" : "text-neutral-500 group-hover:text-emerald-400"}`}>
-              {solveState === "correct" ? t("action.solvedButton") : t("action.next")}
-            </span>
-          </Link>
         </div>
       </div>
     </main>
