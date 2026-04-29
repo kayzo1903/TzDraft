@@ -48,7 +48,7 @@ type TierDef = {
 const TIERS: TierDef[] = [
   {
     label: "Beginner",
-    range: [1, 5],
+    range: [1, 3],
     icon: <Shield className="w-3.5 h-3.5" />,
     accent: "text-sky-300",
     border: "border-sky-500/30",
@@ -57,7 +57,7 @@ const TIERS: TierDef[] = [
   },
   {
     label: "Casual",
-    range: [6, 9],
+    range: [4, 7],
     icon: <Zap className="w-3.5 h-3.5" />,
     accent: "text-emerald-300",
     border: "border-emerald-500/30",
@@ -66,7 +66,7 @@ const TIERS: TierDef[] = [
   },
   {
     label: "Competitive",
-    range: [10, 13],
+    range: [8, 11],
     icon: <Swords className="w-3.5 h-3.5" />,
     accent: "text-amber-300",
     border: "border-amber-500/30",
@@ -75,7 +75,7 @@ const TIERS: TierDef[] = [
   },
   {
     label: "Expert",
-    range: [14, 16],
+    range: [12, 16],
     icon: <Flame className="w-3.5 h-3.5" />,
     accent: "text-orange-400",
     border: "border-orange-500/30",
@@ -83,7 +83,7 @@ const TIERS: TierDef[] = [
     bg: "bg-orange-500/5",
   },
   {
-    label: "Master",
+    label: "Undisputed",
     range: [17, 19],
     icon: <Skull className="w-3.5 h-3.5" />,
     accent: "text-rose-400",
@@ -101,11 +101,11 @@ function DifficultyBar({ level }: { level: number }) {
   const pct = Math.round((level / 19) * 100);
   const tier = getTierForLevel(level);
   const barColor =
-    level <= 5
+    level <= 3
       ? "bg-sky-400"
-      : level <= 9
+      : level <= 7
         ? "bg-emerald-400"
-        : level <= 13
+        : level <= 11
           ? "bg-amber-400"
           : level <= 16
             ? "bg-orange-400"
