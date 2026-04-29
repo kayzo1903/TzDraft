@@ -4,10 +4,10 @@ const COMPLETED_LEVELS_KEY = "tzdraft:bot-completed-levels";
 const MAX_UNLOCKED_LEVEL_KEY = "tzdraft:bot-max-level";
 
 export const BOT_TIERS: ReadonlyArray<readonly [number, number]> = [
-  [1, 5],
-  [6, 9],
-  [10, 13],
-  [14, 16],
+  [1,  3],
+  [4,  7],
+  [8,  11],
+  [12, 16],
   [17, 19],
 ];
 

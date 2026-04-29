@@ -90,10 +90,10 @@ const LEVEL_PARAMS: Record<
   number,
   { timeMs: number; depth: number; level: number; randomness: number; blunderChance: number }
 > = {
-  1:  { timeMs: 150,   depth: 0, level: 15, randomness: 250, blunderChance: 0.70 }, // 70% random
-  2:  { timeMs: 200,   depth: 0, level: 15, randomness: 125, blunderChance: 0.40 }, // 40% random
-  3:  { timeMs: 350,   depth: 0, level: 15, randomness: 75,  blunderChance: 0.15 }, // 15% random
-  4:  { timeMs: 500,   depth: 0, level: 16, randomness: 40,  blunderChance: 0.05 }, // 5% random
+  1:  { timeMs: 150,   depth: 0, level: 15, randomness: 250, blunderChance: 0.70 },
+  2:  { timeMs: 200,   depth: 0, level: 15, randomness: 125, blunderChance: 0.40 },
+  3:  { timeMs: 350,   depth: 0, level: 15, randomness: 75,  blunderChance: 0.15 },
+  4:  { timeMs: 500,   depth: 0, level: 16, randomness: 40,  blunderChance: 0.05 },
   5:  { timeMs: 750,   depth: 0, level: 16, randomness: 25,  blunderChance: 0    },
   6:  { timeMs: 1000,  depth: 0, level: 16, randomness: 15,  blunderChance: 0    },
   7:  { timeMs: 1500,  depth: 0, level: 17, randomness: 8,   blunderChance: 0    },
@@ -111,8 +111,32 @@ const LEVEL_PARAMS: Record<
   19: { timeMs: 9000,  depth: 0, level: 19, randomness: 0,   blunderChance: 0    },
 };
 
+// ─── Tier-based flat strength params ─────────────────────────────────────
+// All bots within a tier play at the same strength regardless of their level.
+// Undisputed (17-19) keeps individual progressive params from LEVEL_PARAMS.
+
+type TierParams = { timeMs: number; depth: number; level: number; randomness: number; blunderChance: number };
+
+const TIER_PARAMS: Record<string, TierParams> = {
+  beginner:    { timeMs: 150,  depth: 0, level: 15, randomness: 250, blunderChance: 0.70 },
+  casual:      { timeMs: 350,  depth: 0, level: 15, randomness: 75,  blunderChance: 0.50 },
+  competitive: { timeMs: 500,  depth: 0, level: 16, randomness: 40,  blunderChance: 0.25 },
+  expert:      { timeMs: 1000, depth: 0, level: 16, randomness: 15,  blunderChance: 0.05 },
+};
+
+function getTierName(level: number): string | null {
+  if (level <= 3)  return "beginner";
+  if (level <= 7)  return "casual";
+  if (level <= 11) return "competitive";
+  if (level <= 16) return "expert";
+  return null; // Undisputed — use individual LEVEL_PARAMS
+}
+
 function getParams(level: number) {
-  return LEVEL_PARAMS[Math.max(1, Math.min(level, 19))] ?? LEVEL_PARAMS[19];
+  const clamped = Math.max(1, Math.min(level, 19));
+  const tier = getTierName(clamped);
+  if (tier) return TIER_PARAMS[tier];
+  return LEVEL_PARAMS[clamped] ?? LEVEL_PARAMS[19];
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────
