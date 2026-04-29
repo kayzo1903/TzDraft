@@ -12,6 +12,7 @@ interface PuzzleCandidate {
   difficulty: number;
   theme: string | null;
   evalGap: number;
+  status: string;
   sourceGameId: string | null;
   sourceMoveNum: number | null;
   createdAt: string;
@@ -34,13 +35,15 @@ export default function AdminPuzzlesPage() {
   const [miningForce, setMiningForce] = useState(false);
   const [mining, setMining] = useState(false);
   const [mineResult, setMineResult] = useState<{ games: number; candidates: number } | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("PENDING");
   const LIMIT = 20;
 
   async function fetchData(p: number) {
     setLoading(true);
     try {
+      const statusParam = filterStatus && filterStatus !== "ALL" ? `&status=${filterStatus}` : "";
       const [listRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/admin/puzzles?page=${p}&limit=${LIMIT}`, {
+        fetch(`${API_URL}/admin/puzzles?page=${p}&limit=${LIMIT}${statusParam}`, {
           credentials: "include",
         }),
         fetch(`${API_URL}/admin/puzzles/stats`, { credentials: "include" }),
@@ -60,7 +63,7 @@ export default function AdminPuzzlesPage() {
 
   useEffect(() => {
     fetchData(page);
-  }, [page]);
+  }, [page, filterStatus]);
 
   async function triggerMine() {
     setMining(true);
@@ -105,40 +108,32 @@ export default function AdminPuzzlesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900 p-3">
-          <span className="text-xs font-semibold text-gray-400 whitespace-nowrap">Mine last</span>
-          <select
-            value={miningDays}
-            onChange={(e) => setMiningDays(Number(e.target.value))}
-            className="rounded-lg border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-white focus:border-orange-400 focus:outline-none"
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/puzzles/mine"
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-black text-white hover:bg-orange-400 shadow-lg shadow-orange-500/10 transition-all"
           >
-            {[1, 3, 7, 14, 30, 60, 90].map((d) => (
-              <option key={d} value={d}>{d} day{d !== 1 ? "s" : ""}</option>
-            ))}
-          </select>
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={miningForce}
-              onChange={(e) => setMiningForce(e.target.checked)}
-              className="h-3.5 w-3.5 accent-orange-400"
-            />
-            <span className="text-xs text-gray-400">Re-scan</span>
-          </label>
-          <button
-            onClick={triggerMine}
-            disabled={mining}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-400 disabled:opacity-50 transition-colors"
-          >
-            <PlayCircle className="h-3.5 w-3.5" />
-            {mining ? "Mining..." : "Run"}
-          </button>
-          {mineResult && (
-            <span className="text-xs text-emerald-400 whitespace-nowrap">
-              {mineResult.candidates} new from {mineResult.games} game{mineResult.games !== 1 ? "s" : ""}
-            </span>
-          )}
+            <Zap className="h-4 w-4" />
+            MINE NEW PUZZLES
+          </Link>
         </div>
+      </div>
+
+      {/* Status Tabs */}
+      <div className="flex items-center gap-2 border-b border-gray-800 pb-px">
+        {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+          <button
+            key={s}
+            onClick={() => { setFilterStatus(s); setPage(1); }}
+            className={`px-4 py-2 text-sm font-bold transition-colors border-b-2 ${
+              filterStatus === s 
+                ? "border-orange-500 text-white" 
+                : "border-transparent text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            {s}
+          </button>
+        ))}
       </div>
 
       {/* Stats row */}
@@ -173,6 +168,7 @@ export default function AdminPuzzlesPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-xs uppercase tracking-wider text-gray-500">
               <tr>
+                <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-left">Theme</th>
                 <th className="px-4 py-3 text-left">Side</th>
                 <th className="px-4 py-3 text-left">Difficulty</th>
@@ -185,6 +181,15 @@ export default function AdminPuzzlesPage() {
             <tbody className="divide-y divide-gray-800">
               {puzzles.map((p) => (
                 <tr key={p.id} className="bg-gray-950 hover:bg-gray-900/60 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                      p.status === "APPROVED" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                      p.status === "PENDING" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                      "bg-red-500/20 text-red-400 border border-red-500/30"
+                    }`}>
+                      {p.status}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-400/10 px-2.5 py-1 text-xs font-semibold text-orange-300">
                       {p.theme ?? "unknown"}

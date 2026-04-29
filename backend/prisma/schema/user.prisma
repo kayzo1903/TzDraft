@@ -58,6 +58,7 @@ model User {
     matchmakingSearches    MatchmakingSearch[]
     notifications          Notification[]         @relation("UserNotifications")
     puzzleAttempts         PuzzleAttempt[]
+    ratedPuzzles           UserRatedPuzzle[]
     savedStudies           SavedStudy[]
     followers              Follow[]               @relation("Followers")
     following              Follow[]               @relation("Following")
@@ -77,6 +78,7 @@ model Rating {
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     rating      Int      @default(1200)
+    puzzleRating Int     @default(1000) @map("puzzle_rating")
     gamesPlayed Int      @default(0) @map("games_played")
     lastUpdated DateTime @updatedAt @map("last_updated")
 

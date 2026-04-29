@@ -316,7 +316,7 @@ export default function ProfilePage() {
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
-                                                <div className="w-12 h-12 rounded-full bg-background overflow-hidden flex items-center justify-center border border-white/10">
+                                                <div className="relative w-12 h-12 rounded-full bg-background overflow-hidden flex items-center justify-center border border-white/10">
                                                     {friend.avatarUrl ? (
                                                         <Image src={friend.avatarUrl} alt={friend.username} fill className="object-cover" />
                                                     ) : (

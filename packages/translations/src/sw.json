@@ -18,7 +18,8 @@
     "learn": "Jifunze",
     "history": "Historia ya Michezo",
     "tournaments": "Mashindano",
-    "studies": "Michezo Yangu"
+    "studies": "Michezo Yangu",
+    "puzzles": "Fumbo"
   },
   "home": {
     "tagline": "Pata uzoefu wa jukwaa bora la drafti",
@@ -91,7 +92,7 @@
     "following": "Unafuata"
   },
   "game": {
-    "playOnline": "Cheza Mtandaoni 🌐",
+    "playOnline": "Cheza Mtandaoni",
     "onlineDescription": "Pima ujuzi wako dhidi ya wachezaji ulimwenguni kote",
     "playAI": "Cheza na AI",
     "aiDescription": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish",
@@ -128,6 +129,7 @@
     }
   },
   "common": {
+    "move": "Zamu",
     "cancel": "Ghairi",
     "continue": "Endelea",
     "optional": "si lazima",
@@ -200,6 +202,10 @@
       "analysis": {
         "title": "Uchambuzi",
         "desc": "Kagua michezo yako hatua kwa hatua kwa msaada wa injini."
+      },
+      "puzzles": {
+        "title": "Fumbo",
+        "desc": "Tatua changamoto za mchezo"
       }
     }
   },
@@ -313,7 +319,8 @@
       "registrationFailed": "Usajili umeshindwa. Tafadhali jaribu tena.",
       "passwordTooShort": "Nenosiri lazima liwe na angalau herufi 8",
       "userAlreadyExists": "Mtumiaji aliye na nambari hii ya simu, jina la mtumiaji, au barua pepe tayari yupo",
-      "phoneAlreadyRegistered": "Nambari hii ya simu tayari imesajiliwa. Tafadhali ingia badala yake."
+      "phoneAlreadyRegistered": "Nambari hii ya simu tayari imesajiliwa. Tafadhali ingia badala yake.",
+      "termsRequired": "Lazima ukubali Masharti ya Huduma na Sera ya Faragha ili kuendelea."
     },
     "forgotPassword": {
       "title": "Umesahau Nenosiri?",
@@ -402,6 +409,8 @@
     "legal": "Sera na Sheria",
     "rules": "Sheria za Mchezo",
     "privacy": "Sera na Faragha",
+    "terms": "Masharti ya Huduma",
+    "policyHint": "Pitia sheria za uadilifu na matumizi ya jukwaa.",
     "website": "Tembelea Tovuti Rasmi",
     "contactSubtitle": "Tuma maelezo wazi, na jumuisha kitambulisho cha mchezo, msimbo wa mwaliko, au jina la mashindano inapohusika.",
     "emailUs": "Tuma Barua Pepe kwa Timu ya Msaada",
@@ -878,5 +887,81 @@
     "timeoutHint": "Hakuna mpinzani aliyepatikana kwa sasa. Jaribu AI au tafuta tena.",
     "matchVsAi": "Cheza na AI",
     "searchAgain": "Tafuta Tena"
+  },
+  "puzzles": {
+    "hero": {
+      "badge": "MAFUMBO NA MBINU",
+      "title": "Boresha kiwango chako.",
+      "description": "Nafasi halisi zilizochukuliwa kutoka kwenye mechi za TzDraft. Kila fumbo ni tukio halisi la kimbinu lililotokea kwenye mechi."
+    },
+    "featured": {
+      "badge": "Fumbo la Leo",
+      "daily": "Fumbo la Kila Siku",
+      "fallbackTitle": "Fumbo la Kimbinu la Leo",
+      "description": "Je, unaweza kupata mfululizo wa hamasa za ushindi katika nafasi hii? Pima ujuzi wako na upande ubaoni.",
+      "attempts": "Waliokuna kichwa {count}",
+      "solve": "Tatua Fumbo"
+    },
+    "seo": {
+      "title": "Mafumbo & Mbinu za Drafti | TzDraft Puzzles",
+      "description": "Jifunze mbinu za ushindi kupitia mafumbo halisi ya Tanzania Drafti. Boresha kiwango chako cha uchezaji.",
+      "schemaList": "Mafumbo ya TzDraft",
+      "puzzleTitle": "Fumbo la Drafti #{id}",
+      "solveTitle": "Fumbo la Drafti: {theme} ({stars}) | TzDraft",
+      "solveDesc": "Jaribu fumbo hili la TzDraft. Mada: {theme}. Ugumu: {difficulty}/5."
+    },
+    "solve": {
+      "back": "Mafumbo yote",
+      "whiteToMove": "⚪ Mweupe acheze",
+      "blackToMove": "⚫ Mweusi acheze",
+      "instruction": "Tafuta hamasa bora.",
+      "attemptCount": "Wachezaji {count} wamejaribu fumbo hili.",
+      "attemptCountOne": "Mchezaji {count} amejaribu fumbo hili.",
+      "speed": {
+        "lightning": "Haraka Sana!",
+        "great": "Vizuri",
+        "solved": "Imetatuliwa"
+      },
+      "solvedIn": "Imetatuliwa ndani ya {time}",
+      "puzzleRating": "Kiwango chako: {rating}",
+      "updating": "inasasisha…",
+      "hint": {
+        "maxReward": "Chini ya sekunde 4 — pointi za juu kabisa!",
+        "greatSpeed": "Chini ya sekunde 8 — mwendo mzuri.",
+        "correct": "Sahihi — endelea kufanya mazoezi kutatua haraka zaidi."
+      },
+      "wrongMove": "Hamasa si sahihi",
+      "studySolution": "Jifunze jibu sahihi hapa chini",
+      "guestCta": {
+        "title": "Hifadhi maendeleo yako!",
+        "desc": "Jisajili ili kufuatilia kiwango chako cha mafumbo.",
+        "button": "Jisajili Sasa"
+      },
+      "bestLine": "Njia bora",
+      "showHint": "Onyesha dokezo",
+      "hintTitle": "Dokezo",
+      "action": {
+        "reset": "Anza upya",
+        "tryAgain": "Jaribu tena",
+        "solvedButton": "Imetatuliwa",
+        "next": "Fumbo linalofuata"
+      }
+    },
+    "hints": {
+      "sacrifice": "Fikiria kutoa kete ili kupata faida kubwa kimpangilio.",
+      "positionTrap": "Hamasa tulivu inatengeneza tishio lisilozuilika. Fikiria hatua mbili mbele.",
+      "kingTrap": "Kete ya mpinzani iko hatarini. Tafuta hamasa inayoikamata.",
+      "endgame": "Kete zinabaki chache, kila hamasa inahesabika. Kuwa makini.",
+      "promotion": "Kete ipo hatua moja kuwa King. Safisha njia yake.",
+      "tactical": "Tafuta hamasa inayokupa faida kubwa zaidi ya muda mrefu."
+    },
+    "themes": {
+      "sacrifice": "Kutoa Kete",
+      "positionTrap": "Mtego",
+      "kingTrap": "Kukamata",
+      "endgame": "Mwisho wa Mechi",
+      "promotion": "Kupata King",
+      "tactical": "Mbinu"
+    }
   }
 }

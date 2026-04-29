@@ -12,7 +12,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Emoji = ({ children }: { children: string }) => (
   <Text style={{ fontSize: 30 }}>{children}</Text>
@@ -37,6 +37,7 @@ import {
   X,
   Clock,
   AlertCircle,
+  Gamepad2,
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { socialService, SocialUser } from "../src/services/social.service";
@@ -53,6 +54,7 @@ const CARD_COLORS = {
   friend: "#10b981", // emerald
   freePlay: "#06b6d4", // cyan
   learn: "#f59e0b", // amber
+  puzzles: "#f97316", // orange (primary)
   tournaments: "#eab308", // gold
   history: "#6366f1", // indigo
   leaderboard: "#ec4899", // pink
@@ -64,6 +66,7 @@ export default function Home() {
   const router = useRouter();
   const { challenge } = useLocalSearchParams<{ challenge: string }>();
   const { isAuthenticated, user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const {
     featuredCampaign,
     modalCampaign,
@@ -410,7 +413,7 @@ export default function Home() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={styles.root} edges={["left", "right"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {featuredCampaign && (
           <MobileAnnouncementBanner
@@ -591,6 +594,13 @@ export default function Home() {
             iconColor={CARD_COLORS.learn}
             icon={<Emoji>📚</Emoji>}
           />
+          <ServiceCard
+            title="Puzzles"
+            subtitle="Sharpen your game with tactical positions"
+            onPress={() => router.push("/game/puzzles" as any)}
+            iconColor={CARD_COLORS.puzzles}
+            icon={<Emoji>🧩</Emoji>}
+          />
         </View>
 
         <View style={styles.section}>
@@ -672,6 +682,22 @@ export default function Home() {
         />
         <View style={styles.footerSpacer} />
       </ScrollView>
+
+      {/* --- Sticky Play Online Button --- */}
+      <View style={[styles.stickyFooter, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+        <TouchableOpacity
+          style={styles.stickyPlayButton}
+          onPress={handlePlayOnline}
+          activeOpacity={0.8}
+        >
+          <View style={styles.stickyPlayButtonContent}>
+            <Gamepad2 color={colors.onPrimary} size={24} strokeWidth={2.5} />
+            <Text style={styles.stickyPlayButtonText}>
+              {t("game.playOnline", "Play Online")}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* ── Outgoing Challenge Bottom Sheet ── */}
       <Modal
@@ -873,7 +899,47 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   footerSpacer: {
-    height: 40,
+    height: 120,
+  },
+  stickyFooter: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  stickyPlayButton: {
+    height: 56,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  stickyPlayButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  stickyPlayButtonText: {
+    color: colors.onPrimary,
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
   recentResultsRow: {
     flexDirection: "row",

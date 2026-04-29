@@ -29,6 +29,7 @@ import {
   Lock,
   UserPlus,
   FlipHorizontal2,
+  Gamepad2,
 } from "lucide-react-native";
 import { useAuthStore } from "../../src/auth/auth-store";
 import { colors } from "../../src/theme/colors";
@@ -370,15 +371,18 @@ export default function SetupFriendScreen() {
           {onlineLoading ? (
             <ActivityIndicator color={colors.onPrimary} />
           ) : (
-            <Text style={styles.startButtonText}>
-              {`${t("setupAi.start.cta", "Start Game")} — ${
-                activeTab === "local"
-                  ? t("setupFriend.tabs.local", "Local")
-                  : joinCode.length > 0
-                  ? t("setupFriend.online.joinGame", "Join")
-                  : t("setupFriend.online.createGame", "Invite")
-              }`}
-            </Text>
+            <View style={styles.startButtonContent}>
+              <Gamepad2 color={colors.onPrimary} size={24} strokeWidth={2.5} />
+              <Text style={styles.startButtonText}>
+                {`${t("setupAi.start.cta", "Start Game")} — ${
+                  activeTab === "local"
+                    ? t("setupFriend.tabs.local", "Local")
+                    : joinCode.length > 0
+                    ? t("setupFriend.online.joinGame", "Join")
+                    : t("setupFriend.online.createGame", "Invite")
+                }`}
+              </Text>
+            </View>
           )}
         </TouchableOpacity>
       </View>
@@ -798,6 +802,11 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1,
+  },
+  startButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   // ── Time Bottom Sheet ─────────────────────────────────────────────────────────
   modalOverlay: {
