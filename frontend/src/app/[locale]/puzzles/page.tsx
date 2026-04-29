@@ -1,9 +1,8 @@
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight, Star, Puzzle } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Metadata } from "next";
 import { getCanonicalUrl, getLanguageAlternates, getSiteUrl, isAppLocale } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { PuzzleThumbnail } from "@/components/puzzles/PuzzleThumbnail";
 import { getTranslations } from "next-intl/server";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -160,49 +159,66 @@ export default async function PuzzlesPage({
         </div>
       </section>
 
-      {/* Featured Challenge Section */}
-      {daily && (
-        <section className="px-4 py-12 sm:px-6 lg:px-8 bg-white/[0.01]">
-          <div className="mx-auto max-w-6xl">
-            <h2 className="mb-8 text-xs font-black uppercase tracking-[0.3em] text-neutral-600">
-              {t("featured.badge")}
-            </h2>
+      {/* Puzzle Rush Section */}
+      <section className="px-4 py-8 sm:px-6 lg:px-8 bg-white/[0.01]">
+        <div className="mx-auto max-w-4xl">
+          <Link
+            href="/puzzles?continuous=true"
+            className="flex flex-col md:flex-row items-center justify-between gap-6 rounded-[2rem] border border-orange-400/20 bg-[linear-gradient(145deg,rgba(249,115,22,0.12),rgba(0,0,0,0))] p-8 hover:border-orange-400/40 transition-all hover:bg-orange-400/10 group shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+          >
+            <div className="flex flex-col gap-2 text-center md:text-left">
+              <span className="inline-flex items-center justify-center md:justify-start gap-2 text-[10px] font-black tracking-[0.2em] text-orange-400 uppercase">
+                PUZZLE RUSH
+              </span>
+              <h3 className="text-3xl font-black text-white leading-tight sm:text-4xl">
+                Continuous Training
+              </h3>
+              <p className="text-neutral-400 max-w-md">
+                Play through all puzzles sequentially to improve your tactical vision.
+              </p>
+            </div>
+            <div className="shrink-0 mt-4 md:mt-0">
+              <span className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-8 py-4 text-sm font-black text-black transition-transform group-hover:scale-105 active:scale-95">
+                Start Now <ArrowRight className="h-4 w-4" />
+              </span>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* Puzzles List */}
+      <section className="mx-auto max-w-4xl px-4 pb-20 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-3">
+          {puzzles.map((p) => (
             <Link
-              href={`/puzzles/${daily.id}`}
-              className="flex flex-col md:flex-row items-center gap-8 rounded-[2rem] border border-orange-400/20 bg-[linear-gradient(145deg,rgba(249,115,22,0.12),rgba(0,0,0,0))] p-8 hover:border-orange-400/40 transition-all hover:bg-orange-400/10 group shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+              key={p.id}
+              href={`/puzzles/${p.id}`}
+              className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[#141414] p-4 transition-colors hover:border-orange-500/50 hover:bg-white/5"
             >
-              <div className="w-full md:w-56 shrink-0">
-                 <PuzzleThumbnail sideToMove={daily.sideToMove} />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-orange-500">
+                <Puzzle className="h-6 w-6" />
               </div>
-              <div className="flex flex-col gap-3 text-center md:text-left">
-                <span className="inline-flex items-center justify-center md:justify-start gap-2 text-[10px] font-black tracking-[0.2em] text-orange-400 uppercase">
-                  <Star className="h-3 w-3" /> {t("featured.daily")}
-                </span>
-                <h3 className="text-3xl font-black text-white leading-tight sm:text-4xl">
-                  {daily.title ?? t("featured.fallbackTitle")}
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <h3 className="truncate text-[15px] font-bold text-white">
+                  {p.title ?? (p.sideToMove === "WHITE" ? "White to move" : "Black to move")}
                 </h3>
-                <p className="text-neutral-400 max-w-md">
-                  {t("featured.description")}
-                </p>
-                <div className="mt-2 flex items-center justify-center md:justify-start gap-4">
-                   <div className="text-sm text-orange-300/60 font-mono">
-                    {difficultyStars(daily.difficulty)}
-                  </div>
-                  <span className="h-1 w-1 rounded-full bg-white/10" />
-                  <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
-                    {t("featured.attempts", { count: daily._count.attempts })}
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`rounded-md border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${themeColor(p.theme)}`}>
+                    {p.theme?.replace("-", " ") ?? "Tactics"}
                   </span>
+                  <span className="text-xs text-amber-400">{difficultyStars(p.difficulty)}</span>
                 </div>
-                <div className="mt-4">
-                  <span className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-8 py-4 text-sm font-black text-black transition-transform group-hover:scale-105 active:scale-95">
-                    {t("featured.solve")} <ArrowRight className="h-4 w-4" />
-                  </span>
-                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold text-neutral-500">
+                  {p._count.attempts} plays
+                </span>
+                <ArrowRight className="h-4 w-4 text-neutral-600" />
               </div>
             </Link>
-          </div>
-        </section>
-      )}
+          ))}
+        </div>
+      </section>
 
     </main>
     </>

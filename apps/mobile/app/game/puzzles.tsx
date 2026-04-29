@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, ArrowRight, Target } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Puzzle as PuzzleIcon } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../src/theme/colors";
 import { puzzleService, Puzzle } from "../../src/services/puzzle.service";
@@ -106,63 +106,33 @@ export default function PuzzlesScreen() {
     fetchAll(page + 1, false);
   };
 
-  const MiniBoard = ({ pieces }: { pieces: any[] }) => {
-    const pdnMap = new Map();
-    (pieces || []).forEach(p => pdnMap.set(p.position, p));
 
-    return (
-      <View style={{ width: 48, height: 48, flexWrap: "wrap", flexDirection: "row", borderWidth: 1, borderColor: colors.border, borderRadius: 4, overflow: "hidden" }}>
-        {Array.from({ length: 64 }).map((_, i) => {
-          const row = Math.floor(i / 8);
-          const col = i % 8;
-          const isDark = (row + col) % 2 !== 0;
-          
-          let piece = null;
-          if (isDark) {
-            const pdn = Math.floor(row * 4) + Math.floor(col / 2) + 1;
-            piece = pdnMap.get(pdn);
-          }
 
-          return (
-            <View key={i} style={{ width: 6, height: 6, backgroundColor: isDark ? colors.boardDark : colors.boardLight, alignItems: "center", justifyContent: "center" }}>
-              {piece && (
-                <View style={{
-                  width: 4, height: 4, borderRadius: 2,
-                  backgroundColor: piece.color === "WHITE" ? "#f8fafc" : "#1e293b",
-                  borderWidth: piece.type === "KING" ? 1 : 0,
-                  borderColor: "#fbbf24"
-                }} />
-              )}
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const renderPuzzle = ({ item, index }: { item: Puzzle; index: number }) => (
+  const renderPuzzle = ({ item }: { item: Puzzle }) => (
     <TouchableOpacity
-      style={styles.puzzleCard}
-      activeOpacity={0.75}
+      style={styles.puzzleListItem}
+      activeOpacity={0.7}
       onPress={() => router.push(`/game/puzzle-player?id=${item.id}` as any)}
     >
-      <View style={styles.puzzleCardTop}>
-        <View style={[styles.themePill, { backgroundColor: themeAccent(item.theme), borderColor: themeBorder(item.theme) }]}>
-          <Text style={[styles.themePillText, { color: themeText(item.theme) }]}>
-            {themeLabel(item.theme)}
-          </Text>
-        </View>
-        <Text style={styles.cardStars}>{"★".repeat(item.difficulty)}{"☆".repeat(5 - item.difficulty)}</Text>
+      <View style={styles.puzzleIconWrap}>
+        <PuzzleIcon color={colors.primary} size={20} />
       </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 }}>
-        <MiniBoard pieces={item.pieces} />
-        <Text style={[styles.cardTitle, { flex: 1 }]} numberOfLines={3}>
+      <View style={styles.puzzleInfo}>
+        <Text style={styles.puzzleTitle} numberOfLines={1}>
           {item.title ?? `${item.sideToMove === "WHITE" ? "White" : "Black"} to move`}
         </Text>
+        <View style={styles.puzzleMeta}>
+          <View style={[styles.themePill, { backgroundColor: themeAccent(item.theme), borderColor: themeBorder(item.theme) }]}>
+            <Text style={[styles.themePillText, { color: themeText(item.theme) }]}>
+              {themeLabel(item.theme)}
+            </Text>
+          </View>
+          <Text style={styles.cardStars}>{"★".repeat(item.difficulty)}</Text>
+        </View>
       </View>
-      <View style={styles.cardFooter}>
-        <Text style={styles.cardAttempts}>{item._count.attempts} attempts</Text>
-        <ArrowRight color={colors.primary} size={14} />
+      <View style={styles.puzzleAction}>
+        <Text style={styles.cardAttempts}>{item._count.attempts} plays</Text>
+        <ArrowRight color={colors.textMuted} size={16} />
       </View>
     </TouchableOpacity>
   );
@@ -208,7 +178,7 @@ export default function PuzzlesScreen() {
           <ArrowLeft color={colors.foreground} size={22} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Target color={colors.primary} size={18} />
+          <PuzzleIcon color={colors.primary} size={18} />
           <Text style={styles.headerTitle}>Puzzles</Text>
         </View>
         <View style={{ width: 44 }} />
@@ -223,8 +193,6 @@ export default function PuzzlesScreen() {
           data={puzzles}
           keyExtractor={(item) => item.id}
           renderItem={renderPuzzle}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={<ListHeader />}
           onEndReached={loadMore}
@@ -235,7 +203,7 @@ export default function PuzzlesScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Target color={colors.textDisabled} size={48} />
+              <PuzzleIcon color={colors.textDisabled} size={48} />
               <Text style={styles.emptyText}>No puzzles available.</Text>
             </View>
           }
@@ -275,14 +243,16 @@ const styles = StyleSheet.create({
   clearBtn:        { alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: colors.border },
   clearBtnText:    { color: colors.textMuted, fontSize: 12 },
   countText:       { color: colors.textSubtle, fontSize: 11, marginBottom: 12 },
-  puzzleCard:      { flex: 1, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 8 },
-  puzzleCardTop:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  themePill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+  puzzleListItem:  { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 12, marginBottom: 10 },
+  puzzleIconWrap:  { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryAlpha10, alignItems: "center", justifyContent: "center" },
+  puzzleInfo:      { flex: 1, gap: 6 },
+  puzzleTitle:     { color: colors.foreground, fontSize: 14, fontWeight: "bold" },
+  puzzleMeta:      { flexDirection: "row", alignItems: "center", gap: 8 },
+  puzzleAction:    { alignItems: "flex-end", gap: 6 },
+  themePill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   themePillText:   { fontSize: 9, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5 },
   cardStars:       { color: "#fbbf24", fontSize: 10 },
-  cardTitle:       { color: colors.foreground, fontSize: 13, fontWeight: "bold", lineHeight: 18 },
-  cardFooter:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
-  cardAttempts:    { color: colors.textDisabled, fontSize: 10 },
+  cardAttempts:    { color: colors.textDisabled, fontSize: 10, fontWeight: "600" },
   emptyWrap:       { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyText:       { color: colors.textSubtle, fontSize: 14, textAlign: "center" },
 });
