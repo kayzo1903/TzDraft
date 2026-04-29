@@ -37,6 +37,32 @@ export const LEVEL_PARAMS: Record<number, LevelParams> = {
   19: { timeMs: 9000, level: 19, randomness:   0, blunderChance: 0.00 },
 };
 
+// ─── Tier-based flat strength params ──────────────────────────────────────────
+// All bots within a tier play at the same strength regardless of their level.
+// Undisputed (17-19) keeps individual progressive params from LEVEL_PARAMS.
+
+const TIER_PARAMS: Record<string, LevelParams> = {
+  beginner:    { timeMs:  150, level: 15, randomness: 250, blunderChance: 0.70 },
+  casual:      { timeMs:  350, level: 15, randomness:  75, blunderChance: 0.50 },
+  competitive: { timeMs:  500, level: 16, randomness:  40, blunderChance: 0.25 },
+  expert:      { timeMs: 1000, level: 16, randomness:  15, blunderChance: 0.05 },
+};
+
+function getTierName(level: number): string | null {
+  if (level <= 3)  return "beginner";
+  if (level <= 7)  return "casual";
+  if (level <= 11) return "competitive";
+  if (level <= 16) return "expert";
+  return null; // Undisputed — use individual LEVEL_PARAMS
+}
+
+function getParams(level: number): LevelParams {
+  const clamped = Math.max(1, Math.min(level, 19));
+  const tier = getTierName(clamped);
+  if (tier) return TIER_PARAMS[tier];
+  return LEVEL_PARAMS[clamped] ?? LEVEL_PARAMS[19];
+}
+
 // ─── Bridge interface (only the methods we need) ───────────────────────────────
 interface BridgeMethods {
   generateMoves: (fen: string) => Promise<RawMove[]>;
@@ -61,7 +87,7 @@ export async function getBestMove(
   fenHistory: string[],
   bridge: BridgeMethods,
 ): Promise<RawMove | null> {
-  const params = LEVEL_PARAMS[botLevel] ?? LEVEL_PARAMS[5];
+  const params = getParams(botLevel);
 
   // Blunder: occasionally play a random legal move to simulate human error
   if (params.blunderChance > 0 && Math.random() < params.blunderChance) {

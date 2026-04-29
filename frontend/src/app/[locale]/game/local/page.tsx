@@ -101,7 +101,7 @@ const TIER_UNLOCK_DATA = [
     accentColor: "red" as const,
   },
   {
-    label: "MASTER TIER UNLOCKED",
+    label: "UNDISPUTED TIER UNLOCKED",
     title: "This is the end.",
     body: "You've come further than most dare to try. The final opponents are relentless. There is no undo. There is no coming back from this.",
     cta: "Face it.",

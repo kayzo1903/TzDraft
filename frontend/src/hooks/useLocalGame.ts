@@ -980,9 +980,10 @@ export const useLocalGame = (
     const thinkDelayMs = 320 + Math.floor(Math.random() * 260);
     setIsAiThinking(true);
 
-    // ── Local Mkaguzi WASM engine for levels 1-9 ─────────────────────────
+    // ── Local Mkaguzi WASM engine for levels 1-11 ────────────────────────
     // Runs in a Web Worker (async) so the UI thread stays responsive.
-    if (aiLevel < 10) {
+    // Levels 1-11 use WASM so tier-based strength capping in getParams() applies.
+    if (aiLevel < 12) {
       aiTimeoutRef.current = window.setTimeout(async () => {
         aiTimeoutRef.current = null;
         try {
