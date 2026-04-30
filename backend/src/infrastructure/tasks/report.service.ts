@@ -73,7 +73,7 @@ export class ReportService {
    * Send daily analytics report email every day at 6:00 AM EAT (UTC+3)
    * Daily: "0 6 * * *" (6 AM EAT)
    */
-  @Cron('0 6 * * *', { timeZone: 'Africa/Dar_es_Salaam' })
+  @Cron('0 6 * * 0,2-6', { timeZone: 'Africa/Dar_es_Salaam' })
   async sendDailyReport(): Promise<void> {
     await this.triggerReport('Daily');
   }
