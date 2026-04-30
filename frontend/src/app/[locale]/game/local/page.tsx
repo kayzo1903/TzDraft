@@ -702,9 +702,8 @@ export default function LocalGamePage() {
     if (!state.hintUsed && newMax > maxUnlockedAtStart) {
       setIsNewUnlock(true);
       setMaxUnlockedAtStart(newMax);
-      // Only show the tier overlay when newMax is actually the start of a new tier
-      // (6, 10, 14, 17). For wins within the same tier the overlay returns null
-      // but still hides the result card — causing a blank screen.
+      // Only show the tier overlay when newMax is the start of a new tier
+      // (4, 8, 12, 17). For wins within the same tier, skip the overlay.
       const isTierStart = BOT_TIERS.some(([start]) => start === newMax);
       if (isTierStart) {
         setTierUnlockLevel(newMax);
