@@ -55,10 +55,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const TIER_UNLOCK_DATA: Record<number, {
   label: string; title: string; body: string; cta: string; accentColor: string;
 }> = {
-  6:  { label: "CASUAL TIER UNLOCKED", title: "The warmup is over.", body: "Your next opponents have been watching. They know your patterns. Don't get comfortable.", cta: "I'm ready.", accentColor: colors.win },
-  10: { label: "COMPETITIVE TIER UNLOCKED", title: "Something stronger awakens.", body: "You've stepped into harder territory. These opponents calculate faster than you think. Every mistake will be punished.", cta: "I understand the risk.", accentColor: colors.danger },
-  14: { label: "EXPERT TIER UNLOCKED", title: "They know no mercy.", body: "Few players reach this tier. Fewer survive it. Your opponent sees 12 moves ahead. You've been warned.", cta: "Show me what's waiting.", accentColor: colors.danger },
-  17: { label: "MASTER TIER UNLOCKED", title: "This is the end.", body: "You've come further than most dare to try. The final opponents are relentless. There is no coming back.", cta: "Face it.", accentColor: colors.danger },
+  4:  { label: "CASUAL TIER UNLOCKED", title: "The warmup is over.", body: "Your next opponents have been watching. They know your patterns. Don't get comfortable.", cta: "I'm ready.", accentColor: colors.win },
+  8:  { label: "COMPETITIVE TIER UNLOCKED", title: "Something stronger awakens.", body: "You've stepped into harder territory. These opponents calculate faster than you think. Every mistake will be punished.", cta: "I understand the risk.", accentColor: colors.danger },
+  12: { label: "EXPERT TIER UNLOCKED", title: "They know no mercy.", body: "Few players reach this tier. Fewer survive it. Your opponent sees 12 moves ahead. You've been warned.", cta: "Show me what's waiting.", accentColor: colors.danger },
+  17: { label: "UNDISPUTED TIER UNLOCKED", title: "This is the end.", body: "You've come further than most dare to try. The final opponents are relentless. There is no coming back.", cta: "Face it.", accentColor: colors.danger },
 };
 
 // ─── Route params ──────────────────────────────────────────────────────────────
@@ -1031,7 +1031,7 @@ export default function VsAiScreen() {
         onRematch={game.reset}
         onBack={() => { clearSavedAiGame().catch(() => {}); router.replace("/game/setup-ai"); }}
         onNextOpponent={
-          botLevel < 19
+          isPlayerWin && botLevel < 19 && !game.hintUsed && !game.undoUsed
             ? () => router.replace({ pathname: "/game/vs-ai", params: { ...params, botLevel: (botLevel + 1).toString() } })
             : undefined
         }

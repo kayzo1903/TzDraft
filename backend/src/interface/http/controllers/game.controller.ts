@@ -169,6 +169,7 @@ export class GameController {
       sessionId,
       dto.result,
       dto.undoUsed,
+      dto.hintUsed,
     );
     return { success: true, data };
   }
