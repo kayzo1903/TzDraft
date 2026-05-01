@@ -17,10 +17,10 @@ export function useAuthInitializer() {
     ran.current = true;
 
     if (isAuthenticated) {
-      console.log("[AuthInitializer] Syncing session with backend...");
+      if (__DEV__) console.log("[AuthInitializer] Syncing session with backend...");
       authClient.init();
     } else {
-      console.log("[AuthInitializer] No active session found.");
+      if (__DEV__) console.log("[AuthInitializer] No active session found.");
     }
   }, [hasHydrated, isAuthenticated]);
 

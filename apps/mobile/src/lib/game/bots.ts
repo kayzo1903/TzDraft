@@ -16,25 +16,25 @@ export const TIERS: BotTier[] = [
 ];
 
 export const BOT_IMAGES: Record<string, any> = {
-  tau: require("../../../assets/bot-avatars/tau.png"),
-  abebe: require("../../../assets/bot-avatars/abebe.png"),
-  kwabena: require("../../../assets/bot-avatars/kwabena.png"),
-  zuberi: require("../../../assets/bot-avatars/zuberi.png"),
-  themba: require("../../../assets/bot-avatars/themba.png"),
-  azibo: require("../../../assets/bot-avatars/azibo.png"),
-  awotwi: require("../../../assets/bot-avatars/awotwi.png"),
-  abioye: require("../../../assets/bot-avatars/abioye.png"),
-  jabari: require("../../../assets/bot-avatars/jabari.png"),
-  sekou: require("../../../assets/bot-avatars/sekou.png"),
-  dumisani: require("../../../assets/bot-avatars/dumisani.png"),
-  thabani: require("../../../assets/bot-avatars/thabani.png"),
-  chike: require("../../../assets/bot-avatars/chike.png"),
-  olumide: require("../../../assets/bot-avatars/olumide.png"),
-  kamau: require("../../../assets/bot-avatars/kamau.png"),
-  mandla: require("../../../assets/bot-avatars/mandla.png"),
-  amari: require("../../../assets/bot-avatars/amari.png"),
-  tendai: require("../../../assets/bot-avatars/tendai.png"),
-  nkosi: require("../../../assets/bot-avatars/nkosi.png"),
+  tau: require("../../../assets/bot-avatars/tau.webp"),
+  abebe: require("../../../assets/bot-avatars/abebe.webp"),
+  kwabena: require("../../../assets/bot-avatars/kwabena.webp"),
+  zuberi: require("../../../assets/bot-avatars/zuberi.webp"),
+  themba: require("../../../assets/bot-avatars/themba.webp"),
+  azibo: require("../../../assets/bot-avatars/azibo.webp"),
+  awotwi: require("../../../assets/bot-avatars/awotwi.webp"),
+  abioye: require("../../../assets/bot-avatars/abioye.webp"),
+  jabari: require("../../../assets/bot-avatars/jabari.webp"),
+  sekou: require("../../../assets/bot-avatars/sekou.webp"),
+  dumisani: require("../../../assets/bot-avatars/dumisani.webp"),
+  thabani: require("../../../assets/bot-avatars/thabani.webp"),
+  chike: require("../../../assets/bot-avatars/chike.webp"),
+  olumide: require("../../../assets/bot-avatars/olumide.webp"),
+  kamau: require("../../../assets/bot-avatars/kamau.webp"),
+  mandla: require("../../../assets/bot-avatars/mandla.webp"),
+  amari: require("../../../assets/bot-avatars/amari.webp"),
+  tendai: require("../../../assets/bot-avatars/tendai.webp"),
+  nkosi: require("../../../assets/bot-avatars/nkosi.webp"),
 };
 
 export type BotProfile = {
@@ -73,7 +73,7 @@ export const BOTS: BotProfile[] = [
 ];
 
 /**
- * Decodes all 19 bot avatar PNGs into native image memory.
+ * Decodes all 19 bot avatar WebPs into native image memory.
  * Call once during app startup so the setup-ai grid renders instantly
  * without a decode stall on first open.
  */

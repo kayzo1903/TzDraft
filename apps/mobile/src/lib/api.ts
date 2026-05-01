@@ -12,7 +12,8 @@ const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (localhost ? `http://${localhost}:3002` : "http://192.168.1.199:3002");
 
-console.log(`[API] Base URL: ${API_URL} (hostUri=${debuggerHost ?? "undefined"})`);
+if (__DEV__) console.log(`[API] Base URL: ${API_URL} (hostUri=${debuggerHost ?? "undefined"})`);
+
 
 export { API_URL };;
 
