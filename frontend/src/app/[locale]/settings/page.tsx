@@ -4,8 +4,10 @@ import React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link, usePathname, useRouter } from '@/i18n/routing';
 import { Button } from '@/components/ui/Button';
+import { Dialog } from '@/components/ui/Dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { Globe2, KeyRound, LogOut, ShieldCheck, ShieldAlert, User as UserIcon, FileText, BookOpen } from 'lucide-react';
+import { authClient } from '@/lib/auth/auth-client';
+import { Globe2, KeyRound, LogOut, ShieldCheck, ShieldAlert, User as UserIcon, FileText, BookOpen, Trash2 } from 'lucide-react';
 
 function SectionCard({
   title,
@@ -35,6 +37,20 @@ export default function SettingsPage() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await authClient.deleteAccount();
+      router.push('/');
+    } catch {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   const hasVerifiedPhone = Boolean(
     user?.phoneNumber &&
     user.phoneNumber.startsWith('+255') &&
@@ -248,7 +264,38 @@ export default function SettingsPage() {
             </div>
           </SectionCard>
         </div>
+
+        <section className="rounded-2xl border border-rose-900/40 bg-rose-950/10 p-6 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-rose-400 flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                {t('deleteAccount.label')}
+              </h2>
+              <p className="mt-1 text-sm text-neutral-400 max-w-prose">
+                {t('deleteAccount.subtitle')}
+              </p>
+            </div>
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              className="shrink-0 rounded-xl border border-rose-800/50 bg-rose-950/40 px-4 py-2 text-sm font-semibold text-rose-400 transition-colors hover:bg-rose-900/40 hover:text-rose-300"
+            >
+              {t('actions.deleteAccount')}
+            </button>
+          </div>
+        </section>
       </div>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => !isDeleting && setDeleteDialogOpen(false)}
+        onConfirm={handleDeleteAccount}
+        title={t('deleteAccount.title')}
+        description={t('deleteAccount.subtitle')}
+        confirmText={t('deleteAccount.confirm')}
+        confirmVariant="danger"
+        loading={isDeleting}
+      />
     </main>
   );
 }

@@ -343,6 +343,22 @@ export class UserService {
   /**
    * Create a new user with automatic Rating initialization
    */
+  async softDeleteAccount(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: new Date() },
+    });
+    await this.redis.del(this.getCacheKey(userId));
+  }
+
+  async reactivateAccount(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: null },
+    });
+    await this.redis.del(this.getCacheKey(userId));
+  }
+
   async create(data: {
     phoneNumber: string;
     email?: string;

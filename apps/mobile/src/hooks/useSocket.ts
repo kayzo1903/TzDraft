@@ -32,12 +32,12 @@ function getOrCreateSocket(token: string): Socket {
     timeout: 10000,
   });
 
-  sharedSocket.on("connect", () =>
-    console.log("[Socket] Connected:", sharedSocket?.id),
-  );
-  sharedSocket.on("disconnect", (reason) =>
-    console.log("[Socket] Disconnected:", reason),
-  );
+  sharedSocket.on("connect", () => {
+    if (__DEV__) console.log("[Socket] Connected:", sharedSocket?.id);
+  });
+  sharedSocket.on("disconnect", (reason) => {
+    if (__DEV__) console.log("[Socket] Disconnected:", reason);
+  });
   sharedSocket.on("connect_error", (err) => {
     console.error("[Socket] Connection error:", err.message);
     const msg = (err.message || "").toLowerCase();

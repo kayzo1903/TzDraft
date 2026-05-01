@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   Query,
   UseGuards,
@@ -276,6 +277,18 @@ export class AuthController {
   async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
     const updated = await this.userService.updateProfile(user.id, dto);
     return { success: true, data: updated };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('account')
+  @HttpCode(HttpStatus.OK)
+  async deleteAccount(@CurrentUser() user: any) {
+    await this.userService.softDeleteAccount(user.id);
+    return {
+      success: true,
+      message:
+        'Account scheduled for deletion. You have 30 days to sign back in and recover it.',
+    };
   }
 
   @UseGuards(JwtAuthGuard)

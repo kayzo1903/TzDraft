@@ -154,6 +154,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Soft-deleted accounts: reactivate if within 30-day grace window
+    if (user.deletedAt) {
+      const daysSinceDeletion =
+        (Date.now() - user.deletedAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceDeletion <= 30) {
+        await this.userService.reactivateAccount(user.id);
+        user.deletedAt = null;
+        await this.createWelcomeBackNotification(user.id);
+      } else {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
+
     // Check if user is OAuth-only (no password)
     if (!user.passwordHash) {
       throw new UnauthorizedException(
@@ -426,6 +439,19 @@ export class AuthService {
     });
 
     if (user) {
+      // Reactivate soft-deleted account if within the 30-day grace window
+      if (user.deletedAt) {
+        const daysSinceDeletion =
+          (Date.now() - user.deletedAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceDeletion <= 30) {
+          await this.userService.reactivateAccount(user.id);
+          user.deletedAt = null;
+          await this.createWelcomeBackNotification(user.id);
+        } else {
+          throw new UnauthorizedException('Invalid credentials');
+        }
+      }
+
       // Ensure non-real-phone OAuth accounts are never treated as verified.
       if (!user.phoneNumber.startsWith('+255') && user.isVerified) {
         user = await this.prisma.user.update({
@@ -672,6 +698,27 @@ export class AuthService {
   /**
    * Create welcome notification for new users
    */
+  private async createWelcomeBackNotification(userId: string): Promise<void> {
+    try {
+      await this.prisma.notification.create({
+        data: {
+          id: randomUUID(),
+          userId,
+          type: 'WELCOME',
+          title: 'Karibu tena TzDraft!',
+          body: 'Akaunti yako imerejeshwa. Endelea kucheza na kushindana na wachezaji wa Tanzania!',
+          metadata: {
+            bodyEn: 'Your account has been restored. Keep playing and competing with players from Tanzania!',
+          },
+          read: false,
+          createdAt: new Date(),
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to create welcome-back notification: ${err}`);
+    }
+  }
+
   private async createWelcomeNotification(userId: string): Promise<void> {
     try {
       await this.prisma.notification.create({

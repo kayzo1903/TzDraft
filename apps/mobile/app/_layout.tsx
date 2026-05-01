@@ -109,7 +109,7 @@ function RootLayout() {
     const inWelcome = rootPath === "welcome";
     const hasSession = status === "authenticated" || status === "guest";
 
-    console.log(`[Root Guard] Status: ${status}, Path: "${rootPath}"`);
+    if (__DEV__) console.log(`[Root Guard] Status: ${status}, Path: "${rootPath}"`);
 
     if (isRedirecting.current) return;
 
@@ -117,7 +117,7 @@ function RootLayout() {
       if (pathname === to) return;
       if (isRedirecting.current) return;
 
-      console.log(`[Root Guard] Gating: ${reason} -> Redirecting to ${to}`);
+      if (__DEV__) console.log(`[Root Guard] Gating: ${reason} -> Redirecting to ${to}`);
       isRedirecting.current = true;
 
       // setTimeout(0) defers past the current commit phase so React Navigation's
@@ -166,11 +166,11 @@ function RootLayout() {
   useEffect(() => {
     if (status !== "authenticated") return;
     Notifications.getPermissionsAsync().then(({ status: perm }) => {
-      console.log(`[Push] Current status: ${perm}`);
+      if (__DEV__) console.log(`[Push] Current status: ${perm}`);
       if (perm === "granted") {
-        console.log("[Push] Syncing token...");
+        if (__DEV__) console.log("[Push] Syncing token...");
         syncPushToken()
-          .then(() => console.log("[Push] Token synced successfully"))
+          .then(() => { if (__DEV__) console.log("[Push] Token synced successfully"); })
           .catch((err) => console.error("[Push] Token sync failed:", err));
       } else if (perm === "undetermined") {
         setShowNotifModal(true);
