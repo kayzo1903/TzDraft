@@ -119,3 +119,13 @@ export class TriggerMiningDto {
   @Type(() => Boolean)
   force?: boolean = false;
 }
+
+export class SimulatePuzzlesDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  @Type(() => Number)
+  /** Number of engine vs engine games to simulate (default 3, max 10). */
+  games?: number = 3;
+}

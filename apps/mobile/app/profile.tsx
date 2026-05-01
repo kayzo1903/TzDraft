@@ -20,6 +20,7 @@ import api, { API_URL } from "../src/lib/api";
 import { ThemedModal } from "../src/components/ui/ThemedModal";
 import { useSocial } from "../src/hooks/useSocial";
 import { PulseDot } from "../src/components/ui/PulseDot";
+import { puzzleService } from "../src/services/puzzle.service";
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
@@ -35,11 +36,13 @@ export default function ProfileScreen() {
   const [socialStats, setSocialStats] = useState({ followersCount: 0, followingCount: 0, friendsCount: 0 });
   const [friends, setFriends] = useState<any[]>([]);
   const [rank, setRank] = useState<{ global: number | null; country: number | null; region: number | null; totalPlayers: number } | null>(null);
+  const [puzzleRating, setPuzzleRating] = useState<number | null>(null);
 
   React.useEffect(() => {
     getStats().then(setSocialStats);
     getFriends().then(setFriends);
     getMyRank().then(setRank);
+    puzzleService.getMyRating().then(setPuzzleRating);
   }, []);
   const showError = (title: string, message: string) =>
     setErrorModal({ title, message });
@@ -172,11 +175,18 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
 
-              {user?.rating !== undefined && (
-                <View style={styles.ratingBadge}>
-                  <Text style={styles.ratingText}>Blitz ELO: {user.rating}</Text>
-                </View>
-              )}
+              <View style={styles.ratingRow}>
+                {user?.rating !== undefined && (
+                  <View style={styles.ratingBadge}>
+                    <Text style={styles.ratingText}>Blitz ELO: {user.rating}</Text>
+                  </View>
+                )}
+                {puzzleRating !== null && (
+                  <View style={[styles.ratingBadge, styles.puzzleRatingBadge]}>
+                    <Text style={[styles.ratingText, styles.puzzleRatingText]}>🧩 {puzzleRating}</Text>
+                  </View>
+                )}
+              </View>
               {rank && (
                 <View style={styles.rankBadgeRow}>
                   {rank.global !== null && (
@@ -404,6 +414,12 @@ const styles = StyleSheet.create({
     color: colors.textSubtle,
     fontSize: 14,
   },
+  ratingRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
   ratingBadge: {
     backgroundColor: colors.primaryAlpha15,
     paddingHorizontal: 10,
@@ -413,10 +429,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primaryAlpha30,
   },
+  puzzleRatingBadge: {
+    backgroundColor: "rgba(251,191,36,0.12)",
+    borderColor: "rgba(251,191,36,0.35)",
+  },
   ratingText: {
     color: colors.primary,
     fontSize: 12,
     fontWeight: "bold",
+  },
+  puzzleRatingText: {
+    color: "#fbbf24",
   },
   rankBadgeRow: {
     flexDirection: "row",

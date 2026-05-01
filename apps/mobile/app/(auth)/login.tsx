@@ -9,9 +9,9 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  StatusBar,
   Image,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Mail, Lock, Eye, EyeOff, Check } from "lucide-react-native";
@@ -96,7 +96,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
       
       {/* Absolute Header elements (Symmetric with Welcome page) */}
       <View style={styles.headerRow}>

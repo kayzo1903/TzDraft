@@ -21,6 +21,7 @@ import {
 } from './controllers/study.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { PuzzleMinerService } from '../../application/puzzle/puzzle-miner.service';
+import { PuzzleSimulatorService } from '../../application/puzzle/puzzle-simulator.service';
 import { UserModule } from '../../domain/user/user.module';
 import { CommunicationModule } from '../../admin/communication.module';
 import { CommunicationController } from './controllers/communication.controller';
@@ -59,6 +60,6 @@ import { PushCampaignModule } from '../../infrastructure/push/push-campaign.modu
     CommunicationController,
     SocialController,
   ],
-  providers: [GetAiMoveUseCase, PuzzleMinerService],
+  providers: [GetAiMoveUseCase, PuzzleMinerService, PuzzleSimulatorService],
 })
 export class HttpModule {}

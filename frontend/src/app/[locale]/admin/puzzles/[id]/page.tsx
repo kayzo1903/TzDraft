@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle, XCircle, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -18,6 +18,8 @@ interface PuzzleDetail {
   sourceGameId: string | null;
   sourceMoveNum: number | null;
   createdAt: string;
+  publishedAt: string | null;
+  expiresAt: string | null;
   status: string;
 }
 
@@ -106,7 +108,54 @@ function BoardPreview({
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Error Dialog Modal ────────────────────────────────────────────────────────
+
+function ErrorDialog({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl border border-red-500/30 bg-gray-900 p-6 shadow-2xl">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
+            <AlertTriangle className="h-5 w-5 text-red-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white">Action Failed</p>
+            <p className="mt-1 text-sm text-gray-400 break-words">{message}</p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-6 w-full rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-gray-700 transition-colors"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Success Dialog ─────────────────────────────────────────────────────
+
+function SuccessDialog({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="relative w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-gray-900 p-8 shadow-2xl text-center">
+        {/* Animated checkmark ring */}
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 border-2 border-emerald-500/40 animate-pulse">
+          <CheckCircle className="h-8 w-8 text-emerald-400" />
+        </div>
+        <p className="text-lg font-black text-white">Done!</p>
+        <p className="mt-2 text-sm text-gray-400">{message}</p>
+        <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-gray-800">
+          <div className="h-full bg-emerald-500 animate-[shrink_1.5s_linear_forwards]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function AdminPuzzleReviewPage() {
   const { locale, id } = useParams<{ locale: string; id: string }>();
@@ -114,6 +163,8 @@ export default function AdminPuzzleReviewPage() {
   const [puzzle, setPuzzle] = useState<PuzzleDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Editable fields
   const [title, setTitle] = useState("");
@@ -134,22 +185,46 @@ export default function AdminPuzzleReviewPage() {
 
   async function handleApprove() {
     setSaving(true);
-    await fetch(`${API_URL}/admin/puzzles/${id}/approve`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title || undefined, difficulty, theme: theme || undefined }),
-    });
-    router.push(`/${locale}/admin/puzzles`);
+    try {
+      const r = await fetch(`${API_URL}/admin/puzzles/${id}/approve`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: title || undefined, difficulty, theme: theme || undefined }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        setErrorMsg(`Failed to approve puzzle: ${err?.message ?? r.statusText}`);
+        setSaving(false);
+        return;
+      }
+      setSuccessMsg("Puzzle approved and published! Redirecting…");
+      setTimeout(() => router.push(`/${locale}/admin/puzzles?tab=APPROVED`), 1500);
+    } catch (e) {
+      setErrorMsg(`Network error: ${(e as Error).message}`);
+      setSaving(false);
+    }
   }
 
   async function handleReject() {
     setSaving(true);
-    await fetch(`${API_URL}/admin/puzzles/${id}/reject`, {
-      method: "POST",
-      credentials: "include",
-    });
-    router.push(`/${locale}/admin/puzzles`);
+    try {
+      const r = await fetch(`${API_URL}/admin/puzzles/${id}/reject`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        setErrorMsg(`Failed to reject puzzle: ${err?.message ?? r.statusText}`);
+        setSaving(false);
+        return;
+      }
+      setSuccessMsg("Puzzle rejected. Redirecting…");
+      setTimeout(() => router.push(`/${locale}/admin/puzzles?tab=REJECTED`), 1500);
+    } catch (e) {
+      setErrorMsg(`Network error: ${(e as Error).message}`);
+      setSaving(false);
+    }
   }
 
   if (loading) {
@@ -162,6 +237,10 @@ export default function AdminPuzzleReviewPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      {/* Dialogs */}
+      {successMsg && <SuccessDialog message={successMsg} />}
+      {errorMsg && <ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} />}
+
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
@@ -185,7 +264,7 @@ export default function AdminPuzzleReviewPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
             Position ({puzzle.sideToMove} to move)
           </p>
-          <BoardPreview pieces={puzzle.pieces} solution={puzzle.solution} />
+          <BoardPreview pieces={puzzle.pieces || []} solution={puzzle.solution || []} />
           <div className="space-y-1 text-xs text-gray-400">
             <p>
               <span className="inline-block w-3 h-3 rounded-sm bg-amber-500/40 mr-1.5 align-middle" />
@@ -207,7 +286,7 @@ export default function AdminPuzzleReviewPage() {
           {/* Solution display */}
           <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Solution</p>
-            {puzzle.solution.map((move, i) => (
+            {puzzle.solution?.map((move, i) => (
               <p key={i} className="font-mono text-sm text-emerald-300">
                 Move {i + 1}: {move.from} → {move.to}
                 {move.captures && move.captures.length > 0 && (
@@ -264,12 +343,14 @@ export default function AdminPuzzleReviewPage() {
                 className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none"
               >
                 <option value="">Select theme...</option>
-                <option value="multi-capture">Multi-capture</option>
-                <option value="promotion">Promotion</option>
+                <option value="capture-trap">Capture Trap</option>
+                <option value="position-trap">Position Trap</option>
+                <option value="zugzwang">Zugzwang</option>
+                <option value="combination">Combination</option>
                 <option value="king-trap">King trap</option>
+                <option value="sacrifice">Sacrifice</option>
+                <option value="promotion">Promotion</option>
                 <option value="endgame">Endgame</option>
-                <option value="capture">Capture</option>
-                <option value="positional">Positional</option>
               </select>
             </div>
           </div>
@@ -281,6 +362,34 @@ export default function AdminPuzzleReviewPage() {
             </p>
           )}
 
+          {/* Lifecycle timestamps */}
+          {(puzzle.publishedAt || puzzle.expiresAt) && (
+            <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Lifecycle</p>
+              {puzzle.publishedAt && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500">Published</span>
+                  <span className="text-emerald-400 font-semibold">
+                    {new Date(puzzle.publishedAt).toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {puzzle.expiresAt && (() => {
+                const isExpired = new Date(puzzle.expiresAt) <= new Date();
+                return (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Expires</span>
+                    <span className={isExpired ? "text-red-400 font-semibold" : "text-amber-400 font-semibold"}>
+                      {new Date(puzzle.expiresAt).toLocaleString()}
+                      {isExpired && " (expired)"}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+
           {/* Action buttons */}
           <div className="flex gap-3 pt-2">
             <button
@@ -288,16 +397,22 @@ export default function AdminPuzzleReviewPage() {
               onClick={handleApprove}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
             >
-              <CheckCircle className="h-4 w-4" />
-              Approve & Publish
+              {saving
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <CheckCircle className="h-4 w-4" />
+              }
+              {saving ? "Publishing…" : "Approve & Publish"}
             </button>
             <button
               disabled={saving}
               onClick={handleReject}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-red-900/40 px-4 py-2.5 text-sm font-bold text-red-300 hover:bg-red-900/60 disabled:opacity-50 transition-colors"
             >
-              <XCircle className="h-4 w-4" />
-              Reject
+              {saving
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <XCircle className="h-4 w-4" />
+              }
+              {saving ? "Processing…" : "Reject"}
             </button>
           </div>
         </div>
