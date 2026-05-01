@@ -22,6 +22,7 @@ import {
   Camera,
   AlertCircle,
   ImageOff,
+  Trash2,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../src/i18n";
@@ -43,6 +44,8 @@ export default function SettingsScreen() {
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [pendingAvatar, setPendingAvatar] = React.useState<{ uri: string; mimeType: string } | null>(null);
   const [errorModal, setErrorModal] = React.useState<{ title: string; message: string } | null>(null);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = React.useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
 
   const openWebPage = async (url: string) => {
     try {
@@ -150,6 +153,22 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     await authClient.logout();
     router.replace("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    try {
+      await authClient.deleteAccount();
+      router.replace("/");
+    } catch (error: any) {
+      setIsDeleteModalVisible(false);
+      showError(
+        t("settings.deleteAccount.errorTitle", "Delete Failed"),
+        error?.response?.data?.message ?? t("settings.deleteAccount.errorMessage", "Failed to delete account. Please try again.")
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
   };
 
   const hasVerifiedPhone = Boolean(
@@ -324,6 +343,11 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>{t("settings.actions.signOut", "Sign Out")}</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.deleteAccountButton} onPress={() => setIsDeleteModalVisible(true)}>
+          <Trash2 color={colors.textDisabled} size={16} />
+          <Text style={styles.deleteAccountText}>{t("settings.actions.deleteAccount", "Delete Account")}</Text>
+        </TouchableOpacity>
+
         <Text style={styles.versionText}>TzDraft Mobile v{Constants.expoConfig?.version || "1.4.2"}</Text>
       </ScrollView>
 
@@ -417,6 +441,34 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ThemedModal>
+
+      <ThemedModal
+        visible={isDeleteModalVisible}
+        onClose={() => !isDeletingAccount && setIsDeleteModalVisible(false)}
+        dismissable={!isDeletingAccount}
+        label={t("settings.deleteAccount.label", "Danger Zone")}
+        title={t("settings.deleteAccount.title", "Delete your account?")}
+        subtitle={t(
+          "settings.deleteAccount.subtitle",
+          "Your account will be scheduled for deletion. You have 30 days to sign back in and recover it. After that, it's gone permanently."
+        )}
+        icon={Trash2}
+        iconBg={colors.dangerAlpha20}
+        iconColor={colors.danger}
+        actions={[
+          {
+            label: t("common.cancel", "Cancel"),
+            onPress: () => setIsDeleteModalVisible(false),
+            type: "secondary",
+          },
+          {
+            label: t("settings.deleteAccount.confirm", "Yes, Delete"),
+            onPress: handleDeleteAccount,
+            type: "primary",
+            loading: isDeletingAccount,
+          },
+        ]}
+      />
 
       <ThemedModal
         visible={!!errorModal}
@@ -557,11 +609,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "bold",
   },
+  deleteAccountButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    marginTop: 8,
+    gap: 6,
+  },
+  deleteAccountText: {
+    color: colors.textDisabled,
+    fontSize: 13,
+  },
   versionText: {
     color: colors.textDisabled,
     fontSize: 12,
     textAlign: "center",
-    marginTop: 32,
+    marginTop: 16,
   },
   modalOverlay: {
     flex: 1,

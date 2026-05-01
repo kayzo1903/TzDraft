@@ -792,7 +792,8 @@
     "subtitle": "Shortcuts and preferences for {name}.",
     "actions": {
       "viewProfile": "View profile",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "deleteAccount": "Delete Account"
     },
     "signedOut": {
       "title": "Settings",
@@ -845,6 +846,14 @@
       "privacy": "Privacy Policy",
       "terms": "Terms of Service",
       "rules": "Game Rules"
+    },
+    "deleteAccount": {
+      "label": "Danger Zone",
+      "title": "Delete your account?",
+      "subtitle": "Your account will be scheduled for deletion. You have 30 days to sign back in and recover it. After that, it's gone permanently.",
+      "confirm": "Yes, Delete",
+      "errorTitle": "Delete Failed",
+      "errorMessage": "Failed to delete account. Please try again."
     }
   },
   "leaderboard": {

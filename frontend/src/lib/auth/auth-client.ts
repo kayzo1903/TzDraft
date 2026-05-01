@@ -108,6 +108,11 @@ export const authClient = {
     useAuthStore.getState().clearAuth();
   },
 
+  async deleteAccount(): Promise<void> {
+    await axiosInstance.delete("/auth/account");
+    useAuthStore.getState().clearAuth();
+  },
+
   async getCurrentUser() {
     const response = await axiosInstance.get("/auth/me", {
       headers: { "Cache-Control": "no-cache" },
