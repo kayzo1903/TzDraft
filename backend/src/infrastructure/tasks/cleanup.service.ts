@@ -69,6 +69,23 @@ export class CleanupService {
   }
 
   /**
+   * Permanently delete accounts that were soft-deleted more than 30 days ago.
+   * Runs daily at 03:00 UTC.
+   */
+  @Cron('0 3 * * *')
+  async hardDeleteExpiredAccounts(): Promise<void> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const result = await this.prisma.user.deleteMany({
+      where: { deletedAt: { not: null, lt: cutoff } },
+    });
+
+    if (result.count > 0) {
+      this.logger.log(`Hard-deleted ${result.count} expired account(s)`);
+    }
+  }
+
+  /**
    * Remove matchmaking queue entries older than 5 minutes (stale from crashed clients).
    * Runs every 5 minutes.
    */

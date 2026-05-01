@@ -44,6 +44,9 @@ model User {
     // Legal consent
     termsAcceptedAt DateTime? @map("terms_accepted_at")
 
+    // Soft delete — set when user requests deletion; hard-deleted after 30 days
+    deletedAt DateTime? @map("deleted_at")
+
     gamesAsWhite           Game[]                 @relation("WhitePlayer")
     gamesAsBlack           Game[]                 @relation("BlackPlayer")
     rating                 Rating?

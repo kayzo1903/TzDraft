@@ -44,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         country: true,
         region: true,
         termsAcceptedAt: true,
+        deletedAt: true,
         rating: {
           select: {
             rating: true,
@@ -54,6 +55,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user) {
       throw new UnauthorizedException();
+    }
+
+    if (user.deletedAt) {
+      throw new UnauthorizedException('Account is pending deletion');
     }
 
     const hasRealPhoneNumber = user.phoneNumber.startsWith('+255');

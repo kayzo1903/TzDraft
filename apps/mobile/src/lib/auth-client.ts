@@ -215,6 +215,11 @@ class AuthClient {
     }
   }
 
+  async deleteAccount() {
+    await api.delete('/auth/account');
+    await this.logout();
+  }
+
   async acceptTerms() {
     const response = await api.patch("/auth/accept-terms");
     return response.data;

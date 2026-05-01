@@ -792,7 +792,8 @@
     "subtitle": "Njia za haraka na mapendeleo ya {name}.",
     "actions": {
       "viewProfile": "Fungua wasifu",
-      "signOut": "Toka"
+      "signOut": "Toka",
+      "deleteAccount": "Futa Akaunti"
     },
     "signedOut": {
       "title": "Mipangilio",
@@ -845,6 +846,14 @@
       "privacy": "Sera ya Faragha",
       "terms": "Masharti ya Huduma",
       "rules": "Sheria za Mchezo"
+    },
+    "deleteAccount": {
+      "label": "Eneo Hatari",
+      "title": "Futa akaunti yako?",
+      "subtitle": "Akaunti yako itapangwa kufutwa. Una siku 30 kuingia tena na kuirejesha. Baada ya hapo, itafutwa kabisa.",
+      "confirm": "Ndio, Futa",
+      "errorTitle": "Kufuta Kumeshindwa",
+      "errorMessage": "Imeshindwa kufuta akaunti. Tafadhali jaribu tena."
     }
   },
   "leaderboard": {
