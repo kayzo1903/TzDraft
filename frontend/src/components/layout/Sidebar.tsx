@@ -25,7 +25,8 @@ import {
   FileText,
   ScrollText,
   ExternalLink,
-  Globe
+  Globe,
+  Tv
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -60,6 +61,7 @@ export function Sidebar() {
     { name: t("leaderboard"), href: "/leaderboard", icon: Medal },
     { name: t("tournaments"), href: "/community/tournament", icon: Trophy },
     { name: t("puzzles"), href: "/puzzles", icon: Puzzle },
+    { name: t("watch"), href: "/watch", icon: Tv },
     { name: t("community"), href: "/community", icon: Users },
     { name: t("learn"), href: "/learn", icon: BookOpen },
     { name: t("support"), href: "/support", icon: HelpCircle },

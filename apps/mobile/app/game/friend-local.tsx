@@ -677,84 +677,87 @@ export default function FriendLocalScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Top player bar ────────────────────────────────────────────────── */}
-      <View style={[styles.playerBar, styles.playerBarTop]}>
-        <View style={[styles.colorChip, topColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
-        <View style={styles.playerMeta}>
-          <Text style={styles.playerName}>{topPlayerName}</Text>
-          <CapturedDots count={topCaptured} color={topCapturedColor} />
-        </View>
-        {game.currentPlayerStr === topColor && !game.result && !game.awaitingHandoff && (
-          <View style={styles.toMoveChip}>
-            <Text style={styles.toMoveText}>To Move</Text>
+      {/* ── Game Area (Centered) ────────────────────────────────────────── */}
+      <View style={styles.gameArea}>
+        {/* ── Top player bar ────────────────────────────────────────────────── */}
+        <View style={[styles.playerBar, styles.playerBarTop]}>
+          <View style={[styles.colorChip, topColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
+          <View style={styles.playerMeta}>
+            <Text style={styles.playerName}>{topPlayerName}</Text>
+            <CapturedDots count={topCaptured} color={topCapturedColor} />
           </View>
-        )}
-        {isTimedGame && (
-          <View style={[
-            styles.timerChip,
-            game.currentPlayerStr === topColor && !game.result && styles.timerChipActive,
-          ]}>
-            <Text style={[
-              styles.timerText,
-              game.currentPlayerStr === topColor && !game.result && styles.timerTextActive,
+          {game.currentPlayerStr === topColor && !game.result && !game.awaitingHandoff && (
+            <View style={styles.toMoveChip}>
+              <Text style={styles.toMoveText}>To Move</Text>
+            </View>
+          )}
+          {isTimedGame && (
+            <View style={[
+              styles.timerChip,
+              game.currentPlayerStr === topColor && !game.result && styles.timerChipActive,
             ]}>
-              {formatTime(game.timeLeft[topColor])}
-            </Text>
-          </View>
-        )}
-      </View>
+              <Text style={[
+                styles.timerText,
+                game.currentPlayerStr === topColor && !game.result && styles.timerTextActive,
+              ]}>
+                {formatTime(game.timeLeft[topColor])}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      {/* ── Board ─────────────────────────────────────────────────────────── */}
-      <View style={styles.boardWrapper}>
-        <DraughtsBoard
-          board={displayBoard}
-          highlights={highlights}
-          onSquarePress={game.selectSquare}
-          onInvalidPress={() => game.selectSquare(-1)}
-          lastMove={displayLastMove}
-          disabled={isViewingHistory || !!game.result || game.awaitingHandoff}
-          flipped={game.flipBoard}
-        />
-        {game.endgameCountdown && (
-          <EndgameCountdownIndicator
-            remaining={game.endgameCountdown.remaining}
-            favoredColor={
-              game.endgameCountdown.favored !== null
-                ? game.endgameCountdown.favored === PlayerColor.WHITE
-                  ? "White"
-                  : "Black"
-                : null
-            }
-            t={t}
+        {/* ── Board ─────────────────────────────────────────────────────────── */}
+        <View style={styles.boardWrapper}>
+          <DraughtsBoard
+            board={displayBoard}
+            highlights={highlights}
+            onSquarePress={game.selectSquare}
+            onInvalidPress={() => game.selectSquare(-1)}
+            lastMove={displayLastMove}
+            disabled={isViewingHistory || !!game.result || game.awaitingHandoff}
+            flipped={game.flipBoard}
           />
-        )}
-      </View>
-
-      {/* ── Bottom player bar ─────────────────────────────────────────────── */}
-      <View style={[styles.playerBar, styles.playerBarBottom]}>
-        <View style={[styles.colorChip, bottomColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
-        <View style={styles.playerMeta}>
-          <Text style={styles.playerName}>{bottomPlayerName}</Text>
-          <CapturedDots count={bottomCaptured} color={bottomCapturedColor} />
+          {game.endgameCountdown && (
+            <EndgameCountdownIndicator
+              remaining={game.endgameCountdown.remaining}
+              favoredColor={
+                game.endgameCountdown.favored !== null
+                  ? game.endgameCountdown.favored === PlayerColor.WHITE
+                    ? "White"
+                    : "Black"
+                  : null
+              }
+              t={t}
+            />
+          )}
         </View>
-        {game.currentPlayerStr === bottomColor && !game.result && !game.awaitingHandoff && (
-          <View style={styles.toMoveChip}>
-            <Text style={styles.toMoveText}>To Move</Text>
+
+        {/* ── Bottom player bar ─────────────────────────────────────────────── */}
+        <View style={[styles.playerBar, styles.playerBarBottom]}>
+          <View style={[styles.colorChip, bottomColor === "WHITE" ? styles.chipWhite : styles.chipBlack]} />
+          <View style={styles.playerMeta}>
+            <Text style={styles.playerName}>{bottomPlayerName}</Text>
+            <CapturedDots count={bottomCaptured} color={bottomCapturedColor} />
           </View>
-        )}
-        {isTimedGame && (
-          <View style={[
-            styles.timerChip,
-            game.currentPlayerStr === bottomColor && !game.result && styles.timerChipActive,
-          ]}>
-            <Text style={[
-              styles.timerText,
-              game.currentPlayerStr === bottomColor && !game.result && styles.timerTextActive,
+          {game.currentPlayerStr === bottomColor && !game.result && !game.awaitingHandoff && (
+            <View style={styles.toMoveChip}>
+              <Text style={styles.toMoveText}>To Move</Text>
+            </View>
+          )}
+          {isTimedGame && (
+            <View style={[
+              styles.timerChip,
+              game.currentPlayerStr === bottomColor && !game.result && styles.timerChipActive,
             ]}>
-              {formatTime(game.timeLeft[bottomColor])}
-            </Text>
-          </View>
-        )}
+              <Text style={[
+                styles.timerText,
+                game.currentPlayerStr === bottomColor && !game.result && styles.timerTextActive,
+              ]}>
+                {formatTime(game.timeLeft[bottomColor])}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* ── Move history strip ─────────────────────────────────────────────── */}
@@ -907,6 +910,10 @@ export default function FriendLocalScreen() {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  gameArea: {
+    flex: 1,
+    justifyContent: "center",
+  },
 
   topBar: {
     flexDirection: "row",

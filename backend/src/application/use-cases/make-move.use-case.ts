@@ -1,6 +1,7 @@
 import {
   Injectable,
   Inject,
+  Logger,
   BadRequestException,
   forwardRef,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import { ReportTournamentResultUseCase } from './tournament/report-tournament-re
  */
 @Injectable()
 export class MakeMoveUseCase {
+  private readonly logger = new Logger(MakeMoveUseCase.name);
   private readonly moveValidationService: MoveValidationService;
   private readonly gameRulesService: GameRulesService;
 
@@ -204,9 +206,7 @@ export class MakeMoveUseCase {
           )
           .catch((err: unknown) => {
             const message = err instanceof Error ? err.message : String(err);
-            console.error(
-              `[MakeMove] Rating update failed for game ${gameId}: ${message}`,
-            );
+            this.logger.error(`Rating update failed for game ${gameId}: ${message}`);
           }),
         this.reportTournamentResult
           .execute(gameId, game.winner, game.whitePlayerId, game.blackPlayerId)

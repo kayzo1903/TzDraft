@@ -45,19 +45,19 @@ export function ChallengeCenter() {
       setIncomingCountdown(30);
       if (incomingTimerRef.current) clearInterval(incomingTimerRef.current);
       incomingTimerRef.current = setInterval(() => {
-        setIncomingCountdown((prev) => {
-          if (prev <= 1) {
-            setIncomingChallenge(null);
-            return 30;
-          }
-          return prev - 1;
-        });
+        setIncomingCountdown((prev) => Math.max(0, prev - 1));
       }, 1000);
     } else {
       if (incomingTimerRef.current) clearInterval(incomingTimerRef.current);
     }
     return () => { if (incomingTimerRef.current) clearInterval(incomingTimerRef.current); };
-  }, [incomingChallenge, setIncomingChallenge]);
+  }, [incomingChallenge]);
+
+  useEffect(() => {
+    if (incomingCountdown === 0 && incomingChallenge) {
+      setIncomingChallenge(null);
+    }
+  }, [incomingCountdown, incomingChallenge, setIncomingChallenge]);
 
   // --- Outgoing Challenge Logic ---
   useEffect(() => {
@@ -65,19 +65,19 @@ export function ChallengeCenter() {
       setOutgoingCountdown(30);
       if (outgoingTimerRef.current) clearInterval(outgoingTimerRef.current);
       outgoingTimerRef.current = setInterval(() => {
-        setOutgoingCountdown((prev) => {
-          if (prev <= 1) {
-            setOutgoingChallenge(null);
-            return 30;
-          }
-          return prev - 1;
-        });
+        setOutgoingCountdown((prev) => Math.max(0, prev - 1));
       }, 1000);
     } else {
       if (outgoingTimerRef.current) clearInterval(outgoingTimerRef.current);
     }
     return () => { if (outgoingTimerRef.current) clearInterval(outgoingTimerRef.current); };
-  }, [outgoingChallenge, setOutgoingChallenge]);
+  }, [outgoingChallenge]);
+
+  useEffect(() => {
+    if (outgoingCountdown === 0 && outgoingChallenge) {
+      setOutgoingChallenge(null);
+    }
+  }, [outgoingCountdown, outgoingChallenge, setOutgoingChallenge]);
 
   // --- Socket Listeners ---
   useEffect(() => {

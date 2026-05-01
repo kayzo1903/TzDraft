@@ -327,7 +327,7 @@ export class AuthService {
     });
 
     // TODO: Send password reset email
-    console.log(`Password reset token for ${user.email}: ${resetToken}`);
+    this.logger.warn(`Password reset token generated for ${user.email}`);
 
     return {
       message:

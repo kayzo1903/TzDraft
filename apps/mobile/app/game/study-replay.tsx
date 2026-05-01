@@ -282,6 +282,8 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     paddingBottom: 16,
+    flexGrow: 1,
+    justifyContent: "center",
   },
   boardWrapper: {
     alignItems: "center", justifyContent: "center",

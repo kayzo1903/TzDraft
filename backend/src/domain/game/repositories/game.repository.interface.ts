@@ -1,6 +1,22 @@
 import { Game } from '../entities/game.entity';
 import { GameStatus, GameType } from '../../../shared/constants/game.constants';
 
+export interface LiveGameSummary {
+  id: string;
+  whitePlayerId: string;
+  blackPlayerId: string;
+  whiteName: string;
+  blackName: string;
+  whiteAvatarUrl: string | null;
+  blackAvatarUrl: string | null;
+  whiteRating: number;
+  blackRating: number;
+  moveCount: number;
+  gameType: GameType;
+  initialTimeMs: number;
+  startedAt: Date | null;
+}
+
 export interface GameHistoryFilters {
   result?: 'WIN' | 'LOSS' | 'DRAW';
   gameType?: GameType;
@@ -117,4 +133,9 @@ export interface IGameRepository {
    * Aggregate win/loss/draw stats for a player across all finished games.
    */
   getPlayerStats(playerId: string): Promise<PlayerStats>;
+
+  /**
+   * Return a summary list of currently ACTIVE non-AI games for the watch lobby.
+   */
+  findLiveGames(limit: number): Promise<LiveGameSummary[]>;
 }

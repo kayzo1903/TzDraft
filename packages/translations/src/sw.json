@@ -19,7 +19,8 @@
     "history": "Historia ya Michezo",
     "tournaments": "Mashindano",
     "studies": "Michezo Yangu",
-    "puzzles": "Fumbo"
+    "puzzles": "Fumbo",
+    "watch": "Tazama"
   },
   "home": {
     "tagline": "Pata uzoefu wa jukwaa bora la drafti",
@@ -206,6 +207,10 @@
       "puzzles": {
         "title": "Fumbo",
         "desc": "Tatua changamoto za mchezo"
+      },
+      "watch": {
+        "title": "Tazama Moja kwa Moja",
+        "desc": "Tazama mechi za wababe zinazoendelea"
       }
     }
   },
