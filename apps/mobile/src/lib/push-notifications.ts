@@ -83,7 +83,7 @@ export function getNotificationRoute(
   if (data.type === "WELCOME") {
     return "/";
   }
-  if (data.type === "PUZZLE_RELEASED") {
+  if (data.type === "PUZZLE_RELEASED" || data.screen === "puzzles") {
     return "/game/puzzles";
   }
   return null;

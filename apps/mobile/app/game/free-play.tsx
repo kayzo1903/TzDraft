@@ -569,60 +569,63 @@ export default function FreePlayScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* --- Black / Opponent Row --- */}
-      <View style={[styles.playerBar, styles.playerBarTop]}>
-        <View style={[styles.avatar, { alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }]}>
-          <User color={colors.textDisabled} size={20} />
-        </View>
-        <View style={styles.playerMeta}>
-          <Text style={styles.playerNameText}>{t("setupAi.colors.black", "Black Pieces")}</Text>
-          <CapturedDots count={capturedByBlack} color="WHITE" />
-        </View>
-        {game.currentPlayer === "BLACK" && !game.result && (
-          <View style={styles.toMoveContainer}>
-            <Text style={styles.toMoveText}>{t("gameArena.status.yourMove")}</Text>
+      {/* --- Game Area (Centered) --- */}
+      <View style={styles.gameArea}>
+        {/* --- Black / Opponent Row --- */}
+        <View style={[styles.playerBar, styles.playerBarTop]}>
+          <View style={[styles.avatar, { alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }]}>
+            <User color={colors.textDisabled} size={20} />
           </View>
-        )}
-      </View>
+          <View style={styles.playerMeta}>
+            <Text style={styles.playerNameText}>{t("setupAi.colors.black", "Black Pieces")}</Text>
+            <CapturedDots count={capturedByBlack} color="WHITE" />
+          </View>
+          {game.currentPlayer === "BLACK" && !game.result && (
+            <View style={styles.toMoveContainer}>
+              <Text style={styles.toMoveText}>{t("gameArena.status.yourMove")}</Text>
+            </View>
+          )}
+        </View>
 
-      {/* --- Board --- */}
-      <View style={styles.boardWrapper}>
-        <DraughtsBoard
-          board={displayBoard}
-          highlights={isViewingHistory ? {} : highlights}
-          onSquarePress={game.selectSquare}
-          onInvalidPress={() => game.selectSquare(-1)}
-          lastMove={displayLastMove}
-          disabled={isViewingHistory || !!game.result}
-          flipped={game.flipBoard}
-        />
-        {game.endgameCountdown && (
-          <EndgameCountdownIndicator
-            remaining={game.endgameCountdown.remaining}
-            favoredColor={
-              game.endgameCountdown.favored !== null
-                ? game.endgameCountdown.favored === PlayerColor.WHITE
-                  ? "White"
-                  : "Black"
-                : null
-            }
-            t={t}
+        {/* --- Board --- */}
+        <View style={styles.boardWrapper}>
+          <DraughtsBoard
+            board={displayBoard}
+            highlights={isViewingHistory ? {} : highlights}
+            onSquarePress={game.selectSquare}
+            onInvalidPress={() => game.selectSquare(-1)}
+            lastMove={displayLastMove}
+            disabled={isViewingHistory || !!game.result}
+            flipped={game.flipBoard}
           />
-        )}
-      </View>
-
-      {/* --- White / Human Row --- */}
-      <View style={[styles.playerBar, styles.playerBarBottom]}>
-        <View style={[styles.colorChip, styles.colorChipWhite]} />
-        <View style={styles.playerMeta}>
-          <Text style={styles.playerNameText}>{t("setupAi.colors.white", "White Pieces")}</Text>
-          <CapturedDots count={capturedByWhite} color="BLACK" />
+          {game.endgameCountdown && (
+            <EndgameCountdownIndicator
+              remaining={game.endgameCountdown.remaining}
+              favoredColor={
+                game.endgameCountdown.favored !== null
+                  ? game.endgameCountdown.favored === PlayerColor.WHITE
+                    ? "White"
+                    : "Black"
+                  : null
+              }
+              t={t}
+            />
+          )}
         </View>
-        {game.currentPlayer === "WHITE" && !game.result && (
-          <View style={styles.toMoveContainer}>
-            <Text style={styles.toMoveText}>{t("gameArena.status.yourMove")}</Text>
+
+        {/* --- White / Human Row --- */}
+        <View style={[styles.playerBar, styles.playerBarBottom]}>
+          <View style={[styles.colorChip, styles.colorChipWhite]} />
+          <View style={styles.playerMeta}>
+            <Text style={styles.playerNameText}>{t("setupAi.colors.white", "White Pieces")}</Text>
+            <CapturedDots count={capturedByWhite} color="BLACK" />
           </View>
-        )}
+          {game.currentPlayer === "WHITE" && !game.result && (
+            <View style={styles.toMoveContainer}>
+              <Text style={styles.toMoveText}>{t("gameArena.status.yourMove")}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* --- History Bar --- */}
@@ -782,6 +785,10 @@ export default function FreePlayScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  gameArea: {
+    flex: 1,
+    justifyContent: "center",
+  },
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   loadingText: { color: colors.textMuted, fontSize: 16 },
 

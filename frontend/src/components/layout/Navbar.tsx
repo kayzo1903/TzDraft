@@ -28,7 +28,8 @@ import {
   Home,
   Gamepad2,
   Puzzle,
-  Users
+  Users,
+  Tv
 } from 'lucide-react';
 import Image from 'next/image';
 import { useTournamentNotifications } from '@/hooks/useTournamentNotifications';
@@ -60,6 +61,7 @@ export const Navbar: React.FC = () => {
         { name: t('leaderboard'), href: '/leaderboard', icon: Medal },
         { name: t('tournaments'), href: '/community/tournament', icon: Trophy },
         { name: t('puzzles'), href: '/puzzles', icon: Puzzle },
+        { name: t('watch'), href: '/watch', icon: Tv },
         { name: t('community'), href: '/community', icon: Users },
         { name: t('learn'), href: '/learn', icon: BookOpen },
         { name: t('support'), href: '/support', icon: HelpCircle },
@@ -222,29 +224,53 @@ export const Navbar: React.FC = () => {
                                             {notifications.length === 0 ? (
                                                 <p className="px-4 py-6 text-sm text-neutral-400 text-center">No notifications yet</p>
                                             ) : (
-                                                notifications.slice(0, 10).map((n) => (
-                                                    <button
-                                                        key={n.id}
-                                                        onClick={() => { if (!n.read) markRead(n.id); }}
-                                                        className={clsx(
-                                                            'w-full text-left px-4 py-3 hover:bg-white/5 transition-colors',
-                                                            !n.read && 'bg-[var(--primary)]/5',
-                                                        )}
-                                                    >
-                                                        <div className="flex items-start gap-2">
-                                                            {!n.read && (
-                                                                <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-[var(--primary)]" />
+                                                notifications.slice(0, 10).map((n) => {
+                                                    const getNotificationHref = (notif: typeof n) => {
+                                                        const data = notif.metadata || {};
+                                                        if (notif.type === 'PUZZLE_RELEASED' || data.screen === 'puzzles') {
+                                                            return '/puzzles';
+                                                        }
+                                                        if (data.screen === 'tournament' || notif.type?.startsWith('TOURNAMENT_')) {
+                                                            if (data.tournamentId) return `/community/tournament/${data.tournamentId}`;
+                                                            return '/community/tournament';
+                                                        }
+                                                        if (data.screen === 'profile' || notif.type?.startsWith('SOCIAL_')) {
+                                                            return '/profile';
+                                                        }
+                                                        return null;
+                                                    };
+
+                                                    return (
+                                                        <button
+                                                            key={n.id}
+                                                            onClick={() => { 
+                                                                if (!n.read) markRead(n.id);
+                                                                const href = getNotificationHref(n);
+                                                                if (href) {
+                                                                    router.push(href);
+                                                                    setIsBellOpen(false);
+                                                                }
+                                                            }}
+                                                            className={clsx(
+                                                                'w-full text-left px-4 py-3 hover:bg-white/5 transition-colors',
+                                                                !n.read && 'bg-[var(--primary)]/5',
                                                             )}
-                                                            <div className={clsx(!n.read ? '' : 'pl-4')}>
-                                                                <p className="text-sm font-semibold text-white leading-snug">{n.title}</p>
-                                                                <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">{n.body}</p>
-                                                                <p className="text-[10px] text-neutral-500 mt-1">
-                                                                    {new Date(n.createdAt).toLocaleString()}
-                                                                </p>
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                {!n.read && (
+                                                                    <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-[var(--primary)]" />
+                                                                )}
+                                                                <div className={clsx(!n.read ? '' : 'pl-4')}>
+                                                                    <p className="text-sm font-semibold text-white leading-snug">{n.title}</p>
+                                                                    <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">{n.body}</p>
+                                                                    <p className="text-[10px] text-neutral-500 mt-1">
+                                                                        {new Date(n.createdAt).toLocaleString()}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </button>
-                                                ))
+                                                        </button>
+                                                    );
+                                                })
                                             )}
                                         </div>
                                     </div>

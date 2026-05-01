@@ -38,6 +38,7 @@ import {
   Clock,
   AlertCircle,
   Gamepad2,
+  Tv
 } from "lucide-react-native";
 import { colors } from "../src/theme/colors";
 import { socialService, SocialUser } from "../src/services/social.service";
@@ -58,6 +59,7 @@ const CARD_COLORS = {
   tournaments: "#eab308", // gold
   history: "#6366f1", // indigo
   leaderboard: "#ec4899", // pink
+  watch: "#10b981", // emerald
 } as const;
 
 
@@ -600,6 +602,13 @@ export default function Home() {
             onPress={() => router.push("/game/puzzles" as any)}
             iconColor={CARD_COLORS.puzzles}
             icon={<Emoji>🧩</Emoji>}
+          />
+          <ServiceCard
+            title={t("nav.watch", "Watch Live")}
+            subtitle="Spectate ongoing top-tier matches"
+            onPress={() => router.push("/game/watch")}
+            iconColor={CARD_COLORS.watch}
+            icon={<Emoji>📺</Emoji>}
           />
         </View>
 

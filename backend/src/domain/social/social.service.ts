@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -8,6 +9,8 @@ import { SocialNotificationService } from '../../application/services/social-not
 
 @Injectable()
 export class SocialService {
+  private readonly logger = new Logger(SocialService.name);
+
   constructor(
     private prisma: PrismaService,
     private readonly socialNotif: SocialNotificationService,
@@ -50,7 +53,7 @@ export class SocialService {
         await this.socialNotif.notifyFollow(followerId, following.id);
       }
     } catch (err) {
-      console.warn('Social notification failed:', err);
+      this.logger.warn(`Social notification failed: ${err}`);
     }
 
     return follow;

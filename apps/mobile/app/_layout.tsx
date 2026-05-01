@@ -217,7 +217,29 @@ function RootLayout() {
 
   const isLoading = (!loaded && !error) || !hasHydrated || status === "loading" || status === "transitioning";
   const rootSegment = segments[0] || "";
-  const showHeader = (status === "authenticated" || status === "guest") && rootSegment !== "welcome" && rootSegment !== "(auth)";
+  
+  // Game board screens that handle their own headers internally.
+  // We hide the global layout header on these screens to avoid "double headers"
+  // and provide a more immersive, full-screen gameplay experience.
+  const seg = segments as string[];
+  const isPlayingBoard =
+    seg[0] === "game" &&
+    [
+      "vs-ai",
+      "online-game",
+      "puzzle-player",
+      "free-play",
+      "friend-local",
+      "game-replay",
+      "study-replay",
+      "watch"
+    ].includes(seg[1]);
+
+  const showHeader = 
+    (status === "authenticated" || status === "guest") && 
+    rootSegment !== "welcome" && 
+    rootSegment !== "(auth)" && 
+    !isPlayingBoard;
 
   // Always render the Stack so Expo Router's navigator is mounted from the first render.
   // The LoadingScreen sits as an absolute overlay on top until auth is resolved.
@@ -254,6 +276,7 @@ function RootLayout() {
               <Stack.Screen name="game/study-replay" options={{ headerShown: false }} />
               <Stack.Screen name="game/tournaments" options={{ headerShown: false }} />
               <Stack.Screen name="game/puzzles" options={{ headerShown: false }} />
+              <Stack.Screen name="game/watch" options={{ headerShown: false }} />
               <Stack.Screen name="game/puzzle-player" options={{ headerShown: false }} />
               <Stack.Screen name="game/tournament/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="community/announcement/[id]" options={{ headerShown: false }} />

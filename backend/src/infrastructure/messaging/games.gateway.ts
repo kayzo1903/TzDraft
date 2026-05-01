@@ -424,6 +424,23 @@ export class GamesGateway
     return { status: 'success', message: `Joined game ${gameId}` };
   }
 
+  /**
+   * Spectator join — joins the game room for live updates but does NOT set
+   * K_USER_GAME, so the disconnect handler ignores this user entirely.
+   */
+  @SubscribeMessage('watchGame')
+  async handleWatchGame(
+    @MessageBody() gameId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (!gameId) return { status: 'error', message: 'Game ID required' };
+    client.join(gameId);
+    this.logger.log(
+      `Spectator ${client.data.user?.id ?? client.id} watching game ${gameId}`,
+    );
+    return { status: 'success' };
+  }
+
   @SubscribeMessage('makeMove')
   async handleMakeMove(
     @MessageBody() data: { gameId: string; from: number; to: number },

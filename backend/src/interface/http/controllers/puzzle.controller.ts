@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Logger,
   NotFoundException,
   Param,
   Post,
@@ -33,6 +34,8 @@ import {
 
 @Controller('puzzles')
 export class PuzzleController {
+  private readonly logger = new Logger(PuzzleController.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** List approved puzzles — filterable by difficulty and theme. */
@@ -247,6 +250,7 @@ import { PuzzleSimulatorService } from '../../../application/puzzle/puzzle-simul
 @Controller('admin/puzzles')
 @UseGuards(AdminGuard)
 export class AdminPuzzleController {
+  private readonly logger = new Logger(AdminPuzzleController.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly miner: PuzzleMinerService,
@@ -469,7 +473,7 @@ export class AdminPuzzleController {
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
       req.socket?.remoteAddress;
 
-    console.log(
+    this.logger.log(
       JSON.stringify({
         audit: true,
         action,

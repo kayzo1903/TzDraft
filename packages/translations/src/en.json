@@ -19,7 +19,8 @@
     "history": "Game History",
     "tournaments": "Tournaments",
     "studies": "My Studies",
-    "puzzles": "Puzzles"
+    "puzzles": "Puzzles",
+    "watch": "Watch"
   },
   "home": {
     "tagline": "Experience the finest draft platform",
@@ -206,6 +207,10 @@
       "puzzles": {
         "title": "Puzzles",
         "desc": "Solve tactical board challenges"
+      },
+      "watch": {
+        "title": "Watch Live",
+        "desc": "Spectate ongoing top-tier matches"
       }
     }
   },

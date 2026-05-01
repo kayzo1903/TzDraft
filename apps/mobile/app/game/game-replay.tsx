@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   },
   titleSub: { color: colors.textSubtle, fontSize: 11, fontWeight: "900" },
 
-  scrollContent: { paddingBottom: 16 },
+  scrollContent: { paddingBottom: 16, flexGrow: 1, justifyContent: "center" },
   boardWrapper: {
     alignItems: "center",
     justifyContent: "center",

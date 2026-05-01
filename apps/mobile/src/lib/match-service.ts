@@ -80,4 +80,27 @@ export const matchService = {
     const response = await api.get("/games/active");
     return response.data.data;
   },
+
+  /** Fetch the live-games lobby list, sorted with followed players first. */
+  async getLiveGames(): Promise<LiveGameEntry[]> {
+    const response = await api.get("/games/live");
+    return response.data.data ?? [];
+  },
 };
+
+export interface LiveGameEntry {
+  id: string;
+  whitePlayerId: string;
+  blackPlayerId: string;
+  whiteName: string;
+  blackName: string;
+  whiteAvatarUrl: string | null;
+  blackAvatarUrl: string | null;
+  whiteRating: number;
+  blackRating: number;
+  moveCount: number;
+  gameType: string;
+  initialTimeMs: number;
+  startedAt: string | null;
+  isFollowing: boolean;
+}

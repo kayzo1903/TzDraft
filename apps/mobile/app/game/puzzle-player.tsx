@@ -570,7 +570,7 @@ export default function PuzzlePlayerScreen() {
 
   if (loading) return <LoadingScreen />;
   if (!puzzle) return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.replace("/game/puzzles" as any)} style={styles.iconBtn}>
           <ArrowLeft color={colors.foreground} size={20} />
@@ -620,7 +620,7 @@ export default function PuzzlePlayerScreen() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container}>
 
       {/* Header */}
       <View style={styles.header}>
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
   },
 
   // Body
-  body: { flex: 1, paddingHorizontal: 12 },
+  body: { flex: 1, paddingHorizontal: 12, justifyContent: "center" },
 
   // Board
   boardWrap: {

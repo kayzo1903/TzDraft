@@ -1504,7 +1504,7 @@ export default function OnlineGameScreen() {
     game.timeLeft[side] <= 30_000;
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
 
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <View style={styles.topBar}>
@@ -1559,7 +1559,7 @@ export default function OnlineGameScreen() {
           isSubmitting={game.isSubmitting}
         />
       ) : (
-        <>
+        <View style={styles.gameArea}>
           {/* ── Top player bar ────────────────────────────────────────── */}
           <View style={[styles.playerBar, styles.playerBarTop]}>
             <View style={styles.avatarContainer}>
@@ -1828,7 +1828,7 @@ export default function OnlineGameScreen() {
               </TouchableOpacity>
             )}
           </View>
-        </>
+        </View>
       )}
 
       <ReactionPicker
@@ -1907,17 +1907,17 @@ export default function OnlineGameScreen() {
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: colors.background },
+  gameArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    justifyContent: "center",
   },
   // ── Top bar ──────────────────────────────────────────────────────────────────
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    paddingTop: 0,
-    paddingBottom: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
