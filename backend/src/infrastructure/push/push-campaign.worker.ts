@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   Injectable,
   Logger,
@@ -180,9 +181,9 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
   private async handlePuzzleNotification(data: PuzzleNotificationJobData): Promise<void> {
     const { puzzleId, title, body, cursor } = data;
 
+    // Fetch ALL users (not just those with push tokens) for this page
     const users = await this.prisma.user.findMany({
       where: {
-        pushToken: { not: null },
         ...(cursor ? { id: { gt: cursor } } : {}),
       },
       select: { id: true, pushToken: true },
@@ -195,13 +196,33 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const tokens = users.map((u) => u.pushToken!).filter(Boolean);
-    await this.expoPush.sendToTokens(tokens, title, body, {
-      type: 'PUZZLE_RELEASED',
-      puzzleId,
-      screen: 'puzzles',
+    // Write in-app notifications for every user in this page
+    const now = new Date();
+    await this.prisma.notification.createMany({
+      data: users.map((u) => ({
+        id: randomUUID(),
+        userId: u.id,
+        type: 'PUZZLE_RELEASED' as any,
+        title,
+        body,
+        metadata: { type: 'PUZZLE_RELEASED', puzzleId, screen: 'puzzles' },
+        read: false,
+        createdAt: now,
+      })),
+      skipDuplicates: true,
     });
 
+    // Send device push only to users who have a token
+    const tokens = users.map((u) => u.pushToken!).filter(Boolean);
+    if (tokens.length > 0) {
+      await this.expoPush.sendToTokens(tokens, title, body, {
+        type: 'PUZZLE_RELEASED',
+        puzzleId,
+        screen: 'puzzles',
+      });
+    }
+
+    // If there are more users, enqueue the next page
     if (users.length === PAGE_SIZE) {
       await this.queue.enqueuePuzzleNotification({
         puzzleId,
@@ -213,6 +234,7 @@ export class PushCampaignWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`[Push] Puzzle notification ${puzzleId} complete`);
     }
   }
+
 
   private buildAudienceWhere(audience: string): Record<string, unknown> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);

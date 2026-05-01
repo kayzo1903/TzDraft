@@ -137,6 +137,9 @@ export class MkaguziAdapter
     this.proc.once('error', (err) => {
       this.logger.error(`Mkaguzi process error: ${err.message}`);
     });
+
+    // Prevent unhandled EPIPE exceptions when the process dies while we write.
+    this.proc.stdin?.on('error', () => {});
   }
 
   private killProcess() {
@@ -184,7 +187,14 @@ export class MkaguziAdapter
     if (!this.proc?.stdin?.writable) {
       throw new Error('Mkaguzi process is not running');
     }
-    this.proc.stdin.write(JSON.stringify(obj) + '\n');
+    try {
+      this.proc.stdin.write(JSON.stringify(obj) + '\n');
+    } catch (err: any) {
+      // Process died between the writable check and the write (EPIPE race).
+      // Clear the stale reference so the restart loop can clean up.
+      this.proc = null;
+      throw new Error(`Mkaguzi write failed (${err?.code ?? err?.message}): engine process died`);
+    }
   }
 
   /**

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Link } from "@/i18n/routing";
-import { ArrowLeft, PlayCircle, Clock, Zap, CheckCircle, AlertTriangle, Search } from "lucide-react";
+import { ArrowLeft, PlayCircle, Clock, Zap, CheckCircle, AlertTriangle, Search, Bot } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -10,8 +10,12 @@ export default function AdminPuzzleMinePage() {
   const [days, setDays] = useState(7);
   const [force, setForce] = useState(false);
   const [mining, setMining] = useState(false);
-  const [result, setResult] = useState<{ games: number; candidates: number } | null>(null);
+  const [result, setResult] = useState<{ games: number; candidates: number; source?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Simulate state
+  const [simGames, setSimGames] = useState(3);
+  const [simulating, setSimulating] = useState(false);
 
   async function startMining() {
     setMining(true);
@@ -24,17 +28,34 @@ export default function AdminPuzzleMinePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ days, force }),
       });
-      
-      if (!res.ok) {
-        throw new Error(`Failed to start miner: ${res.statusText}`);
-      }
-      
+      if (!res.ok) throw new Error(`Failed to start miner: ${res.statusText}`);
       const data = await res.json();
-      setResult({ games: data.games, candidates: data.candidates });
+      setResult({ games: data.games, candidates: data.candidates, source: "mining" });
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
     } finally {
       setMining(false);
+    }
+  }
+
+  async function startSimulation() {
+    setSimulating(true);
+    setResult(null);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/admin/puzzles/simulate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ games: simGames }),
+      });
+      if (!res.ok) throw new Error(`Simulation failed: ${res.statusText}`);
+      const data = await res.json();
+      setResult({ games: data.games, candidates: data.candidates, source: "simulation" });
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred");
+    } finally {
+      setSimulating(false);
     }
   }
 
@@ -116,7 +137,7 @@ export default function AdminPuzzleMinePage() {
               {/* Start Button */}
               <button
                 onClick={startMining}
-                disabled={mining}
+                disabled={mining || simulating}
                 className="flex w-full items-center justify-center gap-3 rounded-xl bg-orange-500 py-4 text-sm font-black text-white transition-all hover:bg-orange-400 disabled:opacity-50 disabled:grayscale"
               >
                 {mining ? (
@@ -134,6 +155,59 @@ export default function AdminPuzzleMinePage() {
             </div>
           </div>
 
+          {/* Simulate Engine Games Card */}
+          <div className="rounded-2xl border border-indigo-500/20 bg-gray-900/50 p-6 shadow-xl">
+            <h2 className="mb-1 flex items-center gap-2 text-lg font-bold text-white">
+              <Bot className="text-indigo-400" size={20} />
+              Simulate Engine Games
+            </h2>
+            <p className="mb-6 text-xs text-gray-500">
+              Play Mkaguzi vs Mkaguzi and extract high-quality middlegame positions and traps as puzzles.
+            </p>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-300">Number of Games</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setSimGames(n)}
+                      className={`flex-1 rounded-xl border py-3 text-sm font-bold transition-all ${
+                        simGames === n
+                          ? "border-indigo-500 bg-indigo-500/10 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                          : "border-gray-800 bg-gray-950 text-gray-500 hover:border-gray-700 hover:text-gray-300"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Each game takes ~2-4 min at engine level 17. {simGames} game{simGames > 1 ? "s" : ""} ≈ {simGames * 3} min.
+                </p>
+              </div>
+
+              <button
+                onClick={startSimulation}
+                disabled={mining || simulating}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-indigo-600 py-4 text-sm font-black text-white transition-all hover:bg-indigo-500 disabled:opacity-50 disabled:grayscale"
+              >
+                {simulating ? (
+                  <>
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Simulating {simGames} game{simGames > 1 ? "s" : ""}...
+                  </>
+                ) : (
+                  <>
+                    <Bot size={20} />
+                    SIMULATE ENGINE GAMES
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* Results Display */}
           {result && (
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -142,9 +216,13 @@ export default function AdminPuzzleMinePage() {
                   <CheckCircle size={24} />
                 </div>
                 <div className="flex-1 space-y-1">
-                  <h3 className="text-lg font-bold text-emerald-400">Mining Complete</h3>
+                  <h3 className="text-lg font-bold text-emerald-400">
+                    {result.source === "simulation" ? "Simulation Complete" : "Mining Complete"}
+                  </h3>
                   <p className="text-sm text-gray-400">
-                    The scan was successful. New candidates are now in the review queue.
+                    {result.source === "simulation"
+                      ? `${result.games} engine game(s) simulated. New puzzle candidates are in the review queue.`
+                      : "The scan was successful. New candidates are now in the review queue."}
                   </p>
                   <div className="mt-4 flex gap-8">
                     <div>

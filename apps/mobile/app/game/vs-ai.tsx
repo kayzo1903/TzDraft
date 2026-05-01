@@ -55,10 +55,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const TIER_UNLOCK_DATA: Record<number, {
   label: string; title: string; body: string; cta: string; accentColor: string;
 }> = {
-  6:  { label: "CASUAL TIER UNLOCKED", title: "The warmup is over.", body: "Your next opponents have been watching. They know your patterns. Don't get comfortable.", cta: "I'm ready.", accentColor: colors.win },
-  10: { label: "COMPETITIVE TIER UNLOCKED", title: "Something stronger awakens.", body: "You've stepped into harder territory. These opponents calculate faster than you think. Every mistake will be punished.", cta: "I understand the risk.", accentColor: colors.danger },
-  14: { label: "EXPERT TIER UNLOCKED", title: "They know no mercy.", body: "Few players reach this tier. Fewer survive it. Your opponent sees 12 moves ahead. You've been warned.", cta: "Show me what's waiting.", accentColor: colors.danger },
-  17: { label: "MASTER TIER UNLOCKED", title: "This is the end.", body: "You've come further than most dare to try. The final opponents are relentless. There is no coming back.", cta: "Face it.", accentColor: colors.danger },
+  4:  { label: "CASUAL TIER UNLOCKED", title: "The warmup is over.", body: "Your next opponents have been watching. They know your patterns. Don't get comfortable.", cta: "I'm ready.", accentColor: colors.win },
+  8:  { label: "COMPETITIVE TIER UNLOCKED", title: "Something stronger awakens.", body: "You've stepped into harder territory. These opponents calculate faster than you think. Every mistake will be punished.", cta: "I understand the risk.", accentColor: colors.danger },
+  12: { label: "EXPERT TIER UNLOCKED", title: "They know no mercy.", body: "Few players reach this tier. Fewer survive it. Your opponent sees 12 moves ahead. You've been warned.", cta: "Show me what's waiting.", accentColor: colors.danger },
+  17: { label: "UNDISPUTED TIER UNLOCKED", title: "This is the end.", body: "You've come further than most dare to try. The final opponents are relentless. There is no coming back.", cta: "Face it.", accentColor: colors.danger },
 };
 
 // ─── Route params ──────────────────────────────────────────────────────────────
@@ -748,92 +748,120 @@ export default function VsAiScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Opponent (bot) row ────────────────────────────────────────────── */}
-      <View style={[styles.playerBar, styles.playerBarTop]}>
-        <Image source={BOT_IMAGES[bot.imageKey]} style={styles.playerAvatar} />
-        <View style={styles.playerMeta}>
-          <Text style={styles.playerNameText}>{bot.name}</Text>
-          <CapturedDots count={botCapturedCount} color={humanColor as "WHITE" | "BLACK"} />
-        </View>
-        
-        {game.isAiThinking && !game.result && (
-          <View style={styles.thinkingContainer}>
-            <ActivityIndicator size={12} color={colors.primary} />
-            <Text style={styles.thinkingText}>{t("gameArena.status.aiThinking")}</Text>
-          </View>
-        )}
-      </View>
 
-      {/* ── Board ─────────────────────────────────────────────────────────── */}
-      <View style={styles.boardWrapper}>
-        <DraughtsBoard
-          board={displayBoard}
-          highlights={isViewingHistory ? {} : highlights}
-          onSquarePress={game.selectSquare}
-          onInvalidPress={() => {}}
-          lastMove={displayLastMove}
-          disabled={!!game.result || game.isAiThinking || game.currentPlayer !== game.playerColor || isViewingHistory}
-          flipped={game.flipBoard}
-        />
-        {game.endgameCountdown && (
-          <EndgameCountdownIndicator
-            remaining={game.endgameCountdown.remaining}
-            favoredColor={
-              game.endgameCountdown.favored !== null
-                ? game.endgameCountdown.favored === PlayerColor.WHITE
-                  ? "White"
-                  : "Black"
-                : null
-            }
-            t={t}
-          />
-        )}
-      </View>
-
-      {/* ── Human player row ──────────────────────────────────────────────── */}
-      <View style={[styles.playerBar, styles.playerBarBottom]}>
-        <View style={styles.avatarContainer}>
-          {user?.avatarUrl ? (
+      {/* ── Game Area (Centered) ────────────────────────────────────────── */}
+      <View style={styles.gameArea}>
+        {/* ── Bot / Opponent row ───────────────────────────────────────────── */}
+        <View style={[styles.playerBar, styles.playerBarTop]}>
+          <View style={styles.avatarContainer}>
             <ExpoImage
-              source={user.avatarUrl}
+              source={bot.imageKey}
               style={styles.playerAvatar}
               contentFit="cover"
               transition={200}
             />
-          ) : (
-            <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
-              <UserIcon color={colors.textDisabled} size={18} />
+            <View style={[
+              styles.playerColorBadge,
+              botIsWhite ? styles.chipWhite : styles.chipBlack,
+            ]} />
+          </View>
+          <View style={styles.playerMeta}>
+            <Text style={styles.playerNameText}>{bot.name}</Text>
+            <CapturedDots count={botCapturedCount} color={game.playerColor.toString() as "WHITE" | "BLACK"} />
+          </View>
+          {game.isAiThinking && (
+            <View style={styles.thinkingContainer}>
+              <ActivityIndicator color={colors.primary} size="small" />
+              <Text style={styles.thinkingText}>{t("gameArena.status.thinking")}</Text>
             </View>
           )}
-          <View style={[
-            styles.playerColorBadge,
-            game.playerColor.toString() === "WHITE" ? styles.chipWhite : styles.chipBlack,
-          ]} />
-        </View>
-        <View style={styles.playerMeta}>
-          <Text style={styles.playerNameText}>{t("gameArena.you")}</Text>
-          <CapturedDots count={playerCapturedCount} color={opponentColor as "WHITE" | "BLACK"} />
-        </View>
-        {timeControl.type === "total" && (
-          <View style={[
-            styles.timerBadge,
-            game.currentPlayer === game.playerColor && !game.result && styles.timerBadgeActive,
-          ]}>
-            <Text style={[
-              styles.timerText,
-              game.currentPlayer === game.playerColor && !game.result && styles.timerTextActive,
+          {timeControl.type === "total" && (
+            <View style={[
+              styles.timerBadge,
+              game.currentPlayer !== game.playerColor && !game.result && styles.timerBadgeActive,
             ]}>
-              {formatTime(game.playerColor.toString() === "WHITE" ? game.timeLeft.WHITE : game.timeLeft.BLACK)}
-            </Text>
-          </View>
-        )}
-        {timeControl.type === "per_move" && (
-          <PerMoveTimerWidget
-            timeLeft={game.moveTimeLeft}
-            totalSeconds={timeControl.seconds}
-            isHumanTurn={game.currentPlayer === game.playerColor && !game.result}
+              <Text style={[
+                styles.timerText,
+                game.currentPlayer !== game.playerColor && !game.result && styles.timerTextActive,
+              ]}>
+                {formatTime(botIsWhite ? game.timeLeft.WHITE : game.timeLeft.BLACK)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Board ────────────────────────────────────────────────────────── */}
+        <View style={styles.boardWrapper}>
+          <DraughtsBoard
+            board={displayBoard}
+            highlights={isViewingHistory ? {} : highlights}
+            onSquarePress={game.selectSquare}
+            onInvalidPress={() => game.selectSquare(-1)}
+            lastMove={displayLastMove}
+            disabled={!!game.result || game.currentPlayer !== game.playerColor || isViewingHistory || game.isAiThinking}
+            flipped={game.flipBoard}
           />
-        )}
+
+          {game.endgameCountdown && (
+            <EndgameCountdownIndicator
+              remaining={game.endgameCountdown.remaining}
+              favoredColor={
+                game.endgameCountdown.favored !== null
+                  ? game.endgameCountdown.favored === PlayerColor.WHITE
+                    ? "White"
+                    : "Black"
+                  : null
+              }
+              t={t}
+            />
+          )}
+        </View>
+
+        {/* ── Human player row ──────────────────────────────────────────────── */}
+        <View style={[styles.playerBar, styles.playerBarBottom]}>
+          <View style={styles.avatarContainer}>
+            {user?.avatarUrl ? (
+              <ExpoImage
+                source={user.avatarUrl}
+                style={styles.playerAvatar}
+                contentFit="cover"
+                transition={200}
+              />
+            ) : (
+              <View style={[styles.playerAvatar, styles.avatarPlaceholder]}>
+                <UserIcon color={colors.textDisabled} size={18} />
+              </View>
+            )}
+            <View style={[
+              styles.playerColorBadge,
+              game.playerColor.toString() === "WHITE" ? styles.chipWhite : styles.chipBlack,
+            ]} />
+          </View>
+          <View style={styles.playerMeta}>
+            <Text style={styles.playerNameText}>{t("gameArena.you")}</Text>
+            <CapturedDots count={playerCapturedCount} color={opponentColor as "WHITE" | "BLACK"} />
+          </View>
+          {timeControl.type === "total" && (
+            <View style={[
+              styles.timerBadge,
+              game.currentPlayer === game.playerColor && !game.result && styles.timerBadgeActive,
+            ]}>
+              <Text style={[
+                styles.timerText,
+                game.currentPlayer === game.playerColor && !game.result && styles.timerTextActive,
+              ]}>
+                {formatTime(game.playerColor.toString() === "WHITE" ? game.timeLeft.WHITE : game.timeLeft.BLACK)}
+              </Text>
+            </View>
+          )}
+          {timeControl.type === "per_move" && (
+            <PerMoveTimerWidget
+              timeLeft={game.moveTimeLeft}
+              totalSeconds={timeControl.seconds}
+              isHumanTurn={game.currentPlayer === game.playerColor && !game.result}
+            />
+          )}
+        </View>
       </View>
 
       {/* ── Move history strip (with chevron navigation) ─────────────────── */}
@@ -1031,7 +1059,7 @@ export default function VsAiScreen() {
         onRematch={game.reset}
         onBack={() => { clearSavedAiGame().catch(() => {}); router.replace("/game/setup-ai"); }}
         onNextOpponent={
-          botLevel < 19
+          isPlayerWin && botLevel < 19 && !game.hintUsed && !game.undoUsed
             ? () => router.replace({ pathname: "/game/vs-ai", params: { ...params, botLevel: (botLevel + 1).toString() } })
             : undefined
         }
@@ -1044,6 +1072,10 @@ export default function VsAiScreen() {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  gameArea: {
+    flex: 1,
+    justifyContent: "center",
+  },
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   loadingText: { color: colors.textMuted, fontSize: 16 },
 

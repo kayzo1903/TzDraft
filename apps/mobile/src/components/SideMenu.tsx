@@ -12,7 +12,7 @@ import {
   Easing,
   Image,
 } from "react-native";
-import { X, LogOut, User, Home, Gamepad2, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, Puzzle, BookOpen, ScrollText } from "lucide-react-native";
+import { X, LogOut, User, Home, Gamepad2, Trophy, Users, HelpCircle, Languages, History, Medal, ShieldCheck, FileText, Puzzle, BookOpen, ScrollText, Tv } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../auth/auth-store";
 import { authClient } from "../lib/auth-client";
@@ -204,7 +204,12 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isVisible, onClose }) => {
               <NavItem
                 icon={Puzzle}
                 label={t("nav.puzzles", "Puzzles")}
-                onPress={() => navigateTo("/puzzles")}
+                onPress={() => navigateTo("/game/puzzles")}
+              />
+              <NavItem
+                icon={Tv}
+                label={t("nav.watch", "Watch")}
+                onPress={() => navigateTo("/game/watch")}
               />
               <NavItem
                 icon={Users}

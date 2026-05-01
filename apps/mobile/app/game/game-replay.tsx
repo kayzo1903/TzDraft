@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Platform,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   },
   titleSub: { color: colors.textSubtle, fontSize: 11, fontWeight: "900" },
 
-  scrollContent: { paddingBottom: 16 },
+  scrollContent: { paddingBottom: 16, flexGrow: 1, justifyContent: "center" },
   boardWrapper: {
     alignItems: "center",
     justifyContent: "center",

@@ -25,7 +25,8 @@ import {
   FileText,
   ScrollText,
   ExternalLink,
-  Globe
+  Globe,
+  Tv
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -42,7 +43,6 @@ export function Sidebar() {
   const { unreadCount } = useTournamentNotifications();
   const isAdminPath = pathname.startsWith("/admin");
 
-  if (isAdminPath) return null;
 
   const toggleLanguage = () => {
     const nextLocale = locale === "sw" ? "en" : "sw";
@@ -61,6 +61,7 @@ export function Sidebar() {
     { name: t("leaderboard"), href: "/leaderboard", icon: Medal },
     { name: t("tournaments"), href: "/community/tournament", icon: Trophy },
     { name: t("puzzles"), href: "/puzzles", icon: Puzzle },
+    { name: t("watch"), href: "/watch", icon: Tv },
     { name: t("community"), href: "/community", icon: Users },
     { name: t("learn"), href: "/learn", icon: BookOpen },
     { name: t("support"), href: "/support", icon: HelpCircle },
@@ -71,6 +72,8 @@ export function Sidebar() {
     { name: t("privacy"), href: "/privacy", icon: ShieldCheck },
     { name: t("terms"), href: "/terms", icon: ScrollText },
   ];
+
+  if (isAdminPath) return null;
 
   return (
     <aside className="hidden lg:flex w-72 flex-col border-r border-white/5 bg-[var(--background)] p-6 sticky top-0 h-screen overflow-y-auto">

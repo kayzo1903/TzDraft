@@ -54,6 +54,7 @@ model AiChallengeSession {
     playerColor String              @map("player_color")
     result      AiChallengeResult?
     undoUsed    Boolean             @default(false) @map("undo_used")
+    hintUsed    Boolean             @default(false) @map("hint_used")
     startedAt   DateTime            @default(now()) @map("started_at")
     completedAt DateTime?           @map("completed_at")
 

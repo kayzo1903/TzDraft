@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
+import { Logger as NestLogger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'express';
@@ -20,6 +21,7 @@ async function bootstrap() {
 
   // Wire in the pino logger so all NestJS Logger calls go through pino
   app.useLogger(app.get(Logger));
+  const customParserLogger = new NestLogger('CustomParser');
 
   app.use(cookieParser());
 
@@ -173,7 +175,7 @@ async function bootstrap() {
           process.env.AUTH_DEBUG_LOG === 'true' &&
           req.url?.includes('/auth/login')
         ) {
-          console.log('[CUSTOM_PARSER] Raw buffer length:', raw.length);
+          customParserLogger.debug(`Raw buffer length: ${raw.length}`);
         }
 
         if (raw.length === 0) {
@@ -184,13 +186,13 @@ async function bootstrap() {
 
         next();
       } catch (err) {
-        console.error('[CUSTOM_PARSER] JSON parse error:', err);
+        customParserLogger.error(`JSON parse error: ${err}`);
         res.status(400).json({ error: 'Invalid JSON' });
       }
     });
 
     req.on('error', (err) => {
-      console.error('[CUSTOM_PARSER] Stream error:', err);
+      customParserLogger.error(`Stream error: ${err}`);
       res.status(400).json({ error: 'Request error' });
     });
   });

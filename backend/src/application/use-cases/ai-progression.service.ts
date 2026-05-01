@@ -45,6 +45,7 @@ export class AiProgressionService {
       WHERE user_id = ${userId}
         AND result = 'WIN'
         AND undo_used = false
+        AND hint_used = false
         AND completed_at IS NOT NULL
       ORDER BY ai_level ASC
     `;
@@ -101,6 +102,7 @@ export class AiProgressionService {
     sessionId: string,
     result: AiChallengeResult,
     undoUsed: boolean,
+    hintUsed: boolean,
   ): Promise<AiProgressionSummary> {
     const session = await this.getSession(sessionId);
 
@@ -126,11 +128,12 @@ export class AiProgressionService {
       data: {
         result,
         undoUsed,
+        hintUsed,
         completedAt: new Date(),
       },
     });
 
-    if (result === 'WIN' && !undoUsed) {
+    if (result === 'WIN' && !undoUsed && !hintUsed) {
       const rating = await this.getRatingProgress(userId);
       const nextUnlockedLevel =
         (rating.highestUnlockedAiLevel ?? INITIAL_FREE_AI_LEVELS) <=
@@ -188,6 +191,7 @@ export class AiProgressionService {
       WHERE user_id = ${userId}
         AND result = 'WIN'
         AND undo_used = false
+        AND hint_used = false
         AND completed_at IS NOT NULL
     `;
 

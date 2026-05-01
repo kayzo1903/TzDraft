@@ -169,6 +169,7 @@ export class GameController {
       sessionId,
       dto.result,
       dto.undoUsed,
+      dto.hintUsed,
     );
     return { success: true, data };
   }
@@ -351,6 +352,34 @@ export class GameController {
   @ApiResponse({ status: 204, description: 'Removed from queue' })
   async cancelQueue(@CurrentUser() user: any) {
     await this.joinQueueUseCase.cancelQueue(user.id);
+  }
+
+  /**
+   * List currently live (ACTIVE, non-AI) games for the watch lobby.
+   * If authenticated, games involving followed players are flagged and sorted first.
+   */
+  @Get('live')
+  @Public()
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'List live games for the watch lobby' })
+  async getLiveGames(@CurrentUser() viewer: any) {
+    const games = await this.getGameStateUseCase.findLiveGames(50);
+
+    let followingIds = new Set<string>();
+    if (viewer?.id) {
+      const following = await this.socialService.getFollowingList(viewer.id);
+      followingIds = new Set(following.map((f: any) => f.following.id));
+    }
+
+    const enriched = games.map((g) => ({
+      ...g,
+      isFollowing:
+        followingIds.has(g.whitePlayerId) || followingIds.has(g.blackPlayerId),
+    }));
+
+    enriched.sort((a, b) => Number(b.isFollowing) - Number(a.isFollowing));
+
+    return { success: true, data: enriched };
   }
 
   /**

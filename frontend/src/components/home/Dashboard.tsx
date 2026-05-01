@@ -19,8 +19,11 @@ import {
   ChevronRight,
   Loader2,
   Swords,
-  Puzzle
+  Puzzle,
+  Tv,
+  Radio
 } from "lucide-react";
+import { LiveGamesStrip } from "@/components/home/LiveGamesStrip";
 import { cn } from "@/lib/utils";
 
 const CARD_COLORS = {
@@ -33,6 +36,7 @@ const CARD_COLORS = {
   history: "#6366f1", // indigo
   leaderboard: "#ec4899", // pink
   puzzles: "#f43f5e", // rose
+  watch: "#10b981", // emerald
 } as const;
 
 export function Dashboard() {
@@ -108,6 +112,9 @@ export function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* --- Live Matches Strip --- */}
+        <LiveGamesStrip />
 
         {/* --- Core Actions Grid --- */}
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -192,6 +199,13 @@ export function Dashboard() {
               iconColor={CARD_COLORS.puzzles}
               icon={<Puzzle size={24} />}
               badge={locale === "sw" ? "Mpya" : "New"}
+            />
+            <ServiceCard
+              title={t("featureGrid.watch.title")}
+              subtitle={t("featureGrid.watch.desc")}
+              href="/watch"
+              iconColor={CARD_COLORS.watch}
+              icon={<Radio size={24} />}
             />
           </div>
 

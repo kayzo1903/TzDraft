@@ -1,5 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
-import type { IGameRepository } from '../../domain/game/repositories/game.repository.interface';
+import type {
+  IGameRepository,
+  LiveGameSummary,
+} from '../../domain/game/repositories/game.repository.interface';
 import type { IMoveRepository } from '../../domain/game/repositories/move.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import { Move } from '../../domain/game/entities/move.entity';
@@ -23,6 +26,11 @@ export class GetGameStateUseCase {
   /** Lightweight game lookup — just the entity, no moves/players. */
   async getGame(gameId: string): Promise<Game | null> {
     return this.gameRepository.findById(gameId);
+  }
+
+  /** Return a summary list of currently live (ACTIVE, non-AI) games. */
+  async findLiveGames(limit: number): Promise<LiveGameSummary[]> {
+    return this.gameRepository.findLiveGames(limit);
   }
 
   /**

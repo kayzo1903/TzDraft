@@ -100,6 +100,10 @@ export class CompleteAiChallengeSessionDto {
   @ApiProperty({ description: 'Whether undo was used during the AI challenge' })
   @IsBoolean()
   undoUsed: boolean;
+
+  @ApiProperty({ description: 'Whether a hint was used during the AI challenge' })
+  @IsBoolean()
+  hintUsed: boolean;
 }
 
 export class SyncAiProgressDto {

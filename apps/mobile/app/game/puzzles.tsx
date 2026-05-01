@@ -23,6 +23,20 @@ function themeLabel(t: string) {
   return t.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
+function isNew(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() < 6 * 3600000;
+}
+
 function themeAccent(t: string): string {
   const map: Record<string, string> = {
     sacrifice:       "rgba(251,113,133,0.15)",
@@ -108,34 +122,47 @@ export default function PuzzlesScreen() {
 
 
 
-  const renderPuzzle = ({ item }: { item: Puzzle }) => (
-    <TouchableOpacity
-      style={styles.puzzleListItem}
-      activeOpacity={0.7}
-      onPress={() => router.push(`/game/puzzle-player?id=${item.id}` as any)}
-    >
-      <View style={styles.puzzleIconWrap}>
-        <PuzzleIcon color={colors.primary} size={20} />
-      </View>
-      <View style={styles.puzzleInfo}>
-        <Text style={styles.puzzleTitle} numberOfLines={1}>
-          {item.title ?? `${item.sideToMove === "WHITE" ? "White" : "Black"} to move`}
-        </Text>
-        <View style={styles.puzzleMeta}>
-          <View style={[styles.themePill, { backgroundColor: themeAccent(item.theme), borderColor: themeBorder(item.theme) }]}>
-            <Text style={[styles.themePillText, { color: themeText(item.theme) }]}>
-              {themeLabel(item.theme)}
-            </Text>
-          </View>
-          <Text style={styles.cardStars}>{"★".repeat(item.difficulty)}</Text>
+  const renderPuzzle = ({ item }: { item: Puzzle }) => {
+    const fresh = item.publishedAt && isNew(item.publishedAt);
+    return (
+      <TouchableOpacity
+        style={styles.puzzleListItem}
+        activeOpacity={0.7}
+        onPress={() => router.push(`/game/puzzle-player?id=${item.id}` as any)}
+      >
+        <View style={styles.puzzleIconWrap}>
+          <PuzzleIcon color={colors.primary} size={20} />
         </View>
-      </View>
-      <View style={styles.puzzleAction}>
-        <Text style={styles.cardAttempts}>{item._count.attempts} plays</Text>
-        <ArrowRight color={colors.textMuted} size={16} />
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.puzzleInfo}>
+          <View style={styles.puzzleTitleRow}>
+            <Text style={styles.puzzleTitle} numberOfLines={1}>
+              {item.title ?? `${item.sideToMove === "WHITE" ? "White" : "Black"} to move`}
+            </Text>
+            {fresh && (
+              <View style={styles.newBadge}>
+                <Text style={styles.newBadgeText}>NEW</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.puzzleMeta}>
+            <View style={[styles.themePill, { backgroundColor: themeAccent(item.theme), borderColor: themeBorder(item.theme) }]}>
+              <Text style={[styles.themePillText, { color: themeText(item.theme) }]}>
+                {themeLabel(item.theme)}
+              </Text>
+            </View>
+            <Text style={styles.cardStars}>{"★".repeat(item.difficulty)}</Text>
+            {item.publishedAt && (
+              <Text style={styles.cardTime}>{timeAgo(item.publishedAt)}</Text>
+            )}
+          </View>
+        </View>
+        <View style={styles.puzzleAction}>
+          <Text style={styles.cardAttempts}>{item._count.attempts} plays</Text>
+          <ArrowRight color={colors.textMuted} size={16} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const ListHeader = () => (
     <View>
@@ -171,10 +198,10 @@ export default function PuzzlesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => router.replace("/" as any)} style={styles.iconBtn}>
           <ArrowLeft color={colors.foreground} size={22} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -246,8 +273,12 @@ const styles = StyleSheet.create({
   puzzleListItem:  { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 14, gap: 12, marginBottom: 10 },
   puzzleIconWrap:  { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryAlpha10, alignItems: "center", justifyContent: "center" },
   puzzleInfo:      { flex: 1, gap: 6 },
-  puzzleTitle:     { color: colors.foreground, fontSize: 14, fontWeight: "bold" },
+  puzzleTitleRow:  { flexDirection: "row", alignItems: "center", gap: 6 },
+  puzzleTitle:     { color: colors.foreground, fontSize: 14, fontWeight: "bold", flexShrink: 1 },
+  newBadge:        { backgroundColor: "rgba(249,115,22,0.15)", borderWidth: 1, borderColor: "rgba(249,115,22,0.4)", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
+  newBadgeText:    { color: colors.primary, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
   puzzleMeta:      { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardTime:        { color: colors.textDisabled, fontSize: 10 },
   puzzleAction:    { alignItems: "flex-end", gap: 6 },
   themePill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
   themePillText:   { fontSize: 9, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5 },

@@ -5,6 +5,7 @@ import {
   IGameRepository,
   GameHistoryFilters,
   PlayerStats,
+  LiveGameSummary,
 } from '../../domain/game/repositories/game.repository.interface';
 import { Game } from '../../domain/game/entities/game.entity';
 import {
@@ -517,5 +518,69 @@ export class PrismaGameRepository implements IGameRepository {
     }
 
     return game;
+  }
+
+  async findLiveGames(limit: number): Promise<LiveGameSummary[]> {
+    const games = await this.prisma.game.findMany({
+      where: {
+        status: GameStatus.ACTIVE,
+        gameType: { not: GameType.AI as any },
+        blackPlayerId: { not: null },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: Math.min(limit, 100),
+      select: {
+        id: true,
+        whitePlayerId: true,
+        blackPlayerId: true,
+        gameType: true,
+        initialTimeMs: true,
+        startedAt: true,
+        _count: { select: { moves: true } },
+      },
+    });
+
+    if (games.length === 0) return [];
+
+    const playerIds = [
+      ...new Set(
+        games.flatMap((g) =>
+          [g.whitePlayerId, g.blackPlayerId].filter(Boolean),
+        ),
+      ),
+    ] as string[];
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: playerIds } },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        rating: { select: { rating: true } },
+      },
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    return games.map((g) => {
+      const white = userMap.get(g.whitePlayerId!);
+      const black = userMap.get(g.blackPlayerId!);
+      return {
+        id: g.id,
+        whitePlayerId: g.whitePlayerId!,
+        blackPlayerId: g.blackPlayerId!,
+        whiteName: white?.displayName || white?.username || 'Unknown',
+        blackName: black?.displayName || black?.username || 'Unknown',
+        whiteAvatarUrl: white?.avatarUrl ?? null,
+        blackAvatarUrl: black?.avatarUrl ?? null,
+        whiteRating: white?.rating?.rating ?? 1200,
+        blackRating: black?.rating?.rating ?? 1200,
+        moveCount: g._count.moves,
+        gameType: g.gameType as GameType,
+        initialTimeMs: g.initialTimeMs,
+        startedAt: g.startedAt,
+      };
+    });
   }
 }
