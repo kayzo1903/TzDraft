@@ -1,4 +1,5 @@
 import React from "react";
+import Constants from "expo-constants";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, ActivityIndicator, Linking, Image } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as ImagePicker from "expo-image-picker";
@@ -323,7 +324,7 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>{t("settings.actions.signOut", "Sign Out")}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>TzDraft Mobile v1.0.0</Text>
+        <Text style={styles.versionText}>TzDraft Mobile v{Constants.expoConfig?.version || "1.4.2"}</Text>
       </ScrollView>
 
       <Modal

@@ -61,21 +61,21 @@ class AuthClient {
     }
 
     try {
-      console.log("[AuthClient] Syncing session with backend...");
+      if (__DEV__) console.log("[AuthClient] Syncing session with backend...");
       const response = await api.get("/auth/me");
       state.setUser(response.data); // sync/refresh user data
       return response.data;
     } catch (error: any) {
-      console.log("[AuthClient] Sync failed:", error.message);
-      
+      if (__DEV__) console.log("[AuthClient] Sync failed:", error.message);
+
       // ONLY clear session if server explicitly returns 401 Unauthorized
       if (error.response?.status === 401) {
-        console.log("[AuthClient] Session invalid (401), clearing session and signing out.");
+        if (__DEV__) console.log("[AuthClient] Session invalid (401), clearing session and signing out.");
         await this.logout();
       } else {
         // For 500, network errors, timeouts, etc.
         // We keep the authenticated status and trust the local state
-        console.log("[AuthClient] Transient error, sticking with local session.");
+        if (__DEV__) console.log("[AuthClient] Transient error, sticking with local session.");
       }
       return null;
     }
