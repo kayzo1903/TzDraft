@@ -159,7 +159,7 @@ export default function WatchLobbyPage() {
     loadGames();
     const interval = setInterval(() => loadGames(true), 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const followingGames = games.filter((g) => g.isFollowing);
   const otherGames = games.filter((g) => !g.isFollowing);
