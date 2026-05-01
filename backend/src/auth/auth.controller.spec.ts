@@ -9,6 +9,7 @@ jest.mock(
       Post: decorator,
       Get: decorator,
       Patch: decorator,
+      Delete: decorator,
       Body: decorator,
       Query: decorator,
       UseGuards: decorator,

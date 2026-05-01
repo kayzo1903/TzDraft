@@ -8,6 +8,7 @@ jest.mock(
       Post: dec,
       Get: dec,
       Patch: dec,
+      Delete: dec,
       Body: dec,
       Query: dec,
       UseGuards: dec,
