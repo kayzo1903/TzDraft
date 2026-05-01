@@ -10,6 +10,9 @@ export const Footer: React.FC = () => {
     const pathname = usePathname();
     const currentYear = new Date().getFullYear();
 
+
+
+
     if (pathname.startsWith('/admin')) return null;
 
     return (

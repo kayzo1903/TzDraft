@@ -84,7 +84,6 @@ export function getNotificationRoute(
     return "/";
   }
   if (data.type === "PUZZLE_RELEASED") {
-    if (data.puzzleId) return `/game/puzzle-player?id=${data.puzzleId}`;
     return "/game/puzzles";
   }
   return null;

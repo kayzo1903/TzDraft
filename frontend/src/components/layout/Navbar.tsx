@@ -52,7 +52,6 @@ export const Navbar: React.FC = () => {
     const { notifications, unreadCount, markRead, markAllRead } =
         useTournamentNotifications();
 
-    if (pathname.startsWith('/admin')) return null;
 
     const navLinks = [
         { name: t('home'), href: '/', icon: Home },
@@ -147,6 +146,8 @@ export const Navbar: React.FC = () => {
             document.removeEventListener('keydown', onKeyDown);
         };
     }, [isMenuOpen]);
+
+    if (pathname.startsWith('/admin')) return null;
 
     return (
         <nav

@@ -23,6 +23,7 @@ import {
 } from "lucide-react-native";
 import { colors } from "../../src/theme/colors";
 import { puzzleService } from "../../src/services/puzzle.service";
+import { useGameAudio } from "../../src/hooks/useGameAudio";
 import { DraughtsBoard, type HighlightType } from "../../src/components/game/DraughtsBoard";
 import { BoardState, Piece, Position, PieceType, PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { LoadingScreen } from "../../src/components/ui/LoadingScreen";
@@ -31,8 +32,9 @@ import { useAuthStore } from "../../src/auth/auth-store";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface PieceSnapshot { type: "MAN" | "KING"; color: "WHITE" | "BLACK"; position: number; }
-interface SolutionMove  { from: number; to: number; captures?: number[]; }
+interface SolutionMove  { from: number; to: number; captures?: number[]; isOpp?: boolean; }
 type SolveState = "idle" | "correct" | "incorrect";
+type IntroPhase = "none" | "setup" | "reveal" | "ready";
 type DiagDir = "nw" | "ne" | "sw" | "se";
 
 // ── PDN geometry ───────────────────────────────────────────────────────────────
@@ -176,9 +178,9 @@ function fmtTime(secs: number): string {
 }
 
 function speedLabel(secs: number): string {
-  if (secs < 4) return "Lightning Fast! ⚡";
-  if (secs <= 8) return "Great Solve!";
-  return "Well Done!";
+  if (secs < 4) return "Haraka Sana! ⚡";
+  if (secs <= 8) return "Umefaulu Vizuri!";
+  return "Hongera!";
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -202,12 +204,24 @@ export default function PuzzlePlayerScreen() {
   const [showSolution,  setShowSolution]  = useState(false);
   const [loading,       setLoading]       = useState(true);
   const [continuousQueue, setContinuousQueue] = useState<string[]>([]);
-  
+  const [introPhase,    setIntroPhase]    = useState<IntroPhase>("none");
+  const [introHighlights, setIntroHighlights] = useState<Record<number, HighlightType>>({});
+  const [playerMoveIndex, setPlayerMoveIndex] = useState(0);
+  const [oppAnimating,  setOppAnimating]  = useState(false);
+  const [oppHighlights, setOppHighlights] = useState<Record<number, HighlightType>>({});
+
   const isContinuous = continuous === "true";
+
+  const audio = useGameAudio();
 
   const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
   const countUpRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const ratingCountRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const introT1Ref        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const introT2Ref        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const oppT1Ref          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const oppT2Ref          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const collectedMovesRef = useRef<Array<{ from: number; to: number; captures: number[] }>>([]);
   const failedOnceRef     = useRef(false);
   const submittingRef     = useRef(false);
   const alreadyAttemptedRef = useRef(false);
@@ -283,15 +297,16 @@ export default function PuzzlePlayerScreen() {
     }
   }, [solveState]);
 
-  // ── Timer ────────────────────────────────────────────────────────────────────
+  // ── Timer — only runs once the intro animation completes ────────────────────
   useEffect(() => {
-    if (solveState === "idle") {
+    const introReady = introPhase === "none" || introPhase === "ready";
+    if (solveState === "idle" && introReady) {
       timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [solveState]);
+  }, [solveState, introPhase]);
 
   useEffect(() => {
     if (isContinuous) {
@@ -324,6 +339,47 @@ export default function PuzzlePlayerScreen() {
     }
   };
 
+  const runIntro = (p: any) => {
+    const setupMove = p.setupMove as SolutionMove | null;
+    const setupPieces = p.setupPieces as PieceSnapshot[] | null;
+
+    if (!setupMove || !setupPieces) {
+      setIntroPhase("none");
+      setPieces(p.pieces as PieceSnapshot[]);
+      return;
+    }
+
+    // Clear any in-flight intro timeouts
+    if (introT1Ref.current) clearTimeout(introT1Ref.current);
+    if (introT2Ref.current) clearTimeout(introT2Ref.current);
+
+    // Phase 1: show board before opponent's move, highlight the from-square
+    setPieces(setupPieces);
+    setIntroHighlights({ [setupMove.from]: "selected" });
+    setIntroPhase("setup");
+
+    // Phase 2 (500ms): apply opponent's move, highlight to-square + captured pieces
+    introT1Ref.current = setTimeout(() => {
+      setPieces(p.pieces as PieceSnapshot[]);
+      const hl: Record<number, HighlightType> = { [setupMove.to]: "destination" };
+      (setupMove.captures ?? []).forEach((sq) => { hl[sq] = "capturable"; });
+      setIntroHighlights(hl);
+      setIntroPhase("reveal");
+
+      if ((setupMove.captures ?? []).length > 0) {
+        audio.playCapture((setupMove.captures ?? []).length);
+      } else {
+        audio.playMove();
+      }
+
+      // Phase 3 (900ms): clear intro, hand control to player
+      introT2Ref.current = setTimeout(() => {
+        setIntroHighlights({});
+        setIntroPhase("ready");
+      }, 900);
+    }, 500);
+  };
+
   const loadPuzzle = async (puzzleId: string) => {
     setLoading(true);
     resetStateImmediate();
@@ -333,12 +389,19 @@ export default function PuzzlePlayerScreen() {
     ]);
     if (p) {
       setPuzzle(p);
-      setPieces(p.pieces as PieceSnapshot[]);
       alreadyAttemptedRef.current = p.alreadyAttempted ?? false;
+      runIntro(p);
     }
     setPuzzleRating(rating);
     setDisplayRating(rating);
     setLoading(false);
+  };
+
+  const clearOppAnimation = () => {
+    if (oppT1Ref.current) clearTimeout(oppT1Ref.current);
+    if (oppT2Ref.current) clearTimeout(oppT2Ref.current);
+    setOppAnimating(false);
+    setOppHighlights({});
   };
 
   const resetStateImmediate = () => {
@@ -350,21 +413,86 @@ export default function PuzzlePlayerScreen() {
     setPoints(null);
     setDisplayPoints(0);
     setShowSolution(false);
+    setIntroPhase("none");
+    setIntroHighlights({});
+    setPlayerMoveIndex(0);
+    clearOppAnimation();
+    collectedMovesRef.current = [];
     submittingRef.current = false;
     failedOnceRef.current = false;
     if (ratingCountRef.current) clearInterval(ratingCountRef.current);
+    if (introT1Ref.current) clearTimeout(introT1Ref.current);
+    if (introT2Ref.current) clearTimeout(introT2Ref.current);
     stripAnim.setValue(-60);
     scaleAnim.setValue(1);
   };
 
   const resetPuzzle = () => {
     if (!puzzle) return;
-    setPieces(puzzle.pieces as PieceSnapshot[]);
     resetStateImmediate();
+    runIntro(puzzle);
+  };
+
+  // Retry from the result modal — preserves failedOnceRef so hint is immediately available
+  const retryPuzzle = () => {
+    if (!puzzle) return;
+    setSolveState("idle");
+    setSelectedSq(null);
+    setTargets([]);
+    setElapsed(0);
+    setFinalTime(0);
+    setPoints(null);
+    setDisplayPoints(0);
+    setShowSolution(false);
+    setIntroPhase("none");
+    setIntroHighlights({});
+    setPlayerMoveIndex(0);
+    clearOppAnimation();
+    collectedMovesRef.current = [];
+    submittingRef.current = false;
+    // intentionally keep failedOnceRef.current = true → hint button stays visible
+    if (ratingCountRef.current) clearInterval(ratingCountRef.current);
+    if (introT1Ref.current) clearTimeout(introT1Ref.current);
+    if (introT2Ref.current) clearTimeout(introT2Ref.current);
+    stripAnim.setValue(-60);
+    scaleAnim.setValue(1);
+    runIntro(puzzle);
+  };
+
+  // Animate the opponent's response move, then call onDone when board is ready
+  const animateOppMove = (
+    move: SolutionMove,
+    currentPieces: PieceSnapshot[],
+    onDone: (afterPieces: PieceSnapshot[]) => void,
+  ) => {
+    if (oppT1Ref.current) clearTimeout(oppT1Ref.current);
+    if (oppT2Ref.current) clearTimeout(oppT2Ref.current);
+
+    setOppHighlights({ [move.from]: "selected" });
+    setOppAnimating(true);
+
+    oppT1Ref.current = setTimeout(() => {
+      const captured   = move.captures ?? [];
+      const afterPieces = applyMoveToPieces(currentPieces, move.from, move.to, captured);
+      setPieces(afterPieces);
+      const hl: Record<number, HighlightType> = { [move.to]: "destination" };
+      captured.forEach((sq) => { hl[sq] = "capturable"; });
+      setOppHighlights(hl);
+      if (captured.length > 0) audio.playCapture(captured.length);
+      else audio.playMove();
+
+      oppT2Ref.current = setTimeout(() => {
+        setOppHighlights({});
+        setOppAnimating(false);
+        onDone(afterPieces);
+      }, 700);
+    }, 450);
   };
 
   const handleSquarePress = (pdn: number) => {
     if (solveState !== "idle" || submittingRef.current || !puzzle) return;
+    if (introPhase === "setup" || introPhase === "reveal") return;
+    if (oppAnimating) return;
 
     const sideToMove = puzzle.sideToMove as "WHITE" | "BLACK";
     const legal      = computeLegalMoves(pieces, sideToMove);
@@ -378,28 +506,59 @@ export default function PuzzlePlayerScreen() {
 
     if (selectedSq !== null && targets.includes(pdn)) {
       submittingRef.current = true;
-      const captured   = findCaptured(pieces, selectedSq, pdn, sideToMove);
-      const nextPieces = applyMoveToPieces(pieces, selectedSq, pdn, captured);
-
+      const captured    = findCaptured(pieces, selectedSq, pdn, sideToMove);
+      const nextPieces  = applyMoveToPieces(pieces, selectedSq, pdn, captured);
       setPieces(nextPieces);
       setSelectedSq(null);
       setTargets([]);
+
+      const sol         = (puzzle.solution as SolutionMove[]) ?? [];
+      const playerMoves = sol.filter((m) => !m.isOpp);
+      const expected    = playerMoves[playerMoveIndex];
+      const correct     = !!expected && expected.from === selectedSq && expected.to === pdn;
+
+      if (!correct) {
+        setFinalTime(elapsed);
+        const isRetry  = failedOnceRef.current;
+        const noRating = isRetry || alreadyAttemptedRef.current;
+        failedOnceRef.current = true;
+        const earned = noRating ? 0 : computePoints(false, elapsed, puzzle.difficulty);
+        setPoints(earned);
+        setSolveState("incorrect");
+        submittingRef.current = false;
+        return;
+      }
+
+      // Collect the player's move for final submission
+      collectedMovesRef.current.push({ from: selectedSq, to: pdn, captures: captured });
+      const nextPlayerIdx = playerMoveIndex + 1;
+
+      // Find the opponent response that follows this player move in the full solution array
+      const expectedPos  = sol.indexOf(expected);
+      const oppEntry     = sol[expectedPos + 1];
+      const hasOppMove   = oppEntry?.isOpp === true;
+      const hasMorePlayer = nextPlayerIdx < playerMoves.length;
+
+      if (hasOppMove && hasMorePlayer) {
+        // Animate opponent's response, then unlock for next player move
+        setPlayerMoveIndex(nextPlayerIdx);
+        animateOppMove(oppEntry, nextPieces, () => {
+          submittingRef.current = false;
+        });
+        return;
+      }
+
+      // All player moves done → puzzle solved
       setFinalTime(elapsed);
-
-      const sol     = (puzzle.solution as SolutionMove[]) ?? [];
-      const correct = sol.length > 0 && sol[0].from === selectedSq && sol[0].to === pdn;
-      setSolveState(correct ? "correct" : "incorrect");
-
-      const isRetry        = failedOnceRef.current;
-      const noRating       = isRetry || alreadyAttemptedRef.current;
-      if (!correct) failedOnceRef.current = true;
-
-      const earned = noRating ? 0 : computePoints(correct, elapsed, puzzle.difficulty);
+      const isRetry  = failedOnceRef.current;
+      const noRating = isRetry || alreadyAttemptedRef.current;
+      const earned   = noRating ? 0 : computePoints(true, elapsed, puzzle.difficulty);
       setPoints(earned);
+      setSolveState("correct");
 
       if (!noRating) {
         puzzleService
-          .attempt(puzzle.id, [{ from: selectedSq, to: pdn, captures: captured }], elapsed)
+          .attempt(puzzle.id, collectedMovesRef.current, elapsed)
           .catch(() => {});
       }
       return;
@@ -411,43 +570,65 @@ export default function PuzzlePlayerScreen() {
 
   if (loading) return <LoadingScreen />;
   if (!puzzle) return (
-    <View style={styles.errorWrap}>
-      <Text style={styles.errorText}>Puzzle not found</Text>
-    </View>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace("/game/puzzles" as any)} style={styles.iconBtn}>
+          <ArrowLeft color={colors.foreground} size={20} />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.errorWrap}>
+        <Text style={styles.errorText}>Puzzle hii imeisha muda wake au haipatikani tena</Text>
+        <TouchableOpacity onPress={() => router.replace("/game/puzzles" as any)} style={styles.retryBtn}>
+          <Text style={styles.retryBtnText}>Angalia Puzzles</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 
   const boardState   = piecesToBoardState(pieces);
-  const highlights: Record<number, HighlightType> = {};
-  if (selectedSq !== null) highlights[selectedSq] = "selected";
-  targets.forEach((t) => { highlights[t] = "destination"; });
+  const isInIntro    = introPhase === "setup" || introPhase === "reveal";
 
-  // Visual hint: Show green dots for the next correct move
-  if (showSolution && puzzle?.solution && (puzzle.solution as any[]).length > 0) {
-    const nextMove = (puzzle.solution as SolutionMove[])[0];
-    highlights[nextMove.from] = "hint";
-    highlights[nextMove.to]   = "hint";
+  const highlights: Record<number, HighlightType> = isInIntro
+    ? introHighlights
+    : oppAnimating
+      ? oppHighlights
+      : {};
+
+  if (!isInIntro && !oppAnimating) {
+    if (selectedSq !== null) highlights[selectedSq] = "selected";
+    targets.forEach((t) => { highlights[t] = "destination"; });
+
+    // Visual hint: Show green dots for the current player move in the solution
+    if (showSolution && puzzle?.solution) {
+      const sol         = (puzzle.solution as SolutionMove[]).filter((m) => !m.isOpp);
+      const nextMove    = sol[playerMoveIndex];
+      if (nextMove) {
+        highlights[nextMove.from] = "hint";
+        highlights[nextMove.to]   = "hint";
+      }
+    }
   }
 
   const isCorrect    = solveState === "correct";
   const isRetry      = failedOnceRef.current && solveState === "incorrect";
   const playerName   = user?.displayName ?? user?.username ?? "You";
   const avatarUrl    = user?.avatarUrl ?? user?.image;
-  const opponentSide = puzzle.sideToMove === "WHITE" ? "Black" : "White";
+  const opponentSide = puzzle.sideToMove === "WHITE" ? "Nyeusi" : "Nyeupe";
 
   // points sign for display
   const pointsSign   = points !== null && points > 0 ? "+" : points !== null && points < 0 ? "−" : "";
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => router.replace("/game/puzzles" as any)} style={styles.iconBtn}>
           <ArrowLeft color={colors.foreground} size={20} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Tactical Puzzle</Text>
+          <Text style={styles.headerTitle}>Puzzle ya Mbinu</Text>
           <Text style={styles.puzzleId}>
             {(puzzle.theme as string).replace(/-/g, " ")}
             {"  "}{"★".repeat(puzzle.difficulty)}
@@ -476,7 +657,18 @@ export default function PuzzlePlayerScreen() {
           </Text>
         </View>
 
-        {/* Result Modal — replaces inline strip */}
+        {/* Intro / opponent-response banner */}
+        {(isInIntro || oppAnimating) && (
+          <View style={styles.introBanner}>
+            <Text style={styles.introBannerText}>
+              {isInIntro
+                ? (introPhase === "setup" ? "Hii ilikuwa hatua ya mpinzani…" : "Zamu yako — tafuta hatua bora!")
+                : "Mpinzani anajibu…"}
+            </Text>
+          </View>
+        )}
+
+        {/* Result Modal */}
         <Modal
           visible={solveState !== "idle" && points !== null}
           transparent
@@ -485,26 +677,29 @@ export default function PuzzlePlayerScreen() {
         >
           <View style={modalStyles.backdrop}>
             <View style={[modalStyles.card, { borderColor: isCorrect ? colors.win + "44" : colors.danger + "44" }]}>
-              {/* Header with icon */}
+
+              {/* Header */}
               <View style={[modalStyles.header, { backgroundColor: isCorrect ? colors.win + "15" : colors.danger + "15" }]}>
                 {isCorrect
-                  ? <CheckCircle color={colors.win} size={48} strokeWidth={2.5} />
-                  : <XCircle color={colors.danger} size={48} strokeWidth={2.5} />
+                  ? <CheckCircle color={colors.win} size={52} strokeWidth={2.5} />
+                  : <XCircle color={colors.danger} size={52} strokeWidth={2.5} />
                 }
                 <Text style={[modalStyles.title, { color: isCorrect ? colors.win : colors.danger }]}>
-                  {isCorrect ? speedLabel(finalTime) : "Wrong Move"}
+                  {isCorrect ? speedLabel(finalTime) : "Hatua Mbaya"}
                 </Text>
                 <Text style={modalStyles.subtitle}>
                   {isCorrect
-                    ? `Solved in ${fmtTime(finalTime)}`
-                    : isRetry ? "Practice — no points" : "Study the line to improve"}
+                    ? `Umecheza kwa ${fmtTime(finalTime)}`
+                    : isRetry
+                      ? "Kujaribu tena — hakuna pointi"
+                      : "Angalia nafasi na ujaribu tena"}
                 </Text>
               </View>
 
               {/* Stats row */}
               <View style={modalStyles.statsRow}>
                 <View style={modalStyles.stat}>
-                  <Text style={modalStyles.statLabel}>POINTS</Text>
+                  <Text style={modalStyles.statLabel}>POINTI</Text>
                   <View style={modalStyles.statValueRow}>
                     {isCorrect
                       ? <TrendingUp color={colors.win} size={16} />
@@ -516,7 +711,7 @@ export default function PuzzlePlayerScreen() {
                   </View>
                 </View>
                 <View style={[modalStyles.stat, { borderLeftWidth: 1, borderLeftColor: colors.border }]}>
-                  <Text style={modalStyles.statLabel}>PUZZLE RATING</Text>
+                  <Text style={modalStyles.statLabel}>KIWANGO CHA PUZZLE</Text>
                   <View style={modalStyles.statValueRow}>
                     {isCorrect
                       ? <TrendingUp color={colors.win} size={16} />
@@ -531,22 +726,55 @@ export default function PuzzlePlayerScreen() {
 
               {/* Actions */}
               <View style={modalStyles.actions}>
-                <TouchableOpacity
-                  style={[modalStyles.btn, modalStyles.btnSecondary]}
-                  onPress={resetPuzzle}
-                >
-                  <RotateCcw color={colors.foreground} size={20} />
-                  <Text style={modalStyles.btnTextSecondary}>{isCorrect ? "Review" : "Try Again"}</Text>
-                </TouchableOpacity>
+                {/* Primary action — full width */}
+                {isCorrect ? (
+                  <TouchableOpacity
+                    style={[modalStyles.btn, { backgroundColor: colors.win }]}
+                    onPress={handleNext}
+                  >
+                    <ArrowRight color="#000" size={20} />
+                    <Text style={[modalStyles.btnTextPrimary, { color: "#000" }]}>Puzzle Ijayo</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[modalStyles.btn, { backgroundColor: colors.primary }]}
+                    onPress={retryPuzzle}
+                  >
+                    <RotateCcw color="#fff" size={18} />
+                    <Text style={[modalStyles.btnTextPrimary, { color: "#fff" }]}>Jaribu Tena</Text>
+                  </TouchableOpacity>
+                )}
 
-                <TouchableOpacity
-                  style={[modalStyles.btn, modalStyles.btnPrimary, { backgroundColor: isCorrect ? colors.win : colors.primary }]}
-                  onPress={handleNext}
-                >
-                  <ArrowRight color={isCorrect ? "#000" : "#fff"} size={20} />
-                  <Text style={[modalStyles.btnTextPrimary, { color: isCorrect ? "#000" : "#fff" }]}>Next Puzzle</Text>
-                </TouchableOpacity>
+                {/* Secondary row — Next Puzzle + Home */}
+                <View style={modalStyles.secondaryRow}>
+                  {isCorrect ? (
+                    <TouchableOpacity
+                      style={[modalStyles.btn, modalStyles.btnSecondary, { flex: 1 }]}
+                      onPress={retryPuzzle}
+                    >
+                      <RotateCcw color={colors.textMuted} size={16} />
+                      <Text style={modalStyles.btnTextSecondary}>Cheza Tena</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[modalStyles.btn, modalStyles.btnSecondary, { flex: 1 }]}
+                      onPress={handleNext}
+                    >
+                      <ArrowRight color={colors.textMuted} size={16} />
+                      <Text style={modalStyles.btnTextSecondary}>Puzzle Ijayo</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={[modalStyles.btn, modalStyles.btnSecondary, { flex: 1 }]}
+                    onPress={() => router.replace("/game/puzzles" as any)}
+                  >
+                    <ArrowLeft color={colors.textMuted} size={16} />
+                    <Text style={modalStyles.btnTextSecondary}>Puzzles</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
+
             </View>
           </View>
         </Modal>
@@ -557,7 +785,7 @@ export default function PuzzlePlayerScreen() {
             board={boardState}
             highlights={highlights}
             onSquarePress={handleSquarePress}
-            disabled={solveState !== "idle"}
+            disabled={solveState !== "idle" || isInIntro || oppAnimating}
             flipped={puzzle.sideToMove === "BLACK"}
             noFrame={true}
           />
@@ -581,7 +809,7 @@ export default function PuzzlePlayerScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.playerName}>{playerName}</Text>
-            <Text style={styles.playerSub}>Puzzle Rating</Text>
+            <Text style={styles.playerSub}>{solveState !== "idle" ? "Pointi Zilizopatikana" : "Kiwango cha Puzzle"}</Text>
           </View>
           <View style={[
             styles.ratingBadge,
@@ -600,7 +828,7 @@ export default function PuzzlePlayerScreen() {
                   styles.ratingBadgeText,
                   { color: isCorrect ? colors.win : colors.danger },
                 ]}>
-                  {displayRating}
+                  {pointsSign}{displayPoints}
                 </Text>
               </>
             ) : (
@@ -611,14 +839,17 @@ export default function PuzzlePlayerScreen() {
 
         {/* Action row — prominent buttons right below player tag */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.inlineActionBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.inlineActionBtn} onPress={() => router.replace("/game/puzzles" as any)}>
             <ArrowLeft color={colors.textMuted} size={20} />
-            <Text style={styles.inlineActionLabel}>Back</Text>
+            <Text style={styles.inlineActionLabel}>Rudi</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.inlineActionBtn} onPress={resetPuzzle}>
+          <TouchableOpacity
+            style={styles.inlineActionBtn}
+            onPress={solveState === "idle" ? resetPuzzle : retryPuzzle}
+          >
             <RotateCcw color={colors.textMuted} size={20} />
-            <Text style={styles.inlineActionLabel}>{solveState === "idle" ? "Reset" : "Retry"}</Text>
+            <Text style={styles.inlineActionLabel}>{solveState === "idle" ? "Upya" : "Jaribu"}</Text>
           </TouchableOpacity>
 
           {(solveState !== "idle" || failedOnceRef.current) && !isCorrect && puzzle?.solution && (puzzle.solution as any[]).length > 0 && (
@@ -628,7 +859,7 @@ export default function PuzzlePlayerScreen() {
             >
               <Lightbulb color={showSolution ? colors.primary : colors.textMuted} size={20} />
               <Text style={[styles.inlineActionLabel, showSolution && { color: colors.primary }]}>
-                Hint
+                Kidokezo
               </Text>
             </TouchableOpacity>
           )}
@@ -638,7 +869,7 @@ export default function PuzzlePlayerScreen() {
             onPress={handleNext}
           >
             <ArrowRight color={colors.textMuted} size={20} />
-            <Text style={styles.inlineActionLabel}>Next</Text>
+            <Text style={styles.inlineActionLabel}>Lijalo</Text>
           </TouchableOpacity>
         </View>
 
@@ -651,14 +882,27 @@ export default function PuzzlePlayerScreen() {
 
 const styles = StyleSheet.create({
   container:  { flex: 1, backgroundColor: colors.background },
-  errorWrap:  { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  errorText:  { color: colors.danger, fontSize: 16 },
+
+  // Intro animation banner
+  introBanner: {
+    marginHorizontal: 12, marginTop: 6, marginBottom: 2,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1,
+    borderColor: "rgba(249,115,22,0.3)",
+    backgroundColor: "rgba(249,115,22,0.08)",
+    alignItems: "center",
+  },
+  introBannerText: { color: "#f97316", fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+
+  errorWrap:  { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background, paddingHorizontal: 32, gap: 16 },
+  errorText:  { color: colors.danger, fontSize: 16, textAlign: "center" },
+  retryBtn:   { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  retryBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
   // Header
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingHorizontal: 16, paddingVertical: 8,
   },
   headerCenter: { alignItems: "center", flex: 1 },
   headerTitle:  { color: colors.foreground, fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 1 },
@@ -670,12 +914,11 @@ const styles = StyleSheet.create({
   },
 
   // Body
-  body: { flex: 1, paddingHorizontal: 12, justifyContent: "center" },
+  body: { flex: 1, paddingHorizontal: 12 },
 
   // Board
   boardWrap: {
     alignItems: "center", justifyContent: "center",
-    paddingVertical: 10,
   },
 
   // Player bars
@@ -689,7 +932,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    marginTop: 4,
   },
   avatarCircle: {
     width: 36, height: 36, borderRadius: 18,
@@ -801,7 +1043,11 @@ const modalStyles = StyleSheet.create({
   },
   actions: {
     padding: 20,
-    gap: 12,
+    gap: 10,
+  },
+  secondaryRow: {
+    flexDirection: "row",
+    gap: 10,
   },
   btn: {
     height: 52,

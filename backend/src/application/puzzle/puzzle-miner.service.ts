@@ -23,13 +23,21 @@ import { replayGame, MoveRecord, PieceSnapshot } from './board-reconstructor';
 // Instead we use lightweight pure-JS checkers logic for jump detection.
 
 /** Minimum centipawn swing to flag a position as a puzzle candidate. */
-const PUZZLE_EVAL_THRESHOLD = 150;
+const PUZZLE_EVAL_THRESHOLD = 280;      // for combinations (immediate strong moves)
+const TRAP_EVAL_THRESHOLD    = 200;      // for genuine traps (deceptive first move)
+const TRAP_DECEPTIVE_MAX     = 100;      // first move must look this innocent to be a trap
 
 /** Maximum candidates to extract per game (avoids flooding the queue). */
-const MAX_CANDIDATES_PER_GAME = 3;
+const MAX_CANDIDATES_PER_GAME = 4;
 
 /** Minimum moves a game must have to be worth mining. */
-const MIN_GAME_MOVES = 10;
+const MIN_GAME_MOVES = 14;
+
+/** Minimum pieces on the board — avoids near-empty trivial endgames. */
+const MIN_PIECES_ON_BOARD = 8;
+
+/** Minimum solution length in half-moves (ply) for the active side. */
+const MIN_SOLUTION_MOVES = 2;
 
 /** Mkaguzi analysis timeout per position in ms. */
 const ANALYSIS_TIMEOUT_MS = 4000;
@@ -104,14 +112,12 @@ export class PuzzleMinerService {
         minedForPuzzles: false,
         endedAt: { gte: since },
         winner: { not: null },
-        // Prioritize ranked games with at least one established player
+        // Source from stronger games for higher-quality positions
         OR: [{ whiteElo: { gte: 1000 } }, { blackElo: { gte: 1000 } }],
       },
       select: { id: true },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 100, // process at most 100 games per cycle
+      orderBy: { createdAt: 'desc' },
+      take: 100,
     });
 
     if (games.length === 0) {
@@ -178,53 +184,133 @@ export class PuzzleMinerService {
       const boardBefore = states[i];
       const sideToMove = moves[i].player as 'WHITE' | 'BLACK';
       const opponent = sideToMove === 'WHITE' ? 'BLACK' : 'WHITE';
-      const jumps = this.findAllJumps(boardBefore, sideToMove);
 
-      // RULE: If there's ANY forced jump, it's a "mandatory capture puzzle".
-      // We skip these to focus on "quiet" starting moves like sacrifices and traps.
+      // GATE 1: Skip positions where captures are already forced.
+      const jumps = this.findAllJumps(boardBefore, sideToMove);
       if (jumps.length > 0) continue;
 
-      // Deep Eval: Check if the player's position improves significantly after their NEXT move too.
-      // This helps catch sacrifices (move i) that lead to a win (move i+2).
-      const boardAfter1 = states[i + 1]; // After player's 1st move
-      const boardAfter3 = states[Math.min(i + 3, moves.length - 1)]; // After player's 2nd move (if exists)
+      // GATE 2: Require a meaningful middlegame position.
+      if (boardBefore.length < MIN_PIECES_ON_BOARD) continue;
 
-      const evalGapShort = await this.computeEvalGap(boardBefore, boardAfter1, sideToMove, opponent);
-      const evalGapDeep = await this.computeEvalGap(boardBefore, boardAfter3, sideToMove, opponent);
+      // GATE 3: There must be at least 2 same-side moves ahead.
+      const move2Idx = i + 2;
+      const move3Idx = i + 4;
+      if (move2Idx >= moves.length) continue;
+      if (moves[move2Idx].player !== sideToMove) continue;
 
-      const evalGap = Math.max(evalGapShort, evalGapDeep);
+      // ── Eval measurements ─────────────────────────────────────────────
+      //
+      // boardAfterMove1 = board after player's FIRST quiet move (before opponent responds)
+      // boardAfter2     = board after player's 2nd move (the full 2-move payoff)
+      //
+      // evalGap1 = immediate value of the first move alone
+      //   → small means the first move LOOKS innocent (classic trap setup)
+      // evalGap2 = total value of the 2-move sequence
+      //   → must be large to be worth showing as a puzzle
+      //
+      const boardAfterMove1 = states[i + 1]; // after player's move, before opponent's
+      const boardAfter2     = states[Math.min(move2Idx + 1, states.length - 1)];
+      const boardAfter3     = move3Idx < moves.length
+        ? states[Math.min(move3Idx + 1, states.length - 1)]
+        : null;
 
-      // Thresholds: positional traps need a slightly higher bar to be "clean"
-      if (evalGap >= 150) {
-        const solutionMoves = [{
+      // Eval after first move alone (is it deceptive?)
+      const evalGap1 = await this.computeEvalGap(boardBefore, boardAfterMove1, sideToMove, opponent);
+      // Eval after 2-move sequence
+      const evalGap2 = await this.computeEvalGap(boardBefore, boardAfter2, sideToMove, opponent);
+      const evalGap3 = boardAfter3
+        ? await this.computeEvalGap(boardBefore, boardAfter3, sideToMove, opponent)
+        : 0;
+
+      const evalGap = Math.max(evalGap2, evalGap3);
+
+      // ── Trap vs Combination classification ────────────────────────────
+      //
+      // TRAP:        first move looks innocent (evalGap1 < TRAP_DECEPTIVE_MAX)
+      //              but 2-move payoff is large  (evalGap >= TRAP_EVAL_THRESHOLD)
+      //              → lower bar so we find MORE traps
+      //
+      // COMBINATION: first move already scores well (evalGap1 >= TRAP_DECEPTIVE_MAX)
+      //              → need higher bar to keep combinations instructive
+      //
+      const isTrap = evalGap1 < TRAP_DECEPTIVE_MAX && evalGap >= TRAP_EVAL_THRESHOLD;
+      const isCombination = !isTrap && evalGap >= PUZZLE_EVAL_THRESHOLD;
+      if (!isTrap && !isCombination) continue;
+
+      // ── Build solution — interleave opponent responses with isOpp:true ──
+      // Format: [playerMove1, opponentResponse1, playerMove2, ...]
+      // The mobile player animates isOpp moves automatically; backend skips them
+      // when validating submitted player moves.
+      const move2 = moves[move2Idx];
+      const oppResponse1 = moves[i + 1]; // opponent's move between player move 1 and 2
+      const solutionMoves: Array<{ from: number; to: number; captures: number[]; isOpp?: true }> = [
+        {
           from: moves[i].fromSquare,
           to: moves[i].toSquare,
-          captures: moves[i].capturedSquares,
-        }];
+          captures: moves[i].capturedSquares ?? [],
+        },
+        {
+          from: oppResponse1.fromSquare,
+          to: oppResponse1.toSquare,
+          captures: oppResponse1.capturedSquares ?? [],
+          isOpp: true,
+        },
+        {
+          from: move2.fromSquare,
+          to: move2.toSquare,
+          captures: move2.capturedSquares ?? [],
+        },
+      ];
 
-        // Add follow-up moves if they maintain the advantage
-        if (i + 2 < moves.length && moves[i+2].player === sideToMove) {
-            solutionMoves.push({
-                from: moves[i+2].fromSquare,
-                to: moves[i+2].toSquare,
-                captures: moves[i+2].capturedSquares,
-            });
-        }
-
-        const theme = classifyTheme(moves[i] as any, boardBefore, boardAfter1);
-        
-        await this.savePuzzleCandidate({
-          gameId,
-          moveNum: moves[i].moveNumber,
-          pieces: boardBefore,
-          sideToMove,
-          solution: solutionMoves,
-          evalGap: evalGap,
-          theme: theme,
+      if (
+        boardAfter3 &&
+        evalGap3 >= evalGap2 &&
+        move3Idx < moves.length &&
+        moves[move3Idx].player === sideToMove
+      ) {
+        const oppResponse2 = moves[move3Idx - 1]; // opponent between move2 and move3
+        solutionMoves.push({
+          from: oppResponse2.fromSquare,
+          to: oppResponse2.toSquare,
+          captures: oppResponse2.capturedSquares ?? [],
+          isOpp: true,
         });
-        candidatesFound++;
-        i += 3; // Move past the sequence
+        solutionMoves.push({
+          from: moves[move3Idx].fromSquare,
+          to: moves[move3Idx].toSquare,
+          captures: moves[move3Idx].capturedSquares ?? [],
+        });
       }
+
+      const theme = classifyTheme(
+        moves[i] as any,
+        move2 as any,
+        boardBefore,
+        boardAfter2,
+        evalGap1,
+      );
+
+      const setupMove = i > 0 ? {
+        from: moves[i - 1].fromSquare,
+        to: moves[i - 1].toSquare,
+        captures: moves[i - 1].capturedSquares ?? [],
+      } : null;
+      const setupPieces = i > 0 ? states[i - 1] : null;
+
+      await this.savePuzzleCandidate({
+        gameId,
+        moveNum: moves[i].moveNumber,
+        pieces: boardBefore,
+        sideToMove,
+        solution: solutionMoves,
+        evalGap,
+        theme,
+        setupMove,
+        setupPieces,
+      });
+
+      candidatesFound++;
+      i += 3; // smaller step = more positions checked per game
     }
 
     return candidatesFound;
@@ -280,6 +366,8 @@ export class PuzzleMinerService {
     solution: Array<{ from: number; to: number; captures: number[] }>;
     evalGap: number;
     theme: string;
+    setupMove: { from: number; to: number; captures: number[] } | null;
+    setupPieces: PieceSnapshot[] | null;
   }): Promise<void> {
     await this.prisma.puzzle.create({
       data: {
@@ -292,6 +380,8 @@ export class PuzzleMinerService {
         sourceGameId: opts.gameId,
         sourceMoveNum: opts.moveNum,
         status: 'PENDING',
+        ...(opts.setupMove && { setupMove: opts.setupMove as any }),
+        ...(opts.setupPieces && { setupPieces: opts.setupPieces as any }),
       },
     });
   }
@@ -396,35 +486,56 @@ function pdnStep(sq: number, dir: DiagDir): number | null {
   return pdnAdjacent(sq)[dir];
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
+/**
+ * Classify the puzzle theme using both moves and the deceptiveness score.
+ *
+ * evalGap1 = eval change after JUST the first quiet move.
+ * A small evalGap1 means the first move looks innocent — classic trap pattern.
+ */
 function classifyTheme(
-  move: MoveRecord,
+  move1: MoveRecord,
+  move2: MoveRecord,
   boardBefore: PieceSnapshot[],
   boardAfter: PieceSnapshot[],
+  evalGap1: number,
 ): string {
-  const sideToMove = move.player;
+  const sideToMove = move1.player;
   const opponent = sideToMove === 'WHITE' ? 'BLACK' : 'WHITE';
 
-  // 1. King Trap: Did a follow-up sequence eliminate an opponent's King?
+  // 1. King Trap: opponent's king is gone after the sequence
   const lostKings = boardBefore.filter(
     (p) =>
       p.color === opponent &&
       p.type === 'KING' &&
-      !boardAfter.some(a => a.position === p.position),
+      !boardAfter.some((a) => a.position === p.position),
   );
   if (lostKings.length > 0) return 'king-trap';
 
-  // 2. Sacrifice: Did our total material decrease while eval went up?
+  // 2. Sacrifice: we gave up material to get the advantage
   const myMaterialBefore = countMaterial(boardBefore, sideToMove);
-  const myMaterialAfter = countMaterial(boardAfter, sideToMove);
+  const myMaterialAfter  = countMaterial(boardAfter,  sideToMove);
   if (myMaterialAfter < myMaterialBefore) return 'sacrifice';
 
-  // 3. Endgame: Very few pieces left on the board.
+  // 3. Endgame technique
   if (boardBefore.length <= 8) return 'endgame';
 
-  if (move.isPromotion) return 'promotion';
-  return 'position-trap';
+  // 4. Promotion setup
+  if (move1.isPromotion || move2.isPromotion) return 'promotion';
+
+  // 5. Capture-trap: first move is quiet AND the payoff move is a capture.
+  //    This is the classic "bait and spring" — lure, then pounce.
+  const move2IsCapture = (move2.capturedSquares?.length ?? 0) > 0;
+  if (evalGap1 < TRAP_DECEPTIVE_MAX && move2IsCapture) return 'capture-trap';
+
+  // 6. Zugzwang-style: first move creates a situation where any
+  //    opponent response worsens their position (very small evalGap1).
+  if (evalGap1 < 50) return 'zugzwang';
+
+  // 7. Position-trap: quiet setup with positional (non-capture) payoff
+  if (evalGap1 < TRAP_DECEPTIVE_MAX) return 'position-trap';
+
+  // 8. Combination: strong immediate sequence
+  return 'combination';
 }
 
 function countMaterial(
@@ -436,10 +547,16 @@ function countMaterial(
     .reduce((sum, p) => sum + (p.type === 'KING' ? 3 : 1), 0);
 }
 
+/**
+ * Difficulty based on eval gap.
+ * Higher gap = the winning idea is more decisive = harder to find intuitively.
+ * Lower gap = subtle positional edge = also hard but in a different way.
+ * We target the mid-range (300-500cp) as the "sweet spot" for instructive puzzles.
+ */
 function evalGapToDifficulty(gap: number): number {
-  if (gap >= 600) return 1; // very obvious tactic
-  if (gap >= 400) return 2;
-  if (gap >= 250) return 3;
-  if (gap >= 150) return 4;
-  return 5; // subtle
+  if (gap >= 700) return 5; // Crushing — should be obvious in hindsight
+  if (gap >= 500) return 4;
+  if (gap >= 350) return 3; // Sweet spot: clear advantage, non-trivial
+  if (gap >= 300) return 2;
+  return 1; // Subtle edge — hardest to find
 }

@@ -18,9 +18,14 @@ model Puzzle {
   sourceGame        Game?     @relation(fields: [sourceGameId], references: [id], onDelete: SetNull)
   sourceMoveNum     Int?      @map("source_move_num")
   
+  // Setup move — the opponent's last move that led to this puzzle position
+  setupMove         Json?     @map("setup_move")   // {from, to, captures[]}
+  setupPieces       Json?     @map("setup_pieces") // board state before the opponent's move
+
   // Metadata
   createdAt         DateTime  @default(now()) @map("created_at")
   publishedAt       DateTime? @map("published_at")
+  expiresAt         DateTime? @map("expires_at")
   
   attempts          PuzzleAttempt[]
   ratedBy           UserRatedPuzzle[]

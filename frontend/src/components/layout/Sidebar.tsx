@@ -42,7 +42,6 @@ export function Sidebar() {
   const { unreadCount } = useTournamentNotifications();
   const isAdminPath = pathname.startsWith("/admin");
 
-  if (isAdminPath) return null;
 
   const toggleLanguage = () => {
     const nextLocale = locale === "sw" ? "en" : "sw";
@@ -71,6 +70,8 @@ export function Sidebar() {
     { name: t("privacy"), href: "/privacy", icon: ShieldCheck },
     { name: t("terms"), href: "/terms", icon: ScrollText },
   ];
+
+  if (isAdminPath) return null;
 
   return (
     <aside className="hidden lg:flex w-72 flex-col border-r border-white/5 bg-[var(--background)] p-6 sticky top-0 h-screen overflow-y-auto">

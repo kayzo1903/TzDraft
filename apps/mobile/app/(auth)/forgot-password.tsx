@@ -9,8 +9,8 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  StatusBar,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Smartphone, KeyRound, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react-native";
@@ -163,7 +163,7 @@ export default function ForgotPasswordScreen() {
   if (step === "success") {
     return (
       <SafeAreaView style={styles.root}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar style="light" />
         <View style={styles.successContainer}>
           <CheckCircle2 size={72} color={colors.success} />
           <Text style={styles.successTitle}>
@@ -179,7 +179,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
 
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>

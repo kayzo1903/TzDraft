@@ -15,7 +15,6 @@ export function BottomNav() {
 
   const isHomePage = pathname === "/";
 
-  if (!isHomePage) return null;
 
   const handlePlayClick = (e: React.MouseEvent) => {
     if (!user || isGuest) {
@@ -24,6 +23,8 @@ export function BottomNav() {
       window.location.href = loginUrl;
     }
   };
+
+  if (!isHomePage) return null;
 
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] pb-safe">

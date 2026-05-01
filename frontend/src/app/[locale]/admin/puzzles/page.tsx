@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/routing";
-import { CheckCircle, XCircle, Eye, Clock, Zap, PlayCircle } from "lucide-react";
+import { CheckCircle, XCircle, Eye, Clock, Zap, AlertTriangle, Trash2 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -16,6 +17,8 @@ interface PuzzleCandidate {
   sourceGameId: string | null;
   sourceMoveNum: number | null;
   createdAt: string;
+  publishedAt: string | null;
+  expiresAt: string | null;
   sideToMove: string;
 }
 
@@ -23,9 +26,11 @@ interface PuzzleStats {
   pending: number;
   approved: number;
   rejected: number;
+  expired: number;
 }
 
 export default function AdminPuzzlesPage() {
+  const searchParams = useSearchParams();
   const [puzzles, setPuzzles] = useState<PuzzleCandidate[]>([]);
   const [stats, setStats] = useState<PuzzleStats | null>(null);
   const [total, setTotal] = useState(0);
@@ -35,13 +40,24 @@ export default function AdminPuzzlesPage() {
   const [miningForce, setMiningForce] = useState(false);
   const [mining, setMining] = useState(false);
   const [mineResult, setMineResult] = useState<{ games: number; candidates: number } | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>("PENDING");
+  const VALID_TABS = ["ALL", "PENDING", "APPROVED", "EXPIRED", "REJECTED"];
+  const tabFromUrl = searchParams.get("tab") ?? "PENDING";
+  const [filterStatus, setFilterStatus] = useState<string>(
+    VALID_TABS.includes(tabFromUrl) ? tabFromUrl : "PENDING"
+  );
+  const [clearing, setClearing] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
   const LIMIT = 20;
 
   async function fetchData(p: number) {
     setLoading(true);
     try {
-      const statusParam = filterStatus && filterStatus !== "ALL" ? `&status=${filterStatus}` : "";
+      const statusParam = filterStatus && filterStatus !== "ALL"
+        ? filterStatus === "EXPIRED"
+          ? `&status=APPROVED&expired=true`
+          : `&status=${filterStatus}`
+        : "";
       const [listRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/admin/puzzles?page=${p}&limit=${LIMIT}${statusParam}`, {
           credentials: "include",
@@ -86,6 +102,29 @@ export default function AdminPuzzlesPage() {
     }
   }
 
+  async function clearPending() {
+    setClearing(true);
+    setClearError(null);
+    try {
+      const r = await fetch(`${API_URL}/admin/puzzles/pending`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        setClearError(err?.message ?? `Error ${r.status}: ${r.statusText}`);
+        return;
+      }
+      setConfirmClear(false);
+      setPage(1);
+      fetchData(1);
+    } catch (e) {
+      setClearError((e as Error).message);
+    } finally {
+      setClearing(false);
+    }
+  }
+
   async function quickReject(id: string) {
     await fetch(`${API_URL}/admin/puzzles/${id}/reject`, {
       method: "POST",
@@ -99,6 +138,45 @@ export default function AdminPuzzlesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Confirm clear dialog */}
+      {confirmClear && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmClear(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl border border-red-500/30 bg-gray-900 p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Clear all pending puzzles?</p>
+                <p className="mt-1 text-sm text-gray-400">
+                  This will permanently delete all {stats?.pending} pending puzzle candidates. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            {clearError && (
+              <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400">
+                {clearError}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setConfirmClear(false); setClearError(null); }}
+                className="flex-1 rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={clearPending}
+                disabled={clearing}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
+              >
+                {clearing ? "Clearing…" : "Yes, Clear All"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header + mine trigger */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -109,6 +187,15 @@ export default function AdminPuzzlesPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {stats && stats.pending > 0 && (
+            <button
+              onClick={() => setConfirmClear(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/20 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear Pending ({stats.pending})
+            </button>
+          )}
           <Link
             href="/admin/puzzles/mine"
             className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-black text-white hover:bg-orange-400 shadow-lg shadow-orange-500/10 transition-all"
@@ -119,9 +206,8 @@ export default function AdminPuzzlesPage() {
         </div>
       </div>
 
-      {/* Status Tabs */}
       <div className="flex items-center gap-2 border-b border-gray-800 pb-px">
-        {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+        {["ALL", "PENDING", "APPROVED", "EXPIRED", "REJECTED"].map((s) => (
           <button
             key={s}
             onClick={() => { setFilterStatus(s); setPage(1); }}
@@ -138,17 +224,20 @@ export default function AdminPuzzlesPage() {
 
       {/* Stats row */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: "Pending", value: stats.pending, color: "text-amber-400" },
-            { label: "Approved", value: stats.approved, color: "text-emerald-400" },
-            { label: "Rejected", value: stats.rejected, color: "text-red-400" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{label}</p>
-              <p className={`mt-1 text-3xl font-black ${color}`}>{value}</p>
-            </div>
-          ))}
+        <div className="grid grid-cols-4 gap-4">
+          {
+            [
+              { label: "Pending", value: stats.pending, color: "text-amber-400" },
+              { label: "Approved", value: stats.approved, color: "text-emerald-400" },
+              { label: "Expired", value: stats.expired, color: "text-orange-400" },
+              { label: "Rejected", value: stats.rejected, color: "text-red-400" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{label}</p>
+                <p className={`mt-1 text-3xl font-black ${color}`}>{value}</p>
+              </div>
+            ))
+          }
         </div>
       )}
 
@@ -173,8 +262,9 @@ export default function AdminPuzzlesPage() {
                 <th className="px-4 py-3 text-left">Side</th>
                 <th className="px-4 py-3 text-left">Difficulty</th>
                 <th className="px-4 py-3 text-left">Eval Gap</th>
-                <th className="px-4 py-3 text-left">Source</th>
-                <th className="px-4 py-3 text-left">Created</th>
+                <th className="px-4 py-3 text-left">Mined</th>
+                <th className="px-4 py-3 text-left">Published</th>
+                <th className="px-4 py-3 text-left">Expires</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -205,13 +295,24 @@ export default function AdminPuzzlesPage() {
                       {p.evalGap > 0 ? `+${p.evalGap}` : p.evalGap}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">
-                    {p.sourceGameId
-                      ? `${p.sourceGameId.slice(0, 8)}… m${p.sourceMoveNum}`
-                      : "—"}
-                  </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {new Date(p.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {p.publishedAt
+                      ? <span className="text-emerald-400">{new Date(p.publishedAt).toLocaleString()}</span>
+                      : <span className="text-gray-600">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {p.expiresAt ? (() => {
+                      const isExpired = new Date(p.expiresAt) <= new Date();
+                      return (
+                        <span className={isExpired ? "text-red-400 font-semibold" : "text-gray-400"}>
+                          {new Date(p.expiresAt).toLocaleString()}
+                          {isExpired && " ✗"}
+                        </span>
+                      );
+                    })() : <span className="text-gray-600">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">

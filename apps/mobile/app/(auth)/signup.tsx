@@ -9,9 +9,9 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  StatusBar,
   Linking,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "../../src/components/LanguageSwitcher";
@@ -233,7 +233,7 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" />
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ChevronLeft size={24} color={colors.foreground} />

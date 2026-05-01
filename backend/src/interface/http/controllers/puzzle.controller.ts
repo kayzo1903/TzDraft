@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Post,
@@ -10,6 +12,7 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
+
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../../../auth/guards/optional-jwt-auth.guard';
@@ -23,6 +26,7 @@ import {
   ListPendingPuzzlesQueryDto,
   ApprovePuzzleDto,
   TriggerMiningDto,
+  SimulatePuzzlesDto,
 } from '../dtos/puzzle.dto';
 
 // ─── Public & Player routes (/puzzles) ──────────────────────────────────────
@@ -38,7 +42,11 @@ export class PuzzleController {
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const where: any = { status: 'APPROVED' };
+    const now = new Date();
+    const where: any = {
+      status: 'APPROVED',
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    };
     if (query.difficulty) where.difficulty = query.difficulty;
     if (query.theme) where.theme = query.theme;
 
@@ -68,8 +76,12 @@ export class PuzzleController {
   /** Today's featured puzzle — the most recently published APPROVED puzzle. */
   @Get('daily')
   async getDailyPuzzle() {
+    const now = new Date();
     const puzzle = await this.prisma.puzzle.findFirst({
-      where: { status: 'APPROVED' },
+      where: {
+        status: 'APPROVED',
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
       orderBy: { publishedAt: 'desc' },
       select: {
         id: true,
@@ -87,6 +99,17 @@ export class PuzzleController {
     return puzzle;
   }
 
+  /** Current authenticated user's puzzle rating. */
+  @Get('my-rating')
+  @UseGuards(JwtAuthGuard)
+  async getMyRating(@CurrentUser() user: any) {
+    const rating = await this.prisma.rating.findUnique({
+      where: { userId: user.id },
+      select: { puzzleRating: true },
+    });
+    return { puzzleRating: rating?.puzzleRating ?? 1000 };
+  }
+
   /**
    * Single approved puzzle for display / solving.
    * The solution is intentionally NOT returned here.
@@ -95,9 +118,14 @@ export class PuzzleController {
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
   async getPuzzle(@Param('id') id: string, @CurrentUser() user: any) {
+    const now = new Date();
     const [puzzle, prior] = await Promise.all([
-      this.prisma.puzzle.findUnique({
-        where: { id, status: 'APPROVED' },
+      this.prisma.puzzle.findFirst({
+        where: {
+          id,
+          status: 'APPROVED',
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
         select: {
           id: true,
           title: true,
@@ -106,7 +134,10 @@ export class PuzzleController {
           pieces: true,
           sideToMove: true,
           solution: true,
+          setupMove: true,
+          setupPieces: true,
           publishedAt: true,
+          expiresAt: true,
           _count: { select: { attempts: true } },
         },
       }),
@@ -122,17 +153,6 @@ export class PuzzleController {
     return { ...puzzle, alreadyAttempted: prior !== null };
   }
 
-  /** Current authenticated user's puzzle rating. */
-  @Get('my-rating')
-  @UseGuards(JwtAuthGuard)
-  async getMyRating(@CurrentUser() user: any) {
-    const rating = await this.prisma.rating.findUnique({
-      where: { userId: user.id },
-      select: { puzzleRating: true },
-    });
-    return { puzzleRating: rating?.puzzleRating ?? 1000 };
-  }
-
   /**
    * Submit a solution attempt.
    * Checks the submitted moves against the stored solution.
@@ -145,12 +165,17 @@ export class PuzzleController {
     @Body() dto: SubmitAttemptDto,
     @CurrentUser() user: any,
   ) {
-    const puzzle = await this.prisma.puzzle.findUnique({
-      where: { id, status: 'APPROVED' },
+    const now = new Date();
+    const puzzle = await this.prisma.puzzle.findFirst({
+      where: {
+        id,
+        status: 'APPROVED',
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
       select: { id: true, solution: true, difficulty: true },
     });
 
-    if (!puzzle) throw new NotFoundException('Puzzle not found');
+    if (!puzzle) throw new NotFoundException('Puzzle not found or has expired');
 
     const solution = puzzle.solution as Array<{
       from: number;
@@ -215,7 +240,9 @@ export class PuzzleController {
   }
 }
 
-// ─── Admin routes (/admin/puzzles) ──────────────────────────────────────────
+import { PuzzleSimulatorService } from '../../../application/puzzle/puzzle-simulator.service';
+
+// ─── Admin routes (/admin/puzzles) ────────────────────────────────────────────
 
 @Controller('admin/puzzles')
 @UseGuards(AdminGuard)
@@ -223,18 +250,51 @@ export class AdminPuzzleController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly miner: PuzzleMinerService,
+    private readonly simulator: PuzzleSimulatorService,
     private readonly pushQueue: PushCampaignQueue,
   ) {}
 
-  /** Aggregate stats: pending / approved / rejected counts. */
+  /** Aggregate stats: pending / approved (active) / rejected / expired counts. */
   @Get('stats')
   async getStats() {
-    const [pending, approved, rejected] = await Promise.all([
+    const now = new Date();
+    const [pending, approved, rejected, expired] = await Promise.all([
       this.prisma.puzzle.count({ where: { status: 'PENDING' } }),
-      this.prisma.puzzle.count({ where: { status: 'APPROVED' } }),
+      // Active: approved AND (no expiry set OR expiry is in the future)
+      this.prisma.puzzle.count({
+        where: {
+          status: 'APPROVED',
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+      }),
       this.prisma.puzzle.count({ where: { status: 'REJECTED' } }),
+      // Expired: approved AND expiry date is in the past (not null)
+      this.prisma.puzzle.count({
+        where: {
+          status: 'APPROVED',
+          expiresAt: { not: null, lte: now },
+        },
+      }),
     ]);
-    return { pending, approved, rejected };
+    return { pending, approved, rejected, expired };
+  }
+
+  /**
+   * Simulate N engine vs engine games and extract puzzle candidates.
+   * Games are played by Mkaguzi at level 17 — strong enough to create
+   * genuine middlegame traps, sacrifices, and positional sequences.
+   * Example: POST /admin/puzzles/simulate  { "games": 3 }
+   */
+  @Post('simulate')
+  async simulatePuzzles(
+    @Body() dto: SimulatePuzzlesDto,
+    @CurrentUser() admin: any,
+    @Req() req: Request,
+  ) {
+    const games = dto.games ?? 3;
+    this.auditLog('SIMULATE_PUZZLES', admin, req, { games });
+    const result = await this.simulator.simulateAndMine(games);
+    return { games: result.games, candidates: result.candidates };
   }
 
   /**
@@ -255,15 +315,31 @@ export class AdminPuzzleController {
     return { days, ...result };
   }
 
+  /** Delete all PENDING puzzles in one shot. */
+  @Delete('pending')
+  @HttpCode(200)
+  async clearPending(@CurrentUser() admin: any, @Req() req: Request) {
+    const { count } = await this.prisma.puzzle.deleteMany({
+      where: { status: 'PENDING' },
+    });
+    this.auditLog('CLEAR_PENDING_PUZZLES', admin, req, { deleted: count });
+    return { deleted: count };
+  }
+
   /** Paginated list of puzzles for admin review. Filterable by status. */
   @Get()
-  async listAdminPuzzles(@Query() query: ListPendingPuzzlesQueryDto & { status?: string }) {
+  async listAdminPuzzles(@Query() query: ListPendingPuzzlesQueryDto & { status?: string; expired?: string }) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);
     const skip = (page - 1) * limit;
+    const now = new Date();
 
     const where: any = {};
-    if (query.status) {
+    if (query.expired === 'true') {
+      // Show only APPROVED puzzles that have a past non-null expiresAt
+      where.status = 'APPROVED';
+      where.expiresAt = { not: null, lte: now };
+    } else if (query.status) {
       where.status = query.status;
     }
 
@@ -283,6 +359,8 @@ export class AdminPuzzleController {
           sourceGameId: true,
           sourceMoveNum: true,
           createdAt: true,
+          publishedAt: true,
+          expiresAt: true,
           pieces: true,
           sideToMove: true,
           solution: true,
@@ -320,11 +398,15 @@ export class AdminPuzzleController {
     const puzzle = await this.prisma.puzzle.findUnique({ where: { id } });
     if (!puzzle) throw new NotFoundException('Puzzle not found');
 
+    const publishedAt = new Date();
+    const expiresAt = new Date(publishedAt.getTime() + 24 * 60 * 60 * 1000);
+
     const updated = await this.prisma.puzzle.update({
       where: { id },
       data: {
         status: 'APPROVED',
-        publishedAt: new Date(),
+        publishedAt,
+        expiresAt,
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.difficulty !== undefined && { difficulty: dto.difficulty }),
         ...(dto.theme !== undefined && { theme: dto.theme }),
@@ -335,21 +417,27 @@ export class AdminPuzzleController {
         title: true,
         difficulty: true,
         theme: true,
+        expiresAt: true,
       },
     });
 
     this.auditLog('APPROVE_PUZZLE', admin, req, { puzzleId: id });
 
     const theme = (updated.theme ?? 'puzzle').replace(/-/g, ' ');
+    const notifTitle = '🧩 New Puzzle Released!';
+    const notifBody = `A new ${theme} challenge is ready — can you solve it?`;
+
+    // Push notifications (in-app + device push) handled by background worker
     await this.pushQueue.enqueuePuzzleNotification({
       puzzleId: id,
-      title: '🧩 New Puzzle Released!',
-      body: `A new ${theme} challenge is ready — can you solve it?`,
+      title: notifTitle,
+      body: notifBody,
       cursor: null,
     });
 
     return updated;
   }
+
 
   /** Reject a candidate so it won't appear in the review queue again. */
   @Post(':id/reject')
@@ -398,12 +486,15 @@ export class AdminPuzzleController {
 
 function checkSolution(
   submitted: Array<{ from: number; to: number; captures?: number[] }>,
-  solution: Array<{ from: number; to: number; captures?: number[] }>,
+  solution: Array<{ from: number; to: number; captures?: number[]; isOpp?: boolean }>,
 ): boolean {
-  if (submitted.length < solution.length) return false;
+  // Only validate player moves — opponent responses (isOpp:true) are auto-played by the client
+  const playerMoves = solution.filter((m) => !m.isOpp);
 
-  for (let i = 0; i < solution.length; i++) {
-    const s = solution[i];
+  if (submitted.length < playerMoves.length) return false;
+
+  for (let i = 0; i < playerMoves.length; i++) {
+    const s = playerMoves[i];
     const p = submitted[i];
     if (!p || p.from !== s.from || p.to !== s.to) return false;
 
