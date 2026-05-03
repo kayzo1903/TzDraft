@@ -49,7 +49,7 @@ function usePieceLanding() {
     timerRef.current = setTimeout(() => {
       setLandingIndex(null);
       timerRef.current = null;
-    }, 200);
+    }, 260);
   }, []);
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);

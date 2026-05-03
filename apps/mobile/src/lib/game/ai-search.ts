@@ -42,10 +42,10 @@ export const LEVEL_PARAMS: Record<number, LevelParams> = {
 // Undisputed (17-19) keeps individual progressive params from LEVEL_PARAMS.
 
 const TIER_PARAMS: Record<string, LevelParams> = {
-  beginner:    { timeMs:  150, level: 15, randomness: 250, blunderChance: 0.70 },
-  casual:      { timeMs:  350, level: 15, randomness:  75, blunderChance: 0.50 },
-  competitive: { timeMs:  500, level: 16, randomness:  40, blunderChance: 0.25 },
-  expert:      { timeMs: 1000, level: 16, randomness:  15, blunderChance: 0.05 },
+  beginner:    { timeMs:  150, level: 15, randomness: 250, blunderChance: 0.35 },
+  casual:      { timeMs:  350, level: 15, randomness:  75, blunderChance: 0.17 },
+  competitive: { timeMs:  500, level: 16, randomness:  40, blunderChance: 0.08 },
+  expert:      { timeMs: 1000, level: 16, randomness:  15, blunderChance: 0.01 },
 };
 
 function getTierName(level: number): string | null {

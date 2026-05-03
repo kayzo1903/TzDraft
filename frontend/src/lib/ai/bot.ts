@@ -118,10 +118,10 @@ const LEVEL_PARAMS: Record<
 type TierParams = { timeMs: number; depth: number; level: number; randomness: number; blunderChance: number };
 
 const TIER_PARAMS: Record<string, TierParams> = {
-  beginner:    { timeMs: 150,  depth: 0, level: 15, randomness: 250, blunderChance: 0.70 },
-  casual:      { timeMs: 350,  depth: 0, level: 15, randomness: 75,  blunderChance: 0.50 },
-  competitive: { timeMs: 500,  depth: 0, level: 16, randomness: 40,  blunderChance: 0.25 },
-  expert:      { timeMs: 1000, depth: 0, level: 16, randomness: 15,  blunderChance: 0.05 },
+  beginner:    { timeMs: 150,  depth: 0, level: 15, randomness: 250, blunderChance: 0.35 },
+  casual:      { timeMs: 350,  depth: 0, level: 15, randomness: 75,  blunderChance: 0.17 },
+  competitive: { timeMs: 500,  depth: 0, level: 16, randomness: 40,  blunderChance: 0.08 },
+  expert:      { timeMs: 1000, depth: 0, level: 16, randomness: 15,  blunderChance: 0.01 },
 };
 
 function getTierName(level: number): string | null {

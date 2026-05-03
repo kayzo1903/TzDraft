@@ -476,7 +476,7 @@
       },
       "ai": {
         "title": "Play vs AI",
-        "description": "Practice and improve against Stockfish engines.",
+        "description": "Practice and improve against Mkaguzi engines.",
         "action": "Play Now"
       },
       "friend": {
