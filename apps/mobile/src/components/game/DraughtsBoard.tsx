@@ -19,6 +19,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,6 +48,7 @@ import Animated, {
   withSpring,
   withSequence,
   withRepeat,
+  Easing,
 } from "react-native-reanimated";
 import { runOnJS } from "react-native-worklets";
 import { colors } from "../../theme/colors";
@@ -146,7 +148,7 @@ function useLandingSquare() {
     timerRef.current = setTimeout(() => {
       setLanding(null);
       timerRef.current = null;
-    }, 220);
+    }, 280);
   }, []);
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   return { landing, triggerLanding };
@@ -190,6 +192,71 @@ export function DraughtsBoard({
 
   const { landing, triggerLanding } = useLandingSquare();
   const { shake, shakeStyle }       = useBoardShake();
+
+  // ── Move-slide animation (covers both human tap and AI moves) ────────────────
+  const moveGhostX    = useSharedValue(0);
+  const moveGhostY    = useSharedValue(0);
+  const [slideGhost, setSlideGhost] = useState<{ color: "WHITE" | "BLACK"; isKing: boolean } | null>(null);
+  // PDN of the destination piece to hide in the canvas while the ghost is sliding
+  const [slidingDestPdn, setSlidingDestPdn] = useState<number | null>(null);
+  const slideTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slideGenRef    = useRef(0);
+  const prevLastMoveRef = useRef<LastMove | null>(null);
+
+  const moveGhostAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: moveGhostX.value },
+      { translateY: moveGhostY.value },
+    ],
+  }));
+
+  useLayoutEffect(() => {
+    const prev = prevLastMoveRef.current;
+    prevLastMoveRef.current = lastMove ?? null;
+    if (!lastMove) return;
+    if (prev && prev.from === lastMove.from && prev.to === lastMove.to) return;
+
+    const fromCell = pdnToCell.get(lastMove.from);
+    const toCell   = pdnToCell.get(lastMove.to);
+    if (!fromCell || !toCell) return;
+
+    const movedPiece = pieceMap.get(lastMove.to);
+    if (!movedPiece) return;
+
+    // Cancel any in-flight animation
+    slideGenRef.current += 1;
+    const gen = slideGenRef.current;
+    if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
+
+    const fromX = fromCell.col * CELL_SIZE;
+    const fromY = fromCell.row * CELL_SIZE;
+    const toX   = toCell.col   * CELL_SIZE;
+    const toY   = toCell.row   * CELL_SIZE;
+
+    // Snap ghost to FROM position before revealing it
+    moveGhostX.value = fromX;
+    moveGhostY.value = fromY;
+    setSlidingDestPdn(lastMove.to);
+    setSlideGhost(movedPiece);
+
+    // Animate ghost to TO position
+    const DURATION = 280;
+    moveGhostX.value = withTiming(toX, { duration: DURATION, easing: Easing.out(Easing.exp) });
+    moveGhostY.value = withTiming(toY, { duration: DURATION, easing: Easing.out(Easing.exp) });
+
+    // Clean up after animation completes
+    slideTimerRef.current = setTimeout(() => {
+      if (slideGenRef.current !== gen) return;
+      setSlideGhost(null);
+      setSlidingDestPdn(null);
+      slideTimerRef.current = null;
+    }, DURATION + 30);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastMove]);
+
+  useEffect(() => () => {
+    if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
+  }, []);
 
   // dragPdn: only piece identity for ghost rendering (React state, not shared value)
   const [dragPdn, setDragPdn] = useState<number | null>(null);
@@ -474,12 +541,13 @@ export function DraughtsBoard({
             const isSelected = highlights[pdn] === "selected";
             const isLanding  = landing === pdn;
             const isDragging = dragPdn === pdn;
+            const isSliding  = slidingDestPdn === pdn;
             const scale      = isSelected && !isDragging ? 1.12
                              : isLanding  && !isDragging ? 1.08 : 1.0;
             const r          = PIECE_RADIUS * scale;
 
             return (
-              <Group key={`piece${pdn}`} opacity={isDragging ? sourceFade : 1}>
+              <Group key={`piece${pdn}`} opacity={isDragging ? sourceFade : isSliding ? 0 : 1}>
                 {/* Drop shadow */}
                 <Circle cx={cx} cy={cy + 3} r={r} color={isWhite ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.55)"} />
 
@@ -569,7 +637,18 @@ export function DraughtsBoard({
         </Canvas>
       </GestureDetector>
 
-      {/* Ghost piece overlay — Reanimated, UI thread, same as before */}
+      {/* Move-slide ghost — smooth piece travel for both tap and AI moves */}
+      {slideGhost && (
+        <Animated.View style={[styles.ghost, moveGhostAnimStyle]} pointerEvents="none">
+          <Piece
+            color={slideGhost.color}
+            isKing={slideGhost.isKing}
+            size={CELL_SIZE}
+          />
+        </Animated.View>
+      )}
+
+      {/* Drag ghost overlay — Reanimated, UI thread */}
       {ghostPiece && (
         <Animated.View style={[styles.ghost, ghostAnimStyle]} pointerEvents="none">
           <Piece

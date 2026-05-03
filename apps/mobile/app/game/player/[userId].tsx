@@ -175,7 +175,7 @@ export default function PlayerProfileScreen() {
         <View style={styles.gameInfo}>
           <View style={styles.opponentRow}>
             <Text style={styles.opponentName}>
-              {item.opponent ? item.opponent.displayName : "Stockfish AI"}
+              {item.opponent ? item.opponent.displayName : "Mkaguzi AI"}
             </Text>
             {item.opponent?.elo && (
               <Text style={styles.opponentElo}>({item.opponent.elo})</Text>
