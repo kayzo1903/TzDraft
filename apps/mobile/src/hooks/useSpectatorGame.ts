@@ -35,6 +35,7 @@ export interface MoveHistoryEntry {
   notation: string;
   from: number;
   to: number;
+  captureCount: number;
 }
 
 /* ─── Hook ──────────────────────────────────────────────────────────────── */
@@ -141,12 +142,16 @@ export function useSpectatorGame(gameId: string) {
         // Build history
         const history: MoveHistoryEntry[] = movesArr.map((raw) => {
           const m = raw as Record<string, unknown>;
+          const capturedSquares = Array.isArray(m.capturedSquares)
+            ? m.capturedSquares
+            : [];
           return {
             moveNumber: Number(m.moveNumber ?? 0),
             player: (m.player as "WHITE" | "BLACK") ?? "WHITE",
             notation: String(m.notation ?? ""),
             from: getPositionValue(m.from),
             to: getPositionValue(m.to),
+            captureCount: capturedSquares.length,
           };
         });
         setMoveHistory(history);
@@ -236,6 +241,9 @@ export function useSpectatorGame(gameId: string) {
             notation: String(m.notation ?? ""),
             from,
             to,
+            captureCount: Array.isArray(m.capturedSquares)
+              ? m.capturedSquares.length
+              : 0,
           },
         ]);
 
