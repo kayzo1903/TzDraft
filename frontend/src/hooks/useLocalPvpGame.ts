@@ -506,24 +506,24 @@ export const useLocalPvpGame = (timeSeconds: number, passDevice: boolean) => {
   // Audio init
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const moveAudio = new Audio("/sfx/move-tap.wav");
+    const moveAudio = new Audio("/sfx/Move.mp3");
     moveAudio.preload = "auto";
-    moveAudio.volume = 0.48;
+    moveAudio.volume = 0.55;
     moveAudioRef.current = moveAudio;
 
-    const longMoveAudio = new Audio("/sfx/move-slide.wav");
+    const longMoveAudio = new Audio("/sfx/Move.mp3");
     longMoveAudio.preload = "auto";
-    longMoveAudio.volume = 0.52;
+    longMoveAudio.volume = 0.55;
     longMoveAudioRef.current = longMoveAudio;
 
-    const captureAudio = new Audio("/sfx/move-capture.wav");
+    const captureAudio = new Audio("/sfx/Capture.mp3");
     captureAudio.preload = "auto";
-    captureAudio.volume = 0.6;
+    captureAudio.volume = 0.65;
     captureAudioRef.current = captureAudio;
 
-    const multiCaptureAudio = new Audio("/sfx/move-knock-real.wav");
+    const multiCaptureAudio = new Audio("/sfx/Capture.mp3");
     multiCaptureAudio.preload = "auto";
-    multiCaptureAudio.volume = 0.62;
+    multiCaptureAudio.volume = 0.65;
     multiCaptureAudioRef.current = multiCaptureAudio;
 
     const startAudio = new Audio("/sfx/start.mp3");
