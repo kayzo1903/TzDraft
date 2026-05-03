@@ -772,7 +772,6 @@ export default function VsAiScreen() {
           {game.isAiThinking && (
             <View style={styles.thinkingContainer}>
               <ActivityIndicator color={colors.primary} size="small" />
-              <Text style={styles.thinkingText}>{t("gameArena.status.thinking")}</Text>
             </View>
           )}
           {timeControl.type === "total" && (
@@ -1146,9 +1145,7 @@ const styles = StyleSheet.create({
   playerNameText: { color: colors.foreground, fontSize: 13, fontWeight: "bold" },
   
   thinkingContainer: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
     marginLeft: "auto",
     backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 10,
@@ -1156,13 +1153,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  thinkingText: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
   },
 
   colorChipWhite: { backgroundColor: colors.pieceWhite, borderColor: "#c8b49a" },

@@ -44,7 +44,6 @@ import type {
 } from "@/components/game/Board";
 import axiosInstance from "@/lib/axios";
 import { unlockNextBotLevel } from "@/lib/game/bot-progression";
-import { playMoveSound } from "@/lib/game/move-sound";
 import { getBestMove } from "@/lib/ai/bot";
 
 export interface LocalGameState {
@@ -452,13 +451,9 @@ export const useLocalGame = (
   const captureCleanupTimeoutsRef = useRef<number[]>([]);
   const captureGhostIdRef = useRef(0);
   const initialBoardRef = useRef<BoardState>(MkaguziEngine.createInitialState());
-  const moveAudioRef = useRef<HTMLAudioElement | null>(null);
-  const longMoveAudioRef = useRef<HTMLAudioElement | null>(null);
-  const captureAudioRef = useRef<HTMLAudioElement | null>(null);
-  const multiCaptureAudioRef = useRef<HTMLAudioElement | null>(null);
-  const startAudioRef = useRef<HTMLAudioElement | null>(null);
-  const warningAudioRef = useRef<HTMLAudioElement | null>(null);
-  const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
+  const moveAudioRef         = useRef<HTMLAudioElement | null>(null);
+  const capturePool           = useRef<HTMLAudioElement[]>([]);
+  const notifyAudioRef        = useRef<HTMLAudioElement | null>(null);
   const startedRef = useRef(false);
   const prevResultRef = useRef<Winner | null>(null);
 
@@ -623,19 +618,22 @@ export const useLocalGame = (
   const applyMove = useCallback(
     (move: Move) => {
       if (!isMuted) {
-        playMoveSound(
-          {
-            from: move.from,
-            to: move.to,
-            capturedCount: move.capturedSquares.length,
-          },
-          {
-            normal: moveAudioRef.current,
-            long: longMoveAudioRef.current,
-            capture: captureAudioRef.current,
-            multiCapture: multiCaptureAudioRef.current,
-          },
-        );
+        const capturedCount = move.capturedSquares.length;
+        if (capturedCount > 0) {
+          // Staggered capture pool — mirrors mobile useGameAudio
+          const clampedCount = Math.min(Math.max(capturedCount, 1), 3);
+          for (let i = 0; i < clampedCount; i++) {
+            window.setTimeout(() => {
+              const audio = capturePool.current[i];
+              if (!audio) return;
+              audio.currentTime = 0;
+              audio.play().catch(() => {});
+            }, i * 150);
+          }
+        } else {
+          const audio = moveAudioRef.current;
+          if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
+        }
       }
       const fromIndex = positionToIndex(move.from, flipForPlayer);
       const toIndex = positionToIndex(move.to, flipForPlayer);
@@ -784,9 +782,9 @@ export const useLocalGame = (
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
-    if (startAudioRef.current) {
-      startAudioRef.current.currentTime = 0;
-      startAudioRef.current.play().catch(() => {});
+    if (notifyAudioRef.current) {
+      notifyAudioRef.current.currentTime = 0;
+      notifyAudioRef.current.play().catch(() => {});
     }
   }, []);
 
@@ -884,45 +882,31 @@ export const useLocalGame = (
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const moveAudio = new Audio("/sfx/move-tap.wav");
-    moveAudio.preload = "auto";
-    moveAudio.volume = 0.48;
-    moveAudioRef.current = moveAudio;
 
-    const longMoveAudio = new Audio("/sfx/move-slide.wav");
-    longMoveAudio.preload = "auto";
-    longMoveAudio.volume = 0.52;
-    longMoveAudioRef.current = longMoveAudio;
+    // ── 3 shared files — exactly mirrors mobile useGameAudio ──────────────
+    const move = new Audio("/sfx/Move.mp3");
+    move.preload = "auto";
+    move.volume = 0.55;
+    moveAudioRef.current = move;
 
-    const captureAudio = new Audio("/sfx/move-capture.wav");
-    captureAudio.preload = "auto";
-    captureAudio.volume = 0.6;
-    captureAudioRef.current = captureAudio;
+    const pool: HTMLAudioElement[] = [];
+    for (let i = 0; i < 3; i++) {
+      const cap = new Audio("/sfx/Capture.mp3");
+      cap.preload = "auto";
+      cap.volume = 0.65;
+      pool.push(cap);
+    }
+    capturePool.current = pool;
 
-    const multiCaptureAudio = new Audio("/sfx/move-knock-real.wav");
-    multiCaptureAudio.preload = "auto";
-    multiCaptureAudio.volume = 0.62;
-    multiCaptureAudioRef.current = multiCaptureAudio;
-
-    const startAudio = new Audio("/sfx/start.mp3");
-    startAudio.preload = "auto";
-    startAudio.volume = 0.5;
-    startAudioRef.current = startAudio;
-
-    const warningAudio = new Audio("/sfx/warning.wav");
-    warningAudio.preload = "auto";
-    warningAudio.volume = 0.6;
-    warningAudioRef.current = warningAudio;
-
-    const victoryAudio = new Audio("/sfx/victory.mp3");
-    victoryAudio.preload = "auto";
-    victoryAudio.volume = 0.6;
-    victoryAudioRef.current = victoryAudio;
+    const notify = new Audio("/sfx/GenericNotify.mp3");
+    notify.preload = "auto";
+    notify.volume = 0.55;
+    notifyAudioRef.current = notify;
 
     if (!startedRef.current && !loaded) {
-      if (!isMuted && startAudioRef.current) {
-        startAudioRef.current.currentTime = 0;
-        startAudioRef.current.play().catch(() => {});
+      if (!isMuted) {
+        notify.currentTime = 0;
+        notify.play().catch(() => {});
       }
       startedRef.current = true;
     }
@@ -932,12 +916,8 @@ export const useLocalGame = (
       }
       captureCleanupTimeoutsRef.current = [];
       moveAudioRef.current = null;
-      longMoveAudioRef.current = null;
-      captureAudioRef.current = null;
-      multiCaptureAudioRef.current = null;
-      startAudioRef.current = null;
-      warningAudioRef.current = null;
-      victoryAudioRef.current = null;
+      capturePool.current = [];
+      notifyAudioRef.current = null;
     };
   }, [loaded]);
 
@@ -945,9 +925,9 @@ export const useLocalGame = (
     const winner = result?.winner ?? null;
     if (!winner || winner === prevResultRef.current) return;
     prevResultRef.current = winner;
-    if (!isMuted && victoryAudioRef.current) {
-      victoryAudioRef.current.currentTime = 0;
-      victoryAudioRef.current.play().catch(() => {});
+    if (!isMuted && notifyAudioRef.current) {
+      notifyAudioRef.current.currentTime = 0;
+      notifyAudioRef.current.play().catch(() => {});
     }
   }, [result, isMuted]);
 
@@ -962,11 +942,8 @@ export const useLocalGame = (
   }, [aiLevel, hintUsed, playerColor, result, shouldPersistGuestProgress, undoUsed]);
 
   const playWarning = useCallback(() => {
-    if (!isMuted && warningAudioRef.current) {
-      warningAudioRef.current.currentTime = 0;
-      warningAudioRef.current.play().catch(() => {});
-    }
-  }, [isMuted]);
+    // Warning sound removed — normalized to mobile (no separate warning sound)
+  }, []);
 
   useEffect(() => {
     if (aiTimeoutRef.current !== null) {

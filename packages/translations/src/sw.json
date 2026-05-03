@@ -96,7 +96,7 @@
     "playOnline": "Cheza Mtandaoni",
     "onlineDescription": "Pima ujuzi wako dhidi ya wachezaji ulimwenguni kote",
     "playAI": "Cheza na AI",
-    "aiDescription": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish",
+    "aiDescription": "Fanya mazoezi na uboreshe ujuzi dhidi ya Mkaguzi",
     "playFriend": "Cheza na Rafiki",
     "friendDescription": "Mechi za ana kwa ana au za mtandaoni"
   },
@@ -476,7 +476,7 @@
       },
       "ai": {
         "title": "Cheza na AI",
-        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya Stockfish.",
+        "description": "Fanya mazoezi na uboreshe ujuzi dhidi ya Mkaguzi.",
         "action": "Cheza Sasa"
       },
       "friend": {
