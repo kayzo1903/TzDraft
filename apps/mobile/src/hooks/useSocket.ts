@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuthStore } from "../auth/auth-store";
-import { API_URL } from "../lib/api";
+import api, { API_URL } from "../lib/api";
 
 /**
  * Mobile socket singleton — uses handshake.auth.token instead of cookies
@@ -9,6 +9,7 @@ import { API_URL } from "../lib/api";
  */
 let sharedSocket: Socket | null = null;
 let sharedToken: string | null = null;
+let isRefreshingSocketAuth = false;
 
 function getOrCreateSocket(token: string): Socket {
   // Re-use the socket if the token hasn't changed
@@ -49,6 +50,21 @@ function getOrCreateSocket(token: string): Socket {
       sharedSocket?.disconnect();
       sharedSocket = null;
       sharedToken = null;
+
+      if (!isRefreshingSocketAuth) {
+        isRefreshingSocketAuth = true;
+        void api
+          .get("/auth/me")
+          .then((response) => {
+            useAuthStore.getState().setUser(response.data);
+          })
+          .catch(() => {
+            useAuthStore.getState().logout();
+          })
+          .finally(() => {
+            isRefreshingSocketAuth = false;
+          });
+      }
     }
   });
 

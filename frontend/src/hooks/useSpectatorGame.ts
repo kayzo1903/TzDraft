@@ -370,10 +370,10 @@ export const useSpectatorGame = (gameId: string) => {
   /* ── Audio ─────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const move = new Audio("/sfx/move-tap.wav"); move.preload = "auto"; move.volume = 0.48; moveAudioRef.current = move;
-    const long = new Audio("/sfx/move-slide.wav"); long.preload = "auto"; long.volume = 0.52; longMoveAudioRef.current = long;
-    const cap = new Audio("/sfx/move-capture.wav"); cap.preload = "auto"; cap.volume = 0.6; captureAudioRef.current = cap;
-    const multi = new Audio("/sfx/move-knock-real.wav"); multi.preload = "auto"; multi.volume = 0.62; multiCaptureAudioRef.current = multi;
+    const move = new Audio("/sfx/Move.mp3"); move.preload = "auto"; move.volume = 0.55; moveAudioRef.current = move;
+    const long = new Audio("/sfx/Move.mp3"); long.preload = "auto"; long.volume = 0.55; longMoveAudioRef.current = long;
+    const cap = new Audio("/sfx/Capture.mp3"); cap.preload = "auto"; cap.volume = 0.65; captureAudioRef.current = cap;
+    const multi = new Audio("/sfx/Capture.mp3"); multi.preload = "auto"; multi.volume = 0.65; multiCaptureAudioRef.current = multi;
     return () => {
       moveAudioRef.current = null;
       longMoveAudioRef.current = null;

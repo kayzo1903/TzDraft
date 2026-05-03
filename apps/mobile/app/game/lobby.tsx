@@ -60,6 +60,8 @@ export default function OnlineLobby() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Prevent double-navigation when matchFound fires
   const navigatingRef = useRef(false);
+  const recoveringSearchRef = useRef(false);
+  const searchActiveRef = useRef(false);
 
   // ── Animations ───────────────────────────────────────────────────────────
   const startAnimations = () => {
@@ -108,6 +110,8 @@ export default function OnlineLobby() {
     (gameId: string) => {
       if (navigatingRef.current) return;
       navigatingRef.current = true;
+      searchActiveRef.current = false;
+      setIsSearching(false);
       router.replace({
         pathname: "/game/online-game",
         params: { gameId, isHost: "false", source: "lobby" },
@@ -115,6 +119,28 @@ export default function OnlineLobby() {
     },
     [router],
   );
+
+  const resumeSearchOrGame = useCallback(async () => {
+    if (!socket || !connected || !isSearching || !searchActiveRef.current || recoveringSearchRef.current) return;
+
+    recoveringSearchRef.current = true;
+    try {
+      const activeGame = await matchService.getActiveGame();
+      if (searchActiveRef.current && activeGame?.id) {
+        goToGame(activeGame.id);
+        return;
+      }
+
+      const result = await matchService.joinQueue(QUEUE_TIME_MS, socket.id ?? "");
+      if (searchActiveRef.current && result.status === "matched") {
+        goToGame(result.gameId);
+      }
+    } catch {
+      // Stay in searching mode — the next reconnect or matchFound event can recover.
+    } finally {
+      recoveringSearchRef.current = false;
+    }
+  }, [socket, connected, isSearching, goToGame]);
 
   // ── WS: listen for matchFound ─────────────────────────────────────────────
   useEffect(() => {
@@ -135,6 +161,27 @@ export default function OnlineLobby() {
       socket.off("playerCountsUpdated", countsHandler);
     };
   }, [socket, goToGame]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      if (isSearching) {
+        void resumeSearchOrGame();
+      }
+    };
+
+    socket.on("connect", handleConnect);
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, [socket, isSearching, resumeSearchOrGame]);
+
+  useEffect(() => {
+    if (connected && isSearching) {
+      void resumeSearchOrGame();
+    }
+  }, [connected, isSearching, resumeSearchOrGame]);
 
   // ── Searching countdown ───────────────────────────────────────────────────
   useEffect(() => {
@@ -194,12 +241,14 @@ export default function OnlineLobby() {
 
     setQueueError(null);
     navigatingRef.current = false;
+    searchActiveRef.current = true;
     setIsSearching(true);
 
     try {
       const result = await matchService.joinQueue(QUEUE_TIME_MS, socket.id ?? "");
       if (result.status === "matched") {
         setIsSearching(false);
+        searchActiveRef.current = false;
         goToGame(result.gameId);
       }
       // status === "waiting" → stay in searching state, wait for matchFound WS event
@@ -217,6 +266,7 @@ export default function OnlineLobby() {
       }
 
       setIsSearching(false);
+      searchActiveRef.current = false;
       const msg =
         err?.response?.data?.message ??
         err?.message ??
@@ -229,6 +279,8 @@ export default function OnlineLobby() {
   const handleCancelSearch = async () => {
     setIsSearching(false);
     setTimeoutReached(false);
+    recoveringSearchRef.current = false;
+    searchActiveRef.current = false;
     try {
       await matchService.cancelQueue();
     } catch {

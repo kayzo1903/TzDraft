@@ -22,6 +22,7 @@ import {
 } from "lucide-react-native";
 import { PlayerColor } from "@tzdraft/mkaguzi-engine";
 import { colors } from "../../../src/theme/colors";
+import { useGameAudio } from "../../../src/hooks/useGameAudio";
 import { useSpectatorGame } from "../../../src/hooks/useSpectatorGame";
 import { DraughtsBoard } from "../../../src/components/game/DraughtsBoard";
 
@@ -209,6 +210,9 @@ export default function SpectatorScreen() {
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const audio = useGameAudio();
+  const audioPrimedRef = React.useRef(false);
+  const prevAudioMoveCountRef = React.useRef(0);
 
   const {
     board,
@@ -224,6 +228,28 @@ export default function SpectatorScreen() {
     reconnecting,
     gameData,
   } = useSpectatorGame(gameId);
+
+  React.useEffect(() => {
+    if (isLoading) return;
+
+    if (!audioPrimedRef.current) {
+      audioPrimedRef.current = true;
+      prevAudioMoveCountRef.current = moveHistory.length;
+      return;
+    }
+
+    if (moveHistory.length > prevAudioMoveCountRef.current) {
+      const lastMove = moveHistory[moveHistory.length - 1];
+      if (lastMove?.captureCount > 0) {
+        audio.playCapture(lastMove.captureCount);
+      } else if (lastMove) {
+        audio.playMove();
+      }
+      prevAudioMoveCountRef.current = moveHistory.length;
+    } else if (moveHistory.length === 0) {
+      prevAudioMoveCountRef.current = 0;
+    }
+  }, [isLoading, moveHistory, audio]);
 
   const whiteName =
     players.white?.displayName || players.white?.username || "White";

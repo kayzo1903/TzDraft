@@ -77,6 +77,10 @@ export function useOnlineGame(gameId: string) {
   const bridge = useMkaguzi();
   const { socket, connected, reconnecting } = useSocket();
   const { t } = useTranslation();
+  const realtimeUnavailableMessage = t(
+    "gameArena.status.offlineBody",
+    "Trying to reconnect..."
+  );
 
   // ── Core board state ───────────────────────────────────────────────────────
   const [fen, setFen] = useState(INITIAL_FEN);
@@ -170,6 +174,7 @@ export function useOnlineGame(gameId: string) {
 
   const currentPlayer: PlayerColor =
     moveCount % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+  const canUseRealtimeActions = !!socket && connected;
 
   const isWaiting = gameData ? gameData.status === "WAITING" : true;
   const bothPlayersPresent =
@@ -186,6 +191,13 @@ export function useOnlineGame(gameId: string) {
   useEffect(() => { currentPlayerRef.current = currentPlayer; }, [currentPlayer]);
   useEffect(() => { resultRef.current = result; }, [result]);
   useEffect(() => { isWaitingRef.current = isWaiting; }, [isWaiting]);
+
+  useEffect(() => {
+    if (!connected) {
+      setSelectedSquare(null);
+      setValidDestinations([]);
+    }
+  }, [connected]);
 
   // ── Legal move re-generation ───────────────────────────────────────────────
   const computeCapturables = useCallback((moves: RawMove[]): number[] => {
@@ -416,6 +428,15 @@ export function useOnlineGame(gameId: string) {
     return () => clearInterval(id);
   }, []); // intentionally empty — reads only stable refs
 
+  useEffect(() => {
+    return () => {
+      if (disconnectCountdownRef.current !== null) {
+        clearInterval(disconnectCountdownRef.current);
+        disconnectCountdownRef.current = null;
+      }
+    };
+  }, []);
+
   // ── WebSocket: join room + event listeners ─────────────────────────────────
   useEffect(() => {
     if (!socket) return;
@@ -525,17 +546,21 @@ export function useOnlineGame(gameId: string) {
             prevMoveCountRef.current = incomingMoveNum;
             setSelectedSquare(null);
             setValidDestinations([]);
-            
-            const nextHistory = [...fenHistory, newFen];
-            setFenHistory(nextHistory);
 
-            // Proactive Threefold Repetition Check (Art. 8.2)
-            const occurrences = nextHistory.filter((f) => f === newFen).length;
-            if (occurrences >= 3 && !resultRef.current) {
-              const r = { winner: "DRAW" as const, reason: "repetition" };
-              setResult(r);
-              resultRef.current = r;
-            }
+            setFenHistory((prev) => {
+              if (prev.length >= incomingMoveNum + 1) return prev;
+              const next = [...prev, newFen];
+
+              // Proactive Threefold Repetition Check (Art. 8.2)
+              const occurrences = next.filter((f) => f === newFen).length;
+              if (occurrences >= 3 && !resultRef.current) {
+                const r = { winner: "DRAW" as const, reason: "repetition" };
+                setResult(r);
+                resultRef.current = r;
+              }
+
+              return next;
+            });
           });
           return prevFen;
         });
@@ -705,6 +730,7 @@ export function useOnlineGame(gameId: string) {
   const selectSquare = useCallback(
     (pdn: number) => {
       if (result !== null) return;
+      if (!canUseRealtimeActions) return;
       if (myColor === null || currentPlayer !== myColor) return;
       if (pdn < 1 || pdn > 32) {
         setSelectedSquare(null);
@@ -744,13 +770,17 @@ export function useOnlineGame(gameId: string) {
       setValidDestinations([]);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [board, currentPlayer, myColor, legalMoves, selectedSquare, validDestinations, result],
+    [board, canUseRealtimeActions, currentPlayer, myColor, legalMoves, selectedSquare, validDestinations, result],
   );
 
   // ── Submit move ────────────────────────────────────────────────────────────
   const performMove = useCallback(
     (from: number, to: number) => {
-      if (result || !socket || isSubmitting) return;
+      if (result || isSubmitting) return;
+      if (!canUseRealtimeActions || !socket) {
+        setError(realtimeUnavailableMessage);
+        return;
+      }
 
       // Optimistic update via bridge
       bridge.applyMove(fen, from, to).then((newFen) => {
@@ -803,7 +833,7 @@ export function useOnlineGame(gameId: string) {
         fetchGameState();
       }, 8000);
     },
-    [bridge, fen, moveCount, gameId, result, socket, isSubmitting, fetchGameState, t],
+    [bridge, canUseRealtimeActions, fen, moveCount, gameId, result, socket, isSubmitting, fetchGameState, realtimeUnavailableMessage, t],
   );
 
   // ── Start game (host) ──────────────────────────────────────────────────────
@@ -823,57 +853,57 @@ export function useOnlineGame(gameId: string) {
 
   // ── Draw actions ───────────────────────────────────────────────────────────
   const offerDraw = useCallback(() => {
-    if (result || !socket) {
-      if (!socket) setError("Not connected — please wait.");
+    if (result || !canUseRealtimeActions || !socket) {
+      if (!canUseRealtimeActions || !socket) setError(realtimeUnavailableMessage);
       return;
     }
     socket.emit("offerDraw", { gameId });
     if (userId) setDrawOffer({ offeredByUserId: userId });
-  }, [gameId, result, socket, userId]);
+  }, [canUseRealtimeActions, gameId, result, socket, realtimeUnavailableMessage, userId]);
 
   const acceptDraw = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
+    if (!canUseRealtimeActions || !socket) { setError(realtimeUnavailableMessage); return; }
     setDrawOffer({ offeredByUserId: null });
     socket.emit("acceptDraw", { gameId });
-  }, [socket, gameId]);
+  }, [canUseRealtimeActions, socket, gameId, realtimeUnavailableMessage]);
 
   const declineDraw = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
+    if (!canUseRealtimeActions || !socket) { setError(realtimeUnavailableMessage); return; }
     socket.emit("declineDraw", { gameId });
     setDrawOffer({ offeredByUserId: null });
-  }, [socket, gameId]);
+  }, [canUseRealtimeActions, socket, gameId, realtimeUnavailableMessage]);
 
   const cancelDraw = useCallback(() => {
-    if (!socket) { setError("Not connected — please wait."); return; }
+    if (!canUseRealtimeActions || !socket) { setError(realtimeUnavailableMessage); return; }
     socket.emit("cancelDraw", { gameId });
     setDrawOffer({ offeredByUserId: null });
-  }, [socket, gameId]);
+  }, [canUseRealtimeActions, socket, gameId, realtimeUnavailableMessage]);
 
   // ── Resign ─────────────────────────────────────────────────────────────────
   const resign = useCallback(() => {
-    if (!socket || result) {
-      if (!socket) setError("Not connected — please wait.");
+    if (!canUseRealtimeActions || !socket || result) {
+      if (!canUseRealtimeActions || !socket) setError(realtimeUnavailableMessage);
       return;
     }
     socket.emit("resign", { gameId });
-  }, [socket, gameId, result]);
+  }, [canUseRealtimeActions, socket, gameId, result, realtimeUnavailableMessage]);
 
   // ── Abort (before first move) ──────────────────────────────────────────────
   const abort = useCallback((): Promise<void> => {
     return new Promise((resolve) => {
-      if (!socket || moveCount > 0) {
-        if (!socket) setError("Not connected — please wait.");
+      if (!canUseRealtimeActions || !socket || moveCount > 0) {
+        if (!canUseRealtimeActions || !socket) setError(realtimeUnavailableMessage);
         resolve();
         return;
       }
       socket.emit("abort", { gameId }, () => resolve());
     });
-  }, [socket, gameId, moveCount]);
+  }, [canUseRealtimeActions, socket, gameId, moveCount, realtimeUnavailableMessage]);
 
   // ── Rematch actions ────────────────────────────────────────────────────────
   const offerRematch = useCallback(() => {
-    if (!socket) {
-      setError("Not connected — please wait.");
+    if (!canUseRealtimeActions || !socket) {
+      setError(realtimeUnavailableMessage);
       return;
     }
     // Result check ensures we only offer AFTER a game ends
@@ -893,38 +923,44 @@ export function useOnlineGame(gameId: string) {
     );
     setRematchOffer({ offeredByUserId: "self", status: "pending" });
     setRematchIWasOfferer(true);
-  }, [socket, gameId, result]);
+  }, [canUseRealtimeActions, socket, gameId, result, realtimeUnavailableMessage]);
 
   const acceptRematch = useCallback(() => {
-    if (!socket) {
-      setError("Not connected — please wait.");
+    if (!canUseRealtimeActions || !socket) {
+      setError(realtimeUnavailableMessage);
       return;
     }
     socket.emit("acceptRematch", { gameId });
     setRematchOffer((prev) => ({ ...prev, status: "accepted" }));
     setRematchIWasOfferer(false);
-  }, [socket, gameId]);
+  }, [canUseRealtimeActions, socket, gameId, realtimeUnavailableMessage]);
 
   const declineRematch = useCallback(() => {
-    if (!socket) return;
+    if (!canUseRealtimeActions || !socket) {
+      setError(realtimeUnavailableMessage);
+      return;
+    }
     socket.emit("declineRematch", { gameId });
     setRematchOffer({ offeredByUserId: null, status: "declined" });
     setRematchIWasOfferer(false);
-  }, [socket, gameId]);
+  }, [canUseRealtimeActions, socket, gameId, realtimeUnavailableMessage]);
 
   const cancelRematch = useCallback(() => {
-    if (!socket) return;
+    if (!canUseRealtimeActions || !socket) {
+      setError(realtimeUnavailableMessage);
+      return;
+    }
     socket.emit("cancelRematch", { gameId });
     setRematchOffer({ offeredByUserId: null, status: "cancelled" });
     setRematchIWasOfferer(false);
-  }, [socket, gameId]);
+  }, [canUseRealtimeActions, socket, gameId, realtimeUnavailableMessage]);
 
   // ── Reactions ──────────────────────────────────────────────────────────────
   const lastReactionTime = useRef<number>(0);
 
   const sendReaction = useCallback(
     (emoji: string) => {
-      if (!socket || !userId) return;
+      if (!canUseRealtimeActions || !socket || !userId) return;
       
       // Throttle: limit to 1 reaction per 1.5 seconds per user to prevent spam
       const now = Date.now();
@@ -935,7 +971,7 @@ export function useOnlineGame(gameId: string) {
 
       socket.emit("sendReaction", { gameId, emoji });
     },
-    [socket, gameId, userId]
+    [canUseRealtimeActions, socket, gameId, userId]
   );
 
   return {
